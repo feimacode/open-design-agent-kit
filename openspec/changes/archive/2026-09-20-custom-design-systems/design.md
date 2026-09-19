@@ -1,0 +1,25 @@
+# Design: custom design systems
+
+## Why a live/uncached user pool instead of a cache-invalidation scheme
+
+`ContentIndex.ensureLoaded()` memoizes the built-in pools in one `Promise`, computed once per extension-host lifetime — correct for ~152 bundled, immutable files. A user-created design system, by contrast, can be written by the model in the very same chat turn that then calls `list_open_design_design_systems` or `set_active_design_system` to use it — a cached-until-reload pool would make the feature appear broken ("I just created it, why isn't it showing up?"). Rather than adding cache-invalidation plumbing (a file watcher, a manual "refresh" call, or busting the whole `ensureLoaded()` promise), the user pool is simply re-scanned on every read. This is cheap: it's a handful of small, workspace-local `DESIGN.md` files, not a directory of hundreds like the built-ins, so the cost of "always fresh" is negligible and the correctness is unconditional.
+
+## Why a constructor callback instead of a `vscode` import in `contentIndex.ts`
+
+`contentIndex.ts` currently has zero `vscode` dependency — it's tested with plain Node fixtures (`contentIndex.test.ts`), no VS Code test harness needed. Resolving the workspace root requires `vscode.workspace.workspaceFolders`, which would break that. Instead, `ContentIndex`'s constructor takes an optional `getUserDesignSystemsDir?: () => string | undefined` callback, supplied only by `extension.ts` (the one place that already has `vscode` in scope and already computes this exact path pattern for artifacts via `getOutputDirectory()`/`getWorkspaceRoot()`). Tests that don't pass one simply get no user pool — matches the "gracefully returns `[]` when no workspace is open" requirement for free, since the same code path handles both "no callback given" and "callback given but returns `undefined`."
+
+## Why the tool never writes files, mirroring `prepare_open_design_brief`
+
+This extension's very first architectural decision (round 1) was "file writes use VS Code/Copilot's own native file-editing tools, not a bespoke write tool" — every content-producing flow since (`prepare_open_design_brief`, `remix_open_design_example`'s brief-for-modification instructions) composes instructions and hands authorship to the calling model. A tool that deterministically *wrote* the `DESIGN.md` itself (e.g. templating the extracted evidence directly into a file) would be both a real architectural inconsistency and lower quality — the model can weigh whether extracted colors actually look coherent together, write genuinely brand-specific prose for the Voice/Imagery/Layout sections, and adapt the required shape sensibly, none of which a template-filling function could do well.
+
+## Why URL extraction is safe to do without a daemon
+
+Upstream's own real implementation already establishes the safety posture worth copying: plain HTTP fetch of the caller-given URL and content it *itself* links to (same-origin stylesheets only), no headless browser, no screenshot/vision pipeline (explicitly removed upstream for SSRF-safety reasons — a very deliberate precedent, not an oversight to "fix" by adding it back). This extension's port keeps the same boundary: `extractBrandEvidence()` only ever fetches the URL the user/model supplied and same-origin `<link rel="stylesheet">` hrefs found on that exact page, capped at 3, each with an 8s timeout and a ~3MB text-length cap. It never follows arbitrary further links, never fetches cross-origin resources, and never throws on failure — a blocked/failed fetch degrades to an empty evidence set rather than failing the tool call, so the model can still produce a `DESIGN.md` from the brief alone.
+
+## Why the font-family regex bug mattered (caught by the new unit tests)
+
+The first draft's regex was `font-family\s*:\s*([^;}"']+)` — excluding quote characters from the capture group entirely, intending to strip them afterward. But a quoted declaration like `font-family: "Space Grotesk", sans-serif;` has its opening quote immediately after the colon, so a character class that *excludes* quotes truncates the match to an empty string at that exact point — the quote-stripping `.replace()` downstream had nothing to strip from. Caught immediately by the new `brandExtraction.test.ts` (two font-related assertions failed on the first test run), fixed by allowing quotes *into* the capture (`[^;}]+`) and stripping them only from the already-isolated first comma-segment. A concrete instance of why the pure-function extraction (`synthesizeBrandEvidence`), testable without mocking `fetch`, was worth factoring out rather than only testing the whole `extractBrandEvidence()` end-to-end against a live URL.
+
+## `user:` id prefix
+
+Mirrors upstream's own real convention (`user:<dirId>` vs. bundled bare slugs) rather than inventing a different scheme — and, independently of matching upstream, it's the only way to guarantee no collision between a user-chosen design system name and a bundled directory name without adding a second lookup namespace.

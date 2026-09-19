@@ -1,0 +1,32 @@
+{
+  "name": "open-design-agent-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenDesign, ported for AI coding agents — a VS Code extension today, with shared logic (packages/core) already separated out for a future npm package usable from Claude Code, Codex, and other agent hosts.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "sync-content": "npm run sync-content --workspace=packages/vscode",
+    "compile": "npm run compile --workspace=packages/vscode",
+    "watch": "npm run watch --workspace=packages/vscode",
+    "package": "npm run package --workspace=packages/vscode",
+    "vscode:prepublish": "npm run vscode:prepublish --workspace=packages/vscode",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test:unit": "npm run test:unit --workspace=packages/core"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.7",
+    "@types/node": "^20.19.39",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^8.57.0",
+    "mocha": "^10.7.3",
+    "sharp": "^0.35.4",
+    "tsx": "^4.19.1",
+    "typescript": "^5.9.3"
+  }
+}

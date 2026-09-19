@@ -1,0 +1,29 @@
+# Custom design systems
+
+## Why
+
+The extension only let users pick from the ~152 bundled brand design systems. open-design's own product also lets a user define their own — the user asked to explore porting this. Researched upstream's real feature directly (`apps/web/src/components/DesignSystemFlow.tsx`, `apps/daemon/src/brand-routes.ts`, `apps/daemon/src/brands/`) rather than guessing: it's a daemon-hosted hybrid — deterministic server-side extraction (fetch a URL's HTML + linked CSS, regex-harvest colors/fonts/favicon; explicitly not screenshot/vision-based, removed upstream for SSRF-safety reasons) that synthesizes a `DESIGN.md` identical in shape to the built-ins, plus an optional agent-refinement pass. None of it is exposed as an MCP tool (HTTP-only), and most of the surrounding machinery (background jobs, an in-app browser tab for anti-bot walls, Figma REST API, GitHub/code-folder scraping) is genuinely daemon-dependent — out of reach for this extension's no-daemon constraint.
+
+The parts worth porting don't need a daemon at all: the URL extraction is just "fetch + regex" (doable with Node's built-in `fetch` in the extension host), and "the model authors content, the tool only composes instructions" is already this extension's architecture for every other content-producing flow (`prepare_open_design_brief`, `remix_open_design_example`).
+
+## What Changes
+
+- **`ContentIndex`** (`src/core/content/contentIndex.ts`): `DesignSystemSummary`/`DesignSystemDetail` gain a `source: 'built-in' | 'user'` field. A new `loadUserDesignSystems()` scans `<workspaceRoot>/<outputDirectory>/design-systems/*/DESIGN.md` — the same fallback heading/blockquote parser already used for legacy built-ins without a `manifest.json`, no new file format. Unlike the cached built-in pool, this is re-scanned on every `listDesignSystems()`/`getDesignSystem()`/`listDesignSystemCategories()` call, so a system the model just wrote in the same session shows up immediately, no reload. `ContentIndex`'s constructor gains an optional `getUserDesignSystemsDir?: () => string | undefined` callback (kept out of the otherwise vscode-free/testable module; only `extension.ts` supplies one), gracefully yielding no user pool when absent or no workspace is open.
+- **New tool `create_open_design_design_system`** (`src/tools/createCustomDesignSystemTool.ts`): input `{ name, brief, sourceUrl? }`. Composes instructions (`composeCustomDesignSystemInstructions()`) telling the model to author a `DESIGN.md` at a suggested workspace path in the exact bundled-system shape — never writes a file itself. When `sourceUrl` is given, calls `extractBrandEvidence()` first and includes its result as evidence to incorporate, explicitly framed as "a rough starting point, not ground truth."
+- **New extraction module** (`src/core/generation/brandExtraction.ts`): `extractBrandEvidence(url)` fetches the URL's HTML plus up to 3 same-origin `<link rel="stylesheet">` files (8s timeout each, ~3MB text cap), regex-harvests hex colors (ranked by frequency), `font-family` values, and a favicon/`og:image` URL. Never throws — network/parse failures degrade to an emptier evidence set with warnings. The regex-harvesting logic itself (`synthesizeBrandEvidence`) is factored out as a pure, directly-testable function, separate from the network orchestration.
+- **Activation**: after writing the file, the model calls the *existing* `set_active_design_system` tool — no new "register"/"activate" tool needed, since `ContentIndex`'s user pool is live/uncached and `activeDesignSystem.ts` never validates an id before storing it.
+- **Discoverability**: `instructions/open-design.instructions.md` gained a flow note; new prompt file `prompts/open-design-custom-design-system.prompt.md` (registered in `package.json`'s `chatPromptFiles`) for zero-ambiguity slash-command access; `browseDesignSystemsCommand.ts`'s existing QuickPick now badges `source: 'user'` entries "custom" (they already appear there automatically once `source` exists — no new command/wizard needed, consistent with this project's native-mechanisms-over-bespoke-UI preference).
+- New tool declared in `package.json`'s `languageModelTools`.
+
+## Explicit scope cuts (flagged, not silently dropped)
+
+- No Figma import, no GitHub-repo/local-code-folder token scraping — real integrations needing API tokens/broader file access, meaningfully bigger than the URL-extraction path.
+- No screenshot/vision-based extraction — upstream itself doesn't have this either (removed for SSRF reasons).
+- No anti-bot-wall handling (upstream's in-app browser tab + re-extract-from-rendered-DOM flow) — a blocked fetch just yields empty evidence; the model still authors a reasonable `DESIGN.md` from the brief.
+- No draft/published status, no edit history — a written file is immediately selectable, matching how every other workspace-local artifact in this extension already works.
+- No `manifest.json` for custom systems (so no `craft.suggested` narrowing for them in v1) — the blockquote-convention `DESIGN.md` alone is enough to be listable; craft narrowing degrades gracefully to "apply all craft docs," already the built-in behavior for legacy systems with no manifest.
+
+## Impact
+
+- New: `src/core/generation/brandExtraction.ts`, `src/core/generation/customDesignSystemInstructions.ts`, `src/tools/createCustomDesignSystemTool.ts`, `prompts/open-design-custom-design-system.prompt.md`, `src/test/unit/brandExtraction.test.ts`.
+- Modified: `src/core/content/contentIndex.ts`, `src/tools/registerTools.ts`, `src/tools/listDesignSystemsTool.ts`, `src/extension/extension.ts`, `src/extension/commands/browseDesignSystemsCommand.ts`, `instructions/open-design.instructions.md`, `package.json`, `src/test/unit/contentIndex.test.ts`, `README.md`, `openspec/specs/open-design-tools/spec.md` (new requirement: Custom Design Systems).

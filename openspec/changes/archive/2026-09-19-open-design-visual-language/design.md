@@ -1,0 +1,25 @@
+# Design: open-design visual language
+
+## Read the actual stylesheets, don't guess
+
+open-design has no Tailwind — a hand-rolled CSS-custom-property design system (`apps/web/src/styles/tokens.css` et al.), confirmed by a full-tree search finding no `tailwind.config.*` anywhere in the repo. Every color/radius/shadow value in `openDesignTheme.ts` was read directly from that source, not inferred from screenshots or approximated. Where the report's research couldn't find an exact documented value (dark-mode `--text-muted`/`--text-soft`/`--text-faint` shades, dark-mode shadow opacities), a reasonable, symmetric interpolation was used and is called out in this doc rather than presented as if it were also read directly.
+
+## Dark/light via `vscode-dark`/`vscode-light`, not `--vscode-*` colors
+
+Two ways to stay theme-aware were available: (a) keep using `--vscode-*` custom properties (adapts to *any* VS Code theme's arbitrary colors, but can't reproduce a specific product's visual identity — Solarized, Dracula, etc. would all look different), or (b) build open-design's own two-mode token set and switch between them using the `vscode-dark`/`vscode-light`/`vscode-high-contrast` classes VS Code adds to every webview `<body>` automatically. Chose (b) — that's the whole point of "follow the original styling": the extension should look like OpenDesign specifically, consistently, regardless of which VS Code color theme the user happens to have installed. This does mean the webviews no longer visually blend with an unusual VS Code theme the way the previous `--vscode-*`-based styling did — an intentional trade-off, not an oversight.
+
+## Inferred values (not directly sourced, documented here rather than silently invented)
+
+- Dark-mode neutral text tiers below `--text`/`--text-strong` (`--od-text-muted`/`--od-text-soft`/`--od-text-faint`) — the research report's light-mode values were exact (`#5c5c5c`/`#848484`/`#bdbdbd`), but dark-mode equivalents weren't separately documented in the source files it read. Interpolated symmetrically against the confirmed dark-mode `--bg`/`--text`/`--text-strong` values (`#202020`/`#ededed`/`#fafafa`).
+- Dark-mode brand-ink (`--od-brand-ink` in dark mode, `#a8f57a`) — the source confirms `--brand-soft`/`--brand-weak` dark-mode tint values but not a dedicated dark-mode "ink" pairing; picked a lighter tint of the brand green for legibility against the dark background, following the same ink-on-tint pairing pattern used elsewhere.
+- Dark-mode shadow opacities — the source confirms dark mode uses "black-based shadows at higher opacity (0.2–0.6)" without giving exact per-tier numbers; picked values within that stated range, scaled per shadow tier (sm/md/lg) the same way the light-mode set scales.
+
+## What was deliberately not adopted
+
+- **Icon system**: open-design inlines Remix Icon SVGs (`REMIX_ICON_PATHS`) at 14px throughout its toolbars. This extension's webviews keep plain text labels ("View", "Comment", "Edit", "Remix") for now — a real visual-fidelity gap, but a separable, lower-priority layer of polish compared to color/shape/type/radius, which are the load-bearing "does this look like OpenDesign" signals per the source research. Worth a follow-up if further fidelity is wanted.
+- **PreviewDrawOverlay's dark-glass floating toolbar treatment**: open-design's own annotation toolbar switches to a dark theme (`rgba(20,20,20,.92)`) regardless of the app's own light/dark mode, since it floats over arbitrary preview content. This extension's Comment-mode UI (the `.od-panel` side panel) instead follows the same light/dark-aware token set as the rest of the editor — simpler, and this extension's comment UI is a side panel, not a floating toolbar over the canvas, so the "must stay legible over arbitrary content" problem that motivated open-design's fixed-dark treatment doesn't apply the same way here.
+- **Full ManualEditPanel feature parity**: only its floating-panel *shell* treatment (radius, glass, shadow, section-header typography, pill primary button) was adopted — not its full property-inspector feature set (design-token pickers, multi-tab layout), which was already out of scope per the original `visual-artifact-editor` change's curated-style-property cut.
+
+## Shared primitives, not three copies of the same button CSS
+
+`openDesignTheme.ts` exports one CSS string (`OD_TOKENS_CSS`) plus a `@font-face` helper (`odFontFaceCss()`, parameterized by `webview`/`extensionUri` since `asWebviewUri` is instance-specific), included via template-string interpolation into all three providers' `buildHtml()`. Each provider still writes its own small set of component-specific rules (toolbar layout, pin positioning, card grid) on top — the shared module only owns the token values and genuinely-reusable primitives (`.od-btn`, `.od-tab`, `.od-badge`, `.od-panel`, `.od-input`), not full page layouts. This mirrors the DRY pattern already established elsewhere in this project (`performRemix()`, `remixAndOpen()`) rather than introducing a new sharing convention.

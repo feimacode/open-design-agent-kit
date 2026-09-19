@@ -1,0 +1,19 @@
+# Import an existing design system (paste / file / GitHub)
+
+## Why
+
+The previous round (`create_open_design_design_system`) builds a design system by having the model author it from a brief — right for "invent a new look," wrong for "our org already has a real design system, use its exact colors and tokens." The user pointed this out directly and asked for a UI-driven, deterministic import instead of routing an org's actual design system through the model, which risks paraphrasing exact values. Staged as paste + GitHub now, Figma deferred to a later round (needs a personal access token + a new API client — real extra scope, confirmed via the user's own explicit choice when asked).
+
+## What Changes
+
+- **`src/core/generation/tokenExtraction.ts`** (new): `extractHexColors`/`extractFontFamilies` moved out of `brandExtraction.ts` into a shared, HTML-agnostic module (pure text-in/regex-out), plus a new `rankColors()` helper. `brandExtraction.ts` now imports from it — same behavior, no duplication with the new GitHub/paste path, which operates on raw CSS/JSON/JS rather than full HTML pages.
+- **`src/core/generation/designSystemImport.ts`** (new): `looksLikeDesignMd()` (true when the first non-blank line is a `#` heading) and `buildDesignSystemMarkdown()` — deterministic, no model: already-shaped content passes through verbatim; other content gets colors/fonts extracted and wrapped, with the original source always preserved verbatim in a "Source Reference" section.
+- **`src/core/generation/githubImport.ts`** (new): `normalizeGithubUrl()` (pure — parses a `github.com`/`raw.githubusercontent.com` URL into owner/repo/branch/path) and `fetchGithubDesignTokens()` — a direct file URL fetches just that file; a bare repo URL resolves the default branch, checks for `DESIGN.md` first (used alone if found), otherwise probes a fixed candidate list (`tailwind.config.*`, `tokens.json`, common CSS variable files, etc.), concatenating up to 3 found files. Public repos only — no auth/token in this round.
+- **`src/extension/commands/importDesignSystemCommand.ts`** (new): the first multi-step QuickInput wizard in this extension (confirmed via research — everything prior is a single `showQuickPick`) — name → source type (file/paste/GitHub) → category → write. Paste uses a scratch untitled document + an "Import" confirmation button as the "done pasting" signal; file uses `showOpenDialog`; GitHub uses the new fetch module. Writes directly via `fs/promises` (not `vscode.workspace.applyEdit` — there's no existing document to edit, this is a fresh file), then opens the result for review and offers "Set as Active" (reusing the existing `set_active_design_system`/`setActiveDesignSystemId`).
+- New command `openDesign.importDesignSystem` ("OpenDesign: Import Design System"), visible in the Command Palette, and a new leading item in `browseDesignSystemsCommand.ts`'s existing QuickPick ("$(cloud-download) Import a design system…") that opens it — mirrors upstream's own combined "pick or start new" entry point.
+
+## Impact
+
+- New: `src/core/generation/tokenExtraction.ts`, `src/core/generation/designSystemImport.ts`, `src/core/generation/githubImport.ts`, `src/extension/commands/importDesignSystemCommand.ts`, `src/test/unit/designSystemImport.test.ts`, `src/test/unit/githubImport.test.ts`.
+- Modified: `src/core/generation/brandExtraction.ts` (imports shared helpers instead of defining them), `src/extension/extension.ts`, `src/extension/commands/browseDesignSystemsCommand.ts`, `package.json` (new command), `README.md`, `openspec/specs/open-design-tools/spec.md` (split the prior "Custom Design Systems" requirement into "(Model-Authored)" and a new "(Deterministic Import)" sibling).
+- See `design.md` for the QuickPick `kind` field collision caught by `tsc`, and the reasoning behind the DESIGN.md-first-and-alone rule for GitHub bare-repo imports.

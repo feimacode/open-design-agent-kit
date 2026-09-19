@@ -1,0 +1,507 @@
+{
+  "name": "open-design-agent-kit",
+  "displayName": "OpenDesign Agent Kit",
+  "description": "Use OpenDesign's design skills and design systems directly from VS Code chat — no daemon, no MCP server. Copilot's own selected model authors the artifact via native file-editing tools.",
+  "version": "0.1.0",
+  "publisher": "feima",
+  "icon": "assets/icons/extension-icon.png",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.138.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "extensionDependencies": [
+    "github.copilot-chat"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languageModelTools": [
+      {
+        "name": "list_open_design_skills",
+        "displayName": "List OpenDesign Skills",
+        "modelDescription": "Lists available OpenDesign skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', or 'example' (all interchangeable as skillId). Some results include an 'examplePrompt' — a curated, ready-to-use brief — which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, and/or an exact mode.",
+        "userDescription": "Browse OpenDesign's bundled design skills",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-skills",
+        "icon": "$(list-unordered)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Optional free-text filter, matched against skill name, description, and triggers."
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "prototype",
+                "deck",
+                "design-system",
+                "image",
+                "video",
+                "template",
+                "utility",
+                "audio",
+                "other"
+              ],
+              "description": "Optional exact mode filter."
+            }
+          }
+        }
+      },
+      {
+        "name": "list_open_design_design_systems",
+        "displayName": "List OpenDesign Design Systems",
+        "modelDescription": "Lists available OpenDesign design systems — brand-inspired visual token sets (palette, typography, spacing, component rules) bundled with this extension, each with a 'category' (e.g. 'E-Commerce & Retail', 'AI & LLM', 'Fintech & Crypto' — call with no arguments to see which categories are present) and an 'active' flag marking the current active design system, if any. Use this to discover which designSystemId to pass to prepare_open_design_brief, or to check what's currently active before asking the user to repeat it. Optionally filter by a free-text query matched against name/summary/category, and/or an exact category.",
+        "userDescription": "Browse OpenDesign's bundled design systems",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-design-systems",
+        "icon": "$(symbol-color)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Optional free-text filter, matched against design system name, summary, and category."
+            },
+            "category": {
+              "type": "string",
+              "description": "Optional exact category filter, e.g. 'E-Commerce & Retail'."
+            }
+          }
+        }
+      },
+      {
+        "name": "prepare_open_design_brief",
+        "displayName": "Prepare OpenDesign Brief",
+        "modelDescription": "Composes generation instructions for an OpenDesign artifact by combining the chosen skill's workflow, an optional design system's visual tokens, universal craft rules, and the user's brief. Returns an 'instructions' string you must follow, plus a 'suggestedEntryPath' for where to author the artifact's entry file in the current workspace. This tool does NOT write any files — after calling it, author the artifact's entry file (and any supporting files) yourself using your normal file-editing tools, following the returned instructions, then call register_open_design_artifact.",
+        "userDescription": "Prepare an OpenDesign generation brief",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "skillId": {
+              "type": "string",
+              "description": "A skill id from list_open_design_skills, in its full 'od:<mode>:<name>' form."
+            },
+            "designSystemId": {
+              "type": "string",
+              "description": "Optional design system id from list_open_design_design_systems. If omitted, falls back to the current active design system (see set_active_design_system). If given explicitly, it also becomes the new active design system for subsequent requests."
+            },
+            "brief": {
+              "type": "string",
+              "description": "The user's design brief / request, in their own words."
+            }
+          },
+          "required": [
+            "skillId",
+            "brief"
+          ]
+        }
+      },
+      {
+        "name": "register_open_design_artifact",
+        "displayName": "Register OpenDesign Artifact",
+        "modelDescription": "Call this AFTER you have written an artifact's entry file (and any supporting files) into the workspace with your normal file-editing tools. Validates the artifact and writes its manifest sidecar (<entry>.artifact.json) next to the entry file, so it's recognized as an OpenDesign artifact. Fails clearly if entryPath does not exist yet — write the file first.",
+        "userDescription": "Register a generated file as an OpenDesign artifact",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryPath": {
+              "type": "string",
+              "description": "Workspace-relative path to the artifact's entry file, e.g. .open-design/coffee-landing/index.html."
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "html",
+                "deck",
+                "react-component",
+                "markdown-document",
+                "svg",
+                "diagram",
+                "code-snippet",
+                "mini-app",
+                "design-system"
+              ],
+              "description": "The kind of artifact."
+            },
+            "title": {
+              "type": "string",
+              "description": "A short human-readable title for the artifact."
+            },
+            "supportingFiles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Workspace-relative paths to sibling files the entry depends on (tokens CSS, JSX modules, imported assets), relative to the entry file's directory."
+            },
+            "sourceSkillId": {
+              "type": "string",
+              "description": "The skillId used to generate this artifact, if any."
+            },
+            "designSystemId": {
+              "type": "string",
+              "description": "The designSystemId used to generate this artifact, if any."
+            }
+          },
+          "required": [
+            "entryPath",
+            "kind",
+            "title"
+          ]
+        }
+      },
+      {
+        "name": "get_open_design_artifact",
+        "displayName": "Get OpenDesign Artifact",
+        "modelDescription": "Reads back a registered OpenDesign artifact: its manifest, entry file content, supporting file list, and any open preview comments (left by the user in the OpenDesign Artifact Preview editor) that haven't been addressed yet. Use this to review what was generated, and check 'openComments' before telling the user you're done — address any pending ones.",
+        "userDescription": "Read back an OpenDesign artifact",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-artifact",
+        "icon": "$(preview)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryPath": {
+              "type": "string",
+              "description": "Workspace-relative path to the artifact's entry file."
+            }
+          },
+          "required": [
+            "entryPath"
+          ]
+        }
+      },
+      {
+        "name": "set_active_design_system",
+        "displayName": "Set Active OpenDesign Design System",
+        "modelDescription": "Sets (or clears, if designSystemId is omitted/empty) the active OpenDesign design system, persisted for this workspace. The active design system is used automatically by prepare_open_design_brief whenever it's called without an explicit designSystemId. Call this when the user says something like 'let's use the Starbucks look from now on' before you've generated anything yet.",
+        "userDescription": "Set or clear the active OpenDesign design system",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "designSystemId": {
+              "type": "string",
+              "description": "A design system id from list_open_design_design_systems. Omit or pass an empty string to clear the active design system."
+            }
+          }
+        }
+      },
+      {
+        "name": "remix_open_design_example",
+        "displayName": "Remix OpenDesign Example",
+        "modelDescription": "Copies a curated OpenDesign example artifact (identified by its skillId, which must have a non-empty 'exampleArtifactPath' from list_open_design_skills) into the workspace as a starting point, registers it as an artifact, and returns instructions telling you to MODIFY the copied file rather than regenerate it from scratch. Use this when the user wants to start from or riff on an existing example rather than build something brand new.",
+        "userDescription": "Remix a curated OpenDesign example into the workspace",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "skillId": {
+              "type": "string",
+              "description": "A skillId from list_open_design_skills whose 'exampleArtifactPath' is non-empty."
+            }
+          },
+          "required": [
+            "skillId"
+          ]
+        }
+      },
+      {
+        "name": "create_open_design_design_system",
+        "displayName": "Create Custom Design System",
+        "modelDescription": "Composes instructions for authoring a brand-new, custom design system as a DESIGN.md file in the workspace (the same file shape and selection mechanism as the ~150 bundled design systems, just workspace-local). Does NOT write any files. If sourceUrl is given, performs a best-effort, no-daemon extraction of candidate colors/fonts/favicon from that page to include as a starting point. After writing the returned instructions' file, call set_active_design_system with the returned id.",
+        "userDescription": "Create a custom OpenDesign design system for your own brand",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "A short name for the design system, e.g. \"Acme Corp\"."
+            },
+            "brief": {
+              "type": "string",
+              "description": "A description of the brand — colors, tone, industry, anything distinctive — in the user's own words."
+            },
+            "sourceUrl": {
+              "type": "string",
+              "description": "Optional: a website URL to extract a starting palette/fonts from."
+            }
+          },
+          "required": [
+            "name",
+            "brief"
+          ]
+        }
+      },
+      {
+        "name": "port_open_design_artifact_to_app",
+        "displayName": "Promote Artifact to App Code",
+        "modelDescription": "Composes instructions for porting a finished OpenDesign artifact's design into this workspace's actual, existing application as real, idiomatic production code (not a standalone file). Does NOT write any files. Reads the artifact's current content and, if the app has a recognizable components directory, suggests a target file path. The returned instructions direct the model to find and follow a real existing component in the workspace as its pattern reference (styling approach, conventions, file organization) rather than copying the artifact's HTML/CSS verbatim, and to leave routing/navigation wiring out of scope as a separate step for the user.",
+        "userDescription": "Port a finished OpenDesign artifact into the app's real code",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryPath": {
+              "type": "string",
+              "description": "The workspace-relative path of the artifact to promote (as passed to register_open_design_artifact)."
+            },
+            "targetComponentPath": {
+              "type": "string",
+              "description": "Optional: where the new component/code file should be written. If omitted, a best-effort suggestion is returned instead."
+            },
+            "referenceComponentPath": {
+              "type": "string",
+              "description": "Optional: an existing component file to use as the authoritative pattern for the app's real conventions. If omitted, the model is instructed to find one itself."
+            }
+          },
+          "required": [
+            "entryPath"
+          ]
+        }
+      }
+    ],
+    "chatInstructions": [
+      {
+        "path": "./instructions/open-design.instructions.md"
+      }
+    ],
+    "chatPromptFiles": [
+      {
+        "path": "./prompts/open-design-generate.prompt.md"
+      },
+      {
+        "path": "./prompts/open-design-list-skills.prompt.md"
+      },
+      {
+        "path": "./prompts/open-design-custom-design-system.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/article-magazine.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/card-xiaohongshu.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/data-report.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/deck-guizang-editorial.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/deck-open-slide-canvas.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/deck-swiss-international.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/doc-kami-parchment.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/frame-data-chart-nyt.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/frame-flowchart-sticky.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/frame-glitch-title.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/frame-light-leak-cinema.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/frame-liquid-bg-hero.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/frame-logo-outro.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/frame-macos-notification.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/guizang-ppt.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/mockup-device-3d.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/ppt-keynote.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/resume-modern.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/social-reddit-card.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/social-spotify-card.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/social-x-post-card.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/vfx-text-cursor.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/video-hyperframes.prompt.md"
+      }
+    ],
+    "commands": [
+      {
+        "command": "openDesign.browseDesignSystems",
+        "title": "Browse Design Systems",
+        "category": "OpenDesign",
+        "icon": "$(symbol-color)"
+      },
+      {
+        "command": "openDesign.importDesignSystem",
+        "title": "Import Design System",
+        "category": "OpenDesign",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "openDesign.browseGallery",
+        "title": "Browse Gallery",
+        "category": "OpenDesign",
+        "icon": "$(library)"
+      },
+      {
+        "command": "openDesign.openArtifactPreview",
+        "title": "Open Artifact Preview",
+        "category": "OpenDesign",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "openDesign.openGalleryGrid",
+        "title": "Open Gallery Grid",
+        "category": "OpenDesign",
+        "icon": "$(layout-panel)"
+      },
+      {
+        "command": "openDesign.remixExample",
+        "title": "Remix",
+        "category": "OpenDesign",
+        "icon": "$(repo-forked)"
+      },
+      {
+        "command": "openDesign.previewExample",
+        "title": "Preview Example",
+        "category": "OpenDesign",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "openDesign.chatWithExample",
+        "title": "Use in Chat",
+        "category": "OpenDesign",
+        "icon": "$(comment-discussion)"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "openDesign.artifactEditor",
+        "displayName": "OpenDesign Artifact Preview",
+        "selector": [
+          {
+            "filenamePattern": "**/*.html"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "openDesign",
+          "title": "OpenDesign",
+          "icon": "assets/icons/gallery.svg"
+        }
+      ]
+    },
+    "views": {
+      "openDesign": [
+        {
+          "id": "openDesign.galleryView",
+          "name": "Gallery",
+          "contextualTitle": "OpenDesign Gallery"
+        }
+      ]
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "openDesign.remixExample",
+          "when": "false"
+        },
+        {
+          "command": "openDesign.previewExample",
+          "when": "false"
+        },
+        {
+          "command": "openDesign.chatWithExample",
+          "when": "false"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "openDesign.openArtifactPreview",
+          "when": "resourceExtname == .html",
+          "group": "openDesign"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "openDesign.chatWithExample",
+          "when": "view == openDesign.galleryView && viewItem == openDesignGalleryExample",
+          "group": "inline@1"
+        },
+        {
+          "command": "openDesign.previewExample",
+          "when": "view == openDesign.galleryView && viewItem == openDesignGalleryExample",
+          "group": "inline@2"
+        },
+        {
+          "command": "openDesign.remixExample",
+          "when": "view == openDesign.galleryView && viewItem == openDesignGalleryExample",
+          "group": "inline@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "OpenDesign Tools",
+      "properties": {
+        "openDesign.outputDirectory": {
+          "type": "string",
+          "default": ".open-design",
+          "markdownDescription": "Workspace-relative directory new OpenDesign artifacts are suggested under, e.g. `.open-design/<slug>/index.html`."
+        },
+        "openDesign.activeDesignSystemId": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The currently active OpenDesign design system id. Used as the default for `prepare_open_design_brief` when no `designSystemId` is given. Set via the \"OpenDesign: Browse Design Systems\" command, the `set_active_design_system` tool, or by generating with an explicit design system — leave empty for none."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "sync-content": "node ./scripts/sync-open-design-content.mjs && node ./scripts/generate-featured-prompts.mjs",
+    "compile": "tsx .esbuild.ts --dev",
+    "watch": "tsx .esbuild.ts --watch --dev",
+    "package": "tsx .esbuild.ts",
+    "vscode:prepublish": "npm run package",
+    "lint": "eslint src --ext ts && node scripts/check-content-sync.mjs",
+    "typecheck": "tsc -p . --noEmit && tsc -p src/webview --noEmit"
+  },
+  "dependencies": {
+    "@feimacode/open-design-agent-kit-core": "*",
+    "gray-matter": "^4.0.3"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.104.0"
+  }
+}

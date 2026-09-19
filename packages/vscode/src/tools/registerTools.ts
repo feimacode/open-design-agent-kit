@@ -1,0 +1,37 @@
+import * as vscode from 'vscode';
+import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import type { ILogService } from '../extension/log/logService';
+import { ListSkillsTool } from './listSkillsTool';
+import { ListDesignSystemsTool } from './listDesignSystemsTool';
+import { PrepareBriefTool } from './prepareBriefTool';
+import { RegisterArtifactTool } from './registerArtifactTool';
+import { GetArtifactTool } from './getArtifactTool';
+import { SetActiveDesignSystemTool } from './setActiveDesignSystemTool';
+import { RemixExampleTool } from './remixExampleTool';
+import { CreateCustomDesignSystemTool } from './createCustomDesignSystemTool';
+import { PortToAppCodeTool } from './portToAppCodeTool';
+import { LoggingTool } from './loggingTool';
+
+export function registerTools(
+  context: vscode.ExtensionContext,
+  contentIndex: ContentIndex,
+  log: ILogService,
+  assetsRoot: string,
+): void {
+  const registrations: Array<[string, vscode.LanguageModelTool<any>]> = [
+    ['list_open_design_skills', new ListSkillsTool(contentIndex)],
+    ['list_open_design_design_systems', new ListDesignSystemsTool(contentIndex)],
+    ['prepare_open_design_brief', new PrepareBriefTool(contentIndex)],
+    ['register_open_design_artifact', new RegisterArtifactTool()],
+    ['get_open_design_artifact', new GetArtifactTool()],
+    ['set_active_design_system', new SetActiveDesignSystemTool(contentIndex)],
+    ['remix_open_design_example', new RemixExampleTool(contentIndex, assetsRoot)],
+    ['create_open_design_design_system', new CreateCustomDesignSystemTool()],
+    ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
+  ];
+
+  for (const [name, tool] of registrations) {
+    context.subscriptions.push(vscode.lm.registerTool(name, new LoggingTool(name, tool, log)));
+    log.info(`Registered tool: ${name}`);
+  }
+}
