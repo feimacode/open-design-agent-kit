@@ -11,7 +11,13 @@
 // parity) but compiles in well under a second.
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from '@modelcontextprotocol/sdk/types.js';
+import {
+  CallToolRequestSchema,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  ListToolsRequestSchema,
+  type Tool,
+} from '@modelcontextprotocol/sdk/types.js';
 import { ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import { getAssetsRoot, getOutputDirectory, getWorkspaceRoot } from './env';
 import { createFileActiveDesignSystemStore } from './store';
@@ -213,7 +219,7 @@ function buildContext(): ToolContext {
 
 async function main(): Promise<void> {
   const ctx = buildContext();
-  const server = new Server({ name: 'open-design', version: '0.1.0' }, { capabilities: { tools: {} } });
+  const server = new Server({ name: 'open-design', version: '0.1.0' }, { capabilities: { tools: {}, prompts: {} } });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOL_DEFS.map((d) => d.tool) }));
 
@@ -229,6 +235,27 @@ async function main(): Promise<void> {
       const message = err instanceof Error ? err.message : String(err);
       return { content: [{ type: 'text' as const, text: `Tool "${request.params.name}" failed: ${message}` }], isError: true };
     }
+  });
+
+  // Remixable-example prompts: lets an MCP client (e.g. Claude Code's
+  // /mcp__open-design__<name> picker) prefill a starting brief for the user
+  // to review/edit, mirroring packages/vscode's chatWithExample.ts. Selecting
+  // one writes nothing — same non-destructive "just browsing" guarantee.
+  server.setRequestHandler(ListPromptsRequestSchema, async () => {
+    const prompts = await tools.listRemixablePrompts(ctx);
+    return { prompts: prompts.map((p) => ({ name: p.name, description: `${p.displayName} (OpenDesign remixable example)` })) };
+  });
+
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const prompts = await tools.listRemixablePrompts(ctx);
+    const prompt = prompts.find((p) => p.name === request.params.name);
+    if (!prompt) {
+      throw new Error(`Unknown prompt: ${request.params.name}`);
+    }
+    return {
+      description: `${prompt.displayName} (OpenDesign remixable example)`,
+      messages: [{ role: 'user' as const, content: { type: 'text' as const, text: tools.buildRemixPromptMessage(prompt) } }],
+    };
   });
 
   const transport = new StdioServerTransport();

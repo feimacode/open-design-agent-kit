@@ -82,6 +82,38 @@ export async function listSkills(
   }));
 }
 
+export interface RemixablePrompt {
+  /** Hyphenated invocation name, e.g. "od-video-frame-liquid-bg-hero". Colons render as literal spaces in some MCP clients' chat input, so this is never the colon form. */
+  name: string;
+  publicId: string;
+  displayName: string;
+  examplePrompt?: string;
+}
+
+/**
+ * The remixable-example catalog (source: 'example', exampleArtifactPath
+ * non-empty) as MCP prompt entries — same filter already backing
+ * list_open_design_skills' remixableOnly, VS Code's Gallery Grid, and
+ * references/remixable-examples.md. Selecting one is meant to prefill a
+ * client's chat composer with the example's brief (mirroring
+ * packages/vscode's chatWithExample.ts), not to write or generate anything.
+ */
+export async function listRemixablePrompts(ctx: ToolContext): Promise<RemixablePrompt[]> {
+  const skills = await ctx.contentIndex.listSkills(undefined, undefined, 'example', true);
+  return skills.map((s) => ({
+    name: s.id.replace(/:/g, '-'),
+    publicId: s.id,
+    displayName: s.name,
+    examplePrompt: s.examplePrompt,
+  }));
+}
+
+/** Mirrors packages/vscode/src/extension/commands/chatWithExample.ts's message construction exactly. */
+export function buildRemixPromptMessage(prompt: RemixablePrompt): string {
+  const brief = prompt.examplePrompt ? ` ${prompt.examplePrompt}` : '';
+  return `Use the OpenDesign skill "${prompt.publicId}" (${prompt.displayName}).${brief}`;
+}
+
 export async function listDesignSystems(ctx: ToolContext, input: { query?: string; category?: string }): Promise<unknown> {
   const designSystems = await ctx.contentIndex.listDesignSystems(input.query, input.category);
   const activeId = await ctx.store.get();

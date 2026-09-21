@@ -29,6 +29,10 @@ async function makeAssetsFixture(): Promise<string> {
     ['---', 'name: holo-hero', 'description: A holographic hero.', 'od:', '  mode: prototype', '---', '', 'Body.'].join('\n'),
   );
   await fs.writeFile(path.join(root, 'examples', 'holo-hero', 'example.html'), '<!doctype html><h1>Holo</h1>');
+  await fs.writeFile(
+    path.join(root, 'examples', 'holo-hero', 'open-design.json'),
+    JSON.stringify({ od: { useCase: { query: { en: 'Build a holographic hero section.' } } } }),
+  );
 
   await fs.mkdir(path.join(root, 'craft'), { recursive: true });
 
@@ -59,6 +63,29 @@ describe('mcp-server tools', () => {
     const remixable = (await tools.listSkills(ctx, { remixableOnly: true })) as Array<{ exampleArtifactPath?: string }>;
     assert.strictEqual(remixable.length, 1);
     assert.ok(remixable[0].exampleArtifactPath);
+  });
+
+  it('listRemixablePrompts returns exactly the remixable-example set with hyphenated names', async () => {
+    const ctx = await makeContext();
+    const prompts = await tools.listRemixablePrompts(ctx);
+    assert.strictEqual(prompts.length, 1);
+    assert.strictEqual(prompts[0].name, 'od-prototype-holo-hero');
+    assert.strictEqual(prompts[0].publicId, 'od:prototype:holo-hero');
+    assert.strictEqual(prompts[0].examplePrompt, 'Build a holographic hero section.');
+  });
+
+  it('buildRemixPromptMessage mirrors chatWithExample.ts\'s message shape', async () => {
+    const ctx = await makeContext();
+    const [prompt] = await tools.listRemixablePrompts(ctx);
+    assert.strictEqual(
+      tools.buildRemixPromptMessage(prompt),
+      'Use the OpenDesign skill "od:prototype:holo-hero" (holo-hero). Build a holographic hero section.',
+    );
+  });
+
+  it('buildRemixPromptMessage omits the trailing brief when examplePrompt is absent', () => {
+    const message = tools.buildRemixPromptMessage({ name: 'od-prototype-x', publicId: 'od:prototype:x', displayName: 'X' });
+    assert.strictEqual(message, 'Use the OpenDesign skill "od:prototype:x" (X).');
   });
 
   it('listDesignSystems marks the active one', async () => {
