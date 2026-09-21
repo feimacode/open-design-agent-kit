@@ -2,7 +2,7 @@
   "name": "open-design-agent-kit",
   "displayName": "OpenDesign Agent Kit",
   "description": "Use OpenDesign's design skills and design systems directly from VS Code chat — no daemon, no MCP server. Copilot's own selected model authors the artifact via native file-editing tools.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "feima",
   "icon": "assets/icons/extension-icon.png",
   "private": true,
