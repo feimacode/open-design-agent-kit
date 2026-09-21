@@ -1,7 +1,5 @@
-import { promises as fs } from 'node:fs';
-import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import { injectScriptNonce, loadExampleHtml, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import { remixAndOpen } from '../commands/remixAndOpen';
 import type { ILogService } from '../log/logService';
 import { OD_TOKENS_CSS, odFontFaceCss } from './openDesignTheme';
@@ -26,6 +24,10 @@ function nonce(): string {
  */
 export class ExamplePreviewProvider {
   private static instance: ExamplePreviewProvider | undefined;
+  // Fixed for the panel's lifetime: it's baked into buildHtml()'s CSP meta
+  // tag once, and every later loadExample() must inject this same value
+  // into the example HTML it posts, or the CSP's nonce check won't match.
+  private readonly panelNonce = nonce();
 
   static show(context: vscode.ExtensionContext, contentIndex: ContentIndex, assetsRoot: string, skillId: string, log: ILogService): void {
     log.info(`ExamplePreviewProvider: showing ${skillId}`);
@@ -91,7 +93,7 @@ export class ExamplePreviewProvider {
     this.panel.title = skill.name;
     let html = '';
     try {
-      html = await fs.readFile(path.join(this.assetsRoot, skill.exampleArtifactPath), 'utf8');
+      html = injectScriptNonce(await loadExampleHtml(this.assetsRoot, skill.exampleArtifactPath), this.panelNonce);
     } catch (err) {
       // Leave html empty; the webview shows a "no preview" state.
       this.log.error(err, `ExamplePreviewProvider: failed to read example.html for ${skillId}`);
@@ -101,12 +103,19 @@ export class ExamplePreviewProvider {
 
   private buildHtml(webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview', 'preview.js'));
-    const n = nonce();
     const csp = [
       `default-src 'none'`,
       `style-src ${webview.cspSource} 'unsafe-inline'`,
       `font-src ${webview.cspSource}`,
-      `script-src 'nonce-${n}'`,
+      // 'nonce-<panelNonce>' + 'strict-dynamic' (not 'unsafe-inline'): the
+      // preview iframe's `srcdoc` inherits this CSP, and vendored example
+      // HTML can contain inline `type="module"` scripts (never covered by
+      // 'unsafe-inline') or import from an external CDN inside a script
+      // we've authorized — 'strict-dynamic' extends that trust to what an
+      // authorized script itself loads, regardless of host. loadExample()
+      // stamps this exact nonce onto every <script> tag via
+      // injectScriptNonce() before posting it.
+      `script-src 'nonce-${this.panelNonce}' 'strict-dynamic'`,
       `frame-src *`,
     ].join('; ');
 
@@ -131,7 +140,7 @@ ${OD_TOKENS_CSS}
 </head>
 <body>
 <div id="root"></div>
-<script nonce="${n}" src="${scriptUri}"></script>
+<script nonce="${this.panelNonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
   }

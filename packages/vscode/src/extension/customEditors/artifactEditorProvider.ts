@@ -1,10 +1,17 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { readArtifactComments, writeArtifactComments, type ArtifactComment } from '@feimacode/open-design-agent-kit-core';
+import { injectScriptNonce, readArtifactComments, writeArtifactComments, type ArtifactComment } from '@feimacode/open-design-agent-kit-core';
 import type { ILogService } from '../log/logService';
 import { OD_TOKENS_CSS, odFontFaceCss } from '../webviews/openDesignTheme';
 
 export const ARTIFACT_EDITOR_VIEW_TYPE = 'openDesign.artifactEditor';
+
+function nonce(): string {
+  let text = '';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for (let i = 0; i < 32; i++) text += chars.charAt(Math.floor(Math.random() * chars.length));
+  return text;
+}
 
 function resolveEntryPath(document: vscode.TextDocument): { workspaceRoot: string; entryPath: string } | undefined {
   const folder = vscode.workspace.getWorkspaceFolder(document.uri);
@@ -12,13 +19,6 @@ function resolveEntryPath(document: vscode.TextDocument): { workspaceRoot: strin
   const workspaceRoot = folder.uri.fsPath;
   const entryPath = path.relative(workspaceRoot, document.uri.fsPath).split(path.sep).join('/');
   return { workspaceRoot, entryPath };
-}
-
-function nonce(): string {
-  let text = '';
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) text += chars.charAt(Math.floor(Math.random() * chars.length));
-  return text;
 }
 
 function formatCommentsForChat(comments: ArtifactComment[]): string {
@@ -52,18 +52,24 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       enableScripts: true,
       localResourceRoots: [this.context.extensionUri],
     };
-    webviewPanel.webview.html = this.buildHtml(webviewPanel.webview);
+    // One instance of this provider serves every open artifact editor (see
+    // supportsMultipleEditorsPerDocument above), so the nonce must be local
+    // to this panel, not a shared field — it's baked into this panel's own
+    // buildHtml() CSP and must match on every postMessage below for this
+    // document's whole lifetime.
+    const panelNonce = nonce();
+    webviewPanel.webview.html = this.buildHtml(webviewPanel.webview, panelNonce);
 
     const location = resolveEntryPath(document);
 
     const sendInit = async () => {
       const comments = location ? await readArtifactComments(location.workspaceRoot, location.entryPath) : [];
-      webviewPanel.webview.postMessage({ type: 'init', html: document.getText(), comments });
+      webviewPanel.webview.postMessage({ type: 'init', html: injectScriptNonce(document.getText(), panelNonce), comments });
     };
 
     const changeSub = vscode.workspace.onDidChangeTextDocument((e) => {
       if (e.document.uri.toString() === document.uri.toString()) {
-        webviewPanel.webview.postMessage({ type: 'source-updated', html: document.getText() });
+        webviewPanel.webview.postMessage({ type: 'source-updated', html: injectScriptNonce(document.getText(), panelNonce) });
       }
     });
 
@@ -120,15 +126,23 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     await vscode.workspace.applyEdit(edit);
   }
 
-  private buildHtml(webview: vscode.Webview): string {
+  private buildHtml(webview: vscode.Webview, panelNonce: string): string {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview', 'main.js'));
-    const n = nonce();
     const csp = [
       `default-src 'none'`,
       `img-src ${webview.cspSource} data: https:`,
       `style-src ${webview.cspSource} 'unsafe-inline'`,
       `font-src ${webview.cspSource}`,
-      `script-src 'nonce-${n}'`,
+      // 'nonce-<panelNonce>' + 'strict-dynamic' (not 'unsafe-inline'): the
+      // artifact preview iframe's `srcdoc` inherits this CSP, and a
+      // generated artifact's own inline <script> could be a `type="module"`
+      // (never covered by 'unsafe-inline') or import from an external CDN
+      // inside a script we've authorized — 'strict-dynamic' extends that
+      // trust to what an authorized script itself loads, regardless of
+      // host. resolveCustomTextEditor() stamps this exact nonce onto every
+      // <script> tag via injectScriptNonce() before posting document text —
+      // see src/webview/main.ts's `iframe.srcdoc`.
+      `script-src 'nonce-${panelNonce}' 'strict-dynamic'`,
       `frame-src *`,
     ].join('; ');
 
@@ -211,7 +225,7 @@ ${OD_TOKENS_CSS}
 </head>
 <body>
 <div id="root"></div>
-<script nonce="${n}" src="${scriptUri}"></script>
+<script nonce="${panelNonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
   }

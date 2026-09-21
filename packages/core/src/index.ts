@@ -4,6 +4,7 @@
 // has no other consumers to protect a narrower surface against yet.
 
 export * from './content/contentIndex';
+export * from './content/exampleHtml';
 
 export * from './generation/composeInstructions';
 export * from './generation/brandExtraction';

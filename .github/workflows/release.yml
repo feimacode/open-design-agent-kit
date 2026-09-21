@@ -1,9 +1,19 @@
 name: Release
 
-# Builds the packages/vscode extension into a .vsix and attaches it to a
-# GitHub Release. Does NOT publish to the Marketplace — that's a separate,
-# manually-confirmed step (see publish-marketplace.yml), so a bad build
-# never reaches real users just because a tag got pushed.
+# Builds every publishable artifact this project ships — the packages/vscode
+# extension's .vsix AND the three npm packages (packages/content,
+# packages/mcp-server, packages/cli) — and attaches all of them to ONE
+# GitHub Release for a given version. One tag, one release, every artifact:
+# the extension and the npm packages can never end up shipped at silently
+# different versions from two independent pipelines.
+#
+# Does NOT publish anything to a real registry (npm or the VS Code
+# Marketplace) — that's a separate, manually-confirmed step per destination
+# (see publish-marketplace.yml and publish-npm.yml), so a bad build never
+# reaches real users just because a tag got pushed. Both publish workflows
+# download their artifact from the release this workflow creates rather
+# than rebuilding, so what gets published is provably the exact thing that
+# passed this workflow's checks.
 
 on:
   push:
@@ -75,6 +85,23 @@ jobs:
           fi
           echo "✅ Version match confirmed: $VERSION"
 
+      - name: Validate npm package versions match the release
+        # One shared release for every artifact means one version for every
+        # artifact — a tag doesn't just gate the .vsix, it gates the three
+        # npm packages too, so they can never drift to a different released
+        # version than the extension without this failing loudly first.
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          for PKG in packages/content packages/mcp-server packages/cli; do
+            PACKAGE_VERSION=$(node -p "require('./$PKG/package.json').version")
+            if [ "$VERSION" != "$PACKAGE_VERSION" ]; then
+              echo "❌ Version mismatch: tag/input=$VERSION, $PKG/package.json=$PACKAGE_VERSION"
+              echo "Bump $PKG's version and commit before tagging."
+              exit 1
+            fi
+            echo "✅ Version match confirmed for $PKG: $VERSION"
+          done
+
   build:
     needs: validate
     runs-on: ubuntu-latest
@@ -103,6 +130,49 @@ jobs:
 
       - name: Unit tests
         run: npm run test:unit
+
+      # --- npm packages (packages/content, packages/mcp-server, packages/cli) ---
+      # See openspec/changes/npm-publish-automation/design.md for why this
+      # lives in the same job as the VSIX build rather than a separate
+      # workflow, and why the pin/smoke-test/pack order below matters.
+
+      - name: Pin cross-package npm dependency versions for release
+        # Rewrites packages/mcp-server/package.json's dependency on
+        # @feimacode/open-design-agent-kit-content from "*" (correct for
+        # local development, where npm workspaces always resolves it to the
+        # sibling package via a symlink regardless of version) to a real
+        # pinned range matching the content version in THIS release. Only
+        # touches this ephemeral checkout — never committed back.
+        run: node scripts/pin-content-version-for-publish.mjs
+
+      - name: Build npm packages
+        run: |
+          npm run compile --workspace=@feimacode/open-design-agent-kit-mcp
+          npm run compile --workspace=@feimacode/open-design-agent-kit
+
+      - name: Verify npm publish end-to-end (local registry)
+        # Real npm publish to a throwaway local registry, then a real `npx`
+        # resolution and MCP JSON-RPC handshake from a directory with zero
+        # access to this checkout's own node_modules. This is the one check
+        # that would have caught "packages/content is private, so
+        # packages/mcp-server can never actually resolve it once published"
+        # — npm pack --dry-run alone does not exercise cross-package
+        # dependency resolution at all.
+        run: node scripts/test-npm-publish.mjs
+
+      - name: Pack npm packages
+        run: |
+          mkdir -p release
+          npm pack --workspace=packages/content --pack-destination release
+          npm pack --workspace=packages/mcp-server --pack-destination release
+          npm pack --workspace=packages/cli --pack-destination release
+
+      - name: Generate SHA-256 checksums for npm packages
+        working-directory: release
+        run: |
+          for f in *.tgz; do
+            sha256sum "$f" > "${f}.sha256"
+          done
 
       - name: Package VSIX
         working-directory: packages/vscode
@@ -148,12 +218,13 @@ jobs:
           echo "✅ VSIX structure validated"
           ls -lh "$VSIX"
 
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: vsix
+          name: release-artifacts
           path: |
             release/*.vsix
+            release/*.tgz
             release/*.sha256
 
   release:
@@ -165,10 +236,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download artifact
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: vsix
+          name: release-artifacts
           path: release
 
       - name: Extract changelog section
@@ -197,6 +268,7 @@ jobs:
           body: ${{ steps.changelog.outputs.changelog }}
           files: |
             release/*.vsix
+            release/*.tgz
             release/*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -210,8 +282,11 @@ jobs:
             echo "**Version**: v$VERSION"
             echo "**Pre-release**: ${{ needs.validate.outputs.is_prerelease }}"
             echo ""
-            echo "### Artifact"
+            echo "### Artifacts"
             echo "- \`${EXTENSION_NAME}-${VERSION}.vsix\`"
+            echo "- \`feimacode-open-design-agent-kit-content-${VERSION}.tgz\`"
+            echo "- \`feimacode-open-design-agent-kit-mcp-${VERSION}.tgz\`"
+            echo "- \`feimacode-open-design-agent-kit-${VERSION}.tgz\`"
             echo ""
-            echo "Next step: run the **Publish to Marketplace** workflow with version \`$VERSION\` to actually publish it."
+            echo "Next step: run the **Publish to Marketplace** and/or **Publish npm Packages** workflows with version \`$VERSION\` to actually publish them."
           } >> "$GITHUB_STEP_SUMMARY"

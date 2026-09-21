@@ -15,7 +15,8 @@
     "vscode:prepublish": "npm run vscode:prepublish --workspace=packages/vscode",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "test:unit": "npm run test:unit --workspaces --if-present"
+    "test:unit": "npm run test:unit --workspaces --if-present",
+    "version": "node scripts/bump-version.mjs"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.7",

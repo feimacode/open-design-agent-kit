@@ -1,7 +1,5 @@
-import { promises as fs } from 'node:fs';
-import * as path from 'node:path';
 import * as vscode from 'vscode';
-import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import { injectScriptNonce, loadExampleHtml, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import { remixAndOpen } from '../commands/remixAndOpen';
 import { chatWithExample } from '../commands/chatWithExample';
 import type { ILogService } from '../log/logService';
@@ -26,6 +24,10 @@ function nonce(): string {
  */
 export class GalleryGridProvider {
   private static instance: GalleryGridProvider | undefined;
+  // Fixed for the panel's lifetime: it's baked into buildHtml()'s CSP meta
+  // tag once, and every later sendPreview() must inject this same value
+  // into the example HTML it posts, or the CSP's nonce check won't match.
+  private readonly panelNonce = nonce();
 
   static open(context: vscode.ExtensionContext, contentIndex: ContentIndex, assetsRoot: string, log: ILogService): void {
     if (GalleryGridProvider.instance) {
@@ -99,8 +101,8 @@ export class GalleryGridProvider {
       return;
     }
     try {
-      const html = await fs.readFile(path.join(this.assetsRoot, skill.exampleArtifactPath), 'utf8');
-      this.panel.webview.postMessage({ type: 'preview', id, html });
+      const html = await loadExampleHtml(this.assetsRoot, skill.exampleArtifactPath);
+      this.panel.webview.postMessage({ type: 'preview', id, html: injectScriptNonce(html, this.panelNonce) });
     } catch (err) {
       this.log.error(err, `GalleryGridProvider: failed to read thumbnail for ${id}`);
       this.panel.webview.postMessage({ type: 'preview', id, html: '' });
@@ -109,12 +111,20 @@ export class GalleryGridProvider {
 
   private buildHtml(webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'webview', 'gallery.js'));
-    const n = nonce();
     const csp = [
       `default-src 'none'`,
       `style-src ${webview.cspSource} 'unsafe-inline'`,
       `font-src ${webview.cspSource}`,
-      `script-src 'nonce-${n}'`,
+      // 'nonce-<panelNonce>' + 'strict-dynamic' (not 'unsafe-inline'): a
+      // `srcdoc` iframe inherits its embedder's CSP, and vendored example
+      // HTML can contain inline `type="module"` scripts (CSP's
+      // 'unsafe-inline' never covers module scripts, nonce/hash sources are
+      // the only way) or import from an external CDN inside a script we've
+      // authorized — 'strict-dynamic' extends that trust to what an
+      // authorized script itself loads, regardless of host. sendPreview()
+      // stamps this exact nonce onto every <script> tag in the example HTML
+      // via injectScriptNonce() before posting it.
+      `script-src 'nonce-${this.panelNonce}' 'strict-dynamic'`,
       `frame-src *`,
     ].join('; ');
 
@@ -161,7 +171,7 @@ ${OD_TOKENS_CSS}
 </head>
 <body>
 <div id="root"></div>
-<script nonce="${n}" src="${scriptUri}"></script>
+<script nonce="${this.panelNonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
   }

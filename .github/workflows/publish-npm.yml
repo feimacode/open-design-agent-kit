@@ -1,0 +1,166 @@
+name: Publish npm Packages
+
+# Deliberately separate from release.yml and manual-only, mirroring
+# publish-marketplace.yml exactly: publishing to the npm registry is
+# irreversible in practice (a version can be unpublished only within a
+# narrow window and with restrictions, but never un-downloaded), so it
+# requires an already-built release (see release.yml) plus an explicit
+# typed confirmation. This workflow never rebuilds anything — it downloads
+# the exact tarballs release.yml already produced and verified (including
+# the local-registry smoke test), so what gets published here is provably
+# the same artifact that passed those checks, not a fresh rebuild that
+# could subtly differ.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (without v prefix, e.g., 0.2.0)'
+        required: true
+        type: string
+      confirmation:
+        description: 'Type "PUBLISH" to confirm publishing to the real npm registry'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.validate.outputs.version }}
+
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "PUBLISH" ]; then
+            echo "❌ Confirmation failed. You must type PUBLISH to proceed."
+            exit 1
+          fi
+          echo "✅ Confirmation accepted"
+
+      - name: Validate version format
+        id: validate
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          # npm (unlike the VS Code Marketplace) natively supports
+          # prerelease versions, so -alpha.N/-beta.N are allowed here,
+          # matching release.yml's own tag pattern.
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)\.[0-9]+)?$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "✅ Version validated: $VERSION"
+
+  check-release:
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check GitHub Release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          REPO="${{ github.repository }}"
+          if ! gh release view "v$VERSION" --repo "$REPO" --json tagName >/dev/null 2>&1; then
+            echo "❌ GitHub Release v$VERSION not found. Run the Release workflow first."
+            exit 1
+          fi
+          echo "✅ GitHub Release v$VERSION exists"
+
+      - name: Verify all three npm tarballs are attached
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          REPO="${{ github.repository }}"
+          ASSETS=$(gh release view "v$VERSION" --repo "$REPO" --json assets --jq '.assets[].name')
+          for TGZ in \
+            "feimacode-open-design-agent-kit-content-${VERSION}.tgz" \
+            "feimacode-open-design-agent-kit-mcp-${VERSION}.tgz" \
+            "feimacode-open-design-agent-kit-${VERSION}.tgz"; do
+            if ! echo "$ASSETS" | grep -qx "$TGZ"; then
+              echo "❌ Missing $TGZ on release v$VERSION."
+              echo "Available assets:"
+              echo "$ASSETS"
+              exit 1
+            fi
+            echo "✅ Found $TGZ on release v$VERSION"
+          done
+
+      - name: Check NPM_TOKEN secret
+        run: |
+          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "❌ NPM_TOKEN secret is not set (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          echo "✅ NPM_TOKEN secret is configured"
+
+  publish:
+    needs: [validate, check-release]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download tarballs from release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          REPO="${{ github.repository }}"
+          mkdir -p release && cd release
+          gh release download "v$VERSION" --repo "$REPO" \
+            --pattern "feimacode-open-design-agent-kit-content-${VERSION}.tgz*" \
+            --pattern "feimacode-open-design-agent-kit-mcp-${VERSION}.tgz*" \
+            --pattern "feimacode-open-design-agent-kit-${VERSION}.tgz*"
+          ls -lh
+
+      - name: Verify checksums
+        working-directory: release
+        run: |
+          for SHA in *.sha256; do
+            sha256sum -c "$SHA"
+          done
+          echo "✅ Checksums verified"
+
+      - name: Publish content
+        working-directory: release
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "feimacode-open-design-agent-kit-content-${{ needs.validate.outputs.version }}.tgz"
+
+      - name: Publish mcp-server
+        # After content, not before — mcp-server depends on it, and a
+        # consumer trying to install mcp-server before content exists on
+        # the registry would fail resolving that dependency.
+        working-directory: release
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "feimacode-open-design-agent-kit-mcp-${{ needs.validate.outputs.version }}.tgz"
+
+      - name: Publish cli
+        working-directory: release
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "feimacode-open-design-agent-kit-${{ needs.validate.outputs.version }}.tgz"
+
+      - name: Publish summary
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          {
+            echo "## npm Publish Summary"
+            echo ""
+            echo "**Version**: $VERSION"
+            echo "🔗 https://www.npmjs.com/package/@feimacode/open-design-agent-kit-content/v/$VERSION"
+            echo "🔗 https://www.npmjs.com/package/@feimacode/open-design-agent-kit-mcp/v/$VERSION"
+            echo "🔗 https://www.npmjs.com/package/@feimacode/open-design-agent-kit/v/$VERSION"
+          } >> "$GITHUB_STEP_SUMMARY"
