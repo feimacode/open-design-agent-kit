@@ -50,7 +50,18 @@ async function withTempDir(prefix, fn) {
   }
 }
 
-async function waitForRegistry(timeoutMs = 15000) {
+// `npx --yes verdaccio` has to resolve and install verdaccio (a sizeable
+// dependency tree) before the process even starts, on top of the server's
+// own startup — 15s was tuned on a machine that already had verdaccio in
+// its local npx/npm cache from prior manual testing. A GitHub Actions
+// runner is always a clean VM with an empty npx cache: measured directly
+// (npx cache cleared, to match), a cold `npx --yes verdaccio --version`
+// alone took ~19.5s here, before the actual server has even bound its
+// port — meaning 15000 failed on effectively every CI run, not
+// intermittently. 90s leaves real margin for CI runner/registry variance
+// while still failing well within a normal step's runtime if something is
+// genuinely broken rather than just slow.
+async function waitForRegistry(timeoutMs = 90000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
@@ -107,10 +118,23 @@ listen: 127.0.0.1:${REGISTRY_PORT}
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
   });
-  child.stdout.on('data', () => {});
-  child.stderr.on('data', () => {});
+  // Buffered, not discarded: if waitForRegistry() times out for a reason
+  // OTHER than "still installing" (a config error, the registry port
+  // already in use, no network access to npmjs for the npx install itself),
+  // this is the only place that reason would ever surface — a bare timeout
+  // message alone gives no way to tell "still slow" apart from "actually
+  // broken" on the next failure.
+  let output = '';
+  child.stdout.on('data', (d) => (output += d.toString()));
+  child.stderr.on('data', (d) => (output += d.toString()));
 
-  await waitForRegistry();
+  try {
+    await waitForRegistry();
+  } catch (err) {
+    killProcessGroup(child);
+    const trimmed = output.trim();
+    throw new Error(`${err.message}${trimmed ? `\n--- verdaccio output ---\n${trimmed}` : ' (verdaccio produced no output)'}`);
+  }
   log('local registry is up');
   return child;
 }
