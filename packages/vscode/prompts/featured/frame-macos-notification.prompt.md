@@ -1,4 +1,5 @@
 ---
+name: "od-video-frame-macos-notification"
 description: macOS Notification Banner (OpenDesign)
 mode: agent
 ---

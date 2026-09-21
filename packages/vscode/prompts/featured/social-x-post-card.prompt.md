@@ -1,4 +1,5 @@
 ---
+name: "od-prototype-social-x-post-card"
 description: X / Twitter Post Card (OpenDesign)
 mode: agent
 ---

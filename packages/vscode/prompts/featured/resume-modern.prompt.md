@@ -1,4 +1,5 @@
 ---
+name: "od-prototype-resume-modern"
 description: Modern Resume (OpenDesign)
 mode: agent
 ---

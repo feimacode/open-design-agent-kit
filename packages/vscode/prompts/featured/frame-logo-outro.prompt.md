@@ -1,4 +1,5 @@
 ---
+name: "od-video-frame-logo-outro"
 description: Logo Outro Frame (OpenDesign)
 mode: agent
 ---

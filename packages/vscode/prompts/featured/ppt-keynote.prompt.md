@@ -1,4 +1,5 @@
 ---
+name: "od-deck-ppt-keynote"
 description: Keynote-style Slides (OpenDesign)
 mode: agent
 ---

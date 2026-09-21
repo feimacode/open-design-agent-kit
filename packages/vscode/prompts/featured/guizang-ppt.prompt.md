@@ -1,4 +1,5 @@
 ---
+name: "od-deck-guizang-ppt"
 description: Write a Brand-to-Revenue Story like a Growth Strategy Lead (OpenDesign)
 mode: agent
 ---

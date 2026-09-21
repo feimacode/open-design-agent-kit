@@ -1,4 +1,5 @@
 ---
+name: "od-video-vfx-text-cursor"
 description: VFX Text Cursor (OpenDesign)
 mode: agent
 ---

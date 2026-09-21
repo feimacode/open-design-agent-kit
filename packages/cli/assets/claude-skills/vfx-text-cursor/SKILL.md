@@ -1,4 +1,5 @@
 ---
+name: "od-video-vfx-text-cursor"
 description: VFX Text Cursor (OpenDesign) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)

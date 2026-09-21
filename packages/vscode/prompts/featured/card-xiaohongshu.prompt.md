@@ -1,4 +1,5 @@
 ---
+name: "od-prototype-card-xiaohongshu"
 description: Xiaohongshu Card (OpenDesign)
 mode: agent
 ---

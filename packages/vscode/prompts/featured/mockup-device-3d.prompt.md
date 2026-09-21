@@ -1,4 +1,5 @@
 ---
+name: "od-prototype-mockup-device-3d"
 description: Device 3D Showcase (OpenDesign)
 mode: agent
 ---

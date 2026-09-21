@@ -1,4 +1,5 @@
 ---
+name: "od-prototype-article-magazine"
 description: Magazine Article (OpenDesign)
 mode: agent
 ---

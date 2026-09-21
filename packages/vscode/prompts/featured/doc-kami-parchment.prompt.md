@@ -1,4 +1,5 @@
 ---
+name: "od-prototype-doc-kami-parchment"
 description: Kami Parchment Document (OpenDesign)
 mode: agent
 ---

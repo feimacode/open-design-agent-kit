@@ -1,4 +1,5 @@
 ---
+name: "od-deck-deck-swiss-international"
 description: Swiss International Deck (OpenDesign)
 mode: agent
 ---

@@ -1,4 +1,5 @@
 ---
+name: "od-prototype-social-reddit-card"
 description: Reddit Post Card (OpenDesign)
 mode: agent
 ---

@@ -1,4 +1,5 @@
 ---
+name: "od-video-video-hyperframes"
 description: Hyperframes Video (OpenDesign)
 mode: agent
 ---

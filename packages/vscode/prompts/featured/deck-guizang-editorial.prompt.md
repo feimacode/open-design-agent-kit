@@ -1,4 +1,5 @@
 ---
+name: "od-deck-deck-guizang-editorial"
 description: Guizang Editorial E-Ink Deck (OpenDesign)
 mode: agent
 ---

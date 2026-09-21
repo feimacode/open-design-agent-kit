@@ -1,4 +1,5 @@
 ---
+name: "od-video-frame-glitch-title"
 description: Glitch Title Frame (OpenDesign)
 mode: agent
 ---

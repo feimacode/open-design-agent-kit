@@ -1,4 +1,5 @@
 ---
+name: "od-prototype-data-report"
 description: Data Visualization Report (OpenDesign)
 mode: agent
 ---

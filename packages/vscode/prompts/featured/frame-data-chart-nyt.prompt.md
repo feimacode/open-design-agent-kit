@@ -1,4 +1,5 @@
 ---
+name: "od-video-frame-data-chart-nyt"
 description: NYT-Style Data Chart Frame (OpenDesign)
 mode: agent
 ---

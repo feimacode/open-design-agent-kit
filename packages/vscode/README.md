@@ -2,7 +2,7 @@
 
 Bring [OpenDesign](https://github.com/nexu-io/open-design)'s design skills, design systems, and remixable examples into GitHub Copilot Chat — no daemon, no MCP server, no separate app. Copilot's own selected model does the actual generation with its native file-editing tools; this extension supplies the content library and the instructions that steer it toward using that library well.
 
-<img src="../../docs/screenshots/vscode/gallery-grid.png" alt="OpenDesign Gallery Grid inside VS Code — searchable card grid of remixable examples with live thumbnails" width="100%"/>
+<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/vscode/gallery-grid.png" alt="OpenDesign Gallery Grid inside VS Code — searchable card grid of remixable examples with live thumbnails" width="100%"/>
 
 ## Why
 
@@ -15,21 +15,21 @@ Six of the ~280 vendored skills and templates, rendered exactly as-is:
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="../../docs/screenshots/examples/dating-web.png" alt="Consumer dating-app dashboard, editorial typography" width="100%"/><br/>
+<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/examples/dating-web.png" alt="Consumer dating-app dashboard, editorial typography" width="100%"/><br/>
 <sub><b>"Design a dating-site dashboard — mutuals, match rate, a 30-day trend."</b></sub>
 </td>
 <td width="50%" valign="top">
-<img src="../../docs/screenshots/examples/gamified-app.png" alt="Gamified habit-tracking mobile app, three phone frames" width="100%"/><br/>
+<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/examples/gamified-app.png" alt="Gamified habit-tracking mobile app, three phone frames" width="100%"/><br/>
 <sub><b>"A habit-tracking app with daily quests and XP."</b></sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="../../docs/screenshots/examples/deck-swiss-international.png" alt="Board strategy deck, Swiss International style" width="100%"/><br/>
+<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/examples/deck-swiss-international.png" alt="Board strategy deck, Swiss International style" width="100%"/><br/>
 <sub><b>"A board-ready strategy deck, Swiss International style."</b></sub>
 </td>
 <td width="50%" valign="top">
-<img src="../../docs/screenshots/examples/data-report.png" alt="Weekly metrics report with KPI cards and trend charts" width="100%"/><br/>
+<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/examples/data-report.png" alt="Weekly metrics report with KPI cards and trend charts" width="100%"/><br/>
 <sub><b>"Turn this CSV into a weekly metrics report."</b></sub>
 </td>
 </tr>
@@ -45,11 +45,11 @@ Six of the ~280 vendored skills and templates, rendered exactly as-is:
 
   **Comment** — hover to highlight, click an element to pin a note. "Send comments to chat" hands your selected notes to Copilot as a scoped edit instruction; comments persist as a plain, git-trackable `<entry>.html.comments.json` sidecar, never applied by a special engine:
 
-  <img src="../../docs/screenshots/vscode/comment-mode.png" alt="OpenDesign Artifact Preview in Comment mode — a pinned note on the trend chart, and an in-progress comment on the '1,842' KPI with alignment guides" width="100%"/>
+  <img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/vscode/comment-mode.png" alt="OpenDesign Artifact Preview in Comment mode — a pinned note on the trend chart, and an in-progress comment on the '1,842' KPI with alignment guides" width="100%"/>
 
   **Edit** (HTML only) — click an element for a panel with content fields that adapt to what you clicked (text / link href / image src+alt / raw HTML for containers) plus a curated style section (color, background, opacity, typography, border, per-side padding/margin) — written straight back to the file through a real `WorkspaceEdit`, so undo/redo is native:
 
-  <img src="../../docs/screenshots/vscode/edit-mode.png" alt="OpenDesign Artifact Preview in Edit mode — WYSIWYG style panel open on the '1,842' KPI value, with typography, border, padding, and margin fields" width="100%"/>
+  <img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/vscode/edit-mode.png" alt="OpenDesign Artifact Preview in Edit mode — WYSIWYG style panel open on the '1,842' KPI value, with typography, border, padding, and margin fields" width="100%"/>
 
   **View** — just the rendered page, as-is. All three follow open-design's own actual visual design language (colors, radii, shadows, the Albert Sans variable font), not generic VS Code theming.
 - **Custom design systems** beyond the bundled 152 — invent one from a brief (`create_open_design_design_system`, optionally seeded from a reference URL) or deterministically import an existing one from a file, pasted content, or a GitHub repo via **OpenDesign: Import Design System** — no model involved in the import path, original source always preserved.

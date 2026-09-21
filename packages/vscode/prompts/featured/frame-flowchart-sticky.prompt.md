@@ -1,4 +1,5 @@
 ---
+name: "od-video-frame-flowchart-sticky"
 description: Sticky Flowchart Frame (OpenDesign)
 mode: agent
 ---

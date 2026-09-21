@@ -1,4 +1,5 @@
 ---
+name: "od-prototype-social-spotify-card"
 description: Spotify Now-Playing Card (OpenDesign)
 mode: agent
 ---

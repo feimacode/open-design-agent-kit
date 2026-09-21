@@ -1,4 +1,5 @@
 ---
+name: "od-deck-guizang-ppt"
 description: Write a Brand-to-Revenue Story like a Growth Strategy Lead (OpenDesign) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)

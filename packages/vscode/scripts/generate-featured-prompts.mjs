@@ -23,7 +23,13 @@ function promptFileContent(entry) {
   const placeholder = entry.examplePrompt
     ? entry.examplePrompt.replace(/"/g, '\\"')
     : `What do you want to build with ${entry.displayName}?`;
+  // Hyphens, not colons: VS Code's chat input treats a colon in a prompt
+  // name as a subcommand separator and renders/inserts it as a literal
+  // space (`od:video:x` -> `/od video x`). A hyphenated form displays as
+  // written and matches Claude Code's own naming.
+  const invocationName = entry.publicId.replace(/:/g, '-');
   return `---
+name: "${invocationName}"
 description: ${entry.displayName} (OpenDesign)
 mode: agent
 ---

@@ -1,4 +1,5 @@
 ---
+name: "od-deck-deck-open-slide-canvas"
 description: Open-Slide 1920 Canvas Deck (OpenDesign)
 mode: agent
 ---

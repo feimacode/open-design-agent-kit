@@ -23,7 +23,14 @@ function skillMdContent(entry) {
   const placeholder = entry.examplePrompt
     ? entry.examplePrompt.replace(/"/g, '\\"')
     : `What do you want to build with ${entry.displayName}?`;
+  // Hyphens, not colons: VS Code's chat input treats a colon in a prompt
+  // name as a subcommand separator and renders/inserts it as a literal
+  // space (`od:video:x` -> `/od video x`), which looks broken next to
+  // Claude Code's own colon-preserving display. A hyphenated form renders
+  // identically (and is typed identically) everywhere.
+  const invocationName = entry.publicId.replace(/:/g, '-');
   return `---
+name: "${invocationName}"
 description: ${entry.displayName} (OpenDesign) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
