@@ -114,7 +114,16 @@ listen: 127.0.0.1:${REGISTRY_PORT}
   // of this script exited cleanly but left a real `verdaccio` process
   // behind (`ps aux` showed it after the script had already logged
   // success) until this fix.
-  const child = spawn('npx', ['--yes', 'verdaccio', '--config', configPath, '--listen', String(REGISTRY_PORT)], {
+  // The CLI --listen flag overrides config.yaml's `listen: 127.0.0.1:PORT`
+  // outright — a bare port number here (no host) previously made verdaccio
+  // fall back to binding on "localhost" instead (confirmed by its own
+  // startup log: "http address - http://localhost:4873/", not 127.0.0.1),
+  // which on a GitHub Actions runner resolved/bound differently than the
+  // 127.0.0.1 this script explicitly polls (an IPv4/IPv6 loopback split —
+  // the server was healthy the whole time, waitForRegistry just couldn't
+  // reach it). Pass the same host:port explicitly here so the CLI and
+  // config agree with REGISTRY_URL instead of leaving it to a default.
+  const child = spawn('npx', ['--yes', 'verdaccio', '--config', configPath, '--listen', `127.0.0.1:${REGISTRY_PORT}`], {
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
   });
@@ -216,28 +225,47 @@ async function testMcpServerResolution(scratchDir) {
     }
   });
 
+  // Waits for a response with this exact id to actually show up in
+  // `results`, instead of the fixed-delay sleeps this replaced — those
+  // guessed a delay long enough for the server to respond (1500ms for
+  // tools/call), but `list_open_design_skills` parses ~1,100+ vendored
+  // files with gray-matter on its first call, and how long that legitimately
+  // takes varies with machine/CI load. A short, fixed sleep is a race: it
+  // passed most of the time locally, but failed outright roughly 1 run in 5
+  // in this same environment with the exact same content — see the
+  // "returned no entries" failure this replaced (the response just hadn't
+  // arrived yet when the process was killed, not a real resolution bug).
+  async function waitForResponse(id, timeoutMs = 15000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const found = results.find((r) => r.id === id);
+      if (found) return found;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error(`No response for request id ${id} within ${timeoutMs}ms`);
+  }
+
   const send = (msg) => child.stdin.write(JSON.stringify(msg) + '\n');
-  send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'ci-smoke-test', version: '0' } } });
-  await new Promise((r) => setTimeout(r, 500));
-  send({ jsonrpc: '2.0', method: 'notifications/initialized' });
-  await new Promise((r) => setTimeout(r, 200));
-  send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
-  await new Promise((r) => setTimeout(r, 500));
-  send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_open_design_skills', arguments: { query: 'landing' } } });
-  await new Promise((r) => setTimeout(r, 1500));
+  try {
+    send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'ci-smoke-test', version: '0' } } });
+    const init = await waitForResponse(1);
 
-  killProcessGroup(child);
+    send({ jsonrpc: '2.0', method: 'notifications/initialized' });
+    send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
+    const list = await waitForResponse(2);
 
-  const init = results.find((r) => r.id === 1);
-  const list = results.find((r) => r.id === 2);
-  const call = results.find((r) => r.id === 3);
+    send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_open_design_skills', arguments: { query: 'landing' } } });
+    const call = await waitForResponse(3);
 
-  assert(init?.result?.serverInfo?.name === 'open-design', 'initialize did not return the expected serverInfo');
-  assert(list?.result?.tools?.length === 9, `expected 9 tools, got ${list?.result?.tools?.length}`);
-  const callText = call?.result?.content?.[0]?.text;
-  const parsedCall = callText ? JSON.parse(callText) : undefined;
-  assert(Array.isArray(parsedCall) && parsedCall.length > 0, 'list_open_design_skills returned no entries');
-  log(`mcp-server resolution + handshake OK (${list.result.tools.length} tools, ${parsedCall.length} entries for query "landing")`);
+    assert(init?.result?.serverInfo?.name === 'open-design', 'initialize did not return the expected serverInfo');
+    assert(list?.result?.tools?.length === 9, `expected 9 tools, got ${list?.result?.tools?.length}`);
+    const callText = call?.result?.content?.[0]?.text;
+    const parsedCall = callText ? JSON.parse(callText) : undefined;
+    assert(Array.isArray(parsedCall) && parsedCall.length > 0, 'list_open_design_skills returned no entries');
+    log(`mcp-server resolution + handshake OK (${list.result.tools.length} tools, ${parsedCall.length} entries for query "landing")`);
+  } finally {
+    killProcessGroup(child);
+  }
 }
 
 async function testCliInit(scratchDir) {
