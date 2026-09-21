@@ -16,6 +16,7 @@ export * from './generation/tokenExtraction';
 export * from './vendored/artifactManifest';
 export * from './vendored/artifactCreate';
 
+export * from './workspace/activeDesignSystemStore';
 export * from './workspace/appDetection';
 export * from './workspace/artifactComments';
 export * from './workspace/remixExample';

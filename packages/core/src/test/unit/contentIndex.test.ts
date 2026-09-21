@@ -199,6 +199,30 @@ describe('ContentIndex', () => {
     assert.strictEqual(decks[0].id, 'od:deck:growth-deck');
   });
 
+  it('filters listSkills by exact source', async () => {
+    const index = new ContentIndex(await makeFixture());
+    const examples = await index.listSkills(undefined, undefined, 'example');
+    assert.strictEqual(examples.length, 1);
+    assert.strictEqual(examples[0].source, 'example');
+
+    const templates = await index.listSkills(undefined, undefined, 'design-template');
+    assert.strictEqual(templates.length, 1);
+    assert.strictEqual(templates[0].source, 'design-template');
+  });
+
+  it('filters listSkills by remixableOnly, regardless of source', async () => {
+    const index = new ContentIndex(await makeFixture());
+    const remixable = await index.listSkills(undefined, undefined, undefined, true);
+    assert.strictEqual(remixable.length, 1);
+    assert.ok(remixable[0].exampleArtifactPath);
+  });
+
+  it('composes source/remixableOnly with query and mode', async () => {
+    const index = new ContentIndex(await makeFixture());
+    const none = await index.listSkills(undefined, 'deck', 'example');
+    assert.strictEqual(none.length, 0, 'the fixture example is mode prototype, not deck');
+  });
+
   it('listSkillModes returns the distinct modes present, sorted', async () => {
     const index = new ContentIndex(await makeFixture());
     const modes = await index.listSkillModes();
@@ -304,5 +328,69 @@ describe('ContentIndex', () => {
 
     const after = await index.listDesignSystems();
     assert.strictEqual(after.filter((d) => d.source === 'user').length, 1, 'a file written after construction should still appear, unlike the cached built-in pool');
+  });
+});
+
+// Reproduces a real, previously-unhandled case found in the actual vendored
+// content: an 'example' sharing both its bare directory name AND its
+// computed mode with a same-named skill (or design-template) — an example
+// is typically the rendered counterpart of a specific skill, so this is the
+// common case, not a rare edge case (129 of ~444 real vendored entries hit
+// it). Before mergeSkillPools existed, a plain `new Map([...skills, ...examples])`
+// silently dropped the skill entirely, since the example (spread last)
+// overwrote its Map key.
+async function makeCollisionFixture(): Promise<string> {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'od-ext-collision-'));
+
+  await fs.mkdir(path.join(root, 'skills', 'article-magazine'), { recursive: true });
+  await fs.writeFile(
+    path.join(root, 'skills', 'article-magazine', 'SKILL.md'),
+    ['---', 'name: article-magazine', 'description: The real skill workflow.', 'od:', '  mode: prototype', '---', '', 'Skill body.'].join('\n'),
+  );
+
+  await fs.mkdir(path.join(root, 'examples', 'article-magazine'), { recursive: true });
+  await fs.writeFile(
+    path.join(root, 'examples', 'article-magazine', 'SKILL.md'),
+    ['---', 'name: article-magazine', 'description: The rendered example.', 'od:', '  mode: prototype', '---', '', 'Example body.'].join('\n'),
+  );
+  await fs.writeFile(path.join(root, 'examples', 'article-magazine', 'example.html'), '<!doctype html><h1>Article</h1>');
+
+  return root;
+}
+
+describe('ContentIndex bare-id collisions', () => {
+  it('listSkills returns BOTH entries, not just whichever loaded last', async () => {
+    const index = new ContentIndex(await makeCollisionFixture());
+    const all = await index.listSkills();
+    assert.strictEqual(all.length, 2, 'both the skill and its same-named example must survive as distinct entries');
+    assert.deepStrictEqual(
+      all.map((s) => s.source).sort(),
+      ['example', 'skill'],
+    );
+  });
+
+  it('the colliding skill keeps the plain od:<mode>:<dirId> id; the example gets a :example suffix', async () => {
+    const index = new ContentIndex(await makeCollisionFixture());
+    const all = await index.listSkills();
+    const skill = all.find((s) => s.source === 'skill');
+    const example = all.find((s) => s.source === 'example');
+    assert.strictEqual(skill!.id, 'od:prototype:article-magazine');
+    assert.strictEqual(example!.id, 'od:prototype:article-magazine:example');
+  });
+
+  it('getSkill resolves each disambiguated id to the correct entry', async () => {
+    const index = new ContentIndex(await makeCollisionFixture());
+    const skill = await index.getSkill('od:prototype:article-magazine');
+    const example = await index.getSkill('od:prototype:article-magazine:example');
+    assert.match(skill!.body, /Skill body/);
+    assert.match(example!.body, /Example body/);
+    assert.strictEqual(example!.exampleArtifactPath, 'examples/article-magazine/example.html');
+  });
+
+  it('getSkill on the bare, ambiguous dirId prefers the real skill over its own example', async () => {
+    const index = new ContentIndex(await makeCollisionFixture());
+    const resolved = await index.getSkill('article-magazine');
+    assert.strictEqual(resolved!.source, 'skill');
+    assert.match(resolved!.body, /Skill body/);
   });
 });

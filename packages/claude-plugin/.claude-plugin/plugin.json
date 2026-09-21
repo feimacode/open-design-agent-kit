@@ -1,0 +1,10 @@
+{
+  "name": "open-design",
+  "description": "Generate design artifacts (landing pages, decks, prototypes, dashboards) using OpenDesign's bundled skills and design systems, directly in this workspace.",
+  "version": "0.1.0",
+  "author": {
+    "name": "feimacode"
+  },
+  "license": "MIT",
+  "keywords": ["design", "design-system", "prototype", "landing-page", "deck", "ui"]
+}

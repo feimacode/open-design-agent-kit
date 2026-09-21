@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import type { ActiveDesignSystemStore } from '@feimacode/open-design-agent-kit-core';
 
 const CONFIG_SECTION = 'openDesign';
 const CONFIG_KEY = 'activeDesignSystemId';
@@ -21,3 +22,13 @@ export function onActiveDesignSystemChanged(listener: () => void): vscode.Dispos
     if (e.affectsConfiguration(`${CONFIG_SECTION}.${CONFIG_KEY}`)) listener();
   });
 }
+
+/** VS Code's `ActiveDesignSystemStore` implementation, backed by the workspace setting above. */
+export const vscodeActiveDesignSystemStore: ActiveDesignSystemStore = {
+  async get() {
+    return getActiveDesignSystemId();
+  },
+  async set(id) {
+    await setActiveDesignSystemId(id);
+  },
+};

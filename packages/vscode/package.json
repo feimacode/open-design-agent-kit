@@ -7,6 +7,23 @@
   "icon": "assets/icons/extension-icon.png",
   "private": true,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feimacode/open-design-agent-kit.git",
+    "directory": "packages/vscode"
+  },
+  "homepage": "https://github.com/feimacode/open-design-agent-kit#readme",
+  "bugs": {
+    "url": "https://github.com/feimacode/open-design-agent-kit/issues"
+  },
+  "keywords": [
+    "design",
+    "design-systems",
+    "copilot",
+    "copilot-chat",
+    "ai",
+    "open-design"
+  ],
   "engines": {
     "vscode": "^1.138.0"
   },
@@ -26,7 +43,7 @@
       {
         "name": "list_open_design_skills",
         "displayName": "List OpenDesign Skills",
-        "modelDescription": "Lists available OpenDesign skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', or 'example' (all interchangeable as skillId). Some results include an 'examplePrompt' — a curated, ready-to-use brief — which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, and/or an exact mode.",
+        "modelDescription": "Lists available OpenDesign skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', or 'example' (all interchangeable as skillId). Some results include an 'examplePrompt' — a curated, ready-to-use brief — which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact.",
         "userDescription": "Browse OpenDesign's bundled design skills",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-skills",
@@ -52,6 +69,19 @@
                 "other"
               ],
               "description": "Optional exact mode filter."
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "skill",
+                "design-template",
+                "example"
+              ],
+              "description": "Optional exact source filter."
+            },
+            "remixableOnly": {
+              "type": "boolean",
+              "description": "Optional: when true, only return entries with a non-empty exampleArtifactPath (i.e. an actual rendered starting artifact to remix)."
             }
           }
         }
@@ -489,12 +519,12 @@
     }
   },
   "scripts": {
-    "sync-content": "node ./scripts/sync-open-design-content.mjs && node ./scripts/generate-featured-prompts.mjs",
+    "sync-content": "npm run sync --workspace=@feimacode/open-design-agent-kit-content && node ./scripts/copy-content-assets.mjs && node ./scripts/generate-featured-prompts.mjs",
     "compile": "tsx .esbuild.ts --dev",
     "watch": "tsx .esbuild.ts --watch --dev",
     "package": "tsx .esbuild.ts",
     "vscode:prepublish": "npm run package",
-    "lint": "eslint src --ext ts && node scripts/check-content-sync.mjs",
+    "lint": "eslint src --ext ts && npm run check-sync --workspace=@feimacode/open-design-agent-kit-content && node scripts/check-content-mirror.mjs",
     "typecheck": "tsc -p . --noEmit && tsc -p src/webview --noEmit"
   },
   "dependencies": {

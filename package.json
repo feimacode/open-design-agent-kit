@@ -8,14 +8,14 @@
     "packages/*"
   ],
   "scripts": {
-    "sync-content": "npm run sync-content --workspace=packages/vscode",
+    "sync-content": "npm run sync-content --workspace=packages/vscode && npm run generate-skills --workspace=@feimacode/open-design-agent-kit-claude-plugin && npm run generate-skills --workspace=@feimacode/open-design-agent-kit-codex && npm run copy-skill-content --workspace=@feimacode/open-design-agent-kit",
     "compile": "npm run compile --workspace=packages/vscode",
     "watch": "npm run watch --workspace=packages/vscode",
     "package": "npm run package --workspace=packages/vscode",
     "vscode:prepublish": "npm run vscode:prepublish --workspace=packages/vscode",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "test:unit": "npm run test:unit --workspace=packages/core"
+    "test:unit": "npm run test:unit --workspaces --if-present"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.7",

@@ -1,0 +1,46 @@
+{
+  "name": "@feimacode/open-design-agent-kit",
+  "version": "0.1.0",
+  "description": "npx @feimacode/open-design-agent-kit init — sets up OpenDesign's Claude Code and/or Codex integration directly in your own project, no marketplace or manual copying required.",
+  "license": "MIT",
+  "keywords": [
+    "open-design",
+    "claude-code",
+    "codex",
+    "cli",
+    "init",
+    "ai-agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feimacode/open-design-agent-kit.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/feimacode/open-design-agent-kit#readme",
+  "bugs": {
+    "url": "https://github.com/feimacode/open-design-agent-kit/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "out/index.js",
+  "bin": {
+    "open-design-agent-kit": "out/index.js"
+  },
+  "files": [
+    "out",
+    "assets"
+  ],
+  "scripts": {
+    "copy-skill-content": "node ./scripts/copy-skill-content.mjs",
+    "compile": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p . --noEmit",
+    "lint": "eslint src --ext ts && node ./scripts/check-cli-assets-sync.mjs",
+    "test:unit": "mocha --require tsx/cjs 'src/test/unit/**/*.test.ts' --timeout 5000"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.8.0",
+    "commander": "^14.0.0",
+    "smol-toml": "^1.8.0"
+  }
+}

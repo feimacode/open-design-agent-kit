@@ -1,0 +1,48 @@
+{
+  "name": "@feimacode/open-design-agent-kit-mcp",
+  "version": "0.1.0",
+  "description": "OpenDesign as an MCP server — the same skill/design-system/artifact tools the VS Code extension exposes, usable from any MCP-capable coding agent (Claude Code, Codex, and others).",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "open-design",
+    "design-systems",
+    "claude-code",
+    "codex",
+    "ai-agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feimacode/open-design-agent-kit.git",
+    "directory": "packages/mcp-server"
+  },
+  "homepage": "https://github.com/feimacode/open-design-agent-kit#readme",
+  "bugs": {
+    "url": "https://github.com/feimacode/open-design-agent-kit/issues"
+  },
+  "main": "out/index.js",
+  "bin": {
+    "open-design-mcp": "out/index.js"
+  },
+  "files": [
+    "out"
+  ],
+  "scripts": {
+    "compile": "tsx .esbuild.ts",
+    "typecheck": "tsc -p . --noEmit",
+    "lint": "eslint src --ext ts",
+    "test:unit": "mocha --require tsx/cjs 'src/test/unit/**/*.test.ts' --timeout 5000",
+    "start": "node ./out/index.js"
+  },
+  "dependencies": {
+    "@feimacode/open-design-agent-kit-content": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  },
+  "devDependencies": {
+    "@feimacode/open-design-agent-kit-core": "*"
+  }
+}

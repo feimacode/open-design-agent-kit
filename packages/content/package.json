@@ -1,0 +1,28 @@
+{
+  "name": "@feimacode/open-design-agent-kit-content",
+  "version": "0.1.0",
+  "description": "Vendored OpenDesign content (skills, design-templates, design systems, craft, examples), synced from the public open-design repo. Consumed by @feimacode/open-design-agent-kit-core's ContentIndex via this package's assets/open-design directory. No build step.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feimacode/open-design-agent-kit.git",
+    "directory": "packages/content"
+  },
+  "homepage": "https://github.com/feimacode/open-design-agent-kit#readme",
+  "bugs": {
+    "url": "https://github.com/feimacode/open-design-agent-kit/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "assets/open-design"
+  ],
+  "scripts": {
+    "sync": "node ./scripts/sync-open-design-content.mjs",
+    "check-sync": "node ./scripts/check-content-sync.mjs"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3"
+  }
+}

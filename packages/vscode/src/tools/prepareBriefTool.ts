@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
-import { composeInstructions, selectCraftSections } from '@feimacode/open-design-agent-kit-core';
+import { composeInstructions, resolveActiveDesignSystem, selectCraftSections } from '@feimacode/open-design-agent-kit-core';
 import { suggestEntryPath } from '../workspace/artifactWriter';
-import { getActiveDesignSystemId, setActiveDesignSystemId } from '../workspace/activeDesignSystem';
+import { vscodeActiveDesignSystemStore } from '../workspace/activeDesignSystem';
 import { detectExistingApp } from '@feimacode/open-design-agent-kit-core';
 
 interface PrepareBriefInput {
@@ -35,27 +35,21 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
     // omitted, fall back to whatever is currently active. A stale/invalid
     // active setting (e.g. hand-edited to a typo) is treated as "none" —
     // silently, so it doesn't block every future generation until fixed.
-    let designSystemId = explicitDesignSystemId;
-    let designSystem: Awaited<ReturnType<ContentIndex['getDesignSystem']>> | undefined;
-
-    if (designSystemId) {
-      designSystem = await this.contentIndex.getDesignSystem(designSystemId);
-      if (!designSystem) {
-        const available = (await this.contentIndex.listDesignSystems()).map((d) => d.id).slice(0, 20);
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            `Unknown designSystemId "${designSystemId}". Call list_open_design_design_systems to see available ids. A few available ids: ${available.join(', ')}`,
-          ),
-        ]);
-      }
-      await setActiveDesignSystemId(designSystemId);
-    } else {
-      const activeId = getActiveDesignSystemId();
-      if (activeId) {
-        designSystem = await this.contentIndex.getDesignSystem(activeId);
-        designSystemId = designSystem ? activeId : undefined;
-      }
+    const resolution = await resolveActiveDesignSystem(
+      explicitDesignSystemId,
+      vscodeActiveDesignSystemStore,
+      (id) => this.contentIndex.getDesignSystem(id),
+    );
+    if (resolution.unknownExplicitId) {
+      const available = (await this.contentIndex.listDesignSystems()).map((d) => d.id).slice(0, 20);
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          `Unknown designSystemId "${resolution.unknownExplicitId}". Call list_open_design_design_systems to see available ids. A few available ids: ${available.join(', ')}`,
+        ),
+      ]);
     }
+    const designSystemId = resolution.designSystemId;
+    const designSystem = resolution.designSystem;
 
     const allCraftSections = await this.contentIndex.craftSections();
     const craftSections = selectCraftSections(allCraftSections, designSystem?.craftSuggested);

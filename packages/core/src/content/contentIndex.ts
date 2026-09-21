@@ -3,6 +3,12 @@ import * as path from 'node:path';
 import matter from 'gray-matter';
 
 export type SkillSource = 'skill' | 'design-template' | 'example';
+// Priority order used both to decide which source keeps the plain public id
+// when two entries collide on bare dirId (see mergeSkillPools) and as the
+// tie-break `getSkill` applies to an ambiguous bare-id/legacy lookup: the
+// entry describing the task/style wins over one that merely happens to
+// share its name (typically its own rendered example).
+const SKILL_SOURCES: readonly SkillSource[] = ['skill', 'design-template', 'example'];
 
 // od.mode covers 271/277 vendored skills+design-templates (98%) with a
 // small, clean vocabulary — far better coverage than od.category (62%,
@@ -37,12 +43,22 @@ export function toPublicSkillId(mode: SkillMode, dirId: string): string {
   return `od:${mode}:${dirId}`;
 }
 
-// Accepts either the public `od:<mode>:<dirId>` form or a bare dirId (in
-// case a caller echoes back something slightly different) and returns the
-// dirId used as the internal map key.
+// Accepts either the public `od:<mode>:<dirId>` form (with or without the
+// `:<source>` collision-disambiguation suffix `mergeSkillPools` appends —
+// see its own comment) or a bare dirId, and returns the plain dirId. Used
+// only as a fallback when an exact public-id lookup misses; the returned
+// dirId narrows the candidate set, it doesn't uniquely resolve one entry by
+// itself when a collision suffix was stripped off.
 export function parseSkillId(input: string): string {
   const match = /^od:[^:]+:(.+)$/.exec(input.trim());
-  return match ? match[1] : input.trim();
+  let rest = match ? match[1] : input.trim();
+  for (const suffix of SKILL_SOURCES) {
+    if (rest.endsWith(`:${suffix}`)) {
+      rest = rest.slice(0, -(suffix.length + 1));
+      break;
+    }
+  }
+  return rest;
 }
 
 export interface SkillSummary {
@@ -344,6 +360,43 @@ function matchesQuery(haystacks: string[], query: string): boolean {
   return haystacks.some((h) => h.toLowerCase().includes(needle));
 }
 
+// Merges the three skill-like pools into one catalog, keyed by a
+// collision-safe public id. The three pools routinely reuse the same bare
+// directory name on purpose — an 'example' is typically the rendered
+// counterpart of a same-named skill or design-template (observed for 129 of
+// the ~444 vendored entries) — and always shares that entry's `mode` too,
+// so `od:<mode>:<dirId>` alone does not disambiguate them. A naive
+// bare-id-keyed merge (this function's predecessor) silently dropped
+// whichever entry was merged first for every such pair — 129 skills/
+// design-templates were unreachable under their own identity, replaced by
+// their own example's body/description/mode. Fixed here by keeping every
+// entry: within a colliding group, the highest-priority source (see
+// SKILL_SOURCES) keeps the plain `od:<mode>:<dirId>` id, and every other
+// entry in the group gets its own source name appended
+// (`od:<mode>:<dirId>:example`) — so nothing already relying on today's
+// (non-colliding) ids changes, and a previously-shadowed entry becomes
+// reachable under a clearly-labeled id instead of vanishing.
+function mergeSkillPools(...pools: Map<string, SkillDetail>[]): Map<string, SkillDetail> {
+  const byDirId = new Map<string, SkillDetail[]>();
+  for (const pool of pools) {
+    for (const detail of pool.values()) {
+      if (!byDirId.has(detail.id)) byDirId.set(detail.id, []);
+      byDirId.get(detail.id)!.push(detail);
+    }
+  }
+
+  const result = new Map<string, SkillDetail>();
+  for (const group of byDirId.values()) {
+    const sorted =
+      group.length === 1 ? group : [...group].sort((a, b) => SKILL_SOURCES.indexOf(a.source) - SKILL_SOURCES.indexOf(b.source));
+    sorted.forEach((detail, i) => {
+      const base = toPublicSkillId(detail.mode, detail.id);
+      result.set(i === 0 ? base : `${base}:${detail.source}`, detail);
+    });
+  }
+  return result;
+}
+
 export class ContentIndex {
   private loaded: Promise<LoadedContent> | undefined;
 
@@ -367,7 +420,7 @@ export class ContentIndex {
         loadDesignSystems(this.assetsRoot),
         loadCraft(this.assetsRoot),
       ]).then(([skills, templates, examples, designSystems, craft]) => ({
-        skills: new Map([...skills, ...templates, ...examples]),
+        skills: mergeSkillPools(skills, templates, examples),
         designSystems,
         craft,
       }));
@@ -375,15 +428,18 @@ export class ContentIndex {
     return this.loaded;
   }
 
-  async listSkills(query?: string, mode?: string): Promise<SkillSummary[]> {
+  async listSkills(query?: string, mode?: string, source?: string, remixableOnly?: boolean): Promise<SkillSummary[]> {
     const { skills } = await this.ensureLoaded();
     const wantedMode = mode?.trim().toLowerCase();
+    const wantedSource = source?.trim().toLowerCase();
     const results: SkillSummary[] = [];
-    for (const skill of skills.values()) {
+    for (const [publicId, skill] of skills) {
       if (wantedMode && skill.mode !== wantedMode) continue;
+      if (wantedSource && skill.source !== wantedSource) continue;
+      if (remixableOnly && !skill.exampleArtifactPath) continue;
       if (query && !matchesQuery([skill.id, skill.name, skill.description, ...skill.triggers], query)) continue;
       results.push({
-        id: toPublicSkillId(skill.mode, skill.id),
+        id: publicId,
         name: skill.name,
         description: skill.description,
         triggers: skill.triggers,
@@ -401,7 +457,22 @@ export class ContentIndex {
 
   async getSkill(id: string): Promise<SkillDetail | undefined> {
     const { skills } = await this.ensureLoaded();
-    return skills.get(parseSkillId(id));
+    const trimmed = id.trim();
+    // Exact match against the map's own (collision-safe) public ids first —
+    // covers every non-colliding entry, and any caller correctly round-tripping
+    // a `:<source>`-suffixed id exactly as listSkills() returned it.
+    const exact = skills.get(trimmed);
+    if (exact) return exact;
+    // Fallback for a bare dirId, or an id whose mode/suffix didn't exactly
+    // match anything stored (e.g. legacy callers that only ever knew the
+    // bare id): narrow by dirId and prefer the highest-priority source, so
+    // "give me the skill named X" resolves to the actual skill/template
+    // rather than whichever entry happened to load last.
+    const bareId = parseSkillId(trimmed);
+    const candidates = [...skills.values()].filter((s) => s.id === bareId);
+    if (candidates.length === 0) return undefined;
+    candidates.sort((a, b) => SKILL_SOURCES.indexOf(a.source) - SKILL_SOURCES.indexOf(b.source));
+    return candidates[0];
   }
 
   async listSkillModes(): Promise<SkillMode[]> {

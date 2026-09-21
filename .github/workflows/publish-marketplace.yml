@@ -1,0 +1,140 @@
+name: Publish to Marketplace
+
+# Deliberately separate from release.yml and manual-only: publishing to the
+# VS Code Marketplace is irreversible (a version can be unpublished, but not
+# un-downloaded), so it requires an already-built, already-checksummed VSIX
+# from a real GitHub Release plus an explicit typed confirmation.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (without v prefix, e.g., 0.2.0)'
+        required: true
+        type: string
+      confirmation:
+        description: 'Type "PUBLISH" to confirm marketplace publication'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  EXTENSION_NAME: open-design-agent-kit
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.validate.outputs.version }}
+
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "PUBLISH" ]; then
+            echo "❌ Confirmation failed. You must type PUBLISH to proceed."
+            exit 1
+          fi
+          echo "✅ Confirmation accepted"
+
+      - name: Validate version format
+        id: validate
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          # Marketplace releases must be plain semver — no -alpha/-beta.
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format: $VERSION (must be X.Y.Z, no prerelease suffix)"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "✅ Version validated: $VERSION"
+
+  check-release:
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check GitHub Release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          REPO="${{ github.repository }}"
+          if ! gh release view "v$VERSION" --repo "$REPO" --json tagName >/dev/null 2>&1; then
+            echo "❌ GitHub Release v$VERSION not found. Run the Release workflow first."
+            exit 1
+          fi
+          echo "✅ GitHub Release v$VERSION exists"
+
+      - name: Verify VSIX asset is attached
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          REPO="${{ github.repository }}"
+          ASSETS=$(gh release view "v$VERSION" --repo "$REPO" --json assets --jq '.assets[].name')
+          VSIX="${EXTENSION_NAME}-${VERSION}.vsix"
+          if ! echo "$ASSETS" | grep -qx "$VSIX"; then
+            echo "❌ Missing $VSIX on release v$VERSION."
+            echo "Available assets:"
+            echo "$ASSETS"
+            exit 1
+          fi
+          echo "✅ Found $VSIX on release v$VERSION"
+
+      - name: Check VSCE_PAT secret
+        run: |
+          if [ -z "${{ secrets.VSCE_PAT }}" ]; then
+            echo "❌ VSCE_PAT secret is not set (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          echo "✅ VSCE_PAT secret is configured"
+
+  publish:
+    needs: [validate, check-release]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download VSIX from release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          REPO="${{ github.repository }}"
+          mkdir -p release && cd release
+          gh release download "v$VERSION" --repo "$REPO" \
+            --pattern "${EXTENSION_NAME}-${VERSION}.vsix*"
+          ls -lh
+
+      - name: Verify checksum
+        working-directory: release
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          VSIX="${EXTENSION_NAME}-${VERSION}.vsix"
+          SHA="${VSIX}.sha256"
+          if [ ! -f "$SHA" ]; then
+            echo "⚠️  No checksum file found, skipping verification"
+          else
+            sha256sum -c "$SHA"
+            echo "✅ Checksum verified"
+          fi
+
+      - name: Publish to Marketplace
+        working-directory: release
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          VSIX="${EXTENSION_NAME}-${VERSION}.vsix"
+          npx --yes @vscode/vsce publish --packagePath "$VSIX"
+
+      - name: Publish summary
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          {
+            echo "## Marketplace Publish Summary"
+            echo ""
+            echo "**Version**: v$VERSION"
+            echo "🔗 https://marketplace.visualstudio.com/items?itemName=feima.${EXTENSION_NAME}"
+          } >> "$GITHUB_STEP_SUMMARY"

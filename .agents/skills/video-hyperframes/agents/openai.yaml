@@ -1,0 +1,3 @@
+# generated:open-design-agent-kit
+policy:
+  allow_implicit_invocation: false
