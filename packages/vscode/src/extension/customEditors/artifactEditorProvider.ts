@@ -1,8 +1,54 @@
+import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { injectScriptNonce, readArtifactComments, writeArtifactComments, type ArtifactComment } from '@feimacode/open-design-agent-kit-core';
+import {
+  injectScriptNonce,
+  readArtifactComments,
+  resolveFigmaCaptureAssets,
+  writeArtifactComments,
+  writeFigmaCapture,
+  type ArtifactComment,
+  type FigmaCaptureAssetReader,
+  type FigmaCaptureDocument,
+} from '@feimacode/open-design-agent-kit-core';
 import type { ILogService } from '../log/logService';
 import { OD_TOKENS_CSS, odFontFaceCss } from '../webviews/openDesignTheme';
+
+const MIME_BY_EXT: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
+};
+
+// Local-file-only, same posture as every image the artifact itself was
+// already allowed to reference: resolved relative to the entry file's own
+// directory (the same convention register_open_design_artifact's
+// supportingFiles already uses), never fetched remotely — a remote http(s)
+// image fill is simply dropped, matching the plugin's own documented
+// "unresolvable fill is dropped, not aborted" posture.
+function createFigmaAssetReader(workspaceRoot: string, entryPath: string): FigmaCaptureAssetReader {
+  const entryDir = path.dirname(entryPath);
+  return {
+    async read(reference: string) {
+      if (/^https?:\/\//i.test(reference)) return undefined;
+      const mimeType = MIME_BY_EXT[path.extname(reference).toLowerCase()];
+      if (!mimeType) return undefined;
+      try {
+        const abs = path.join(workspaceRoot, entryDir, reference);
+        const rel = path.relative(workspaceRoot, abs);
+        if (rel.startsWith('..') || path.isAbsolute(rel)) return undefined;
+        const bytes = await fs.readFile(abs);
+        return { base64: bytes.toString('base64'), mimeType };
+      } catch {
+        return undefined;
+      }
+    },
+  };
+}
 
 export const ARTIFACT_EDITOR_VIEW_TYPE = 'openDesign.artifactEditor';
 
@@ -107,6 +153,15 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
             isPartialQuery: true,
           });
           break;
+        case 'figma-capture':
+          if (!location) {
+            this.log.warn(`ArtifactEditorProvider: cannot push ${document.uri.fsPath} to Figma — it is outside any open workspace folder`);
+            vscode.window.showWarningMessage('OpenDesign: this artifact must be inside an open workspace folder to push it to Figma.');
+            break;
+          }
+          this.log.info(`ArtifactEditorProvider: pushing ${location.entryPath} to Figma${message.truncated ? ' (capture truncated at the node cap)' : ''}`);
+          await this.pushToFigma(location, message.capture as FigmaCaptureDocument);
+          break;
         default:
           this.log.warn(`Artifact editor received unknown message type: ${message?.type}`);
       }
@@ -124,6 +179,24 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length));
     edit.replace(document.uri, fullRange, newSource);
     await vscode.workspace.applyEdit(edit);
+  }
+
+  private async pushToFigma(location: { workspaceRoot: string; entryPath: string }, capture: FigmaCaptureDocument): Promise<void> {
+    const resolved = await resolveFigmaCaptureAssets(capture, createFigmaAssetReader(location.workspaceRoot, location.entryPath));
+    const absSidecar = await writeFigmaCapture(location.workspaceRoot, location.entryPath, resolved);
+    const sidecarRel = path.relative(location.workspaceRoot, absSidecar).split(path.sep).join('/');
+
+    const choice = await vscode.window.showInformationMessage(
+      `OpenDesign: Figma capture saved to ${sidecarRel}. Import it in Figma desktop via the vendored "OD Figma Import" plugin (Plugins → Development → Import plugin from manifest…, one-time setup).`,
+      'Copy JSON',
+      'Show Import Plugin',
+    );
+    if (choice === 'Copy JSON') {
+      await vscode.env.clipboard.writeText(JSON.stringify(resolved));
+      vscode.window.showInformationMessage('OpenDesign: capture JSON copied to clipboard — paste it into the "OD Figma Import" plugin window.');
+    } else if (choice === 'Show Import Plugin') {
+      await vscode.commands.executeCommand('openDesign.revealFigmaPlugin');
+    }
   }
 
   private buildHtml(webview: vscode.Webview, panelNonce: string): string {

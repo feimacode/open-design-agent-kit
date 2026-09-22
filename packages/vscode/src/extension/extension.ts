@@ -14,6 +14,8 @@ import { registerChatWithExampleCommand } from './commands/chatWithExample';
 import { registerOpenGalleryGridCommand } from './commands/openGalleryGridCommand';
 import { registerGalleryTreeView } from './views/galleryTreeProvider';
 import { registerImportDesignSystemCommand } from './commands/importDesignSystemCommand';
+import { registerSetFigmaTokenCommand } from './commands/setFigmaTokenCommand';
+import { registerRevealFigmaPluginCommand } from './commands/revealFigmaPluginCommand';
 import { ArtifactEditorProvider } from './customEditors/artifactEditorProvider';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -37,6 +39,8 @@ export function activate(context: vscode.ExtensionContext): void {
   registerOpenGalleryGridCommand(context, contentIndex, assetsRoot, log);
   registerGalleryTreeView(context, contentIndex);
   registerImportDesignSystemCommand(context, log);
+  registerSetFigmaTokenCommand(context, log);
+  registerRevealFigmaPluginCommand(context, log);
   context.subscriptions.push(ArtifactEditorProvider.register(context, log));
 
   log.info('OpenDesign Tools activated');

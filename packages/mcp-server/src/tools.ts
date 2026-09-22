@@ -3,16 +3,22 @@ import {
   composeCustomDesignSystemInstructions,
   composeInstructions,
   composePortToAppInstructions,
+  composePullFigmaInstructions,
   copyExampleArtifact,
   detectExistingApp,
   extractBrandEvidence,
+  fetchFigmaFrameImage,
+  fetchFigmaNode,
+  parseFigmaUrl,
   readArtifact,
   readArtifactComments,
   resolveActiveDesignSystem,
   selectCraftSections,
   setActiveDesignSystem,
+  summarizeFigmaNode,
   suggestTargetComponentPath,
   writeArtifactManifest,
+  FigmaApiError,
   type ActiveDesignSystemStore,
   type ContentIndex,
 } from '@feimacode/open-design-agent-kit-core';
@@ -23,6 +29,7 @@ export interface ToolContext {
   workspaceRoot: string;
   outputDir: string;
   assetsRoot: string;
+  figmaToken?: string;
 }
 
 function slugify(input: string): string {
@@ -108,10 +115,19 @@ export async function listRemixablePrompts(ctx: ToolContext): Promise<RemixableP
   }));
 }
 
-/** Mirrors packages/vscode/src/extension/commands/chatWithExample.ts's message construction exactly. */
+/**
+ * Deliberately does NOT say `Use the OpenDesign skill "<id>"` — VS Code's
+ * chatWithExample.ts uses exactly that phrasing safely, but on Claude Code
+ * this text becomes a fresh user message with no surrounding skill context,
+ * and the model reflexively tried invoking its own built-in Skill tool with
+ * the quoted id (which isn't a real Skill name — od:<mode>:<name> is this
+ * server's own internal skillId namespace), producing a real "Unknown
+ * skill" error observed live. Naming the MCP tool explicitly and using
+ * "skillId" instead of "skill" avoids that misread.
+ */
 export function buildRemixPromptMessage(prompt: RemixablePrompt): string {
   const brief = prompt.examplePrompt ? ` ${prompt.examplePrompt}` : '';
-  return `Use the OpenDesign skill "${prompt.publicId}" (${prompt.displayName}).${brief}`;
+  return `Remix the OpenDesign example "${prompt.displayName}" — call the open-design MCP server's remix_open_design_example tool with skillId "${prompt.publicId}".${brief}`;
 }
 
 export async function listDesignSystems(ctx: ToolContext, input: { query?: string; category?: string }): Promise<unknown> {
@@ -265,6 +281,39 @@ export async function portToAppCode(
     referenceComponentPath: input.referenceComponentPath,
   });
   return JSON.stringify({ instructions, suggestedTargetComponentPath: targetComponentPath }, null, 2);
+}
+
+export async function pullFigmaFrame(ctx: ToolContext, input: { figmaUrl: string; designSystemId?: string }): Promise<string> {
+  if (!ctx.figmaToken) {
+    return 'No Figma access token configured. Set the OPEN_DESIGN_FIGMA_TOKEN environment variable for this MCP server to a Figma personal access token (Figma → Settings → Personal access tokens) and try again.';
+  }
+
+  const ref = parseFigmaUrl(input.figmaUrl);
+  if (!ref) {
+    return `"${input.figmaUrl}" does not look like a Figma file/design URL.`;
+  }
+
+  let node;
+  try {
+    node = await fetchFigmaNode(ctx.figmaToken, ref);
+  } catch (err) {
+    return err instanceof FigmaApiError ? err.message : `Failed to fetch the Figma frame: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
+  const frameSummary = summarizeFigmaNode(node);
+  const imageUrl = await fetchFigmaFrameImage(ctx.figmaToken, ref.fileKey, ref.nodeId!);
+  const slug = slugify(node.name);
+  const suggestedEntryPath = path.posix.join(ctx.outputDir, 'figma', `${slug}.html`);
+
+  const instructions = composePullFigmaInstructions({
+    frameSummary,
+    frameName: node.name,
+    imageUrl,
+    designSystemId: input.designSystemId,
+    suggestedEntryPath,
+  });
+
+  return JSON.stringify({ instructions, suggestedEntryPath }, null, 2);
 }
 
 export async function remixExample(ctx: ToolContext, input: { skillId: string }): Promise<string> {

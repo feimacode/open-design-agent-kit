@@ -1,6 +1,7 @@
 import { ensureDataOdId, cssSelectorFor, htmlHintFor } from './dom/elementTargeting';
 import { applyPatch, serializeDocument, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
 import { computePinPosition, type ArtifactComment } from './dom/commentOverlay';
+import { captureFigmaIr } from './dom/figmaCapture';
 
 declare function acquireVsCodeApi(): {
   postMessage(message: unknown): void;
@@ -20,6 +21,7 @@ root.innerHTML = `
     <button data-mode="edit" class="od-tab">Edit</button>
     <span class="od-toolbar-spacer"></span>
     <button id="od-promote-to-app" class="od-btn" title="Port this artifact into the app's real code">Promote to App Code</button>
+    <button id="od-push-to-figma" class="od-btn" title="Export this artifact as an editable Figma layer capture">Push to Figma</button>
     <button id="od-send-comments" class="od-btn od-btn-primary" hidden>Send comments to chat</button>
   </div>
   <div class="od-stage">
@@ -34,6 +36,7 @@ const pinsLayer = document.getElementById('od-pins')!;
 const panel = document.getElementById('od-panel')!;
 const sendCommentsBtn = document.getElementById('od-send-comments') as HTMLButtonElement;
 const promoteToAppBtn = document.getElementById('od-promote-to-app') as HTMLButtonElement;
+const pushToFigmaBtn = document.getElementById('od-push-to-figma') as HTMLButtonElement;
 
 let mode: Mode = 'view';
 let comments: ArtifactComment[] = [];
@@ -521,6 +524,13 @@ sendCommentsBtn.addEventListener('click', () => {
 
 promoteToAppBtn.addEventListener('click', () => {
   vscode.postMessage({ type: 'promote-to-app-code' });
+});
+
+pushToFigmaBtn.addEventListener('click', () => {
+  const iframeDoc = iframe.contentDocument;
+  if (!iframeDoc) return;
+  const { capture, truncated } = captureFigmaIr(iframeDoc, { title: iframeDoc.title || 'Artifact' });
+  vscode.postMessage({ type: 'figma-capture', capture, truncated });
 });
 
 window.addEventListener('message', (event) => {

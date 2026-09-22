@@ -19,7 +19,7 @@ import {
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ContentIndex } from '@feimacode/open-design-agent-kit-core';
-import { getAssetsRoot, getOutputDirectory, getWorkspaceRoot } from './env';
+import { getAssetsRoot, getFigmaToken, getOutputDirectory, getWorkspaceRoot } from './env';
 import { createFileActiveDesignSystemStore } from './store';
 import * as tools from './tools';
 import type { ToolContext } from './tools';
@@ -195,6 +195,22 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'pull_open_design_figma_frame',
+      description:
+        "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. Fetches the frame's structure via the Figma REST API (requires the OPEN_DESIGN_FIGMA_TOKEN environment variable — a Figma personal access token) and a best-effort rendered image export, then returns 'instructions' embedding a deterministic structural summary as ground truth. Does NOT write any files — after calling it, author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\"), not a bare file link.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          figmaUrl: { type: 'string', description: 'A Figma frame URL, e.g. from "Copy link to selection" — must include a node-id.' },
+          designSystemId: { type: 'string', description: 'Optional design system id from list_open_design_design_systems to align the translated code with.' },
+        },
+        required: ['figmaUrl'],
+      },
+    },
+    handler: (ctx, args) => tools.pullFigmaFrame(ctx, args as { figmaUrl: string; designSystemId?: string }),
+  },
+  {
+    tool: {
       name: 'remix_open_design_example',
       description:
         "Copies a curated OpenDesign example artifact (identified by its skillId, which must have a non-empty 'exampleArtifactPath') into the workspace as a starting point, registers it, and returns instructions to MODIFY the copied file rather than regenerate it from scratch.",
@@ -214,7 +230,7 @@ function buildContext(): ToolContext {
   const assetsRoot = getAssetsRoot();
   const contentIndex = new ContentIndex(assetsRoot, () => `${workspaceRoot}/${outputDir}/design-systems`);
   const store = createFileActiveDesignSystemStore(workspaceRoot);
-  return { contentIndex, store, workspaceRoot, outputDir, assetsRoot };
+  return { contentIndex, store, workspaceRoot, outputDir, assetsRoot, figmaToken: getFigmaToken() };
 }
 
 async function main(): Promise<void> {

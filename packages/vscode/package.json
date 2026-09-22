@@ -295,6 +295,28 @@
             "entryPath"
           ]
         }
+      },
+      {
+        "name": "pull_open_design_figma_frame",
+        "displayName": "Pull Figma Frame",
+        "modelDescription": "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. Fetches the frame's structure via the Figma REST API (requires a Figma personal access token, set via the \"OpenDesign: Set Figma Access Token\" command) and a best-effort rendered image export, then returns instructions embedding a deterministic structural summary as ground truth. Does NOT write any files — after calling it, author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\"), not a bare file link.",
+        "userDescription": "Translate a Figma frame into a code artifact",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "figmaUrl": {
+              "type": "string",
+              "description": "A Figma frame URL, e.g. from \"Copy link to selection\" — must include a node-id."
+            },
+            "designSystemId": {
+              "type": "string",
+              "description": "Optional design system id from list_open_design_design_systems to align the translated code with."
+            }
+          },
+          "required": [
+            "figmaUrl"
+          ]
+        }
       }
     ],
     "chatInstructions": [
@@ -430,6 +452,18 @@
         "title": "Use in Chat",
         "category": "OpenDesign",
         "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "openDesign.setFigmaToken",
+        "title": "Set Figma Access Token",
+        "category": "OpenDesign",
+        "icon": "$(key)"
+      },
+      {
+        "command": "openDesign.revealFigmaPlugin",
+        "title": "Show Figma Import Plugin Folder",
+        "category": "OpenDesign",
+        "icon": "$(folder-opened)"
       }
     ],
     "customEditors": [

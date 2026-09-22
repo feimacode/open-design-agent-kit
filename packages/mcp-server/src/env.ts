@@ -18,6 +18,17 @@ export function getOutputDirectory(): string {
 }
 
 /**
+ * A Figma personal access token (Figma → Settings → Personal access tokens),
+ * read from this server's own process env — the same mechanism a host's MCP
+ * config already uses to pass through OPEN_DESIGN_WORKSPACE_ROOT-style vars.
+ * Undefined means pull_open_design_figma_frame degrades to a clear
+ * instructional error rather than throwing.
+ */
+export function getFigmaToken(): string | undefined {
+  return process.env.OPEN_DESIGN_FIGMA_TOKEN?.trim() || undefined;
+}
+
+/**
  * Absolute path to the vendored content this server reads from —
  * `@feimacode/open-design-agent-kit-content`'s bundled `assets/open-design`,
  * resolved via normal Node module resolution. Unlike the VS Code extension,

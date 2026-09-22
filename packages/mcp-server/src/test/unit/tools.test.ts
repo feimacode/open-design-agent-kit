@@ -74,18 +74,20 @@ describe('mcp-server tools', () => {
     assert.strictEqual(prompts[0].examplePrompt, 'Build a holographic hero section.');
   });
 
-  it('buildRemixPromptMessage mirrors chatWithExample.ts\'s message shape', async () => {
+  it('buildRemixPromptMessage names the tool and skillId explicitly, avoiding Skill-tool ambiguity', async () => {
     const ctx = await makeContext();
     const [prompt] = await tools.listRemixablePrompts(ctx);
     assert.strictEqual(
       tools.buildRemixPromptMessage(prompt),
-      'Use the OpenDesign skill "od:prototype:holo-hero" (holo-hero). Build a holographic hero section.',
+      'Remix the OpenDesign example "holo-hero" — call the open-design MCP server\'s remix_open_design_example tool with skillId "od:prototype:holo-hero". Build a holographic hero section.',
     );
+    // Regression guard for the live-observed bug: this phrasing must never read as an instruction to invoke Claude Code's own Skill tool.
+    assert.ok(!/\bskill "/i.test(tools.buildRemixPromptMessage(prompt)), 'message must not contain the ambiguous `skill "<id>"` phrasing');
   });
 
   it('buildRemixPromptMessage omits the trailing brief when examplePrompt is absent', () => {
     const message = tools.buildRemixPromptMessage({ name: 'od-prototype-x', publicId: 'od:prototype:x', displayName: 'X' });
-    assert.strictEqual(message, 'Use the OpenDesign skill "od:prototype:x" (X).');
+    assert.strictEqual(message, 'Remix the OpenDesign example "X" — call the open-design MCP server\'s remix_open_design_example tool with skillId "od:prototype:x".');
   });
 
   it('listDesignSystems marks the active one', async () => {
@@ -158,5 +160,24 @@ describe('mcp-server tools', () => {
     const ctx = await makeContext();
     const raw = await tools.remixExample(ctx, { skillId: 'od:prototype:landing-page' });
     assert.match(raw, /has no remixable starting artifact/);
+  });
+
+  it('pullFigmaFrame reports clearly when no token is configured', async () => {
+    const ctx = await makeContext();
+    const raw = await tools.pullFigmaFrame(ctx, { figmaUrl: 'https://www.figma.com/design/abc123/File?node-id=1-2' });
+    assert.match(raw, /No Figma access token configured/);
+    assert.match(raw, /OPEN_DESIGN_FIGMA_TOKEN/);
+  });
+
+  it('pullFigmaFrame reports clearly for a non-Figma URL', async () => {
+    const ctx = { ...(await makeContext()), figmaToken: 'fake-token' };
+    const raw = await tools.pullFigmaFrame(ctx, { figmaUrl: 'https://example.com/nope' });
+    assert.match(raw, /does not look like a Figma/);
+  });
+
+  it('pullFigmaFrame reports clearly when the URL has no node id', async () => {
+    const ctx = { ...(await makeContext()), figmaToken: 'fake-token' };
+    const raw = await tools.pullFigmaFrame(ctx, { figmaUrl: 'https://www.figma.com/design/abc123/File' });
+    assert.match(raw, /no node id/);
   });
 });

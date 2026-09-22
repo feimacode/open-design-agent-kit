@@ -10,6 +10,7 @@ import { SetActiveDesignSystemTool } from './setActiveDesignSystemTool';
 import { RemixExampleTool } from './remixExampleTool';
 import { CreateCustomDesignSystemTool } from './createCustomDesignSystemTool';
 import { PortToAppCodeTool } from './portToAppCodeTool';
+import { PullFigmaFrameTool } from './pullFigmaFrameTool';
 import { LoggingTool } from './loggingTool';
 
 export function registerTools(
@@ -28,6 +29,7 @@ export function registerTools(
     ['remix_open_design_example', new RemixExampleTool(contentIndex, assetsRoot)],
     ['create_open_design_design_system', new CreateCustomDesignSystemTool()],
     ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
+    ['pull_open_design_figma_frame', new PullFigmaFrameTool(context)],
   ];
 
   for (const [name, tool] of registrations) {
