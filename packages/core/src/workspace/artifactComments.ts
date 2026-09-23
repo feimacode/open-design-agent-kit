@@ -16,8 +16,11 @@ export function commentsSidecarPath(entryPath: string): string {
   return `${entryPath}.comments.json`;
 }
 
+// See the identical comment in vendored/artifactCreate.ts: an absolute
+// entryPath must be used as-is, not re-joined onto workspaceRoot, or it
+// silently resolves to a bogus nested path instead of the real file.
 function assertWorkspaceRelative(workspaceRoot: string, entryPath: string): string {
-  const abs = path.join(workspaceRoot, entryPath);
+  const abs = path.isAbsolute(entryPath) ? entryPath : path.join(workspaceRoot, entryPath);
   const rel = path.relative(workspaceRoot, abs);
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
     throw new Error(`entryPath escapes the workspace: ${entryPath}`);

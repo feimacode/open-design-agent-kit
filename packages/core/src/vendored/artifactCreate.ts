@@ -55,7 +55,16 @@ export function artifactManifestSidecarPath(entryPath: string): string {
 }
 
 function assertWorkspaceRelative(workspaceRoot: string, entryPath: string): string {
-  const abs = path.join(workspaceRoot, entryPath);
+  // path.join treats an absolute second argument the same as a relative
+  // one (concatenating segments, never discarding workspaceRoot) — so a
+  // caller that accidentally passes an already-absolute entryPath (e.g. a
+  // model echoing back a path VS Code itself reported as absolute) doesn't
+  // "escape" the workspace, it silently resolves to a bogus NESTED path
+  // that doesn't exist (`<root>/<root-with-leading-slash-stripped>/...`),
+  // producing a confusing "not found" for a file that's really there. Use
+  // an absolute entryPath as-is instead of re-joining it; the boundary
+  // check below still rejects it if it genuinely isn't under workspaceRoot.
+  const abs = path.isAbsolute(entryPath) ? entryPath : path.join(workspaceRoot, entryPath);
   const rel = path.relative(workspaceRoot, abs);
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
     throw new Error(`entryPath escapes the workspace: ${entryPath}`);

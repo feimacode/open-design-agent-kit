@@ -348,6 +348,27 @@
         }
       },
       {
+        "name": "share_open_design_artifact_to_community",
+        "displayName": "Share Artifact to Community",
+        "modelDescription": "Composes instructions for packaging a finished OpenDesign artifact as a new entry in the community-contributed design catalog (awesome-open-design). Does NOT write any files and does NOT run any commands itself. The returned instructions direct the model to: (1) derive a slug/title/description/example_prompt from the artifact itself rather than asking the user to retype anything, (2) scaffold a local SKILL.md + example.html + open-design.json folder with its own file-editing tools, (3) explicitly check in with the user before publishing anything, since that step is public and hard to reverse, and only then (4) fork/branch/push/open a PR against the community repo using its own terminal tool under the user's own already-authenticated gh/git identity — never inventing a placeholder GitHub owner if gh auth is missing.",
+        "userDescription": "Share a finished OpenDesign artifact to the community design catalog",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-share-to-community",
+        "icon": "$(cloud-upload)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryPath": {
+              "type": "string",
+              "description": "The workspace-relative path of the artifact to share (as passed to register_open_design_artifact)."
+            }
+          },
+          "required": [
+            "entryPath"
+          ]
+        }
+      },
+      {
         "name": "pull_open_design_figma_frame",
         "displayName": "Pull Figma Frame",
         "modelDescription": "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. Fetches the frame's structure via the Figma REST API (requires a Figma personal access token, set via the \"OpenDesign: Set Figma Access Token\" command) and a best-effort rendered image export, then returns instructions embedding a deterministic structural summary as ground truth. Does NOT write any files — after calling it, author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\"), not a bare file link.",

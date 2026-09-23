@@ -14,6 +14,7 @@ export * from './generation/designSystemImport';
 export * from './generation/figmaPull';
 export * from './generation/githubImport';
 export * from './generation/portToAppInstructions';
+export * from './generation/shareToCommunityInstructions';
 export * from './generation/tokenExtraction';
 
 export * from './vendored/artifactManifest';

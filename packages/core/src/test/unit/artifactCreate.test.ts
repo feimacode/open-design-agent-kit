@@ -68,6 +68,39 @@ describe('artifactCreate', () => {
       );
     });
 
+    it('resolves an already-absolute entryPath that is genuinely inside the workspace, instead of silently mis-joining it', async () => {
+      // Regression test: path.join(workspaceRoot, entryPath) does NOT
+      // discard workspaceRoot when entryPath is itself absolute — it
+      // concatenates both, producing a bogus nested path that doesn't
+      // exist, even though the real file is right there. A caller passing
+      // an absolute entryPath (e.g. a model echoing back a path VS Code
+      // reported as absolute) must still resolve correctly.
+      const workspaceRoot = await makeTempWorkspace();
+      const entryPath = 'coffee-landing/coffee-landing.html';
+      const absoluteEntryPath = path.join(workspaceRoot, entryPath);
+      await fs.mkdir(path.join(workspaceRoot, 'coffee-landing'), { recursive: true });
+      await fs.writeFile(absoluteEntryPath, '<!doctype html><h1>Coffee</h1>');
+
+      const result = await readArtifact({ workspaceRoot, entryPath: absoluteEntryPath });
+      assert.ok(result, 'expected the absolute entryPath to resolve to the real file, not a bogus nested path');
+      assert.match(result?.entryContent ?? '', /Coffee/);
+    });
+
+    it('still rejects an absolute entryPath that is genuinely outside the workspace', async () => {
+      const workspaceRoot = await makeTempWorkspace();
+      const outsideDir = await makeTempWorkspace();
+      const outsidePath = path.join(outsideDir, 'outside.html');
+      await fs.writeFile(outsidePath, '<!doctype html>');
+
+      await assert.rejects(
+        writeArtifactManifest({
+          workspaceRoot,
+          entryPath: outsidePath,
+          artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'] },
+        }),
+      );
+    });
+
     it('readArtifact returns null when the entry file does not exist', async () => {
       const workspaceRoot = await makeTempWorkspace();
       const result = await readArtifact({ workspaceRoot, entryPath: 'nope.html' });

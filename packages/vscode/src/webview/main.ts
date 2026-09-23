@@ -27,6 +27,7 @@ root.innerHTML = `
     <span class="od-toolbar-spacer"></span>
     <button id="od-promote-to-app" class="od-btn" title="Port this artifact into the app's real code">Promote to App Code</button>
     <button id="od-push-to-figma" class="od-btn" title="Export this artifact as an editable Figma layer capture">Push to Figma</button>
+    <button id="od-share-to-community" class="od-btn" title="Package this artifact as a new community design and open a PR to awesome-open-design">Share to Community</button>
     <button id="od-send-comments" class="od-btn od-btn-primary" hidden>Send comments to chat</button>
   </div>
   <div class="od-stage">
@@ -42,6 +43,7 @@ const panel = document.getElementById('od-panel')!;
 const sendCommentsBtn = document.getElementById('od-send-comments') as HTMLButtonElement;
 const promoteToAppBtn = document.getElementById('od-promote-to-app') as HTMLButtonElement;
 const pushToFigmaBtn = document.getElementById('od-push-to-figma') as HTMLButtonElement;
+const shareToCommunityBtn = document.getElementById('od-share-to-community') as HTMLButtonElement;
 const collectionNav = document.getElementById('od-collection-nav') as HTMLSpanElement;
 const collectionLabel = document.getElementById('od-collection-label') as HTMLSpanElement;
 const collectionPrevBtn = document.getElementById('od-collection-prev') as HTMLButtonElement;
@@ -540,6 +542,10 @@ pushToFigmaBtn.addEventListener('click', () => {
   if (!iframeDoc) return;
   const { capture, truncated } = captureFigmaIr(iframeDoc, { title: iframeDoc.title || 'Artifact' });
   vscode.postMessage({ type: 'figma-capture', capture, truncated });
+});
+
+shareToCommunityBtn.addEventListener('click', () => {
+  vscode.postMessage({ type: 'share-to-community' });
 });
 
 interface CollectionNavInfo {

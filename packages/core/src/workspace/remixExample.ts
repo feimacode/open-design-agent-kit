@@ -37,7 +37,10 @@ export async function copyExampleArtifact(options: {
   const sourceHtmlAbs = path.join(options.assetsRoot, options.exampleArtifactPath);
   const sourceDir = path.dirname(sourceHtmlAbs);
 
-  const destHtmlAbs = path.join(options.workspaceRoot, options.entryPath);
+  // See the identical comment in vendored/artifactCreate.ts: an absolute
+  // entryPath must be used as-is, not re-joined onto workspaceRoot, or it
+  // silently resolves to a bogus nested path instead of the real file.
+  const destHtmlAbs = path.isAbsolute(options.entryPath) ? options.entryPath : path.join(options.workspaceRoot, options.entryPath);
   const destRel = path.relative(options.workspaceRoot, destHtmlAbs);
   if (destRel.startsWith('..') || path.isAbsolute(destRel)) {
     throw new Error(`entryPath escapes the workspace: ${options.entryPath}`);

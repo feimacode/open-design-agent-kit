@@ -183,6 +183,18 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
             isPartialQuery: true,
           });
           break;
+        case 'share-to-community':
+          if (!location) {
+            this.log.warn(`ArtifactEditorProvider: cannot share ${document.uri.fsPath} — it is outside any open workspace folder`);
+            vscode.window.showWarningMessage('OpenDesign: this artifact must be inside an open workspace folder to share it to the community.');
+            break;
+          }
+          this.log.info(`ArtifactEditorProvider: sharing ${location.entryPath} to the community`);
+          await vscode.commands.executeCommand('workbench.action.chat.open', {
+            query: `Use the share_open_design_artifact_to_community tool to package the OpenDesign artifact at "${location.entryPath}" as a new community design, then follow its instructions.`,
+            isPartialQuery: true,
+          });
+          break;
         case 'figma-capture':
           if (!location) {
             this.log.warn(`ArtifactEditorProvider: cannot push ${document.uri.fsPath} to Figma — it is outside any open workspace folder`);

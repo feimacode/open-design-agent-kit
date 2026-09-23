@@ -10,6 +10,7 @@ import { SetActiveDesignSystemTool } from './setActiveDesignSystemTool';
 import { RemixExampleTool } from './remixExampleTool';
 import { CreateCustomDesignSystemTool } from './createCustomDesignSystemTool';
 import { PortToAppCodeTool } from './portToAppCodeTool';
+import { ShareToCommunityTool } from './shareToCommunityTool';
 import { PullFigmaFrameTool } from './pullFigmaFrameTool';
 import { LoggingTool } from './loggingTool';
 
@@ -30,6 +31,7 @@ export function registerTools(
     ['remix_open_design_example', new RemixExampleTool(contentIndex, assetsRoot, communityContentDir)],
     ['create_open_design_design_system', new CreateCustomDesignSystemTool()],
     ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
+    ['share_open_design_artifact_to_community', new ShareToCommunityTool()],
     ['pull_open_design_figma_frame', new PullFigmaFrameTool(context)],
   ];
 
