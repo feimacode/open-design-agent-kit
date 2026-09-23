@@ -34,7 +34,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'list_open_design_skills',
       description:
-        "Lists available OpenDesign skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts bundled with this server. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Each result's 'source' field is 'skill', 'design-template', or 'example'. Some results include an 'examplePrompt' — prefer it (or lightly adapt it) over inventing your own brief when it closely fits. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief for those. Optionally filter by a free-text query, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact.",
+        "Lists available OpenDesign skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts bundled with this server. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Each result's 'source' field is 'skill', 'design-template', or 'example'. Some results include an 'examplePrompt' — prefer it (or lightly adapt it) over inventing your own brief when it closely fits. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief for those. Optionally filter by a free-text query, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this server's own runtime and is reachable exclusively through this tool).",
       inputSchema: {
         type: 'object',
         properties: {
@@ -63,7 +63,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'list_open_design_design_systems',
       description:
-        "Lists available OpenDesign design systems — brand-inspired visual token sets (palette, typography, spacing, component rules), each with a 'category' and an 'active' flag marking the current active design system, if any. Optionally filter by a free-text query and/or an exact category.",
+        "Lists available OpenDesign design systems — brand-inspired visual token sets (palette, typography, spacing, component rules), each with a 'category' and an 'active' flag marking the current active design system, if any. Optionally filter by a free-text query and/or an exact category. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this server's own runtime and is reachable exclusively through this tool).",
       inputSchema: {
         type: 'object',
         properties: {
@@ -90,11 +90,32 @@ const TOOL_DEFS: ToolDef[] = [
               'Optional design system id from list_open_design_design_systems. If omitted, falls back to the active design system. If given explicitly, it also becomes the new active one.',
           },
           brief: { type: 'string', description: "The user's design brief / request, in their own words." },
+          collectionId: {
+            type: 'string',
+            description:
+              'Set this (a slug you derive once from the collection name, reused verbatim on every call) when this artifact is one screen of a multi-screen design collection — see the "design collections" guidance for the full workflow.',
+          },
+          collectionName: {
+            type: 'string',
+            description: 'A short display name for the collection, e.g. "Fintech Onboarding Flow". Required together with collectionId.',
+          },
+          screenRole: {
+            type: 'string',
+            description: 'Required together with collectionId — this screen\'s short role label, e.g. "splash", "value-prop", "checkout".',
+          },
+          screenTotal: {
+            type: 'number',
+            description: 'Optional: the total number of screens you\'ve planned for this collection, for an accurate "screen N of M" framing.',
+          },
         },
         required: ['skillId', 'brief'],
       },
     },
-    handler: (ctx, args) => tools.prepareBrief(ctx, args as { skillId: string; designSystemId?: string; brief: string }),
+    handler: (ctx, args) =>
+      tools.prepareBrief(
+        ctx,
+        args as { skillId: string; designSystemId?: string; brief: string; collectionId?: string; collectionName?: string; screenRole?: string; screenTotal?: number },
+      ),
   },
   {
     tool: {
@@ -118,6 +139,10 @@ const TOOL_DEFS: ToolDef[] = [
           },
           sourceSkillId: { type: 'string', description: 'The skillId used to generate this artifact, if any.' },
           designSystemId: { type: 'string', description: 'The designSystemId used to generate this artifact, if any.' },
+          collectionId: { type: 'string', description: 'The same collectionId passed to prepare_open_design_brief, if this screen is part of a design collection.' },
+          collectionName: { type: 'string', description: 'The same collectionName passed to prepare_open_design_brief, if this screen is part of a design collection.' },
+          screenIndex: { type: 'number', description: '0-based position of this screen within its collection (0 for the first screen, 1 for the second, ...).' },
+          screenRole: { type: 'string', description: 'The same screenRole passed to prepare_open_design_brief, if this screen is part of a design collection.' },
         },
         required: ['entryPath', 'kind', 'title'],
       },
@@ -125,7 +150,18 @@ const TOOL_DEFS: ToolDef[] = [
     handler: (ctx, args) =>
       tools.registerArtifact(
         ctx,
-        args as { entryPath: string; kind: string; title: string; supportingFiles?: string[]; sourceSkillId?: string; designSystemId?: string },
+        args as {
+          entryPath: string;
+          kind: string;
+          title: string;
+          supportingFiles?: string[];
+          sourceSkillId?: string;
+          designSystemId?: string;
+          collectionId?: string;
+          collectionName?: string;
+          screenIndex?: number;
+          screenRole?: string;
+        },
       ),
   },
   {

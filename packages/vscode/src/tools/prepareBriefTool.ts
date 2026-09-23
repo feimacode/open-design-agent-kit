@@ -1,7 +1,13 @@
 import * as vscode from 'vscode';
 import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
-import { composeInstructions, resolveActiveDesignSystem, selectCraftSections } from '@feimacode/open-design-agent-kit-core';
-import { suggestEntryPath } from '../workspace/artifactWriter';
+import {
+  composeInstructions,
+  findCollectionArtifacts,
+  resolveActiveDesignSystem,
+  selectCraftSections,
+  suggestCollectionScreenEntryPath,
+} from '@feimacode/open-design-agent-kit-core';
+import { getOutputDirectory, getWorkspaceRoot, slugify, suggestEntryPath } from '../workspace/artifactWriter';
 import { vscodeActiveDesignSystemStore } from '../workspace/activeDesignSystem';
 import { detectExistingApp } from '@feimacode/open-design-agent-kit-core';
 
@@ -9,6 +15,10 @@ interface PrepareBriefInput {
   skillId: string;
   designSystemId?: string;
   brief: string;
+  collectionId?: string;
+  collectionName?: string;
+  screenRole?: string;
+  screenTotal?: number;
 }
 
 export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefInput> {
@@ -17,7 +27,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<PrepareBriefInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { skillId, designSystemId: explicitDesignSystemId, brief } = options.input;
+    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal } = options.input;
 
     const skill = await this.contentIndex.getSkill(skillId);
     if (!skill) {
@@ -53,12 +63,39 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
 
     const allCraftSections = await this.contentIndex.craftSections();
     const craftSections = selectCraftSections(allCraftSections, designSystem?.craftSuggested);
-    const suggestedEntryPath = suggestEntryPath(brief, skill.name);
     // Deliberately reads workspaceFolders directly rather than
     // getWorkspaceRoot() (which throws with no folder open) — this tool has
     // never required an open workspace to compose instructions, and
     // detection must degrade to a no-op, not a new failure mode.
     const existingAppFrameworks = await detectExistingApp(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);
+
+    let suggestedEntryPath: string;
+    let collectionContext: Parameters<typeof composeInstructions>[0]['collectionContext'];
+    if (collectionId) {
+      if (!screenRole) {
+        return new vscode.LanguageModelToolResult([
+          new vscode.LanguageModelTextPart(
+            'screenRole is required when collectionId is given — a short label for this screen\'s role in the flow, e.g. "splash", "value-prop", "checkout".',
+          ),
+        ]);
+      }
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        return new vscode.LanguageModelToolResult([
+          new vscode.LanguageModelTextPart('No workspace folder is open. Open a folder in VS Code before generating a design collection.'),
+        ]);
+      }
+      const siblings = await findCollectionArtifacts(getWorkspaceRoot(), getOutputDirectory(), collectionId);
+      suggestedEntryPath = suggestCollectionScreenEntryPath(getOutputDirectory(), collectionId, slugify(screenRole));
+      collectionContext = {
+        collectionName: collectionName ?? collectionId,
+        index: siblings.length + 1,
+        total: screenTotal ?? siblings.length + 1,
+        role: screenRole,
+        siblingScreens: siblings.map((s) => ({ role: s.screenRole ?? '?', title: s.title })),
+      };
+    } else {
+      suggestedEntryPath = suggestEntryPath(brief, skill.name);
+    }
 
     const instructions = composeInstructions({
       skillName: skill.name,
@@ -69,6 +106,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       brief,
       suggestedEntryPath,
       existingAppFrameworks,
+      collectionContext,
     });
 
     const payload = {

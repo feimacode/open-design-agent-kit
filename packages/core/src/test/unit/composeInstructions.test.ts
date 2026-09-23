@@ -76,6 +76,48 @@ describe('composeInstructions', () => {
     assert.match(withFrameworks, /Detected: React, Next\.js/);
     assert.match(withFrameworks, /does NOT change where or how you write the artifact/);
   });
+
+  it('omits the collection section when no collectionContext is given', () => {
+    const text = composeInstructions({
+      skillName: 'Landing Page',
+      skillBody: 'body',
+      brief: 'brief',
+      suggestedEntryPath: 'x.html',
+    });
+    assert.doesNotMatch(text, /Part of a design collection/);
+  });
+
+  it('describes this screen and its siblings when collectionContext is given', () => {
+    const text = composeInstructions({
+      skillName: 'Onboarding Screen',
+      skillBody: 'body',
+      brief: 'brief',
+      suggestedEntryPath: 'x.html',
+      collectionContext: {
+        collectionName: 'Fintech Onboarding Flow',
+        index: 2,
+        total: 4,
+        role: 'value-prop',
+        siblingScreens: [{ role: 'splash', title: 'Welcome' }],
+      },
+    });
+    assert.match(text, /Part of a design collection/);
+    assert.match(text, /screen 2 of 4/);
+    assert.match(text, /Fintech Onboarding Flow/);
+    assert.match(text, /\*\*value-prop\*\*/);
+    assert.match(text, /\*\*splash\*\* — "Welcome"/);
+  });
+
+  it('notes when this is the first screen with no siblings yet', () => {
+    const text = composeInstructions({
+      skillName: 'Onboarding Screen',
+      skillBody: 'body',
+      brief: 'brief',
+      suggestedEntryPath: 'x.html',
+      collectionContext: { collectionName: 'Flow', index: 1, total: 3, role: 'splash', siblingScreens: [] },
+    });
+    assert.match(text, /none yet — this is the first screen/);
+  });
 });
 
 describe('selectCraftSections', () => {

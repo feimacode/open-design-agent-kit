@@ -19,6 +19,11 @@ root.innerHTML = `
     <button data-mode="view" class="od-tab active">View</button>
     <button data-mode="comment" class="od-tab">Comment</button>
     <button data-mode="edit" class="od-tab">Edit</button>
+    <span id="od-collection-nav" class="od-collection-nav" hidden>
+      <button id="od-collection-prev" class="od-btn" title="Previous screen in this collection">◀</button>
+      <span id="od-collection-label" class="od-collection-label"></span>
+      <button id="od-collection-next" class="od-btn" title="Next screen in this collection">▶</button>
+    </span>
     <span class="od-toolbar-spacer"></span>
     <button id="od-promote-to-app" class="od-btn" title="Port this artifact into the app's real code">Promote to App Code</button>
     <button id="od-push-to-figma" class="od-btn" title="Export this artifact as an editable Figma layer capture">Push to Figma</button>
@@ -37,6 +42,10 @@ const panel = document.getElementById('od-panel')!;
 const sendCommentsBtn = document.getElementById('od-send-comments') as HTMLButtonElement;
 const promoteToAppBtn = document.getElementById('od-promote-to-app') as HTMLButtonElement;
 const pushToFigmaBtn = document.getElementById('od-push-to-figma') as HTMLButtonElement;
+const collectionNav = document.getElementById('od-collection-nav') as HTMLSpanElement;
+const collectionLabel = document.getElementById('od-collection-label') as HTMLSpanElement;
+const collectionPrevBtn = document.getElementById('od-collection-prev') as HTMLButtonElement;
+const collectionNextBtn = document.getElementById('od-collection-next') as HTMLButtonElement;
 
 let mode: Mode = 'view';
 let comments: ArtifactComment[] = [];
@@ -533,11 +542,37 @@ pushToFigmaBtn.addEventListener('click', () => {
   vscode.postMessage({ type: 'figma-capture', capture, truncated });
 });
 
+interface CollectionNavInfo {
+  label: string;
+  prevEntryPath?: string;
+  nextEntryPath?: string;
+}
+
+function applyCollectionInfo(collection: CollectionNavInfo | undefined): void {
+  if (!collection) {
+    collectionNav.hidden = true;
+    return;
+  }
+  collectionNav.hidden = false;
+  collectionLabel.textContent = collection.label;
+  collectionPrevBtn.disabled = !collection.prevEntryPath;
+  collectionNextBtn.disabled = !collection.nextEntryPath;
+}
+
+collectionPrevBtn.addEventListener('click', () => {
+  vscode.postMessage({ type: 'nav-collection', direction: 'prev' });
+});
+
+collectionNextBtn.addEventListener('click', () => {
+  vscode.postMessage({ type: 'nav-collection', direction: 'next' });
+});
+
 window.addEventListener('message', (event) => {
   const message = event.data;
   switch (message?.type) {
     case 'init':
       comments = message.comments ?? [];
+      applyCollectionInfo(message.collection);
       setIframeContent(message.html);
       break;
     case 'source-updated':
@@ -549,6 +584,7 @@ window.addEventListener('message', (event) => {
       hoverElement = null;
       selectedElement = null;
       panel.hidden = true;
+      applyCollectionInfo(message.collection);
       setIframeContent(message.html);
       break;
   }

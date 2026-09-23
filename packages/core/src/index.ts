@@ -8,6 +8,7 @@ export * from './content/exampleHtml';
 
 export * from './generation/composeInstructions';
 export * from './generation/brandExtraction';
+export * from './generation/collectionEntryPath';
 export * from './generation/customDesignSystemInstructions';
 export * from './generation/designSystemImport';
 export * from './generation/figmaPull';
@@ -21,5 +22,6 @@ export * from './vendored/artifactCreate';
 export * from './workspace/activeDesignSystemStore';
 export * from './workspace/appDetection';
 export * from './workspace/artifactComments';
+export * from './workspace/collectionScan';
 export * from './workspace/figmaCapture';
 export * from './workspace/remixExample';

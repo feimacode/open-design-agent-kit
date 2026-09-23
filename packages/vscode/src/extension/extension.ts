@@ -13,6 +13,7 @@ import { registerPreviewExampleCommand } from './commands/previewExampleCommand'
 import { registerChatWithExampleCommand } from './commands/chatWithExample';
 import { registerOpenGalleryGridCommand } from './commands/openGalleryGridCommand';
 import { registerGalleryTreeView } from './views/galleryTreeProvider';
+import { registerCollectionsTreeView } from './views/collectionsTreeProvider';
 import { registerImportDesignSystemCommand } from './commands/importDesignSystemCommand';
 import { registerSetFigmaTokenCommand } from './commands/setFigmaTokenCommand';
 import { registerRevealFigmaPluginCommand } from './commands/revealFigmaPluginCommand';
@@ -38,6 +39,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerChatWithExampleCommand(context, contentIndex, log);
   registerOpenGalleryGridCommand(context, contentIndex, assetsRoot, log);
   registerGalleryTreeView(context, contentIndex);
+  registerCollectionsTreeView(context);
   registerImportDesignSystemCommand(context, log);
   registerSetFigmaTokenCommand(context, log);
   registerRevealFigmaPluginCommand(context, log);

@@ -9,6 +9,10 @@ interface RegisterArtifactInput {
   supportingFiles?: string[];
   sourceSkillId?: string;
   designSystemId?: string;
+  collectionId?: string;
+  collectionName?: string;
+  screenIndex?: number;
+  screenRole?: string;
 }
 
 const KIND_TO_RENDERER: Record<string, string> = {
@@ -47,7 +51,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<RegisterArtifactInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId } = options.input;
+    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole } = options.input;
 
     const renderer = KIND_TO_RENDERER[kind];
     const exportsList = KIND_TO_EXPORTS[kind];
@@ -68,6 +72,10 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
           supportingFiles,
           sourceSkillId,
           designSystemId,
+          collectionId,
+          collectionName,
+          screenIndex,
+          screenRole,
         },
       });
 

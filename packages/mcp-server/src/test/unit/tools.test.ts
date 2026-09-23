@@ -180,4 +180,60 @@ describe('mcp-server tools', () => {
     const raw = await tools.pullFigmaFrame(ctx, { figmaUrl: 'https://www.figma.com/design/abc123/File' });
     assert.match(raw, /no node id/);
   });
+
+  it('prepareBrief requires screenRole when collectionId is given', async () => {
+    const ctx = await makeContext();
+    const raw = await tools.prepareBrief(ctx, { skillId: 'od:prototype:landing-page', brief: 'Splash screen', collectionId: 'onboarding' });
+    assert.match(raw, /screenRole is required/);
+  });
+
+  it('prepareBrief composes a collection-aware entry path and instructions for the first screen', async () => {
+    const ctx = await makeContext();
+    const raw = await tools.prepareBrief(ctx, {
+      skillId: 'od:prototype:landing-page',
+      brief: 'Splash screen',
+      collectionId: 'onboarding',
+      collectionName: 'Onboarding Flow',
+      screenRole: 'splash',
+      screenTotal: 2,
+    });
+    const payload = JSON.parse(raw);
+    assert.strictEqual(payload.suggestedEntryPath, '.open-design/onboarding/splash.html');
+    assert.match(payload.instructions, /Part of a design collection/);
+    assert.match(payload.instructions, /screen 1 of 2/);
+    assert.match(payload.instructions, /none yet — this is the first screen/);
+  });
+
+  it('registerArtifact and findCollectionArtifacts round-trip a two-screen collection in order', async () => {
+    const ctx = await makeContext();
+    for (const [entry, index, role] of [
+      ['.open-design/onboarding/value-prop.html', 1, 'value-prop'],
+      ['.open-design/onboarding/splash.html', 0, 'splash'],
+    ] as const) {
+      const abs = path.join(ctx.workspaceRoot, entry);
+      await fs.mkdir(path.dirname(abs), { recursive: true });
+      await fs.writeFile(abs, `<!doctype html><h1>${role}</h1>`);
+      await tools.registerArtifact(ctx, {
+        entryPath: entry,
+        kind: 'html',
+        title: role,
+        collectionId: 'onboarding',
+        collectionName: 'Onboarding Flow',
+        screenIndex: index,
+        screenRole: role,
+      });
+    }
+
+    const siblingsForNextCall = await tools.prepareBrief(ctx, {
+      skillId: 'od:prototype:landing-page',
+      brief: 'Checkout screen',
+      collectionId: 'onboarding',
+      collectionName: 'Onboarding Flow',
+      screenRole: 'checkout',
+    });
+    const payload = JSON.parse(siblingsForNextCall);
+    assert.match(payload.instructions, /screen 3 of 3/);
+    assert.match(payload.instructions, /\*\*splash\*\* — "splash"/);
+    assert.match(payload.instructions, /\*\*value-prop\*\* — "value-prop"/);
+  });
 });

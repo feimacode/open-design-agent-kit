@@ -2,7 +2,9 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
+  findCollectionArtifacts,
   injectScriptNonce,
+  readArtifact,
   readArtifactComments,
   resolveFigmaCaptureAssets,
   writeArtifactComments,
@@ -13,6 +15,7 @@ import {
 } from '@feimacode/open-design-agent-kit-core';
 import type { ILogService } from '../log/logService';
 import { OD_TOKENS_CSS, odFontFaceCss } from '../webviews/openDesignTheme';
+import { getOutputDirectory } from '../../workspace/artifactWriter';
 
 const MIME_BY_EXT: Record<string, string> = {
   '.png': 'image/png',
@@ -74,6 +77,31 @@ function formatCommentsForChat(comments: ArtifactComment[]): string {
   return `Apply these OpenDesign preview comments. Change ONLY the elements identified below; leave everything else as-is:\n\n${items}\n`;
 }
 
+interface CollectionNavInfo {
+  label: string;
+  prevEntryPath?: string;
+  nextEntryPath?: string;
+}
+
+/** Live-derived, never cached — mirrors this project's "always re-scan" posture for workspace-generated content (see collectionScan.ts). A screen can gain new siblings between opens in the same session. */
+async function resolveCollectionNav(location: { workspaceRoot: string; entryPath: string } | undefined): Promise<CollectionNavInfo | undefined> {
+  if (!location) return undefined;
+  const artifact = await readArtifact({ workspaceRoot: location.workspaceRoot, entryPath: location.entryPath });
+  const collectionId = artifact?.manifest?.collectionId;
+  if (typeof collectionId !== 'string' || !collectionId) return undefined;
+  const collectionName = typeof artifact?.manifest?.collectionName === 'string' ? artifact.manifest.collectionName : collectionId;
+
+  const siblings = await findCollectionArtifacts(location.workspaceRoot, getOutputDirectory(), collectionId);
+  const index = siblings.findIndex((s) => s.entryPath === location.entryPath);
+  if (index === -1) return undefined;
+
+  return {
+    label: `Screen ${index + 1} of ${siblings.length} — ${collectionName}`,
+    prevEntryPath: index > 0 ? siblings[index - 1].entryPath : undefined,
+    nextEntryPath: index < siblings.length - 1 ? siblings[index + 1].entryPath : undefined,
+  };
+}
+
 export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -110,12 +138,14 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
 
     const sendInit = async () => {
       const comments = location ? await readArtifactComments(location.workspaceRoot, location.entryPath) : [];
-      webviewPanel.webview.postMessage({ type: 'init', html: injectScriptNonce(document.getText(), panelNonce), comments });
+      const collection = await resolveCollectionNav(location);
+      webviewPanel.webview.postMessage({ type: 'init', html: injectScriptNonce(document.getText(), panelNonce), comments, collection });
     };
 
-    const changeSub = vscode.workspace.onDidChangeTextDocument((e) => {
+    const changeSub = vscode.workspace.onDidChangeTextDocument(async (e) => {
       if (e.document.uri.toString() === document.uri.toString()) {
-        webviewPanel.webview.postMessage({ type: 'source-updated', html: injectScriptNonce(document.getText(), panelNonce) });
+        const collection = await resolveCollectionNav(location);
+        webviewPanel.webview.postMessage({ type: 'source-updated', html: injectScriptNonce(document.getText(), panelNonce), collection });
       }
     });
 
@@ -162,6 +192,15 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
           this.log.info(`ArtifactEditorProvider: pushing ${location.entryPath} to Figma${message.truncated ? ' (capture truncated at the node cap)' : ''}`);
           await this.pushToFigma(location, message.capture as FigmaCaptureDocument);
           break;
+        case 'nav-collection': {
+          const nav = await resolveCollectionNav(location);
+          const target = message.direction === 'prev' ? nav?.prevEntryPath : nav?.nextEntryPath;
+          if (!target || !location) break;
+          this.log.info(`ArtifactEditorProvider: navigating collection ${message.direction} from ${location.entryPath} to ${target}`);
+          const targetUri = vscode.Uri.file(path.join(location.workspaceRoot, target));
+          await vscode.commands.executeCommand('vscode.openWith', targetUri, ARTIFACT_EDITOR_VIEW_TYPE);
+          break;
+        }
         default:
           this.log.warn(`Artifact editor received unknown message type: ${message?.type}`);
       }
@@ -238,6 +277,11 @@ ${OD_TOKENS_CSS}
   .od-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 14px; min-height: 44px; background: var(--od-bg); border-bottom: 1px solid var(--od-border-soft); }
   .od-mode-btn { }
   .od-toolbar-spacer { flex: 1; }
+  .od-collection-nav { display: flex; align-items: center; gap: 6px; margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--od-border-soft); }
+  .od-collection-nav[hidden] { display: none; }
+  .od-collection-nav .od-btn { padding: 0 8px; }
+  .od-collection-nav .od-btn:disabled { opacity: 0.35; cursor: default; }
+  .od-collection-label { font-size: 11px; color: var(--od-text-muted); white-space: nowrap; }
   .od-stage { position: relative; flex: 1; min-height: 0; }
   .od-preview { width: 100%; height: 100%; border: none; background: white; }
   .od-pins { position: fixed; inset: 0; pointer-events: none; }

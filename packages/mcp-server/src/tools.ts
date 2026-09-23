@@ -9,12 +9,14 @@ import {
   extractBrandEvidence,
   fetchFigmaFrameImage,
   fetchFigmaNode,
+  findCollectionArtifacts,
   parseFigmaUrl,
   readArtifact,
   readArtifactComments,
   resolveActiveDesignSystem,
   selectCraftSections,
   setActiveDesignSystem,
+  suggestCollectionScreenEntryPath,
   summarizeFigmaNode,
   suggestTargetComponentPath,
   writeArtifactManifest,
@@ -145,7 +147,15 @@ export async function listDesignSystems(ctx: ToolContext, input: { query?: strin
 
 export async function prepareBrief(
   ctx: ToolContext,
-  input: { skillId: string; designSystemId?: string; brief: string },
+  input: {
+    skillId: string;
+    designSystemId?: string;
+    brief: string;
+    collectionId?: string;
+    collectionName?: string;
+    screenRole?: string;
+    screenTotal?: number;
+  },
 ): Promise<string> {
   const skill = await ctx.contentIndex.getSkill(input.skillId);
   if (!skill) {
@@ -162,8 +172,26 @@ export async function prepareBrief(
 
   const allCraftSections = await ctx.contentIndex.craftSections();
   const craftSections = selectCraftSections(allCraftSections, designSystem?.craftSuggested);
-  const suggestedEntryPath = suggestEntryPath(ctx, input.brief, skill.name);
   const existingAppFrameworks = await detectExistingApp(ctx.workspaceRoot);
+
+  let suggestedEntryPath: string;
+  let collectionContext: Parameters<typeof composeInstructions>[0]['collectionContext'];
+  if (input.collectionId) {
+    if (!input.screenRole) {
+      return 'screenRole is required when collectionId is given — a short label for this screen\'s role in the flow, e.g. "splash", "value-prop", "checkout".';
+    }
+    const siblings = await findCollectionArtifacts(ctx.workspaceRoot, ctx.outputDir, input.collectionId);
+    suggestedEntryPath = suggestCollectionScreenEntryPath(ctx.outputDir, input.collectionId, slugify(input.screenRole));
+    collectionContext = {
+      collectionName: input.collectionName ?? input.collectionId,
+      index: siblings.length + 1,
+      total: input.screenTotal ?? siblings.length + 1,
+      role: input.screenRole,
+      siblingScreens: siblings.map((s) => ({ role: s.screenRole ?? '?', title: s.title })),
+    };
+  } else {
+    suggestedEntryPath = suggestEntryPath(ctx, input.brief, skill.name);
+  }
 
   const instructions = composeInstructions({
     skillName: skill.name,
@@ -174,6 +202,7 @@ export async function prepareBrief(
     brief: input.brief,
     suggestedEntryPath,
     existingAppFrameworks,
+    collectionContext,
   });
 
   const payload = {
@@ -195,6 +224,10 @@ export async function registerArtifact(
     supportingFiles?: string[];
     sourceSkillId?: string;
     designSystemId?: string;
+    collectionId?: string;
+    collectionName?: string;
+    screenIndex?: number;
+    screenRole?: string;
   },
 ): Promise<string> {
   const renderer = KIND_TO_RENDERER[input.kind];
@@ -215,6 +248,10 @@ export async function registerArtifact(
         supportingFiles: input.supportingFiles,
         sourceSkillId: input.sourceSkillId,
         designSystemId: input.designSystemId,
+        collectionId: input.collectionId,
+        collectionName: input.collectionName,
+        screenIndex: input.screenIndex,
+        screenRole: input.screenRole,
       },
     });
 

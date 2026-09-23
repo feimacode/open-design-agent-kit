@@ -39,6 +39,56 @@ describe('artifactManifest', () => {
       assert.strictEqual(result.ok, true);
       if (result.ok) assert.strictEqual(result.value, null);
     });
+
+    it('accepts and round-trips collection fields', () => {
+      const result = validateArtifactManifestInput(
+        {
+          kind: 'html',
+          renderer: 'html',
+          exports: ['html'],
+          collectionId: 'fintech-onboarding',
+          collectionName: 'Fintech Onboarding Flow',
+          screenRole: 'splash',
+          screenIndex: 0,
+        },
+        'index.html',
+      );
+      assert.strictEqual(result.ok, true);
+      if (result.ok) {
+        assert.strictEqual(result.value?.collectionId, 'fintech-onboarding');
+        assert.strictEqual(result.value?.collectionName, 'Fintech Onboarding Flow');
+        assert.strictEqual(result.value?.screenRole, 'splash');
+        assert.strictEqual(result.value?.screenIndex, 0);
+      }
+    });
+
+    it('omits collection fields entirely when not given', () => {
+      const result = validateArtifactManifestInput({ kind: 'html', renderer: 'html', exports: ['html'] }, 'index.html');
+      assert.strictEqual(result.ok, true);
+      if (result.ok) {
+        assert.strictEqual(result.value?.collectionId, undefined);
+        assert.strictEqual(result.value?.screenIndex, undefined);
+      }
+    });
+
+    it('rejects a screenIndex out of bounds', () => {
+      const negative = validateArtifactManifestInput({ kind: 'html', renderer: 'html', exports: ['html'], screenIndex: -1 }, 'index.html');
+      assert.strictEqual(negative.ok, false);
+
+      const tooLarge = validateArtifactManifestInput({ kind: 'html', renderer: 'html', exports: ['html'], screenIndex: 1000 }, 'index.html');
+      assert.strictEqual(tooLarge.ok, false);
+
+      const notAnInteger = validateArtifactManifestInput({ kind: 'html', renderer: 'html', exports: ['html'], screenIndex: 1.5 }, 'index.html');
+      assert.strictEqual(notAnInteger.ok, false);
+    });
+
+    it('rejects a collectionId over the max length', () => {
+      const result = validateArtifactManifestInput(
+        { kind: 'html', renderer: 'html', exports: ['html'], collectionId: 'x'.repeat(101) },
+        'index.html',
+      );
+      assert.strictEqual(result.ok, false);
+    });
   });
 
   describe('inferLegacyManifest', () => {
