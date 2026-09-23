@@ -43,7 +43,7 @@
       {
         "name": "list_open_design_skills",
         "displayName": "List OpenDesign Skills",
-        "modelDescription": "Lists available OpenDesign skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', or 'example' (all interchangeable as skillId). Some results include an 'examplePrompt' — a curated, ready-to-use brief — which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
+        "modelDescription": "Lists available OpenDesign skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', 'example', or 'community' (all interchangeable as skillId) — 'community' entries are fetched at runtime from a separate, unreviewed community repo (awesome-open-design) and should be flagged to the user as such if it matters to their request. Some results include an 'examplePrompt' — a curated, ready-to-use brief — which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
         "userDescription": "Browse OpenDesign's bundled design skills",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-skills",
@@ -75,7 +75,8 @@
               "enum": [
                 "skill",
                 "design-template",
-                "example"
+                "example",
+                "community"
               ],
               "description": "Optional exact source filter."
             },
@@ -523,6 +524,12 @@
         "title": "Refresh Collections",
         "category": "OpenDesign",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "openDesign.syncCommunityContent",
+        "title": "Sync Community Designs",
+        "category": "OpenDesign",
+        "icon": "$(cloud-download)"
       }
     ],
     "customEditors": [
@@ -619,6 +626,16 @@
           "type": "string",
           "default": "",
           "markdownDescription": "The currently active OpenDesign design system id. Used as the default for `prepare_open_design_brief` when no `designSystemId` is given. Set via the \"OpenDesign: Browse Design Systems\" command, the `set_active_design_system` tool, or by generating with an explicit design system — leave empty for none."
+        },
+        "openDesign.communityContentEnabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Whether to fetch and show community-contributed remixable designs from [awesome-open-design](https://github.com/feimacode/awesome-open-design) alongside the built-in gallery. This content is not reviewed by the extension author. Fetched automatically once on first activation, and re-synced any time via the \"OpenDesign: Sync Community Designs\" command."
+        },
+        "openDesign.communityContentRef": {
+          "type": "string",
+          "default": "v0.1.0",
+          "markdownDescription": "The tag of [awesome-open-design](https://github.com/feimacode/awesome-open-design) to fetch community designs from. Change this, then run \"OpenDesign: Sync Community Designs\", to track a different release."
         }
       }
     }
@@ -634,7 +651,8 @@
   },
   "dependencies": {
     "@feimacode/open-design-agent-kit-core": "*",
-    "gray-matter": "^4.0.3"
+    "gray-matter": "^4.0.3",
+    "tar": "^7.4.3"
   },
   "devDependencies": {
     "@types/vscode": "^1.104.0"

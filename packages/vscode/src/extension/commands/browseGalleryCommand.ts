@@ -12,6 +12,7 @@ export function registerBrowseGalleryCommand(
   contentIndex: ContentIndex,
   assetsRoot: string,
   log: ILogService,
+  communityContentDir?: string,
 ): void {
   const disposable = vscode.commands.registerCommand('openDesign.browseGallery', async () => {
     log.info('Command: openDesign.browseGallery');
@@ -29,7 +30,15 @@ export function registerBrowseGalleryCommand(
         items.push({ id: '', label: category, kind: vscode.QuickPickItemKind.Separator });
         lastCategory = category;
       }
-      items.push({ id: entry.id, label: entry.name, description: entry.category, detail: entry.description });
+      const descriptionParts = [entry.category, entry.source === 'community' ? 'community' : undefined].filter(
+        (p): p is string => !!p,
+      );
+      items.push({
+        id: entry.id,
+        label: entry.name,
+        description: descriptionParts.length > 0 ? descriptionParts.join(' · ') : undefined,
+        detail: entry.description,
+      });
     }
 
     const picked = await vscode.window.showQuickPick(items, {
@@ -44,7 +53,7 @@ export function registerBrowseGalleryCommand(
     }
 
     log.info(`browseGallery: remixing ${picked.id}`);
-    await remixAndOpen(contentIndex, assetsRoot, picked.id, log);
+    await remixAndOpen(contentIndex, assetsRoot, picked.id, log, communityContentDir);
   });
 
   context.subscriptions.push(disposable);

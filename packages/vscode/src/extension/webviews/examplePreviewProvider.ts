@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { injectScriptNonce, loadExampleHtml, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import { injectScriptNonce, loadExampleHtml, resolveContentRoot, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import { remixAndOpen } from '../commands/remixAndOpen';
 import type { ILogService } from '../log/logService';
 import { OD_TOKENS_CSS, odFontFaceCss } from './openDesignTheme';
@@ -29,7 +29,14 @@ export class ExamplePreviewProvider {
   // into the example HTML it posts, or the CSP's nonce check won't match.
   private readonly panelNonce = nonce();
 
-  static show(context: vscode.ExtensionContext, contentIndex: ContentIndex, assetsRoot: string, skillId: string, log: ILogService): void {
+  static show(
+    context: vscode.ExtensionContext,
+    contentIndex: ContentIndex,
+    assetsRoot: string,
+    skillId: string,
+    log: ILogService,
+    communityContentDir?: string,
+  ): void {
     log.info(`ExamplePreviewProvider: showing ${skillId}`);
     if (ExamplePreviewProvider.instance) {
       // The webview already sent 'ready' in a prior activation, so it's
@@ -45,7 +52,7 @@ export class ExamplePreviewProvider {
       localResourceRoots: [context.extensionUri],
     });
 
-    ExamplePreviewProvider.instance = new ExamplePreviewProvider(context, panel, contentIndex, assetsRoot, skillId, log);
+    ExamplePreviewProvider.instance = new ExamplePreviewProvider(context, panel, contentIndex, assetsRoot, skillId, log, communityContentDir);
   }
 
   // Stashed until the webview's own script has loaded and signals 'ready' —
@@ -60,6 +67,7 @@ export class ExamplePreviewProvider {
     private readonly assetsRoot: string,
     initialSkillId: string,
     private readonly log: ILogService,
+    private readonly communityContentDir?: string,
   ) {
     this.pendingSkillId = initialSkillId;
     this.panel.webview.html = this.buildHtml(this.panel.webview);
@@ -73,7 +81,7 @@ export class ExamplePreviewProvider {
           }
           break;
         case 'remix':
-          await remixAndOpen(this.contentIndex, this.assetsRoot, message.id as string, this.log);
+          await remixAndOpen(this.contentIndex, this.assetsRoot, message.id as string, this.log, this.communityContentDir);
           break;
       }
     });
@@ -91,14 +99,15 @@ export class ExamplePreviewProvider {
       return;
     }
     this.panel.title = skill.name;
+    const root = resolveContentRoot(skill.source, { assetsRoot: this.assetsRoot, communityContentDir: this.communityContentDir });
     let html = '';
     try {
-      html = injectScriptNonce(await loadExampleHtml(this.assetsRoot, skill.exampleArtifactPath), this.panelNonce);
+      html = injectScriptNonce(await loadExampleHtml(root, skill.exampleArtifactPath), this.panelNonce);
     } catch (err) {
       // Leave html empty; the webview shows a "no preview" state.
       this.log.error(err, `ExamplePreviewProvider: failed to read example.html for ${skillId}`);
     }
-    this.panel.webview.postMessage({ type: 'load', id: skillId, name: skill.name, html });
+    this.panel.webview.postMessage({ type: 'load', id: skillId, name: skill.name, html, source: skill.source });
   }
 
   private buildHtml(webview: vscode.Webview): string {

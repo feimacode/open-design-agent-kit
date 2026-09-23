@@ -19,6 +19,7 @@ export function registerPreviewExampleCommand(
   contentIndex: ContentIndex,
   assetsRoot: string,
   log: ILogService,
+  communityContentDir?: string,
 ): void {
   const disposable = vscode.commands.registerCommand('openDesign.previewExample', (arg: unknown) => {
     log.info('Command: openDesign.previewExample');
@@ -27,7 +28,7 @@ export function registerPreviewExampleCommand(
       log.warn('previewExample: could not resolve a skillId from the command argument');
       return;
     }
-    ExamplePreviewProvider.show(context, contentIndex, assetsRoot, skillId, log);
+    ExamplePreviewProvider.show(context, contentIndex, assetsRoot, skillId, log, communityContentDir);
   });
   context.subscriptions.push(disposable);
 }

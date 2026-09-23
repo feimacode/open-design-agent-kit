@@ -394,3 +394,75 @@ describe('ContentIndex bare-id collisions', () => {
     assert.match(resolved!.body, /Skill body/);
   });
 });
+
+async function writeCommunityExample(communityDir: string, slug: string, description: string): Promise<void> {
+  await fs.mkdir(path.join(communityDir, 'examples', slug), { recursive: true });
+  await fs.writeFile(
+    path.join(communityDir, 'examples', slug, 'SKILL.md'),
+    ['---', `name: ${slug}`, `description: ${description}`, 'od:', '  mode: prototype', '---', '', 'Community body.'].join('\n'),
+  );
+  await fs.writeFile(path.join(communityDir, 'examples', slug, 'example.html'), '<!doctype html><h1>Community</h1>');
+}
+
+describe('ContentIndex community content', () => {
+  it('merges in runtime-fetched community examples, tagged source: "community"', async () => {
+    const assetsRoot = await makeFixture();
+    const communityDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-ext-community-'));
+    await writeCommunityExample(communityDir, 'now-page', 'A minimalist now page.');
+
+    const index = new ContentIndex(assetsRoot, undefined, () => communityDir);
+    const all = await index.listSkills();
+    const community = all.find((s) => s.source === 'community');
+    assert.ok(community, 'expected a community-sourced entry to appear alongside the built-in pool');
+    assert.strictEqual(community!.exampleArtifactPath, 'examples/now-page/example.html');
+
+    const byId = await index.getSkill('now-page');
+    assert.strictEqual(byId!.source, 'community');
+
+    const filtered = await index.listSkills(undefined, undefined, 'community');
+    assert.strictEqual(filtered.length, 1);
+  });
+
+  it('has no community entries when the callback is absent or returns undefined', async () => {
+    const withoutCallback = new ContentIndex(await makeFixture());
+    assert.strictEqual((await withoutCallback.listSkills()).some((s) => s.source === 'community'), false);
+
+    const withUndefined = new ContentIndex(await makeFixture(), undefined, () => undefined);
+    assert.strictEqual((await withUndefined.listSkills()).some((s) => s.source === 'community'), false);
+  });
+
+  it('re-scans the community content directory on every call rather than caching it', async () => {
+    const assetsRoot = await makeFixture();
+    const communityDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-ext-community-live-'));
+    const index = new ContentIndex(assetsRoot, undefined, () => communityDir);
+
+    const before = await index.listSkills();
+    assert.strictEqual(before.some((s) => s.source === 'community'), false);
+
+    await writeCommunityExample(communityDir, 'new-community-design', 'Written after construction.');
+
+    const after = await index.listSkills();
+    assert.strictEqual(after.some((s) => s.source === 'community'), true, 'a design synced after construction should still appear, unlike the cached built-in pool');
+  });
+
+  it('never lets a community entry shadow a same-dirId skill/design-template/example — it always gets the :community suffix', async () => {
+    const assetsRoot = await makeCollisionFixture();
+    const communityDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-ext-community-collision-'));
+    // Same dirId as makeCollisionFixture()'s existing skill + example.
+    await writeCommunityExample(communityDir, 'article-magazine', 'A community remix of the same slug.');
+
+    const index = new ContentIndex(assetsRoot, undefined, () => communityDir);
+    const all = await index.listSkills();
+    assert.strictEqual(all.length, 3, 'skill + example + community, all three survive');
+
+    const skill = all.find((s) => s.source === 'skill');
+    const example = all.find((s) => s.source === 'example');
+    const community = all.find((s) => s.source === 'community');
+    assert.strictEqual(skill!.id, 'od:prototype:article-magazine', 'the official skill keeps the plain id');
+    assert.strictEqual(example!.id, 'od:prototype:article-magazine:example');
+    assert.strictEqual(community!.id, 'od:prototype:article-magazine:community');
+
+    const bareIdResolved = await index.getSkill('article-magazine');
+    assert.strictEqual(bareIdResolved!.source, 'skill', 'bare-id lookup must still prefer the official skill over the community entry');
+  });
+});

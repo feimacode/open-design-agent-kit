@@ -8,10 +8,11 @@ export function registerOpenGalleryGridCommand(
   contentIndex: ContentIndex,
   assetsRoot: string,
   log: ILogService,
+  communityContentDir?: string,
 ): void {
   const disposable = vscode.commands.registerCommand('openDesign.openGalleryGrid', () => {
     log.info('Command: openDesign.openGalleryGrid');
-    GalleryGridProvider.open(context, contentIndex, assetsRoot, log);
+    GalleryGridProvider.open(context, contentIndex, assetsRoot, log, communityContentDir);
   });
   context.subscriptions.push(disposable);
 }

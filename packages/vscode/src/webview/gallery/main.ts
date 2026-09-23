@@ -24,6 +24,19 @@ interface GalleryExample {
   description: string;
   category?: string;
   mode: string;
+  source?: string;
+}
+
+// Unreviewed, runtime-fetched, third-party content — unlike every other
+// source, which is curated and bundled with the extension. Drops
+// `allow-same-origin` (kept for every other source) so a community
+// example's own script can't reach back into the embedder's origin model;
+// see resolveSandbox() below.
+const RESTRICTED_SANDBOX = 'allow-scripts allow-forms allow-downloads allow-popups allow-pointer-lock allow-modals';
+const DEFAULT_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-pointer-lock allow-modals';
+
+function resolveSandbox(source: string | undefined): string {
+  return source === 'community' ? RESTRICTED_SANDBOX : DEFAULT_SANDBOX;
 }
 
 const THUMB_DESIGN_WIDTH = 1200; // matches .og-thumb's 16:9 aspect-ratio (1200x675)
@@ -48,6 +61,7 @@ let query = '';
 let activeCategory: string | undefined;
 
 const previewCache = new Map<string, string>();
+const sourceById = new Map<string, string | undefined>();
 const requestedIds = new Set<string>();
 let observer: IntersectionObserver | undefined;
 
@@ -57,7 +71,7 @@ function requestPreview(id: string): void {
   vscode.postMessage({ type: 'get-preview', id });
 }
 
-function renderThumbnail(thumbEl: HTMLElement, html: string): void {
+function renderThumbnail(thumbEl: HTMLElement, html: string, source?: string): void {
   thumbEl.innerHTML = '';
   if (!html) {
     const placeholder = document.createElement('div');
@@ -68,11 +82,12 @@ function renderThumbnail(thumbEl: HTMLElement, html: string): void {
   }
   const iframe = document.createElement('iframe');
   // Thumbnails stay non-interactive via `pointer-events: none` on the
-  // iframe (CSS below), not via a restrictive sandbox — an under-permissed
-  // sandbox instead risks the example's own init script throwing early
-  // (e.g. a same-origin check) and rendering nothing at all. Matches the
-  // sandbox used for the full-size preview panel.
-  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-pointer-lock allow-modals');
+  // iframe (CSS below), not via an overall-restrictive sandbox — an
+  // under-permissed sandbox instead risks the example's own init script
+  // throwing early (e.g. a same-origin check) and rendering nothing at
+  // all. Matches the sandbox used for the full-size preview panel, except
+  // for community-sourced content — see resolveSandbox().
+  iframe.setAttribute('sandbox', resolveSandbox(source));
   iframe.srcdoc = html;
   thumbEl.appendChild(iframe);
   const scale = thumbEl.clientWidth / THUMB_DESIGN_WIDTH;
@@ -138,6 +153,7 @@ function render(): void {
       <div class="og-card-meta">
         ${example.category ? `<span class="od-badge">${escapeHtml(example.category)}</span>` : ''}
         <span class="od-badge">${escapeHtml(example.mode)}</span>
+        ${example.source === 'community' ? `<span class="od-badge" title="Community-contributed, not reviewed by the extension author">Community</span>` : ''}
       </div>
       <div class="og-actions">
         <button class="og-remix-btn od-btn od-btn-primary">Remix</button>
@@ -160,10 +176,11 @@ function render(): void {
     });
     gridEl.appendChild(card);
 
+    sourceById.set(example.id, example.source);
     const thumbEl = card.querySelector('.og-thumb') as HTMLElement;
     const cached = previewCache.get(example.id);
     if (cached !== undefined) {
-      renderThumbnail(thumbEl, cached);
+      renderThumbnail(thumbEl, cached, example.source);
     } else {
       observer.observe(thumbEl);
     }
@@ -184,7 +201,7 @@ window.addEventListener('message', (event) => {
     const html = (message.html as string) ?? '';
     previewCache.set(message.id, html);
     const thumbEl = gridEl.querySelector<HTMLElement>(`.og-thumb[data-id="${message.id}"]`);
-    if (thumbEl) renderThumbnail(thumbEl, html);
+    if (thumbEl) renderThumbnail(thumbEl, html, (message.source as string | undefined) ?? sourceById.get(message.id));
   }
 });
 

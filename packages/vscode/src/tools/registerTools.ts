@@ -18,6 +18,7 @@ export function registerTools(
   contentIndex: ContentIndex,
   log: ILogService,
   assetsRoot: string,
+  communityContentDir?: string,
 ): void {
   const registrations: Array<[string, vscode.LanguageModelTool<any>]> = [
     ['list_open_design_skills', new ListSkillsTool(contentIndex)],
@@ -26,7 +27,7 @@ export function registerTools(
     ['register_open_design_artifact', new RegisterArtifactTool()],
     ['get_open_design_artifact', new GetArtifactTool()],
     ['set_active_design_system', new SetActiveDesignSystemTool(contentIndex)],
-    ['remix_open_design_example', new RemixExampleTool(contentIndex, assetsRoot)],
+    ['remix_open_design_example', new RemixExampleTool(contentIndex, assetsRoot, communityContentDir)],
     ['create_open_design_design_system', new CreateCustomDesignSystemTool()],
     ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
     ['pull_open_design_figma_frame', new PullFigmaFrameTool(context)],

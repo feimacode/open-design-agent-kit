@@ -17,9 +17,10 @@ type GalleryTreeNode = CategoryNode | ExampleNode;
  * TreeDataProvider for the Explorer sidebar's "OpenDesign Gallery" view —
  * a lightweight, always-visible way to browse and remix the vendored
  * example pool, grouped by category (same grouping as the "Browse Gallery"
- * QuickPick, for consistency). Content is vendored at build time and never
- * changes within a running session, so there's no refresh affordance —
- * populated once, lazily, on first expand.
+ * QuickPick, for consistency). Entries are populated once, lazily, on first
+ * expand, then memoized — the built-in pool never changes within a running
+ * session, but the community pool can (a sync command can replace it at any
+ * time), so anything that changes it MUST call refresh().
  */
 export class GalleryTreeProvider implements vscode.TreeDataProvider<GalleryTreeNode> {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<GalleryTreeNode | undefined>();
@@ -36,6 +37,17 @@ export class GalleryTreeProvider implements vscode.TreeDataProvider<GalleryTreeN
     return this.entriesPromise;
   }
 
+  // The built-in pool never changes within a session (see the class doc
+  // comment), but the community pool can — a sync command can replace its
+  // on-disk cache at any moment. Drops this view's own memoized entries so
+  // the next getChildren() re-queries ContentIndex (which itself
+  // live-rescans the community pool on every call) and fires the change
+  // event so the tree actually re-renders.
+  refresh(): void {
+    this.entriesPromise = undefined;
+    this._onDidChangeTreeData.fire(undefined);
+  }
+
   getTreeItem(node: GalleryTreeNode): vscode.TreeItem {
     if (node.kind === 'category') {
       const item = new vscode.TreeItem(node.category, vscode.TreeItemCollapsibleState.Collapsed);
@@ -45,8 +57,12 @@ export class GalleryTreeProvider implements vscode.TreeDataProvider<GalleryTreeN
     }
 
     const item = new vscode.TreeItem(node.entry.name, vscode.TreeItemCollapsibleState.None);
-    item.description = node.entry.mode;
-    item.tooltip = new vscode.MarkdownString(node.entry.description || node.entry.name);
+    item.description = node.entry.source === 'community' ? `${node.entry.mode} · community` : node.entry.mode;
+    item.tooltip = new vscode.MarkdownString(
+      node.entry.source === 'community'
+        ? `${node.entry.description || node.entry.name}\n\n_Community-contributed, not reviewed by the extension author._`
+        : node.entry.description || node.entry.name,
+    );
     item.iconPath = new vscode.ThemeIcon('symbol-color');
     item.contextValue = 'openDesignGalleryExample';
     // Mirrors open-design's own Gallery: clicking an example populates the
@@ -76,8 +92,9 @@ export class GalleryTreeProvider implements vscode.TreeDataProvider<GalleryTreeN
   }
 }
 
-export function registerGalleryTreeView(context: vscode.ExtensionContext, contentIndex: ContentIndex): void {
+export function registerGalleryTreeView(context: vscode.ExtensionContext, contentIndex: ContentIndex): GalleryTreeProvider {
   const provider = new GalleryTreeProvider(contentIndex);
   const view = vscode.window.createTreeView('openDesign.galleryView', { treeDataProvider: provider });
   context.subscriptions.push(view);
+  return provider;
 }

@@ -2,13 +2,17 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import matter from 'gray-matter';
 
-export type SkillSource = 'skill' | 'design-template' | 'example';
+export type SkillSource = 'skill' | 'design-template' | 'example' | 'community';
 // Priority order used both to decide which source keeps the plain public id
 // when two entries collide on bare dirId (see mergeSkillPools) and as the
 // tie-break `getSkill` applies to an ambiguous bare-id/legacy lookup: the
 // entry describing the task/style wins over one that merely happens to
-// share its name (typically its own rendered example).
-const SKILL_SOURCES: readonly SkillSource[] = ['skill', 'design-template', 'example'];
+// share its name (typically its own rendered example). 'community' is last
+// (lowest priority) deliberately: it's unreviewed, runtime-fetched content
+// (see loadedSkills()) and must never shadow an official skill/template/
+// example on a colliding dirId — it only ever gets the `:community`-suffixed
+// id in that case.
+const SKILL_SOURCES: readonly SkillSource[] = ['skill', 'design-template', 'example', 'community'];
 
 // od.mode covers 271/277 vendored skills+design-templates (98%) with a
 // small, clean vocabulary — far better coverage than od.category (62%,
@@ -170,13 +174,17 @@ async function loadSkillLikeDir(assetsRoot: string, subdir: string, source: Skil
   return result;
 }
 
-// Examples (vendored from plugins/_official/examples/*) share the SKILL.md
+// Examples (vendored from plugins/_official/examples/*, or synced at runtime
+// from the community content repo — see loadedSkills()) share the SKILL.md
 // shape but carry their example prompt in a sibling open-design.json
 // manifest (`od.useCase.query.en`), not in SKILL.md's own `od.example_prompt`
-// — and, uniquely among the three skill-like pools, ship an actual rendered
+// — and, uniquely among the skill-like pools, ship an actual rendered
 // example.html, which is the remix source. Only entries with a vendored
 // example.html are loaded here; the sync script already filters to those.
-async function loadExamples(assetsRoot: string): Promise<Map<string, SkillDetail>> {
+// `source` defaults to 'example' (the built-in pool); the community pool
+// passes 'community' explicitly so entries are tagged and prioritized
+// correctly without any other change to this loader.
+async function loadExamples(assetsRoot: string, source: SkillSource = 'example'): Promise<Map<string, SkillDetail>> {
   const dir = path.join(assetsRoot, 'examples');
   const result = new Map<string, SkillDetail>();
   if (!(await pathExists(dir))) return result;
@@ -215,7 +223,7 @@ async function loadExamples(assetsRoot: string): Promise<Map<string, SkillDetail
       triggers: [...normalizeStringArray(data.triggers), ...normalizeStringArray(data.tags)],
       category: typeof od?.category === 'string' ? od.category : typeof data.category === 'string' ? data.category : undefined,
       mode: normalizeMode(od?.mode),
-      source: 'example',
+      source,
       examplePrompt,
       featured: false,
       exampleArtifactPath: path.posix.join('examples', entry.name, 'example.html'),
@@ -409,6 +417,13 @@ export class ContentIndex {
     // out of this otherwise vscode-free/testable module — the extension
     // host is the only caller that needs to supply one.
     private readonly getUserDesignSystemsDir?: () => string | undefined,
+    // Returns the absolute path to the runtime-fetched community-content
+    // cache root (see communityContent.ts in the vscode package), or
+    // undefined if it's never been synced. Same shape/reasoning as
+    // getUserDesignSystemsDir: a callback, not a captured value, so a sync
+    // command's write is visible on the very next query with no reload —
+    // see loadedSkills().
+    private readonly getCommunityContentDir?: () => string | undefined,
   ) {}
 
   private ensureLoaded(): Promise<LoadedContent> {
@@ -428,8 +443,25 @@ export class ContentIndex {
     return this.loaded;
   }
 
-  async listSkills(query?: string, mode?: string, source?: string, remixableOnly?: boolean): Promise<SkillSummary[]> {
+  // Merges the cached built-in skill/template/example pool with a
+  // freshly-rescanned community pool on every call — same reasoning as
+  // loadedDesignSystems()'s user-pool rescan: a sync command can replace the
+  // on-disk community cache at any moment in the session, with no reload.
+  // mergeSkillPools regroups by each entry's own `.id` (dirId) regardless of
+  // whether its input map is raw or already merged, so re-running it here
+  // against the cached (already-merged) pool plus the fresh community pool
+  // correctly re-applies collision-priority ordering (community always
+  // loses) without re-deriving anything from the cached pool.
+  private async loadedSkills(): Promise<Map<string, SkillDetail>> {
     const { skills } = await this.ensureLoaded();
+    const communityDir = this.getCommunityContentDir?.();
+    const communitySkills = communityDir ? await loadExamples(communityDir, 'community') : new Map<string, SkillDetail>();
+    if (communitySkills.size === 0) return skills;
+    return mergeSkillPools(skills, communitySkills);
+  }
+
+  async listSkills(query?: string, mode?: string, source?: string, remixableOnly?: boolean): Promise<SkillSummary[]> {
+    const skills = await this.loadedSkills();
     const wantedMode = mode?.trim().toLowerCase();
     const wantedSource = source?.trim().toLowerCase();
     const results: SkillSummary[] = [];
@@ -456,7 +488,7 @@ export class ContentIndex {
   }
 
   async getSkill(id: string): Promise<SkillDetail | undefined> {
-    const { skills } = await this.ensureLoaded();
+    const skills = await this.loadedSkills();
     const trimmed = id.trim();
     // Exact match against the map's own (collision-safe) public ids first —
     // covers every non-colliding entry, and any caller correctly round-tripping
@@ -476,7 +508,7 @@ export class ContentIndex {
   }
 
   async listSkillModes(): Promise<SkillMode[]> {
-    const { skills } = await this.ensureLoaded();
+    const skills = await this.loadedSkills();
     const modes = new Set<SkillMode>();
     for (const skill of skills.values()) modes.add(skill.mode);
     return [...modes].sort((a, b) => a.localeCompare(b));

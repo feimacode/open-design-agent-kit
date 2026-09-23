@@ -12,6 +12,7 @@ export class RemixExampleTool implements vscode.LanguageModelTool<RemixExampleIn
   constructor(
     private readonly contentIndex: ContentIndex,
     private readonly assetsRoot: string,
+    private readonly communityContentDir?: string,
   ) {}
 
   async prepareInvocation(
@@ -23,7 +24,7 @@ export class RemixExampleTool implements vscode.LanguageModelTool<RemixExampleIn
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<RemixExampleInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const outcome = await performRemix(this.contentIndex, this.assetsRoot, options.input.skillId);
+    const outcome = await performRemix(this.contentIndex, this.assetsRoot, options.input.skillId, this.communityContentDir);
     if (!outcome.ok) {
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(outcome.error)]);
     }

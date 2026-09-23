@@ -8,6 +8,21 @@
 // here, at read time, before the content ever reaches a webview.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import type { SkillSource } from './contentIndex';
+
+/**
+ * A skill's `exampleArtifactPath` is relative to whichever content pool it
+ * came from — the built-in bundled assets for every source except
+ * `'community'`, which resolves against the runtime-fetched cache dir
+ * instead (see ContentIndex's `getCommunityContentDir`). Callers that read
+ * an example's files (loadExampleHtml, copyExampleArtifact) must resolve
+ * the right root from the skill's own `source` before reading — passing the
+ * wrong one either 404s or, worse, silently reads a stale/unrelated file
+ * that happens to share the same relative path under the wrong root.
+ */
+export function resolveContentRoot(source: SkillSource, roots: { assetsRoot: string; communityContentDir?: string }): string {
+  return source === 'community' && roots.communityContentDir ? roots.communityContentDir : roots.assetsRoot;
+}
 
 async function pathExists(p: string): Promise<boolean> {
   try {

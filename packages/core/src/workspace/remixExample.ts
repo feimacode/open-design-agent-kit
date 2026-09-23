@@ -22,9 +22,11 @@ async function listFilesRecursive(dir: string, baseDir: string): Promise<string[
 
 /**
  * Copies a vendored example artifact (example.html + a sibling assets/
- * folder, if present) into the workspace at entryPath. The source is always
- * under this extension's own bundled assets — not user/model-controlled —
- * so only the destination needs a workspace-escape guard.
+ * folder, if present) into the workspace at entryPath. `assetsRoot` is
+ * always one of a small, caller-resolved set of known roots (the bundled
+ * built-in assets, or the runtime-fetched community-content cache — see
+ * resolveContentRoot) — never a path derived from arbitrary user/model
+ * input — so only the destination needs a workspace-escape guard.
  */
 export async function copyExampleArtifact(options: {
   assetsRoot: string;

@@ -11,16 +11,29 @@ declare function acquireVsCodeApi(): {
 
 const vscode = acquireVsCodeApi();
 
+// Unreviewed, runtime-fetched, third-party content — unlike every other
+// source, which is curated and bundled with the extension. Drops
+// `allow-same-origin` (kept for every other source below) so a community
+// example's own script can't reach back into the embedder's origin model.
+const RESTRICTED_SANDBOX = 'allow-scripts allow-forms allow-downloads allow-popups allow-pointer-lock allow-modals';
+const DEFAULT_SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-pointer-lock allow-modals';
+
+function resolveSandbox(source: string | undefined): string {
+  return source === 'community' ? RESTRICTED_SANDBOX : DEFAULT_SANDBOX;
+}
+
 const root = document.getElementById('root')!;
 root.innerHTML = `
   <div class="op-toolbar">
     <span id="op-title" class="op-title">Loading…</span>
+    <span id="op-badge" class="od-badge" hidden>Community</span>
     <button id="op-remix-btn" class="op-remix-btn od-btn od-btn-primary">Remix into workspace</button>
   </div>
   <div id="op-stage" class="op-stage"></div>
 `;
 
 const titleEl = document.getElementById('op-title')!;
+const badgeEl = document.getElementById('op-badge') as HTMLElement;
 const remixBtn = document.getElementById('op-remix-btn') as HTMLButtonElement;
 const stageEl = document.getElementById('op-stage')!;
 
@@ -37,6 +50,8 @@ window.addEventListener('message', (event) => {
 
   currentId = message.id as string;
   titleEl.textContent = (message.name as string) ?? currentId;
+  const source = message.source as string | undefined;
+  badgeEl.hidden = source !== 'community';
   const html = (message.html as string) ?? '';
 
   stageEl.innerHTML = '';
@@ -52,11 +67,11 @@ window.addEventListener('message', (event) => {
   // `allow-scripts` alone leaves many examples' own scripts (deck nav,
   // WebGL/animation init) throwing on startup — e.g. touching localStorage
   // or a same-origin check — which silently kills the script before it
-  // attaches its own click/keyboard handlers. These are curated,
-  // extension-bundled examples (not arbitrary model-generated content), so
-  // matching the main artifact editor's broader sandbox is the same
-  // already-accepted tradeoff, not a new one.
-  iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-pointer-lock allow-modals');
+  // attaches its own click/keyboard handlers. Curated, extension-bundled
+  // examples get the broader sandbox (matching the main artifact editor) as
+  // an already-accepted tradeoff; community-sourced content gets the
+  // narrower one instead — see resolveSandbox().
+  iframe.setAttribute('sandbox', resolveSandbox(source));
   iframe.srcdoc = html;
   stageEl.appendChild(iframe);
 });

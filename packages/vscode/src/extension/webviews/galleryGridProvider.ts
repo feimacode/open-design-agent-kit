@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { injectScriptNonce, loadExampleHtml, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import { injectScriptNonce, loadExampleHtml, resolveContentRoot, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import { remixAndOpen } from '../commands/remixAndOpen';
 import { chatWithExample } from '../commands/chatWithExample';
 import type { ILogService } from '../log/logService';
@@ -29,7 +29,13 @@ export class GalleryGridProvider {
   // into the example HTML it posts, or the CSP's nonce check won't match.
   private readonly panelNonce = nonce();
 
-  static open(context: vscode.ExtensionContext, contentIndex: ContentIndex, assetsRoot: string, log: ILogService): void {
+  static open(
+    context: vscode.ExtensionContext,
+    contentIndex: ContentIndex,
+    assetsRoot: string,
+    log: ILogService,
+    communityContentDir?: string,
+  ): void {
     if (GalleryGridProvider.instance) {
       GalleryGridProvider.instance.panel.reveal();
       return;
@@ -41,7 +47,7 @@ export class GalleryGridProvider {
       localResourceRoots: [context.extensionUri],
     });
 
-    GalleryGridProvider.instance = new GalleryGridProvider(context, panel, contentIndex, assetsRoot, log);
+    GalleryGridProvider.instance = new GalleryGridProvider(context, panel, contentIndex, assetsRoot, log, communityContentDir);
   }
 
   private constructor(
@@ -50,6 +56,7 @@ export class GalleryGridProvider {
     private readonly contentIndex: ContentIndex,
     private readonly assetsRoot: string,
     private readonly log: ILogService,
+    private readonly communityContentDir?: string,
   ) {
     this.log.info('GalleryGridProvider: opened');
     this.panel.webview.html = this.buildHtml(this.panel.webview);
@@ -61,13 +68,13 @@ export class GalleryGridProvider {
           await this.sendExamples();
           break;
         case 'remix':
-          await remixAndOpen(this.contentIndex, this.assetsRoot, message.id as string, this.log);
+          await remixAndOpen(this.contentIndex, this.assetsRoot, message.id as string, this.log, this.communityContentDir);
           break;
         case 'get-preview':
           await this.sendPreview(message.id as string);
           break;
         case 'open-preview':
-          ExamplePreviewProvider.show(this.context, this.contentIndex, this.assetsRoot, message.id as string, this.log);
+          ExamplePreviewProvider.show(this.context, this.contentIndex, this.assetsRoot, message.id as string, this.log, this.communityContentDir);
           break;
         case 'open-chat':
           await chatWithExample(this.contentIndex, message.id as string, this.log);
@@ -84,7 +91,7 @@ export class GalleryGridProvider {
   private async sendExamples(): Promise<void> {
     const examples = (await this.contentIndex.listSkills())
       .filter((s) => s.exampleArtifactPath)
-      .map((s) => ({ id: s.id, name: s.name, description: s.description, category: s.category, mode: s.mode }));
+      .map((s) => ({ id: s.id, name: s.name, description: s.description, category: s.category, mode: s.mode, source: s.source }));
     this.panel.webview.postMessage({ type: 'update', examples });
   }
 
@@ -101,8 +108,9 @@ export class GalleryGridProvider {
       return;
     }
     try {
-      const html = await loadExampleHtml(this.assetsRoot, skill.exampleArtifactPath);
-      this.panel.webview.postMessage({ type: 'preview', id, html: injectScriptNonce(html, this.panelNonce) });
+      const root = resolveContentRoot(skill.source, { assetsRoot: this.assetsRoot, communityContentDir: this.communityContentDir });
+      const html = await loadExampleHtml(root, skill.exampleArtifactPath);
+      this.panel.webview.postMessage({ type: 'preview', id, html: injectScriptNonce(html, this.panelNonce), source: skill.source });
     } catch (err) {
       this.log.error(err, `GalleryGridProvider: failed to read thumbnail for ${id}`);
       this.panel.webview.postMessage({ type: 'preview', id, html: '' });

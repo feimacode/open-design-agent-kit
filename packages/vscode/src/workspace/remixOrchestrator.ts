@@ -1,4 +1,4 @@
-import { copyExampleArtifact, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import { copyExampleArtifact, resolveContentRoot, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import { getWorkspaceRoot, getOutputDirectory, slugify, registerArtifact } from './artifactWriter';
 
 export interface RemixResult {
@@ -17,7 +17,12 @@ export type RemixOutcome = { ok: true; result: RemixResult } | { ok: false; erro
  * command doesn't need to go through vscode.lm.invokeTool's confirmation
  * ceremony just to reuse it.
  */
-export async function performRemix(contentIndex: ContentIndex, assetsRoot: string, skillId: string): Promise<RemixOutcome> {
+export async function performRemix(
+  contentIndex: ContentIndex,
+  assetsRoot: string,
+  skillId: string,
+  communityContentDir?: string,
+): Promise<RemixOutcome> {
   const skill = await contentIndex.getSkill(skillId);
   if (!skill) {
     const available = (await contentIndex.listSkills()).map((s) => s.id).slice(0, 20);
@@ -36,7 +41,7 @@ export async function performRemix(contentIndex: ContentIndex, assetsRoot: strin
   const entryPath = `${getOutputDirectory()}/${slug}/${slug}.html`;
 
   const { supportingFiles } = await copyExampleArtifact({
-    assetsRoot,
+    assetsRoot: resolveContentRoot(skill.source, { assetsRoot, communityContentDir }),
     exampleArtifactPath: skill.exampleArtifactPath,
     workspaceRoot,
     entryPath,

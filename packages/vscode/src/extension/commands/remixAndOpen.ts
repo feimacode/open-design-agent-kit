@@ -10,8 +10,14 @@ import type { ILogService } from '../log/logService';
  * command, the gallery tree view, the gallery grid webview) so the
  * remix-then-open-preview sequence and its user-facing messaging exist once.
  */
-export async function remixAndOpen(contentIndex: ContentIndex, assetsRoot: string, skillId: string, log: ILogService): Promise<void> {
-  const outcome = await performRemix(contentIndex, assetsRoot, skillId);
+export async function remixAndOpen(
+  contentIndex: ContentIndex,
+  assetsRoot: string,
+  skillId: string,
+  log: ILogService,
+  communityContentDir?: string,
+): Promise<void> {
+  const outcome = await performRemix(contentIndex, assetsRoot, skillId, communityContentDir);
   if (!outcome.ok) {
     log.warn(`remixAndOpen: ${outcome.error}`);
     vscode.window.showErrorMessage(`OpenDesign: ${outcome.error}`);
@@ -40,6 +46,7 @@ export function registerRemixExampleCommand(
   contentIndex: ContentIndex,
   assetsRoot: string,
   log: ILogService,
+  communityContentDir?: string,
 ): void {
   const disposable = vscode.commands.registerCommand('openDesign.remixExample', async (arg: unknown) => {
     log.info('Command: openDesign.remixExample');
@@ -48,7 +55,7 @@ export function registerRemixExampleCommand(
       log.warn('remixExample: could not resolve a skillId from the command argument');
       return;
     }
-    await remixAndOpen(contentIndex, assetsRoot, skillId, log);
+    await remixAndOpen(contentIndex, assetsRoot, skillId, log, communityContentDir);
   });
   context.subscriptions.push(disposable);
 }
