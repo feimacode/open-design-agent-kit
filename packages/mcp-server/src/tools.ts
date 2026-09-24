@@ -118,7 +118,7 @@ export async function listRemixablePrompts(ctx: ToolContext): Promise<RemixableP
 }
 
 /**
- * Deliberately does NOT say `Use the OpenDesign skill "<id>"` — VS Code's
+ * Deliberately does NOT say `Use the Open Design skill "<id>"` — VS Code's
  * chatWithExample.ts uses exactly that phrasing safely, but on Claude Code
  * this text becomes a fresh user message with no surrounding skill context,
  * and the model reflexively tried invoking its own built-in Skill tool with
@@ -129,7 +129,7 @@ export async function listRemixablePrompts(ctx: ToolContext): Promise<RemixableP
  */
 export function buildRemixPromptMessage(prompt: RemixablePrompt): string {
   const brief = prompt.examplePrompt ? ` ${prompt.examplePrompt}` : '';
-  return `Remix the OpenDesign example "${prompt.displayName}" — call the open-design MCP server's remix_open_design_example tool with skillId "${prompt.publicId}".${brief}`;
+  return `Remix the Open Design example "${prompt.displayName}" — call the open-design MCP server's remix_open_design_example tool with skillId "${prompt.publicId}".${brief}`;
 }
 
 export async function listDesignSystems(ctx: ToolContext, input: { query?: string; category?: string }): Promise<unknown> {
@@ -280,12 +280,12 @@ export async function getArtifact(ctx: ToolContext, input: { entryPath: string }
 
 export async function setActiveDesignSystemTool(ctx: ToolContext, input: { designSystemId?: string }): Promise<string> {
   const result = await setActiveDesignSystem(input.designSystemId, ctx.store, (id) => ctx.contentIndex.getDesignSystem(id));
-  if (result.outcome === 'cleared') return 'Cleared the active OpenDesign design system.';
+  if (result.outcome === 'cleared') return 'Cleared the active Open Design design system.';
   if (result.outcome === 'unknown') {
     const available = (await ctx.contentIndex.listDesignSystems()).map((d) => d.id).slice(0, 20);
     return `Unknown designSystemId "${result.unknownId}". Call list_open_design_design_systems to see available ids. A few available ids: ${available.join(', ')}`;
   }
-  return `Active OpenDesign design system set to "${input.designSystemId}" (${result.designSystem.name}).`;
+  return `Active Open Design design system set to "${input.designSystemId}" (${result.designSystem.name}).`;
 }
 
 export async function createCustomDesignSystem(

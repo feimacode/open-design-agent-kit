@@ -1,14 +1,14 @@
 {
   "name": "open-design-agent-kit",
-  "description": "OpenDesign's design skills, design systems, and artifact workflow for Claude Code.",
+  "description": "Open Design's design skills, design systems, and artifact workflow for Claude Code.",
   "owner": {
     "name": "feimacode"
   },
   "plugins": [
     {
       "name": "open-design",
-      "displayName": "OpenDesign",
-      "description": "Generate design artifacts (landing pages, decks, prototypes, dashboards) using OpenDesign's bundled skills and design systems, directly in your project.",
+      "displayName": "Open Design",
+      "description": "Generate design artifacts (landing pages, decks, prototypes, dashboards) using Open Design's bundled skills and design systems, directly in your project.",
       "source": "./packages/claude-plugin",
       "license": "MIT",
       "keywords": ["design", "design-system", "prototype", "landing-page", "deck", "ui"],

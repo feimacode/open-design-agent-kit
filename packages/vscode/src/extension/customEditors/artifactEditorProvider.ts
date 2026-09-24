@@ -74,7 +74,7 @@ function formatCommentsForChat(comments: ArtifactComment[]): string {
   const items = comments
     .map((c, i) => `${i + 1}. On \`${c.selector || c.elementId || 'unknown element'}\` (${c.htmlHint}): ${c.note}`)
     .join('\n');
-  return `Apply these OpenDesign preview comments. Change ONLY the elements identified below; leave everything else as-is:\n\n${items}\n`;
+  return `Apply these Open Design preview comments. Change ONLY the elements identified below; leave everything else as-is:\n\n${items}\n`;
 }
 
 interface CollectionNavInfo {
@@ -174,31 +174,31 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         case 'promote-to-app-code':
           if (!location) {
             this.log.warn(`ArtifactEditorProvider: cannot promote ${document.uri.fsPath} — it is outside any open workspace folder`);
-            vscode.window.showWarningMessage('OpenDesign: this artifact must be inside an open workspace folder to promote it to app code.');
+            vscode.window.showWarningMessage('Open Design: this artifact must be inside an open workspace folder to promote it to app code.');
             break;
           }
           this.log.info(`ArtifactEditorProvider: promoting ${location.entryPath} to app code`);
           await vscode.commands.executeCommand('workbench.action.chat.open', {
-            query: `Use the port_open_design_artifact_to_app tool to promote the OpenDesign artifact at "${location.entryPath}" into this app's real production code.`,
+            query: `Use the port_open_design_artifact_to_app tool to promote the Open Design artifact at "${location.entryPath}" into this app's real production code.`,
             isPartialQuery: true,
           });
           break;
         case 'share-to-community':
           if (!location) {
             this.log.warn(`ArtifactEditorProvider: cannot share ${document.uri.fsPath} — it is outside any open workspace folder`);
-            vscode.window.showWarningMessage('OpenDesign: this artifact must be inside an open workspace folder to share it to the community.');
+            vscode.window.showWarningMessage('Open Design: this artifact must be inside an open workspace folder to share it to the community.');
             break;
           }
           this.log.info(`ArtifactEditorProvider: sharing ${location.entryPath} to the community`);
           await vscode.commands.executeCommand('workbench.action.chat.open', {
-            query: `Use the share_open_design_artifact_to_community tool to package the OpenDesign artifact at "${location.entryPath}" as a new community design, then follow its instructions.`,
+            query: `Use the share_open_design_artifact_to_community tool to package the Open Design artifact at "${location.entryPath}" as a new community design, then follow its instructions.`,
             isPartialQuery: true,
           });
           break;
         case 'figma-capture':
           if (!location) {
             this.log.warn(`ArtifactEditorProvider: cannot push ${document.uri.fsPath} to Figma — it is outside any open workspace folder`);
-            vscode.window.showWarningMessage('OpenDesign: this artifact must be inside an open workspace folder to push it to Figma.');
+            vscode.window.showWarningMessage('Open Design: this artifact must be inside an open workspace folder to push it to Figma.');
             break;
           }
           this.log.info(`ArtifactEditorProvider: pushing ${location.entryPath} to Figma${message.truncated ? ' (capture truncated at the node cap)' : ''}`);
@@ -238,13 +238,13 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     const sidecarRel = path.relative(location.workspaceRoot, absSidecar).split(path.sep).join('/');
 
     const choice = await vscode.window.showInformationMessage(
-      `OpenDesign: Figma capture saved to ${sidecarRel}. Import it in Figma desktop via the vendored "OD Figma Import" plugin (Plugins → Development → Import plugin from manifest…, one-time setup).`,
+      `Open Design: Figma capture saved to ${sidecarRel}. Import it in Figma desktop via the vendored "OD Figma Import" plugin (Plugins → Development → Import plugin from manifest…, one-time setup).`,
       'Copy JSON',
       'Show Import Plugin',
     );
     if (choice === 'Copy JSON') {
       await vscode.env.clipboard.writeText(JSON.stringify(resolved));
-      vscode.window.showInformationMessage('OpenDesign: capture JSON copied to clipboard — paste it into the "OD Figma Import" plugin window.');
+      vscode.window.showInformationMessage('Open Design: capture JSON copied to clipboard — paste it into the "OD Figma Import" plugin window.');
     } else if (choice === 'Show Import Plugin') {
       await vscode.commands.executeCommand('openDesign.revealFigmaPlugin');
     }

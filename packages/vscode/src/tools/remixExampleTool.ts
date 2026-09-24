@@ -18,7 +18,7 @@ export class RemixExampleTool implements vscode.LanguageModelTool<RemixExampleIn
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<RemixExampleInput>,
   ): Promise<vscode.PreparedToolInvocation> {
-    return { invocationMessage: `Remixing OpenDesign example ${options.input.skillId}` };
+    return { invocationMessage: `Remixing Open Design example ${options.input.skillId}` };
   }
 
   async invoke(

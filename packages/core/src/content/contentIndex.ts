@@ -311,7 +311,7 @@ async function loadDesignSystems(assetsRoot: string): Promise<Map<string, Design
 }
 
 // User-created design systems (via create_open_design_design_system) live
-// as a plain `DESIGN.md` under the workspace's OpenDesign output directory
+// as a plain `DESIGN.md` under the workspace's Open Design output directory
 // — no manifest.json support for these in v1, so they always go through
 // the same blockquote-convention fallback parser as legacy built-ins with
 // no manifest. Deliberately NOT part of ensureLoaded()'s cached Promise:

@@ -54,11 +54,11 @@ async function runInit(targetPathArg: string, toolsFlag: string | undefined): Pr
 }
 
 const program = new Command();
-program.name('open-design-agent-kit').description("Set up OpenDesign's Claude Code and/or Codex integration in your project");
+program.name('open-design-agent-kit').description("Set up Open Design's Claude Code and/or Codex integration in your project");
 
 program
   .command('init [path]')
-  .description('Write OpenDesign skill files and MCP registration into the given project (default: current directory)')
+  .description('Write Open Design skill files and MCP registration into the given project (default: current directory)')
   .option('--tools <list>', `Comma-separated tool ids (${ALL_TOOL_IDS.join(', ')}) or "all"; omit to be prompted interactively`)
   .action(async (targetPath: string = '.', options: { tools?: string }) => {
     try {

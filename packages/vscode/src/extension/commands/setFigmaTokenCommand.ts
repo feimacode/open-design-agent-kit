@@ -6,7 +6,7 @@ export function registerSetFigmaTokenCommand(context: vscode.ExtensionContext, l
   const disposable = vscode.commands.registerCommand('openDesign.setFigmaToken', async () => {
     log.info('Command: openDesign.setFigmaToken');
     const token = await vscode.window.showInputBox({
-      title: 'OpenDesign: Set Figma Access Token',
+      title: 'Open Design: Set Figma Access Token',
       prompt: 'Paste a Figma personal access token (Figma → Settings → Personal access tokens). Stored encrypted, never shown again.',
       password: true,
       ignoreFocusOut: true,
@@ -14,7 +14,7 @@ export function registerSetFigmaTokenCommand(context: vscode.ExtensionContext, l
     });
     if (!token) return;
     await setFigmaToken(context, token.trim());
-    vscode.window.showInformationMessage('OpenDesign: Figma access token saved.');
+    vscode.window.showInformationMessage('Open Design: Figma access token saved.');
   });
   context.subscriptions.push(disposable);
 }

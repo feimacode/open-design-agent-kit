@@ -1,11 +1,11 @@
 ---
 name: card-xiaohongshu
-description: Xiaohongshu Card (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Xiaohongshu Card (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:prototype:card-xiaohongshu` (Xiaohongshu Card).
+Use the Open Design skill `od:prototype:card-xiaohongshu` (Xiaohongshu Card).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Xiaohongshu Card template to turn my content into a Xiaohongshu-style swipeable knowledge-card carousel. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

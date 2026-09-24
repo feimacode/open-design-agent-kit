@@ -1,10 +1,10 @@
 ---
 name: "od-prototype-article-magazine"
-description: Magazine Article (OpenDesign)
+description: Magazine Article (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:prototype:article-magazine` (Magazine Article).
+Use the Open Design skill `od:prototype:article-magazine` (Magazine Article).
 
 Brief: ${input:brief:Use the Magazine Article template to turn my content into a Huashu / huashu-md-html-inspired long-form HTML essay. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

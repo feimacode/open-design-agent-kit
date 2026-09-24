@@ -1,10 +1,10 @@
 ---
 name: "od-deck-ppt-keynote"
-description: Keynote-style Slides (OpenDesign)
+description: Keynote-style Slides (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:deck:ppt-keynote` (Keynote-style Slides).
+Use the Open Design skill `od:deck:ppt-keynote` (Keynote-style Slides).
 
 Brief: ${input:brief:Use the Keynote-style Slides template to turn my content into Apple Keynote-quality slides with one card per screen and keyboard left/right navigation. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

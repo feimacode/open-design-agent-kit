@@ -15,7 +15,7 @@ import * as vscode from 'vscode';
  * to every webview's <body> automatically — used here to switch between
  * open-design's own light/dark token sets (not whatever arbitrary colors
  * the user's current VS Code theme happens to have), so the extension's
- * views look like OpenDesign regardless of the ambient editor theme.
+ * views look like Open Design regardless of the ambient editor theme.
  */
 
 export function odFontFaceCss(webview: vscode.Webview, extensionUri: vscode.Uri): string {

@@ -1,11 +1,11 @@
 ---
 name: social-reddit-card
-description: Reddit Post Card (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Reddit Post Card (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:prototype:social-reddit-card` (Reddit Post Card).
+Use the Open Design skill `od:prototype:social-reddit-card` (Reddit Post Card).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Reddit Post Card template to turn my content into a realistic Reddit post card with vote rail and comment count for a video overlay or story share. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

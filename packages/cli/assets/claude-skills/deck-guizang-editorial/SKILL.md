@@ -1,13 +1,13 @@
 ---
 name: "od-deck-deck-guizang-editorial"
-description: Guizang Editorial E-Ink Deck (OpenDesign) — use only when the user explicitly runs this skill
+description: Guizang Editorial E-Ink Deck (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:deck:deck-guizang-editorial` (Guizang Editorial E-Ink Deck).
+Use the Open Design skill `od:deck:deck-guizang-editorial` (Guizang Editorial E-Ink Deck).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Guizang Editorial E-Ink Deck template to turn my content into an editorial magazine x e-ink horizontal deck with 10 layouts and 5 palettes. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

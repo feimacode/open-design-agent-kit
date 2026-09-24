@@ -20,7 +20,7 @@ export function composeCustomDesignSystemInstructions(input: ComposeCustomDesign
   const parts: string[] = [];
 
   parts.push(
-    `# Create a custom OpenDesign design system\n\nYou are authoring a new, custom design system as a single \`DESIGN.md\` file. Once written, it becomes a first-class, selectable design system — the exact same mechanism as the ~150 bundled ones, just workspace-local instead of built into the extension.`,
+    `# Create a custom Open Design design system\n\nYou are authoring a new, custom design system as a single \`DESIGN.md\` file. Once written, it becomes a first-class, selectable design system — the exact same mechanism as the ~150 bundled ones, just workspace-local instead of built into the extension.`,
   );
 
   parts.push(`\n\n## Brand brief\n\n${input.brief.trim()}`);

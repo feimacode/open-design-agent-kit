@@ -1,15 +1,15 @@
 ---
 name: open-design
-description: Generate design artifacts (landing pages, decks, prototypes, dashboards, components) using OpenDesign's bundled design skills and design systems. Use whenever the user asks to design, build, mock up, or generate something visual — a landing page, pitch deck, dashboard, prototype, or marketing page — even if they don't say "OpenDesign" explicitly.
+description: Generate design artifacts (landing pages, decks, prototypes, dashboards, components) using Open Design's bundled design skills and design systems. Use whenever the user asks to design, build, mock up, or generate something visual — a landing page, pitch deck, dashboard, prototype, or marketing page — even if they don't say "Open Design" explicitly.
 ---
 
-OpenDesign is a bundled catalog of design skills and design templates (reusable task recipes and rendering styles — both usable interchangeably as a `skillId`) plus design systems (brand-inspired visual token sets), exposed through the `open-design` MCP server's tools.
+Open Design is a bundled catalog of design skills and design templates (reusable task recipes and rendering styles — both usable interchangeably as a `skillId`) plus design systems (brand-inspired visual token sets), exposed through the `open-design` MCP server's tools.
 
 Every skill/template id is namespaced as `od:<mode>:<name>` (e.g. `od:deck:guizang-ppt`), where `mode` is one of: `prototype`, `deck`, `design-system`, `image`, `video`, `template`, `utility`, `audio`. Always pass the full namespaced id as `skillId`. Note: mode `design-system` means "a skill that helps author a design-system deliverable" — it has nothing to do with `designSystemId`, which selects from the separate library of ~150 prebuilt brand design systems (see step 2).
 
 A small, curated subset of skills/templates also has its own explicit `/open-design:<id>` skill — if the user's request closely matches one of those, prefer invoking it directly; it pins the exact skillId and often a ready-made example brief, removing any guesswork. Otherwise, follow the flow below yourself.
 
-All OpenDesign content (skill/template text, design system tokens, example briefs) is delivered to you as plain text through the MCP tool calls below — never as a file path. You never need to, and should not, browse or search for OpenDesign's own files anywhere on disk; `list_open_design_skills` and `prepare_open_design_brief` already return everything you need as plain text.
+All Open Design content (skill/template text, design system tokens, example briefs) is delivered to you as plain text through the MCP tool calls below — never as a file path. You never need to, and should not, browse or search for Open Design's own files anywhere on disk; `list_open_design_skills` and `prepare_open_design_brief` already return everything you need as plain text.
 
 Follow this flow:
 
@@ -20,7 +20,7 @@ Follow this flow:
 5. Call `register_open_design_artifact` with the entry path, a `kind`, a `title`, and any `supportingFiles`, so the artifact is recognized and gets its manifest sidecar written.
 6. Optionally call `get_open_design_artifact` to confirm what was written before telling the user it's done.
 
-Generated artifacts land under the project's OpenDesign output directory (default `.open-design/`) so they stay visible and trackable in version control like any other project file. This host has no live preview editor — after registering an artifact, just tell the user where it was written; there is nothing further to open automatically.
+Generated artifacts land under the project's Open Design output directory (default `.open-design/`) so they stay visible and trackable in version control like any other project file. This host has no live preview editor — after registering an artifact, just tell the user where it was written; there is nothing further to open automatically.
 
 If the user wants to start from or riff on an existing example rather than build something new, prefer `remix_open_design_example` (skillId must have a non-empty `exampleArtifactPath`) over `prepare_open_design_brief` — it copies a working starting artifact into the project and tells you to modify it rather than regenerate from scratch. See [references/remixable-examples.md](references/remixable-examples.md) for the full list of what's available to remix, grouped by mode — check it before calling `list_open_design_skills` with `remixableOnly: true` if a quick skim already answers the question.
 

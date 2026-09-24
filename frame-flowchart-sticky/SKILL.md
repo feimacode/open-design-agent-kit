@@ -1,13 +1,13 @@
 ---
 name: "od:video:frame-flowchart-sticky"
-description: Sticky Flowchart Frame (OpenDesign) — use only when the user explicitly runs this skill
+description: Sticky Flowchart Frame (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:video:frame-flowchart-sticky` (Sticky Flowchart Frame).
+Use the Open Design skill `od:video:frame-flowchart-sticky` (Sticky Flowchart Frame).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Sticky Flowchart Frame template to turn my content into a whiteboard-brainstorm frame with SVG curve connectors, sticky-note nodes, and cursor interaction. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

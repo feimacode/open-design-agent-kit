@@ -21,7 +21,7 @@ export function registerBrowseDesignSystemsCommand(context: vscode.ExtensionCont
       { id: IMPORT_SENTINEL, label: '$(cloud-download) Import a design system…', description: 'From a file, pasted content, or a GitHub repository' },
     ];
     if (designSystems.length === 0) {
-      const picked = await vscode.window.showQuickPick(items, { title: 'OpenDesign: Browse Design Systems', placeHolder: 'No design systems yet' });
+      const picked = await vscode.window.showQuickPick(items, { title: 'Open Design: Browse Design Systems', placeHolder: 'No design systems yet' });
       if (picked?.id === IMPORT_SENTINEL) await vscode.commands.executeCommand('openDesign.importDesignSystem');
       return;
     }
@@ -49,7 +49,7 @@ export function registerBrowseDesignSystemsCommand(context: vscode.ExtensionCont
     }
 
     const picked = await vscode.window.showQuickPick(items, {
-      title: 'OpenDesign: Browse Design Systems',
+      title: 'Open Design: Browse Design Systems',
       placeHolder: 'Search by name, category, or summary… (selecting one sets it as active)',
       matchOnDescription: true,
       matchOnDetail: true,
@@ -67,7 +67,7 @@ export function registerBrowseDesignSystemsCommand(context: vscode.ExtensionCont
     if (picked.id === null) {
       await setActiveDesignSystemId(undefined);
       log.info('browseDesignSystems: cleared active design system');
-      vscode.window.showInformationMessage('OpenDesign: cleared the active design system.');
+      vscode.window.showInformationMessage('Open Design: cleared the active design system.');
       return;
     }
 
@@ -75,7 +75,7 @@ export function registerBrowseDesignSystemsCommand(context: vscode.ExtensionCont
     await setActiveDesignSystemId(picked.id);
     const name = picked.label.replace(/^\$\(check\)\s*/, '');
     await vscode.commands.executeCommand('workbench.action.chat.open', {
-      query: `Using the OpenDesign design system "${picked.id}" (${name}) — `,
+      query: `Using the Open Design design system "${picked.id}" (${name}) — `,
       isPartialQuery: true,
     });
   });

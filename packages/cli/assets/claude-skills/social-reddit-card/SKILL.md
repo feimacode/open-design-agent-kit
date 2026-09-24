@@ -1,13 +1,13 @@
 ---
 name: "od-prototype-social-reddit-card"
-description: Reddit Post Card (OpenDesign) — use only when the user explicitly runs this skill
+description: Reddit Post Card (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:prototype:social-reddit-card` (Reddit Post Card).
+Use the Open Design skill `od:prototype:social-reddit-card` (Reddit Post Card).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Reddit Post Card template to turn my content into a realistic Reddit post card with vote rail and comment count for a video overlay or story share. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

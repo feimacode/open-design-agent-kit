@@ -1,11 +1,11 @@
 ---
 name: deck-open-slide-canvas
-description: Open-Slide 1920 Canvas Deck (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Open-Slide 1920 Canvas Deck (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:deck:deck-open-slide-canvas` (Open-Slide 1920 Canvas Deck).
+Use the Open Design skill `od:deck:deck-open-slide-canvas` (Open-Slide 1920 Canvas Deck).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Open-Slide 1920 Canvas Deck template to turn my content into a locked 1920x1080 free-composition deck with React component-level layout. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

@@ -2,7 +2,7 @@
   "name": "@feimacode/open-design-agent-kit-claude-plugin",
   "version": "0.1.0",
   "private": true,
-  "description": "The OpenDesign Claude Code plugin: MCP server registration, an overview skill, and one explicit-only skill per curated OpenDesign entry. Not an npm package — installed via a Claude Code plugin marketplace, not `npm install`. This package.json exists only so its generator script runs through the same npm-workspaces sync-content pipeline as packages/vscode and packages/content.",
+  "description": "The Open Design Claude Code plugin: MCP server registration, an overview skill, and one explicit-only skill per curated Open Design entry. Not an npm package — installed via a Claude Code plugin marketplace, not `npm install`. This package.json exists only so its generator script runs through the same npm-workspaces sync-content pipeline as packages/vscode and packages/content.",
   "license": "MIT",
   "scripts": {
     "generate-skills": "node ./scripts/generate-claude-skills.mjs",

@@ -1,10 +1,10 @@
 ---
 name: "od-prototype-doc-kami-parchment"
-description: Kami Parchment Document (OpenDesign)
+description: Kami Parchment Document (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:prototype:doc-kami-parchment` (Kami Parchment Document).
+Use the Open Design skill `od:prototype:doc-kami-parchment` (Kami Parchment Document).
 
 Brief: ${input:brief:Use the Kami Parchment Document template to turn my content into a warm parchment document with monochrome ink-blue accents, one serif family, and editorial-grade typography. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

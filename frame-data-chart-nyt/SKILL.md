@@ -1,13 +1,13 @@
 ---
 name: "od:video:frame-data-chart-nyt"
-description: NYT-Style Data Chart Frame (OpenDesign) — use only when the user explicitly runs this skill
+description: NYT-Style Data Chart Frame (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:video:frame-data-chart-nyt` (NYT-Style Data Chart Frame).
+Use the Open Design skill `od:video:frame-data-chart-nyt` (NYT-Style Data Chart Frame).
 
 Brief: "$ARGUMENTS", or if empty: "Use the NYT-Style Data Chart Frame template to turn my content into a frame with NYT-newsroom typography, staggered reveal animation, and editorial-grade charts. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

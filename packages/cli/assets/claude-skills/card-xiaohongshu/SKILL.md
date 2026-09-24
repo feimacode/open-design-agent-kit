@@ -1,13 +1,13 @@
 ---
 name: "od-prototype-card-xiaohongshu"
-description: Xiaohongshu Card (OpenDesign) — use only when the user explicitly runs this skill
+description: Xiaohongshu Card (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:prototype:card-xiaohongshu` (Xiaohongshu Card).
+Use the Open Design skill `od:prototype:card-xiaohongshu` (Xiaohongshu Card).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Xiaohongshu Card template to turn my content into a Xiaohongshu-style swipeable knowledge-card carousel. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

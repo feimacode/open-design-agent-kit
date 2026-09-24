@@ -46,7 +46,7 @@ export class ExamplePreviewProvider {
       return;
     }
 
-    const panel = vscode.window.createWebviewPanel('openDesign.examplePreview', 'OpenDesign Preview', vscode.ViewColumn.One, {
+    const panel = vscode.window.createWebviewPanel('openDesign.examplePreview', 'Open Design Preview', vscode.ViewColumn.One, {
       enableScripts: true,
       retainContextWhenHidden: true,
       localResourceRoots: [context.extensionUri],

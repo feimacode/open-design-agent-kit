@@ -24,12 +24,12 @@ function curatedSkillMdContent(entry) {
     : `What do you want to build with ${entry.displayName}?`;
   return `---
 name: ${entry.id}
-description: ${entry.displayName} (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: ${entry.displayName} (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 ${GENERATED_MARKER}
 
-Use the OpenDesign skill \`${entry.publicId}\` (${entry.displayName}).
+Use the Open Design skill \`${entry.publicId}\` (${entry.displayName}).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "${placeholder}"
 

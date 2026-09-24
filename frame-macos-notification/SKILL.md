@@ -1,13 +1,13 @@
 ---
 name: "od:video:frame-macos-notification"
-description: macOS Notification Banner (OpenDesign) — use only when the user explicitly runs this skill
+description: macOS Notification Banner (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:video:frame-macos-notification` (macOS Notification Banner).
+Use the Open Design skill `od:video:frame-macos-notification` (macOS Notification Banner).
 
 Brief: "$ARGUMENTS", or if empty: "Use the macOS Notification Banner template to turn my content into a realistic macOS notification banner for a video overlay or product teaser. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

@@ -1,10 +1,10 @@
 ---
 name: "od-video-frame-flowchart-sticky"
-description: Sticky Flowchart Frame (OpenDesign)
+description: Sticky Flowchart Frame (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:video:frame-flowchart-sticky` (Sticky Flowchart Frame).
+Use the Open Design skill `od:video:frame-flowchart-sticky` (Sticky Flowchart Frame).
 
 Brief: ${input:brief:Use the Sticky Flowchart Frame template to turn my content into a whiteboard-brainstorm frame with SVG curve connectors, sticky-note nodes, and cursor interaction. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

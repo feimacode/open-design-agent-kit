@@ -63,7 +63,7 @@ export async function performRemix(
   const brief =
     skill.examplePrompt ?? `Adapt this example ("${skill.name}") to the user's specific request, keeping its overall visual approach.`;
 
-  const instructions = `The file at "${entryPath}" already exists — it's a copy of the "${skill.name}" example. Read it first, then apply the following as a targeted MODIFICATION to the existing content, not a from-scratch regeneration:\n\n${brief}\n\nAfter making changes, call register_open_design_artifact again with the same entryPath if the kind/title/supportingFiles need updating. Its preview has already been opened automatically in the OpenDesign Artifact Preview editor — do not also open the file yourself (e.g. in Simple Browser or via a file:// URL) to show the result.`;
+  const instructions = `The file at "${entryPath}" already exists — it's a copy of the "${skill.name}" example. Read it first, then apply the following as a targeted MODIFICATION to the existing content, not a from-scratch regeneration:\n\n${brief}\n\nAfter making changes, call register_open_design_artifact again with the same entryPath if the kind/title/supportingFiles need updating. Its preview has already been opened automatically in the Open Design Artifact Preview editor — do not also open the file yourself (e.g. in Simple Browser or via a file:// URL) to show the result.`;
 
   return { ok: true, result: { entryPath, displayName: skill.name, instructions, manifest } };
 }

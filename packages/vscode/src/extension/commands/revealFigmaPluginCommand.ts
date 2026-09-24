@@ -7,7 +7,7 @@ export function registerRevealFigmaPluginCommand(context: vscode.ExtensionContex
     const manifestUri = vscode.Uri.joinPath(context.extensionUri, 'assets', 'figma-plugin', 'manifest.json');
     await vscode.commands.executeCommand('revealFileInOS', manifestUri);
     vscode.window.showInformationMessage(
-      'OpenDesign: in Figma desktop, use Plugins → Development → Import plugin from manifest… and select this manifest.json (one-time setup).',
+      'Open Design: in Figma desktop, use Plugins → Development → Import plugin from manifest… and select this manifest.json (one-time setup).',
     );
   });
   context.subscriptions.push(disposable);

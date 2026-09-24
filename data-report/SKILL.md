@@ -1,13 +1,13 @@
 ---
 name: "od:prototype:data-report"
-description: Data Visualization Report (OpenDesign) — use only when the user explicitly runs this skill
+description: Data Visualization Report (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:prototype:data-report` (Data Visualization Report).
+Use the Open Design skill `od:prototype:data-report` (Data Visualization Report).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Data Visualization Report template to turn my CSV, Excel, or JSON data into a polished visual report page. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

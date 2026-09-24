@@ -1,11 +1,11 @@
 ---
 name: video-hyperframes
-description: Hyperframes Video (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Hyperframes Video (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:video:video-hyperframes` (Hyperframes Video).
+Use the Open Design skill `od:video:video-hyperframes` (Hyperframes Video).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Hyperframes Video template to turn my content into a Hyperframes / Remotion-compatible continuous frame animation with autoplay support. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

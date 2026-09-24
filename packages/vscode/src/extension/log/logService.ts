@@ -6,7 +6,7 @@ export type { ILogService, ILogTarget } from './common/logService';
 export { LogLevel } from './common/logService';
 
 /**
- * Writes to a real "OpenDesign Tools" channel in the Output panel — a
+ * Writes to a real "Open Design Tools" channel in the Output panel — a
  * `LogOutputChannel` (not a plain `OutputChannel`) so it gets VS Code's
  * native timestamps and its own Log Level filter in the Output panel's
  * dropdown, same as first-party extensions. Warnings/errors are also
@@ -14,7 +14,7 @@ export { LogLevel } from './common/logService';
  * running in the Extension Development Host.
  */
 export function createLogService(context: vscode.ExtensionContext): ILogService {
-  const channel = vscode.window.createOutputChannel('OpenDesign Tools', { log: true });
+  const channel = vscode.window.createOutputChannel('Open Design Tools', { log: true });
   context.subscriptions.push(channel);
-  return new LogServiceImpl([new VSCodeLogTarget(channel), new ConsoleLogTarget('[OpenDesign] ', LogLevel.Error)]);
+  return new LogServiceImpl([new VSCodeLogTarget(channel), new ConsoleLogTarget('[Open Design] ', LogLevel.Error)]);
 }

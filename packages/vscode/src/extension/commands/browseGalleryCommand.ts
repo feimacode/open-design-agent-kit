@@ -18,7 +18,7 @@ export function registerBrowseGalleryCommand(
     log.info('Command: openDesign.browseGallery');
     const entries = (await contentIndex.listSkills()).filter((s) => s.exampleArtifactPath);
     if (entries.length === 0) {
-      vscode.window.showInformationMessage('No remixable OpenDesign examples are available.');
+      vscode.window.showInformationMessage('No remixable Open Design examples are available.');
       return;
     }
 
@@ -42,7 +42,7 @@ export function registerBrowseGalleryCommand(
     }
 
     const picked = await vscode.window.showQuickPick(items, {
-      title: 'OpenDesign: Browse Gallery',
+      title: 'Open Design: Browse Gallery',
       placeHolder: 'Search examples to remix…',
       matchOnDescription: true,
       matchOnDetail: true,

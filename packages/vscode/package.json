@@ -1,7 +1,7 @@
 {
   "name": "open-design-agent-kit",
-  "displayName": "OpenDesign Agent Kit",
-  "description": "Use OpenDesign's design skills and design systems directly from VS Code chat — no daemon, no MCP server. Copilot's own selected model authors the artifact via native file-editing tools.",
+  "displayName": "Open Design Agent Kit",
+  "description": "Pro-grade UI design, built into GitHub Copilot Chat: 270+ design skills, 150+ brand design systems, 160+ remixable examples. No desktop app, no daemon, no API keys. Your agent's own model builds decks, landing pages, and prototypes as real files in your repo.",
   "version": "0.1.5",
   "publisher": "feima",
   "icon": "assets/icons/extension-icon.png",
@@ -18,10 +18,34 @@
   },
   "keywords": [
     "design",
+    "ui",
+    "ux",
+    "ui-design",
+    "web-design",
+    "design-system",
     "design-systems",
+    "design-tokens",
+    "prototype",
+    "prototyping",
+    "mockup",
+    "landing-page",
+    "pitch-deck",
+    "slides",
+    "presentation",
+    "dashboard",
+    "html",
+    "frontend",
+    "figma",
+    "wysiwyg",
     "copilot",
     "copilot-chat",
+    "github-copilot",
+    "agent",
+    "ai-agent",
     "ai",
+    "llm",
+    "vibe-coding",
+    "no-code",
     "open-design"
   ],
   "engines": {
@@ -31,9 +55,6 @@
     "AI",
     "Chat"
   ],
-  "extensionDependencies": [
-    "github.copilot-chat"
-  ],
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -42,9 +63,9 @@
     "languageModelTools": [
       {
         "name": "list_open_design_skills",
-        "displayName": "List OpenDesign Skills",
-        "modelDescription": "Lists available OpenDesign skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', 'example', or 'community' (all interchangeable as skillId) — 'community' entries are fetched at runtime from a separate, unreviewed community repo (awesome-open-design) and should be flagged to the user as such if it matters to their request. Some results include an 'examplePrompt' — a curated, ready-to-use brief — which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
-        "userDescription": "Browse OpenDesign's bundled design skills",
+        "displayName": "List Open Design Skills",
+        "modelDescription": "Lists available Open Design skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', 'example', or 'community' (all interchangeable as skillId) — 'community' entries are fetched at runtime from a separate, unreviewed community repo (awesome-open-design) and should be flagged to the user as such if it matters to their request. Some results include an 'examplePrompt' — a curated, ready-to-use brief — which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
+        "userDescription": "Browse Open Design's bundled design skills",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-skills",
         "icon": "$(list-unordered)",
@@ -89,9 +110,9 @@
       },
       {
         "name": "list_open_design_design_systems",
-        "displayName": "List OpenDesign Design Systems",
-        "modelDescription": "Lists available OpenDesign design systems — brand-inspired visual token sets (palette, typography, spacing, component rules) bundled with this extension, each with a 'category' (e.g. 'E-Commerce & Retail', 'AI & LLM', 'Fintech & Crypto' — call with no arguments to see which categories are present) and an 'active' flag marking the current active design system, if any. Use this to discover which designSystemId to pass to prepare_open_design_brief, or to check what's currently active before asking the user to repeat it. Optionally filter by a free-text query matched against name/summary/category, and/or an exact category. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
-        "userDescription": "Browse OpenDesign's bundled design systems",
+        "displayName": "List Open Design Design Systems",
+        "modelDescription": "Lists available Open Design design systems — brand-inspired visual token sets (palette, typography, spacing, component rules) bundled with this extension, each with a 'category' (e.g. 'E-Commerce & Retail', 'AI & LLM', 'Fintech & Crypto' — call with no arguments to see which categories are present) and an 'active' flag marking the current active design system, if any. Use this to discover which designSystemId to pass to prepare_open_design_brief, or to check what's currently active before asking the user to repeat it. Optionally filter by a free-text query matched against name/summary/category, and/or an exact category. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
+        "userDescription": "Browse Open Design's bundled design systems",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-design-systems",
         "icon": "$(symbol-color)",
@@ -111,9 +132,9 @@
       },
       {
         "name": "prepare_open_design_brief",
-        "displayName": "Prepare OpenDesign Brief",
-        "modelDescription": "Composes generation instructions for an OpenDesign artifact by combining the chosen skill's workflow, an optional design system's visual tokens, universal craft rules, and the user's brief. Returns an 'instructions' string you must follow, plus a 'suggestedEntryPath' for where to author the artifact's entry file in the current workspace. This tool does NOT write any files — after calling it, author the artifact's entry file (and any supporting files) yourself using your normal file-editing tools, following the returned instructions, then call register_open_design_artifact.",
-        "userDescription": "Prepare an OpenDesign generation brief",
+        "displayName": "Prepare Open Design Brief",
+        "modelDescription": "Composes generation instructions for an Open Design artifact by combining the chosen skill's workflow, an optional design system's visual tokens, universal craft rules, and the user's brief. Returns an 'instructions' string you must follow, plus a 'suggestedEntryPath' for where to author the artifact's entry file in the current workspace. This tool does NOT write any files — after calling it, author the artifact's entry file (and any supporting files) yourself using your normal file-editing tools, following the returned instructions, then call register_open_design_artifact.",
+        "userDescription": "Prepare an Open Design generation brief",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-prepare-brief",
         "icon": "$(sparkle)",
@@ -157,9 +178,9 @@
       },
       {
         "name": "register_open_design_artifact",
-        "displayName": "Register OpenDesign Artifact",
-        "modelDescription": "Call this AFTER you have written an artifact's entry file (and any supporting files) into the workspace with your normal file-editing tools. Validates the artifact and writes its manifest sidecar (<entry>.artifact.json) next to the entry file, so it's recognized as an OpenDesign artifact. Fails clearly if entryPath does not exist yet — write the file first.",
-        "userDescription": "Register a generated file as an OpenDesign artifact",
+        "displayName": "Register Open Design Artifact",
+        "modelDescription": "Call this AFTER you have written an artifact's entry file (and any supporting files) into the workspace with your normal file-editing tools. Validates the artifact and writes its manifest sidecar (<entry>.artifact.json) next to the entry file, so it's recognized as an Open Design artifact. Fails clearly if entryPath does not exist yet — write the file first.",
+        "userDescription": "Register a generated file as an Open Design artifact",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-register-artifact",
         "icon": "$(check)",
@@ -230,9 +251,9 @@
       },
       {
         "name": "get_open_design_artifact",
-        "displayName": "Get OpenDesign Artifact",
-        "modelDescription": "Reads back a registered OpenDesign artifact: its manifest, entry file content, supporting file list, and any open preview comments (left by the user in the OpenDesign Artifact Preview editor) that haven't been addressed yet. Use this to review what was generated, and check 'openComments' before telling the user you're done — address any pending ones.",
-        "userDescription": "Read back an OpenDesign artifact",
+        "displayName": "Get Open Design Artifact",
+        "modelDescription": "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and any open preview comments (left by the user in the Open Design Artifact Preview editor) that haven't been addressed yet. Use this to review what was generated, and check 'openComments' before telling the user you're done — address any pending ones.",
+        "userDescription": "Read back an Open Design artifact",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-artifact",
         "icon": "$(preview)",
@@ -251,9 +272,9 @@
       },
       {
         "name": "set_active_design_system",
-        "displayName": "Set Active OpenDesign Design System",
-        "modelDescription": "Sets (or clears, if designSystemId is omitted/empty) the active OpenDesign design system, persisted for this workspace. The active design system is used automatically by prepare_open_design_brief whenever it's called without an explicit designSystemId. Call this when the user says something like 'let's use the Starbucks look from now on' before you've generated anything yet.",
-        "userDescription": "Set or clear the active OpenDesign design system",
+        "displayName": "Set Active Open Design Design System",
+        "modelDescription": "Sets (or clears, if designSystemId is omitted/empty) the active Open Design design system, persisted for this workspace. The active design system is used automatically by prepare_open_design_brief whenever it's called without an explicit designSystemId. Call this when the user says something like 'let's use the Starbucks look from now on' before you've generated anything yet.",
+        "userDescription": "Set or clear the active Open Design design system",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-set-design-system",
         "icon": "$(symbol-color)",
@@ -269,9 +290,9 @@
       },
       {
         "name": "remix_open_design_example",
-        "displayName": "Remix OpenDesign Example",
-        "modelDescription": "Copies a curated OpenDesign example artifact (identified by its skillId, which must have a non-empty 'exampleArtifactPath' from list_open_design_skills) into the workspace as a starting point, registers it as an artifact, and returns instructions telling you to MODIFY the copied file rather than regenerate it from scratch. Use this when the user wants to start from or riff on an existing example rather than build something brand new.",
-        "userDescription": "Remix a curated OpenDesign example into the workspace",
+        "displayName": "Remix Open Design Example",
+        "modelDescription": "Copies a curated Open Design example artifact (identified by its skillId, which must have a non-empty 'exampleArtifactPath' from list_open_design_skills) into the workspace as a starting point, registers it as an artifact, and returns instructions telling you to MODIFY the copied file rather than regenerate it from scratch. Use this when the user wants to start from or riff on an existing example rather than build something brand new.",
+        "userDescription": "Remix a curated Open Design example into the workspace",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-remix-example",
         "icon": "$(repo-forked)",
@@ -292,7 +313,7 @@
         "name": "create_open_design_design_system",
         "displayName": "Create Custom Design System",
         "modelDescription": "Composes instructions for authoring a brand-new, custom design system as a DESIGN.md file in the workspace (the same file shape and selection mechanism as the ~150 bundled design systems, just workspace-local). Does NOT write any files. If sourceUrl is given, performs a best-effort, no-daemon extraction of candidate colors/fonts/favicon from that page to include as a starting point. After writing the returned instructions' file, call set_active_design_system with the returned id.",
-        "userDescription": "Create a custom OpenDesign design system for your own brand",
+        "userDescription": "Create a custom Open Design design system for your own brand",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-create-design-system",
         "icon": "$(paintcan)",
@@ -321,8 +342,8 @@
       {
         "name": "port_open_design_artifact_to_app",
         "displayName": "Promote Artifact to App Code",
-        "modelDescription": "Composes instructions for porting a finished OpenDesign artifact's design into this workspace's actual, existing application as real, idiomatic production code (not a standalone file). Does NOT write any files. Reads the artifact's current content and, if the app has a recognizable components directory, suggests a target file path. The returned instructions direct the model to find and follow a real existing component in the workspace as its pattern reference (styling approach, conventions, file organization) rather than copying the artifact's HTML/CSS verbatim, and to leave routing/navigation wiring out of scope as a separate step for the user.",
-        "userDescription": "Port a finished OpenDesign artifact into the app's real code",
+        "modelDescription": "Composes instructions for porting a finished Open Design artifact's design into this workspace's actual, existing application as real, idiomatic production code (not a standalone file). Does NOT write any files. Reads the artifact's current content and, if the app has a recognizable components directory, suggests a target file path. The returned instructions direct the model to find and follow a real existing component in the workspace as its pattern reference (styling approach, conventions, file organization) rather than copying the artifact's HTML/CSS verbatim, and to leave routing/navigation wiring out of scope as a separate step for the user.",
+        "userDescription": "Port a finished Open Design artifact into the app's real code",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-port-to-app",
         "icon": "$(rocket)",
@@ -350,8 +371,8 @@
       {
         "name": "share_open_design_artifact_to_community",
         "displayName": "Share Artifact to Community",
-        "modelDescription": "Composes instructions for packaging a finished OpenDesign artifact as a new entry in the community-contributed design catalog (awesome-open-design). Does NOT write any files and does NOT run any commands itself. The returned instructions direct the model to: (1) derive a slug/title/description/example_prompt from the artifact itself rather than asking the user to retype anything, (2) scaffold a local SKILL.md + example.html + open-design.json folder with its own file-editing tools, (3) explicitly check in with the user before publishing anything, since that step is public and hard to reverse, and only then (4) fork/branch/push/open a PR against the community repo using its own terminal tool under the user's own already-authenticated gh/git identity — never inventing a placeholder GitHub owner if gh auth is missing.",
-        "userDescription": "Share a finished OpenDesign artifact to the community design catalog",
+        "modelDescription": "Composes instructions for packaging a finished Open Design artifact as a new entry in the community-contributed design catalog (awesome-open-design). Does NOT write any files and does NOT run any commands itself. The returned instructions direct the model to: (1) derive a slug/title/description/example_prompt from the artifact itself rather than asking the user to retype anything, (2) scaffold a local SKILL.md + example.html + open-design.json folder with its own file-editing tools, (3) explicitly check in with the user before publishing anything, since that step is public and hard to reverse, and only then (4) fork/branch/push/open a PR against the community repo using its own terminal tool under the user's own already-authenticated gh/git identity — never inventing a placeholder GitHub owner if gh auth is missing.",
+        "userDescription": "Share a finished Open Design artifact to the community design catalog",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-share-to-community",
         "icon": "$(cloud-upload)",
@@ -371,7 +392,7 @@
       {
         "name": "pull_open_design_figma_frame",
         "displayName": "Pull Figma Frame",
-        "modelDescription": "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. Fetches the frame's structure via the Figma REST API (requires a Figma personal access token, set via the \"OpenDesign: Set Figma Access Token\" command) and a best-effort rendered image export, then returns instructions embedding a deterministic structural summary as ground truth. Does NOT write any files — after calling it, author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\"), not a bare file link.",
+        "modelDescription": "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. Fetches the frame's structure via the Figma REST API (requires a Figma personal access token, set via the \"Open Design: Set Figma Access Token\" command) and a best-effort rendered image export, then returns instructions embedding a deterministic structural summary as ground truth. Does NOT write any files — after calling it, author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\"), not a bare file link.",
         "userDescription": "Translate a Figma frame into a code artifact",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-pull-figma-frame",
@@ -483,80 +504,80 @@
       {
         "command": "openDesign.browseDesignSystems",
         "title": "Browse Design Systems",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(symbol-color)"
       },
       {
         "command": "openDesign.importDesignSystem",
         "title": "Import Design System",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(cloud-download)"
       },
       {
         "command": "openDesign.browseGallery",
         "title": "Browse Gallery",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(library)"
       },
       {
         "command": "openDesign.openArtifactPreview",
         "title": "Open Artifact Preview",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(preview)"
       },
       {
         "command": "openDesign.openGalleryGrid",
         "title": "Open Gallery Grid",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(layout-panel)"
       },
       {
         "command": "openDesign.remixExample",
         "title": "Remix",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(repo-forked)"
       },
       {
         "command": "openDesign.previewExample",
         "title": "Preview Example",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(eye)"
       },
       {
         "command": "openDesign.chatWithExample",
         "title": "Use in Chat",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "openDesign.setFigmaToken",
         "title": "Set Figma Access Token",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(key)"
       },
       {
         "command": "openDesign.revealFigmaPlugin",
         "title": "Show Figma Import Plugin Folder",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(folder-opened)"
       },
       {
         "command": "openDesign.refreshCollections",
         "title": "Refresh Collections",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(refresh)"
       },
       {
         "command": "openDesign.syncCommunityContent",
         "title": "Sync Community Designs",
-        "category": "OpenDesign",
+        "category": "Open Design",
         "icon": "$(cloud-download)"
       }
     ],
     "customEditors": [
       {
         "viewType": "openDesign.artifactEditor",
-        "displayName": "OpenDesign Artifact Preview",
+        "displayName": "Open Design Artifact Preview",
         "selector": [
           {
             "filenamePattern": "**/*.html"
@@ -569,7 +590,7 @@
       "activitybar": [
         {
           "id": "openDesign",
-          "title": "OpenDesign",
+          "title": "Open Design",
           "icon": "assets/icons/gallery.svg"
         }
       ]
@@ -579,12 +600,12 @@
         {
           "id": "openDesign.galleryView",
           "name": "Gallery",
-          "contextualTitle": "OpenDesign Gallery"
+          "contextualTitle": "Open Design Gallery"
         },
         {
           "id": "openDesign.collectionsView",
           "name": "Collections",
-          "contextualTitle": "OpenDesign Collections"
+          "contextualTitle": "Open Design Collections"
         }
       ]
     },
@@ -636,27 +657,27 @@
       ]
     },
     "configuration": {
-      "title": "OpenDesign Tools",
+      "title": "Open Design Tools",
       "properties": {
         "openDesign.outputDirectory": {
           "type": "string",
           "default": ".open-design",
-          "markdownDescription": "Workspace-relative directory new OpenDesign artifacts are suggested under, e.g. `.open-design/<slug>/index.html`."
+          "markdownDescription": "Workspace-relative directory new Open Design artifacts are suggested under, e.g. `.open-design/<slug>/index.html`."
         },
         "openDesign.activeDesignSystemId": {
           "type": "string",
           "default": "",
-          "markdownDescription": "The currently active OpenDesign design system id. Used as the default for `prepare_open_design_brief` when no `designSystemId` is given. Set via the \"OpenDesign: Browse Design Systems\" command, the `set_active_design_system` tool, or by generating with an explicit design system — leave empty for none."
+          "markdownDescription": "The currently active Open Design design system id. Used as the default for `prepare_open_design_brief` when no `designSystemId` is given. Set via the \"Open Design: Browse Design Systems\" command, the `set_active_design_system` tool, or by generating with an explicit design system — leave empty for none."
         },
         "openDesign.communityContentEnabled": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Whether to fetch and show community-contributed remixable designs from [awesome-open-design](https://github.com/feimacode/awesome-open-design) alongside the built-in gallery. This content is not reviewed by the extension author. Fetched automatically once on first activation, and re-synced any time via the \"OpenDesign: Sync Community Designs\" command."
+          "markdownDescription": "Whether to fetch and show community-contributed remixable designs from [awesome-open-design](https://github.com/feimacode/awesome-open-design) alongside the built-in gallery. This content is not reviewed by the extension author. Fetched automatically once on first activation, and re-synced any time via the \"Open Design: Sync Community Designs\" command."
         },
         "openDesign.communityContentRef": {
           "type": "string",
           "default": "v0.1.0",
-          "markdownDescription": "The tag of [awesome-open-design](https://github.com/feimacode/awesome-open-design) to fetch community designs from. Change this, then run \"OpenDesign: Sync Community Designs\", to track a different release."
+          "markdownDescription": "The tag of [awesome-open-design](https://github.com/feimacode/awesome-open-design) to fetch community designs from. Change this, then run \"Open Design: Sync Community Designs\", to track a different release."
         }
       }
     }

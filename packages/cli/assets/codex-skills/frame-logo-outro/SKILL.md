@@ -1,11 +1,11 @@
 ---
 name: frame-logo-outro
-description: Logo Outro Frame (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Logo Outro Frame (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:video:frame-logo-outro` (Logo Outro Frame).
+Use the Open Design skill `od:video:frame-logo-outro` (Logo Outro Frame).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Logo Outro Frame template to turn my content into a video outro or brand closing frame with segmented logo assembly, glow bloom, and tagline reveal. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

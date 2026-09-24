@@ -23,7 +23,7 @@ export function composeShareToCommunityInstructions(input: ComposeShareToCommuni
   const parts: string[] = [];
 
   parts.push(
-    `# Share this OpenDesign artifact to the community\n\nYou are packaging the finished artifact below as a new entry in [${COMMUNITY_REPO}](https://github.com/${COMMUNITY_REPO}) — the community-contributed catalog of remixable designs other OpenDesign users can browse and remix. This is a two-stage task: first scaffold the entry locally (harmless), then — only once the user has explicitly confirmed — publish it as a pull request under the user's own GitHub identity (a real, public, hard-to-reverse action).`,
+    `# Share this Open Design artifact to the community\n\nYou are packaging the finished artifact below as a new entry in [${COMMUNITY_REPO}](https://github.com/${COMMUNITY_REPO}) — the community-contributed catalog of remixable designs other Open Design users can browse and remix. This is a two-stage task: first scaffold the entry locally (harmless), then — only once the user has explicitly confirmed — publish it as a pull request under the user's own GitHub identity (a real, public, hard-to-reverse action).`,
   );
 
   parts.push(`\n\n## The artifact\n\nEntry file: \`${artifactEntryPath}\`\n\n\`\`\`html\n${artifactContent.trim()}\n\`\`\``);

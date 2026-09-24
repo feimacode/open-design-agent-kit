@@ -7,7 +7,7 @@ export function registerOpenArtifactPreviewCommand(context: vscode.ExtensionCont
     const target = uri ?? vscode.window.activeTextEditor?.document.uri;
     if (!target) {
       log.warn('openArtifactPreview: no file to preview (no uri argument and no active editor)');
-      vscode.window.showWarningMessage('OpenDesign: no file to preview. Open or select an HTML artifact first.');
+      vscode.window.showWarningMessage('Open Design: no file to preview. Open or select an HTML artifact first.');
       return;
     }
     log.info(`Command: openDesign.openArtifactPreview ${target.fsPath}`);

@@ -1,4 +1,4 @@
-// Grid view for browsing/remixing OpenDesign examples — modeled on
+// Grid view for browsing/remixing Open Design examples — modeled on
 // feima-copilot-ai-flow's gallery (webview-src/gallery/App.tsx +
 // FlowCard.tsx): search bar + filter chips above a CSS-grid of cards.
 // Plain DOM/TS instead of React, consistent with this extension's other

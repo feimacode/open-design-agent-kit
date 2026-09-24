@@ -17,19 +17,19 @@ export function registerActiveDesignSystemStatusBarItem(context: vscode.Extensio
       const activeId = getActiveDesignSystemId();
       if (!activeId) {
         item.text = '$(symbol-color) No design system';
-        item.tooltip = 'OpenDesign: no active design system — click to pick one';
+        item.tooltip = 'Open Design: no active design system — click to pick one';
         item.show();
         return;
       }
       const designSystem = await contentIndex.getDesignSystem(activeId);
       if (!designSystem) {
         item.text = '$(symbol-color) No design system';
-        item.tooltip = `OpenDesign: active design system "${activeId}" was not found (stale setting) — click to pick one`;
+        item.tooltip = `Open Design: active design system "${activeId}" was not found (stale setting) — click to pick one`;
         item.show();
         return;
       }
       item.text = `$(symbol-color) ${designSystem.name}`;
-      item.tooltip = `OpenDesign: active design system — click to change`;
+      item.tooltip = `Open Design: active design system — click to change`;
       item.show();
       log.debug(`Status bar: showing active design system "${activeId}"`);
     } catch (err) {

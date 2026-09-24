@@ -1,13 +1,13 @@
 ---
 name: "od-prototype-social-spotify-card"
-description: Spotify Now-Playing Card (OpenDesign) — use only when the user explicitly runs this skill
+description: Spotify Now-Playing Card (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:prototype:social-spotify-card` (Spotify Now-Playing Card).
+Use the Open Design skill `od:prototype:social-spotify-card` (Spotify Now-Playing Card).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Spotify Now-Playing Card template to turn my content into a Spotify Now Playing-style card with album art, progress bar, and playback controls for a video overlay or personal homepage. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

@@ -1,10 +1,10 @@
 ---
 name: "od-video-frame-light-leak-cinema"
-description: Light-Leak Cinematic Frame (OpenDesign)
+description: Light-Leak Cinematic Frame (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:video:frame-light-leak-cinema` (Light-Leak Cinematic Frame).
+Use the Open Design skill `od:video:frame-light-leak-cinema` (Light-Leak Cinematic Frame).
 
 Brief: ${input:brief:Use the Light-Leak Cinematic Frame template to turn my content into a cinematic opening or chapter card with film light leaks, grain, letterbox framing, and large serif type. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

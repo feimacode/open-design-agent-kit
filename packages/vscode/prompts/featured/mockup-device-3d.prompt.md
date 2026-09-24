@@ -1,10 +1,10 @@
 ---
 name: "od-prototype-mockup-device-3d"
-description: Device 3D Showcase (OpenDesign)
+description: Device 3D Showcase (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:prototype:mockup-device-3d` (Device 3D Showcase).
+Use the Open Design skill `od:prototype:mockup-device-3d` (Device 3D Showcase).
 
 Brief: ${input:brief:Use the Device 3D Showcase template to turn my content into a static iPhone and MacBook 3D-style showcase with real HTML embedded on the screens. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

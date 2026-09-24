@@ -1,16 +1,27 @@
-# OpenDesign Agent Kit
+# Open Design Agent Kit
 
-Bring [OpenDesign](https://github.com/nexu-io/open-design)'s design skills, design systems, and remixable examples into GitHub Copilot Chat — no daemon, no MCP server, no separate app. Copilot's own selected model does the actual generation with its native file-editing tools; this extension supplies the content library and the instructions that steer it toward using that library well.
+**Pro-grade UI design, built right into GitHub Copilot Chat.**
 
-<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/vscode/gallery-grid.png" alt="OpenDesign Gallery Grid inside VS Code — searchable card grid of remixable examples with live thumbnails" width="100%"/>
+Ask Copilot for a pitch deck, a landing page, a dashboard, or a mobile prototype, and get something that looks designed, not generated. Agent Kit gives Copilot [Open Design](https://github.com/nexu-io/open-design)'s library: 270+ design skills, 150+ brand design systems, 160+ remixable examples, and the craft rules that keep output from looking like AI slop. Copilot's own model then builds the result as real files in your workspace.
 
-## Why
+**No desktop app. No daemon. No MCP server. No API keys, no model settings, no extra account.** Install it and ask.
 
-Most AI-agent design output looks the same — generic gradients, default sans-serif stacks, cookie-cutter cards. OpenDesign's real value isn't a UI, it's a large, curated library of task-specific generation recipes, brand-accurate design systems, and hard-won craft rules (typography hierarchy, color, accessibility, anti-"AI slop" guidance) that keep output from reading as machine-generated. This extension makes that library available as Copilot Chat tools, so you get better output from the model you're already using — no new app, no new account.
+<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/vscode/gallery-grid.png" alt="Open Design Gallery Grid inside VS Code — searchable card grid of remixable examples with live thumbnails" width="100%"/>
+
+## Built into Copilot, not bolted on
+
+Most design tools for AI make you leave your editor: another app to install, a background service to keep running, another model provider to configure and pay for. This extension goes the other way. Everything plugs into what VS Code and Copilot already have:
+
+- **Native Copilot tools.** The library ships as VS Code `languageModelTools`, chat instructions, and `/` slash commands. Copilot's agent mode finds and calls them on its own, so you don't need to learn anything new. Just describe what you want.
+- **Your model, your subscription.** Generation uses whichever model you already picked in Copilot Chat. There's no second provider, API key, or bill.
+- **Nothing running in the background.** No daemon, no local server, no ports, no MCP config. The extension is data plus instructions; Copilot does the work with its own file-editing tools.
+- **Zero setup.** Nothing to configure before your first prompt. The one piece of state that matters, your active design system, is remembered per workspace once you pick it.
+- **Real files, in your repo.** Artifacts are plain HTML on disk, with a small JSON manifest beside them. Diff them, review them, commit them, open them in a browser. There's no project database to export from.
+- **Stays in your flow.** Preview, comment, edit, and promote to production code without leaving the editor or the chat you're already in.
 
 ## See what it builds
 
-Six of the ~280 vendored skills and templates, rendered exactly as-is:
+Six of the ~280 bundled skills and templates, rendered exactly as-is:
 
 <table>
 <tr>
@@ -37,33 +48,36 @@ Six of the ~280 vendored skills and templates, rendered exactly as-is:
 
 ## What you get
 
-- **A 277-entry skill catalog** — 163 skills + 114 design templates spanning prototypes, decks, dashboards, images, video, and more. Browse with `#od-skills` or just ask naturally; Copilot's agent mode calls `list_open_design_skills` on its own.
-- **152 brand design systems** — `#od-design-systems`, or **OpenDesign: Browse Design Systems** in the Command Palette / status bar (fuzzy-searchable, grouped by ~22 categories). Picking one sets it as the workspace's active design system, so `prepare_open_design_brief` applies its tokens automatically from then on — say "use Starbucks" once per session, not on every request.
-- **167 remixable examples**, browsable as a searchable card grid with live thumbnails (above) via **OpenDesign: Open Gallery Grid**, or the standalone OpenDesign activity-bar icon's tree view. Picking one copies it into your workspace and tells the model to modify it, not regenerate from scratch.
-- **23 one-click slash commands** for the most-curated entries — `/guizang-ppt`, `/data-report`, `/deck-swiss-international`, and 20 more — plus `/open-design-generate` and `/open-design-skills` as general-purpose entry points, and `/open-design-custom-design-system` for inventing a brand-new one.
-- **A live artifact preview** for generated HTML, opening automatically with three modes:
+- **A 277-entry skill catalog.** 163 skills and 114 design templates covering prototypes, decks, dashboards, images, video, and more. Browse with `#od-skills` or just ask; Copilot's agent mode calls `list_open_design_skills` on its own.
+- **152 brand design systems.** Use `#od-design-systems`, or **Open Design: Browse Design Systems** in the Command Palette or status bar (fuzzy-searchable, grouped into ~22 categories). Picking one makes it the workspace's active design system, and `prepare_open_design_brief` applies its tokens automatically from then on. Say "use Starbucks" once per session, not on every request.
+- **167 remixable examples,** browsable as a searchable card grid with live thumbnails (above) via **Open Design: Open Gallery Grid**, or from the Open Design activity-bar icon. Picking one copies it into your workspace and tells the model to modify it instead of starting from scratch.
+- **Community designs.** An optional, growing catalog of community-contributed designs from [awesome-open-design](https://github.com/feimacode/awesome-open-design) appears next to the built-in gallery. When you're proud of something you built, `#od-share-to-community` packages it up and opens a PR to share it back. It always checks with you before publishing.
+- **23 one-click slash commands** for the most-curated entries: `/guizang-ppt`, `/data-report`, `/deck-swiss-international`, and 20 more. There's also `/open-design-generate` and `/open-design-skills` as general entry points, and `/open-design-custom-design-system` for inventing a new one.
+- **Multi-screen collections.** Generate a whole flow (onboarding, checkout, a set of app screens) as one collection. The **Collections** view lists each collection's screens, and the preview has next/previous navigation between them.
+- **Figma, both directions.** Paste a Figma frame link and `#od-pull-figma-frame` rebuilds it as code. Going the other way, the preview's Figma button exports any artifact as editable Figma layers through the bundled import plugin.
+- **A live artifact preview** that opens automatically for generated HTML, with three modes:
 
-  **Comment** — hover to highlight, click an element to pin a note. "Send comments to chat" hands your selected notes to Copilot as a scoped edit instruction; comments persist as a plain, git-trackable `<entry>.html.comments.json` sidecar, never applied by a special engine:
+  **Comment**: hover to highlight, then click an element to pin a note. "Send comments to chat" hands the notes you select to Copilot as a scoped edit request. Comments are saved as a plain, git-trackable `<entry>.html.comments.json` sidecar.
 
-  <img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/vscode/comment-mode.png" alt="OpenDesign Artifact Preview in Comment mode — a pinned note on the trend chart, and an in-progress comment on the '1,842' KPI with alignment guides" width="100%"/>
+  <img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/vscode/comment-mode.png" alt="Open Design Artifact Preview in Comment mode — a pinned note on the trend chart, and an in-progress comment on the '1,842' KPI with alignment guides" width="100%"/>
 
-  **Edit** (HTML only) — click an element for a panel with content fields that adapt to what you clicked (text / link href / image src+alt / raw HTML for containers) plus a curated style section (color, background, opacity, typography, border, per-side padding/margin) — written straight back to the file through a real `WorkspaceEdit`, so undo/redo is native:
+  **Edit** (HTML only): click an element to open a panel. Its content fields adapt to what you clicked (text, link href, image src and alt, or raw HTML for containers), and a style section covers color, background, opacity, typography, border, and per-side padding and margin. Changes are written straight back to the file through a real `WorkspaceEdit`, so undo and redo work as usual.
 
-  <img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/vscode/edit-mode.png" alt="OpenDesign Artifact Preview in Edit mode — WYSIWYG style panel open on the '1,842' KPI value, with typography, border, padding, and margin fields" width="100%"/>
+  <img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/vscode/edit-mode.png" alt="Open Design Artifact Preview in Edit mode — WYSIWYG style panel open on the '1,842' KPI value, with typography, border, padding, and margin fields" width="100%"/>
 
-  **View** — just the rendered page, as-is. All three follow open-design's own actual visual design language (colors, radii, shadows, the Albert Sans variable font), not generic VS Code theming.
-- **Custom design systems** beyond the bundled 152 — invent one from a brief (`create_open_design_design_system`, optionally seeded from a reference URL) or deterministically import an existing one from a file, pasted content, or a GitHub repo via **OpenDesign: Import Design System** — no model involved in the import path, original source always preserved.
-- **Promote to app code** — once you're happy with an artifact, `port_open_design_artifact_to_app` (or the "Promote to App Code" button in the preview toolbar) ports it into your real, already-open app as idiomatic production code, grounded in an existing component you point it at or one it finds itself. A one-time action, not a live sync, and it deliberately doesn't wire up routing/navigation for you.
-- **Grounds generation in your app** — when the open workspace looks like a real React/Vue/Next.js/Nuxt/Svelte/Angular/Astro/Solid project, generation instructions nudge the model to check a few of its real components/conventions first, so prototypes look more like they belong there.
+  **View**: just the rendered page.
+- **Your own design systems** beyond the bundled 152. Invent one from a brief (`create_open_design_design_system`, optionally seeded from a reference URL), or import an existing one from a file, pasted content, or a GitHub repo with **Open Design: Import Design System**. Import doesn't use a model, and the original source is always kept.
+- **From prototype to production.** When you're happy with an artifact, `port_open_design_artifact_to_app` (or the "Promote to App Code" button in the preview toolbar) ports it into your real app as idiomatic production code, modeled on an existing component you point to or one it finds itself. It runs once rather than syncing, and it leaves routing and navigation for you to wire up.
+- **Grounded in your codebase.** When the workspace looks like a React, Vue, Next.js, Nuxt, Svelte, Angular, Astro, or Solid project, the instructions have the model look at a few of your real components first, so prototypes look like they belong in your app.
 
 ## Requirements
 
 - VS Code 1.138+
-- [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat) (extension dependency, installed automatically)
+- [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat), or any other chat agent that can call VS Code's built-in language model tools. The Gallery, Collections, and preview work without one; generation needs a chat agent.
 
 ## Install
 
-Search "OpenDesign Agent Kit" in the Extensions view, or install from the [Marketplace](https://marketplace.visualstudio.com/items?itemName=feima.open-design-agent-kit).
+Search "Open Design Agent Kit" in the Extensions view, or install from the [Marketplace](https://marketplace.visualstudio.com/items?itemName=feima.open-design-agent-kit). That's the whole setup.
 
 ## Quick start
 
@@ -71,23 +85,28 @@ Open Copilot Chat in agent mode and just ask:
 
 > Make me a pitch deck for a Series A fintech startup, editorial style.
 
-Copilot calls `list_open_design_skills` / `list_open_design_design_systems` on its own and writes the files. Or be explicit:
+Copilot calls `list_open_design_skills` and `list_open_design_design_systems` on its own and writes the files. Or be explicit:
 
-- `/guizang-ppt A 10-slide pitch deck for...` — one of the 23 curated one-click commands
-- "Use the Starbucks design system, then build me a landing page" — sets it active, generates against it
-- Click a card in **OpenDesign: Open Gallery Grid** to remix a real example instead of starting blank
-- `#od-artifact` to have Copilot look at what's already registered in the workspace
+- `/guizang-ppt A 10-slide pitch deck for...` runs one of the 23 curated one-click commands
+- "Use the Starbucks design system, then build me a landing page" sets it active and generates against it
+- Click a card in **Open Design: Open Gallery Grid** to remix a real example instead of starting blank
+- "Turn this Figma frame into code: <link>" rebuilds a frame (after **Open Design: Set Figma Access Token**)
+- `#od-artifact` has Copilot look at what's already registered in the workspace
 
 ## Settings
+
+None are required. These are here in case you want to change the defaults:
 
 | Setting | Default | Description |
 |---|---|---|
 | `openDesign.outputDirectory` | `.open-design` | Workspace-relative directory new artifacts are suggested under, e.g. `.open-design/<slug>/index.html`. |
 | `openDesign.activeDesignSystemId` | *(empty)* | The current active design system id. Set via the browse picker, the `set_active_design_system` tool, or by generating with an explicit id. |
+| `openDesign.communityContentEnabled` | `true` | Show community-contributed designs from awesome-open-design next to the built-in gallery. This content isn't reviewed by the extension author. |
+| `openDesign.communityContentRef` | `v0.1.0` | The awesome-open-design tag to fetch community designs from. |
 
 ## Commands
 
-`OpenDesign: Browse Design Systems` · `OpenDesign: Import Design System` · `OpenDesign: Browse Gallery` · `OpenDesign: Open Gallery Grid` · `OpenDesign: Open Artifact Preview` (also on the right-click menu for `.html` files) — all reachable from the Command Palette.
+`Open Design: Browse Design Systems` · `Open Design: Import Design System` · `Open Design: Browse Gallery` · `Open Design: Open Gallery Grid` · `Open Design: Open Artifact Preview` (also on the right-click menu for `.html` files) · `Open Design: Sync Community Designs` · `Open Design: Set Figma Access Token` · `Open Design: Show Figma Import Plugin Folder`. All are in the Command Palette.
 
 ## Under the hood
 
@@ -103,9 +122,9 @@ The edit panel is modeled on open-design's own `ManualEditPanel.tsx`. Deliberate
 
 There are three ways to browse and remix the same 167-example pool, for different situations:
 
-- **QuickPick** (`OpenDesign: Browse Gallery`) — fastest, keyboard-driven; selecting an item remixes it directly, no separate preview/chat step.
-- **Tree view** (the OpenDesign activity-bar icon → Gallery) — always one click away, grouped by category. Clicking an item, or its inline "Use in Chat" icon, populates Copilot Chat with a prefilled (still-editable, not-yet-sent) message naming the example — mirroring upstream open-design's own Gallery, where clicking a card populates the chat composer rather than doing anything immediately. A read-only preview and a direct Remix are both available separately via inline icons.
-- **Grid view** (`OpenDesign: Open Gallery Grid`, screenshot above) — a searchable card grid (search box + category filter chips) with a live thumbnail per card, fetched lazily as it scrolls into view and rendered straight from this extension's bundled assets into `iframe.srcdoc` — never through a resource fetch the webview's browser engine would have to load from a URL.
+- **QuickPick** (`Open Design: Browse Gallery`) — fastest, keyboard-driven; selecting an item remixes it directly, no separate preview/chat step.
+- **Tree view** (the Open Design activity-bar icon → Gallery) — always one click away, grouped by category. Clicking an item, or its inline "Use in Chat" icon, populates Copilot Chat with a prefilled (still-editable, not-yet-sent) message naming the example — mirroring upstream open-design's own Gallery, where clicking a card populates the chat composer rather than doing anything immediately. A read-only preview and a direct Remix are both available separately via inline icons.
+- **Grid view** (`Open Design: Open Gallery Grid`, screenshot above) — a searchable card grid (search box + category filter chips) with a live thumbnail per card, fetched lazily as it scrolls into view and rendered straight from this extension's bundled assets into `iframe.srcdoc` — never through a resource fetch the webview's browser engine would have to load from a URL.
 
 All four entry points (the tool, QuickPick, tree, grid) call the same underlying remix logic, so behavior is identical regardless of which one you use.
 
@@ -115,7 +134,7 @@ The three webviews (Artifact Preview editor, Gallery grid, example preview panel
 
 ## Not using VS Code?
 
-The same skill/design-system/artifact tools are available as a standalone [MCP server](https://www.npmjs.com/package/@feimacode/open-design-agent-kit-mcp) for Claude Code, Codex, Cursor, and any other MCP-capable agent — see the [main repo](https://github.com/feimacode/open-design-agent-kit) for the full picture, including the Claude Code plugin and Codex setup.
+The same library is built natively into other agents too: a Claude Code plugin, Codex skills, and a standalone [MCP server](https://www.npmjs.com/package/@feimacode/open-design-agent-kit-mcp) for Cursor and any other MCP-capable agent. See the [main repo](https://github.com/feimacode/open-design-agent-kit) for setup.
 
 ## Content & attribution
 

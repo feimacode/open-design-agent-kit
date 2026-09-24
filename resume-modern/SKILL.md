@@ -1,13 +1,13 @@
 ---
 name: "od:prototype:resume-modern"
-description: Modern Resume (OpenDesign) — use only when the user explicitly runs this skill
+description: Modern Resume (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:prototype:resume-modern` (Modern Resume).
+Use the Open Design skill `od:prototype:resume-modern` (Modern Resume).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Modern Resume template to turn my content into a modern minimal single-page A4 resume ready for print or PDF export. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

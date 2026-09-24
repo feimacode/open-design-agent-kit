@@ -1,4 +1,4 @@
-# Using OpenDesign with Codex CLI
+# Using Open Design with Codex CLI
 
 Verified against Codex's own current docs (`developers.openai.com/codex`) while building this. Two updates from what was originally assumed when this integration was planned: Codex now has its own MCP support (TOML-configured, not the JSON `.mcp.json` shape Claude Code uses) *and* its own Skills system with a `SKILL.md` format shaped just like Claude Code's (`name` + `description` frontmatter). There's also a broader "universal plugin directory" shared between ChatGPT and Codex — that requires submitting through OpenAI's own distribution process, which is out of scope here; the two things below work today with nothing to submit anywhere.
 

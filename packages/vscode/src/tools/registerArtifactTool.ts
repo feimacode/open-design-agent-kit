@@ -44,7 +44,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
     options: vscode.LanguageModelToolInvocationPrepareOptions<RegisterArtifactInput>,
   ): Promise<vscode.PreparedToolInvocation> {
     return {
-      invocationMessage: `Registering OpenDesign artifact at ${options.input.entryPath}`,
+      invocationMessage: `Registering Open Design artifact at ${options.input.entryPath}`,
     };
   }
 
@@ -94,7 +94,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
       // Stating the preview already opened, right at this response, heads
       // that off at the one moment it would otherwise be decided.
       const openNote = isHtml
-        ? '\n\nIts preview has already been opened automatically in the OpenDesign Artifact Preview editor. Do not also open the file yourself (e.g. in Simple Browser or any other browser view, or via a file:// URL) — that is not how previews are shown in this extension and will be blocked.'
+        ? '\n\nIts preview has already been opened automatically in the Open Design Artifact Preview editor. Do not also open the file yourself (e.g. in Simple Browser or any other browser view, or via a file:// URL) — that is not how previews are shown in this extension and will be blocked.'
         : '';
 
       return new vscode.LanguageModelToolResult([

@@ -1,10 +1,10 @@
 ---
 name: "od-video-video-hyperframes"
-description: Hyperframes Video (OpenDesign)
+description: Hyperframes Video (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:video:video-hyperframes` (Hyperframes Video).
+Use the Open Design skill `od:video:video-hyperframes` (Hyperframes Video).
 
 Brief: ${input:brief:Use the Hyperframes Video template to turn my content into a Hyperframes / Remotion-compatible continuous frame animation with autoplay support. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

@@ -30,11 +30,11 @@ function promptFileContent(entry) {
   const invocationName = entry.publicId.replace(/:/g, '-');
   return `---
 name: "${invocationName}"
-description: ${entry.displayName} (OpenDesign)
+description: ${entry.displayName} (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill \`${entry.publicId}\` (${entry.displayName}).
+Use the Open Design skill \`${entry.publicId}\` (${entry.displayName}).
 
 Brief: \${input:brief:${placeholder}}
 

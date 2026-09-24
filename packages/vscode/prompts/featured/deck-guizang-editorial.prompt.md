@@ -1,10 +1,10 @@
 ---
 name: "od-deck-deck-guizang-editorial"
-description: Guizang Editorial E-Ink Deck (OpenDesign)
+description: Guizang Editorial E-Ink Deck (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:deck:deck-guizang-editorial` (Guizang Editorial E-Ink Deck).
+Use the Open Design skill `od:deck:deck-guizang-editorial` (Guizang Editorial E-Ink Deck).
 
 Brief: ${input:brief:Use the Guizang Editorial E-Ink Deck template to turn my content into an editorial magazine x e-ink horizontal deck with 10 layouts and 5 palettes. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

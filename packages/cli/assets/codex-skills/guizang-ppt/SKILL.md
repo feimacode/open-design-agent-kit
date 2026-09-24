@@ -1,11 +1,11 @@
 ---
 name: guizang-ppt
-description: Write a Brand-to-Revenue Story like a Growth Strategy Lead (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Write a Brand-to-Revenue Story like a Growth Strategy Lead (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:deck:guizang-ppt` (Write a Brand-to-Revenue Story like a Growth Strategy Lead).
+Use the Open Design skill `od:deck:guizang-ppt` (Write a Brand-to-Revenue Story like a Growth Strategy Lead).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Create \"Write a Brand-to-Revenue Story like a Growth Strategy Lead\" as a Marketing and GTM deck in the Guizang Ppt visual system. Scene: annual-marketing-plan. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce a commercial-grade slide plan, written slides, visual direction, speaker-ready structure, and critic pass against this rubric: can the plan connect creative choices to measurable growth."
 

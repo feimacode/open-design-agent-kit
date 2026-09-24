@@ -1,13 +1,13 @@
 ---
 name: "od-video-frame-logo-outro"
-description: Logo Outro Frame (OpenDesign) — use only when the user explicitly runs this skill
+description: Logo Outro Frame (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:video:frame-logo-outro` (Logo Outro Frame).
+Use the Open Design skill `od:video:frame-logo-outro` (Logo Outro Frame).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Logo Outro Frame template to turn my content into a video outro or brand closing frame with segmented logo assembly, glow bloom, and tagline reveal. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

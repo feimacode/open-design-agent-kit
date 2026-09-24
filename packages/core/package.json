@@ -2,7 +2,7 @@
   "name": "@feimacode/open-design-agent-kit-core",
   "version": "0.1.0",
   "private": true,
-  "description": "Framework-agnostic content parsing and generation-instruction logic for OpenDesign Agent Kit, shared by the VS Code extension and (later) other agent-host packages.",
+  "description": "Framework-agnostic content parsing and generation-instruction logic for Open Design Agent Kit, shared by the VS Code extension and (later) other agent-host packages.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "license": "MIT",

@@ -2,7 +2,7 @@
   "name": "@feimacode/open-design-agent-kit-codex",
   "version": "0.1.0",
   "private": true,
-  "description": "Generates this repo's root-level .agents/skills/ directory — Codex CLI's own skill-discovery convention — from the same curated OpenDesign entries and overview skill the Claude Code plugin uses. Not an npm package; the generated .agents/skills/ is what a Codex user copies into their own project (or points Codex at directly if working from within this repo).",
+  "description": "Generates this repo's root-level .agents/skills/ directory — Codex CLI's own skill-discovery convention — from the same curated Open Design entries and overview skill the Claude Code plugin uses. Not an npm package; the generated .agents/skills/ is what a Codex user copies into their own project (or points Codex at directly if working from within this repo).",
   "license": "MIT",
   "scripts": {
     "generate-skills": "node ./scripts/generate-codex-skills.mjs",

@@ -1,13 +1,13 @@
 ---
 name: "od:video:frame-liquid-bg-hero"
-description: Liquid Background Hero (OpenDesign) — use only when the user explicitly runs this skill
+description: Liquid Background Hero (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:video:frame-liquid-bg-hero` (Liquid Background Hero).
+Use the Open Design skill `od:video:frame-liquid-bg-hero` (Liquid Background Hero).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Liquid Background Hero template to turn my content into a WebGL-style fluid displacement background with a quote overlay for a video intro, landing hero, or poster. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

@@ -1,11 +1,11 @@
 ---
 name: frame-liquid-bg-hero
-description: Liquid Background Hero (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Liquid Background Hero (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:video:frame-liquid-bg-hero` (Liquid Background Hero).
+Use the Open Design skill `od:video:frame-liquid-bg-hero` (Liquid Background Hero).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Liquid Background Hero template to turn my content into a WebGL-style fluid displacement background with a quote overlay for a video intro, landing hero, or poster. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

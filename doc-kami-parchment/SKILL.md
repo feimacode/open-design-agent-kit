@@ -1,13 +1,13 @@
 ---
 name: "od:prototype:doc-kami-parchment"
-description: Kami Parchment Document (OpenDesign) — use only when the user explicitly runs this skill
+description: Kami Parchment Document (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:prototype:doc-kami-parchment` (Kami Parchment Document).
+Use the Open Design skill `od:prototype:doc-kami-parchment` (Kami Parchment Document).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Kami Parchment Document template to turn my content into a warm parchment document with monochrome ink-blue accents, one serif family, and editorial-grade typography. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

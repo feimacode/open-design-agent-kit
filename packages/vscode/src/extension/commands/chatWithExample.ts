@@ -29,7 +29,7 @@ export async function chatWithExample(contentIndex: ContentIndex, skillId: strin
   }
 
   const brief = skill.examplePrompt ? ` ${skill.examplePrompt}` : '';
-  const query = `Use the OpenDesign skill "${skillId}" (${skill.name}).${brief}`;
+  const query = `Use the Open Design skill "${skillId}" (${skill.name}).${brief}`;
 
   log.info(`chatWithExample: prefilling chat for ${skillId}`);
   await vscode.commands.executeCommand('workbench.action.chat.open', { query, isPartialQuery: true });

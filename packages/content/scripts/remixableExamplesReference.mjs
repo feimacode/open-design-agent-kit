@@ -93,7 +93,7 @@ export async function buildRemixableExamplesReference(assetsRoot) {
   }
 
   const lines = [
-    '# Remixable OpenDesign examples',
+    '# Remixable Open Design examples',
     '',
     `${examples.length} vendored examples have an actual rendered starting artifact you can copy into the workspace and modify, via \`remix_open_design_example\` with the \`id\` shown below as \`skillId\`, instead of generating from scratch with \`prepare_open_design_brief\`.`,
     '',

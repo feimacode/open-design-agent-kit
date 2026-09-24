@@ -1,13 +1,13 @@
 ---
 name: "od-video-vfx-text-cursor"
-description: VFX Text Cursor (OpenDesign) — use only when the user explicitly runs this skill
+description: VFX Text Cursor (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:video:vfx-text-cursor` (VFX Text Cursor).
+Use the Open Design skill `od:video:vfx-text-cursor` (VFX Text Cursor).
 
 Brief: "$ARGUMENTS", or if empty: "Use the VFX Text Cursor template to turn my content into a video-intro quote reveal with cursor light trails, chromatic rays, and directional flares. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

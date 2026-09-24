@@ -1,13 +1,40 @@
-# OpenDesign Agent Kit
+# Open Design Agent Kit
 
-Use [OpenDesign](https://github.com/nexu-io/open-design)'s design skills, design systems, and remixable examples directly from the coding agent you already have open — no new app, no daemon, no separate account. Whatever model you've already selected (Copilot Chat's, Claude Code's, Codex's) does the actual generation with its own native file-editing tools; this project supplies the content library and the bookkeeping around it.
+**Pro-grade design, built right into the coding agent you already use.**
 
-**Why this exists:** OpenDesign itself is a full local-first desktop app — daemon, project database, its own model billing. Most of what makes it valuable day-to-day isn't the app, it's the *content*: 163 skills, 114 design templates, 152 brand design systems, 167 remixable example artifacts, and 11 craft docs (typography, color, accessibility, anti-"AI slop") that keep generated UI from reading as generated. This project vendors that content and re-implements the generation workflow around it as a thin, no-daemon layer that plugs into agents you already use — so you get the library without adopting a new tool.
+Open Design Agent Kit brings [Open Design](https://github.com/nexu-io/open-design)'s design skills, brand design systems, and remixable examples into **GitHub Copilot Chat, Claude Code, Codex, Cursor**, and any other MCP-capable agent. Ask for a pitch deck, landing page, dashboard, or mobile prototype in the chat you already have open. Your agent's own model builds it with its own file tools, guided by a library that keeps the result from looking AI-generated.
 
-Two ways in:
+**No desktop app. No daemon. No extra account, API key, or model settings.** Install it, ask, and the files show up in your repo.
 
-- **[VS Code extension](packages/vscode/README.md)** — native `languageModelTools` for GitHub Copilot Chat, plus a live artifact preview with comments and WYSIWYG editing.
-- **[MCP server](packages/mcp-server/README.md)** — a standalone stdio server for Claude Code, Codex, Cursor, or any other MCP-capable agent: `npx @feimacode/open-design-agent-kit-mcp`. A ready-to-install [Claude Code plugin](#claude-code) sits on top of it.
+## Why built-in beats another app
+
+Open Design itself is a full local-first desktop app with its own daemon, project database, and model setup. It's excellent, but it's one more thing to install, keep running, configure, and switch into. Most of what makes it valuable day to day isn't the app. It's the **content**: 163 skills, 114 design templates, 152 brand design systems, 167 remixable example artifacts, and 11 craft docs (typography, color, accessibility, anti-"AI slop"). Agent Kit takes that content and the generation workflow around it and builds them directly into your agent:
+
+| | Open Design desktop app | Open Design Agent Kit |
+|---|---|---|
+| **Install** | Desktop app plus a background daemon | One VS Code extension, Claude Code plugin, or `npx` command |
+| **Where you work** | A separate app window | The agent chat you already have open |
+| **Model** | Chosen and configured in the app | Whatever model your agent already uses, with no second key or bill |
+| **Setup** | Providers, keys, and projects set up in the app | Nothing to configure. Your active design system is remembered per workspace. |
+| **Output** | Stored in the app's project database | Plain files in your repo: diff, review, and commit them like any other code |
+| **Getting to production** | Export and hand off | Promote the prototype into your real app's components, in the same session |
+
+## What makes it different
+
+- **Native to each agent.** It isn't a wrapper or a separate UI; each integration uses the agent's own mechanism. In Copilot, that's VS Code `languageModelTools`, chat instructions, and slash commands. In Claude Code, it's a plugin with skills and a bundled MCP server. In Codex, it's `.agents/skills` plus MCP. The agent finds the tools on its own, so you just describe what you want.
+- **A curated library, not a prompt.** Task-specific recipes, brand-accurate design tokens, and hard-won craft rules. That's the difference between "a generic gradient card layout" and something that looks designed.
+- **Remix, don't start blank.** Start from any of 167 real rendered examples, plus a growing community catalog, and let the model adapt one instead of inventing from scratch.
+- **Brand-consistent by default.** Pick a design system once (bundled, invented from a brief, or imported from your own) and every generation after that uses it.
+- **Grounded in your codebase, and headed there.** Generation looks at your real components first. When the prototype is right, one tool call ports it into your app as idiomatic production code.
+- **Everything is a file.** Artifacts, manifests, comments, and custom design systems are plain files in your workspace. There's no database, no lock-in, and nothing to export.
+
+Ways in:
+
+- **[VS Code extension](packages/vscode/README.md)**: native tools for GitHub Copilot Chat, plus a gallery, a live artifact preview with comments and WYSIWYG editing, multi-screen collections, and Figma import and export.
+- **[Claude Code plugin](#ways-to-use-it)**: `/plugin install open-design` gives you skills that trigger on design requests, 23 curated `/open-design:*` commands, and the MCP server, registered automatically.
+- **[Codex CLI](docs/codex.md)**: the same skills in Codex's own `.agents/skills` format, plus the MCP server.
+- **[One-command project setup](packages/cli/README.md)**: `npx @feimacode/open-design-agent-kit init` wires Claude Code and/or Codex into your project.
+- **[MCP server](packages/mcp-server/README.md)**: `npx @feimacode/open-design-agent-kit-mcp` for Cursor or any other MCP-capable agent.
 
 Published under the **feimacode** entity; the VS Code extension's publisher id is `feima`.
 
@@ -72,7 +99,7 @@ packages/
                   Cursor, ...). No `vscode` dependency; bundled with esbuild into a
                   single self-contained binary.
   claude-plugin/  the Claude Code plugin: registers the MCP server above, plus one
-                  overview skill and one explicit-only skill per curated OpenDesign
+                  overview skill and one explicit-only skill per curated Open Design
                   entry. Installable straight from this repo — see below.
   codex/          generates this repo's root-level .agents/skills/ — Codex CLI's own
                   skill-discovery convention — from the same curated entries and
@@ -102,14 +129,14 @@ All packages are `npm workspaces` members under the root `package.json`. `packag
 
 ## Core workflow
 
-The same nine tools, and the same ideas, drive every surface above — the VS Code extension exposes them as `languageModelTools`, the MCP server exposes them as MCP tools, but the underlying logic (`packages/core`) is identical:
+The same core tools, and the same ideas, drive every surface above — the VS Code extension exposes them as `languageModelTools`, the MCP server exposes them as MCP tools, but the underlying logic (`packages/core`) is identical:
 
 - **Browse, don't guess.** `list_open_design_skills` returns a merged catalog of open-design `skills/` (reusable task recipes), `design-templates/` (rendering-style entries), and `examples/` (167 actual rendered starting artifacts) — functionally interchangeable as a `skillId`, distinguished by a `source` field. Each id is namespaced by mode as `od:<mode>:<name>` (e.g. `od:deck:guizang-ppt`) — `prototype`, `deck`, `design-system`, `image`, `video`, `template`, `utility`, `audio` — and can be filtered by mode, an exact `source`, `remixableOnly` (only entries with a rendered starting artifact), or free-text query. The Claude Code plugin and Codex's `.agents/skills/` also ship a `references/remixable-examples.md` inside the `open-design` skill — the full example pool, grouped by mode, readable on demand with no tool call. `list_open_design_design_systems` does the same filtering approach for the ~152 bundled design systems, filterable by `category` (~22 of them, e.g. "E-Commerce & Retail") or query.
 - **Compose, don't write.** `prepare_open_design_brief` combines a skill's workflow, an optional design system's tokens, universal craft rules, and your brief into an instructions string — it writes nothing. Your agent's own model authors the entry file (and any supporting files) with its normal file-editing tools, then calls `register_open_design_artifact`, which validates and writes only the manifest sidecar (`<entry>.artifact.json`).
 - **Active design system.** One per workspace, persisted (as a VS Code setting, or `.open-design/config.json` for the MCP server). `prepare_open_design_brief` applies it automatically whenever `designSystemId` is omitted, and generating with an *explicit* id also makes that the new active one — say "use Starbucks" once per session, not on every request. `set_active_design_system` (pass no id to clear) or the VS Code browse picker change it.
 - **Custom design systems** — two ways to add your own beyond the bundled ~152:
   - **Invent one from a brief** — `create_open_design_design_system`: give it a name, a brief, and optionally a reference URL. If a URL is given, a lightweight, no-daemon extraction (`packages/core/src/generation/brandExtraction.ts`) fetches the page plus up to 3 same-origin stylesheets and regex-harvests candidate colors, fonts, and a favicon/`og:image` as a rough starting point, not ground truth. Like every other content tool here, it only composes instructions — the model authors the actual `DESIGN.md`.
-  - **Import one that already exists** (VS Code only today — `OpenDesign: Import Design System`) — from a file, pasted content, or a GitHub repo, written **deterministically**, no model involved: content that's already `DESIGN.md`-shaped is used verbatim, otherwise colors/fonts are regex-extracted the same way, always with the original source preserved in a "Source Reference" section.
+  - **Import one that already exists** (VS Code only today — `Open Design: Import Design System`) — from a file, pasted content, or a GitHub repo, written **deterministically**, no model involved: content that's already `DESIGN.md`-shaped is used verbatim, otherwise colors/fonts are regex-extracted the same way, always with the original source preserved in a "Source Reference" section.
 
   Either way, a written `DESIGN.md` becomes selectable immediately — no separate "register" step. Custom systems live at `<outputDirectory>/design-systems/<slug>/DESIGN.md`, ids prefixed `user:`.
 - **Grounding in an existing app.** `prepare_open_design_brief` checks whether the workspace's `package.json` lists a recognizable framework (React, Vue, Next.js, Nuxt, Svelte, Angular, Astro, Solid) — a cheap signal, not a classifier. When detected, the composed instructions nudge the model to look at a few of the app's real components/conventions before generating, so the result looks more like the app it'll live next to. The artifact still lands as a standalone file, not a real app file — that's what promoting is for.

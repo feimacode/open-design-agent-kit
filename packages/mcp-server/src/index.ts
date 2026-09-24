@@ -34,7 +34,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'list_open_design_skills',
       description:
-        "Lists available OpenDesign skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts bundled with this server. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Each result's 'source' field is 'skill', 'design-template', or 'example'. Some results include an 'examplePrompt' — prefer it (or lightly adapt it) over inventing your own brief when it closely fits. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief for those. Optionally filter by a free-text query, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this server's own runtime and is reachable exclusively through this tool).",
+        "Lists available Open Design skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts bundled with this server. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Each result's 'source' field is 'skill', 'design-template', or 'example'. Some results include an 'examplePrompt' — prefer it (or lightly adapt it) over inventing your own brief when it closely fits. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief for those. Optionally filter by a free-text query, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this server's own runtime and is reachable exclusively through this tool).",
       inputSchema: {
         type: 'object',
         properties: {
@@ -63,7 +63,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'list_open_design_design_systems',
       description:
-        "Lists available OpenDesign design systems — brand-inspired visual token sets (palette, typography, spacing, component rules), each with a 'category' and an 'active' flag marking the current active design system, if any. Optionally filter by a free-text query and/or an exact category. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this server's own runtime and is reachable exclusively through this tool).",
+        "Lists available Open Design design systems — brand-inspired visual token sets (palette, typography, spacing, component rules), each with a 'category' and an 'active' flag marking the current active design system, if any. Optionally filter by a free-text query and/or an exact category. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this server's own runtime and is reachable exclusively through this tool).",
       inputSchema: {
         type: 'object',
         properties: {
@@ -79,7 +79,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'prepare_open_design_brief',
       description:
-        "Composes generation instructions for an OpenDesign artifact by combining the chosen skill's workflow, an optional design system's visual tokens, universal craft rules, and the user's brief. Returns an 'instructions' string you must follow, plus a 'suggestedEntryPath'. Does NOT write any files — after calling it, author the entry file (and any supporting files) yourself with your normal file-editing tools, then call register_open_design_artifact.",
+        "Composes generation instructions for an Open Design artifact by combining the chosen skill's workflow, an optional design system's visual tokens, universal craft rules, and the user's brief. Returns an 'instructions' string you must follow, plus a 'suggestedEntryPath'. Does NOT write any files — after calling it, author the entry file (and any supporting files) yourself with your normal file-editing tools, then call register_open_design_artifact.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -168,7 +168,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'get_open_design_artifact',
       description:
-        "Reads back a registered OpenDesign artifact: its manifest, entry file content, supporting file list, and any open comments. This host has no comment-authoring UI, so 'openComments' will normally be empty.",
+        "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and any open comments. This host has no comment-authoring UI, so 'openComments' will normally be empty.",
       inputSchema: {
         type: 'object',
         properties: { entryPath: { type: 'string', description: "Workspace-relative path to the artifact's entry file." } },
@@ -181,7 +181,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'set_active_design_system',
       description:
-        'Sets (or clears, if designSystemId is omitted/empty) the active OpenDesign design system, persisted for this workspace. Used automatically by prepare_open_design_brief whenever called without an explicit designSystemId.',
+        'Sets (or clears, if designSystemId is omitted/empty) the active Open Design design system, persisted for this workspace. Used automatically by prepare_open_design_brief whenever called without an explicit designSystemId.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -215,7 +215,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'port_open_design_artifact_to_app',
       description:
-        "Composes instructions for porting a finished OpenDesign artifact's design into this workspace's actual, existing application as real, idiomatic production code. Does NOT write any files. Directs the model to ground the port in a real existing component and explicitly excludes routing/navigation wiring.",
+        "Composes instructions for porting a finished Open Design artifact's design into this workspace's actual, existing application as real, idiomatic production code. Does NOT write any files. Directs the model to ground the port in a real existing component and explicitly excludes routing/navigation wiring.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -249,7 +249,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'remix_open_design_example',
       description:
-        "Copies a curated OpenDesign example artifact (identified by its skillId, which must have a non-empty 'exampleArtifactPath') into the workspace as a starting point, registers it, and returns instructions to MODIFY the copied file rather than regenerate it from scratch.",
+        "Copies a curated Open Design example artifact (identified by its skillId, which must have a non-empty 'exampleArtifactPath') into the workspace as a starting point, registers it, and returns instructions to MODIFY the copied file rather than regenerate it from scratch.",
       inputSchema: {
         type: 'object',
         properties: { skillId: { type: 'string', description: "A skillId whose 'exampleArtifactPath' is non-empty." } },
@@ -295,7 +295,7 @@ async function main(): Promise<void> {
   // one writes nothing — same non-destructive "just browsing" guarantee.
   server.setRequestHandler(ListPromptsRequestSchema, async () => {
     const prompts = await tools.listRemixablePrompts(ctx);
-    return { prompts: prompts.map((p) => ({ name: p.name, description: `${p.displayName} (OpenDesign remixable example)` })) };
+    return { prompts: prompts.map((p) => ({ name: p.name, description: `${p.displayName} (Open Design remixable example)` })) };
   });
 
   server.setRequestHandler(GetPromptRequestSchema, async (request) => {
@@ -305,7 +305,7 @@ async function main(): Promise<void> {
       throw new Error(`Unknown prompt: ${request.params.name}`);
     }
     return {
-      description: `${prompt.displayName} (OpenDesign remixable example)`,
+      description: `${prompt.displayName} (Open Design remixable example)`,
       messages: [{ role: 'user' as const, content: { type: 'text' as const, text: tools.buildRemixPromptMessage(prompt) } }],
     };
   });

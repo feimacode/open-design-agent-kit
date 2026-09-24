@@ -30,14 +30,14 @@ function skillMdContent(entry) {
   const invocationName = entry.publicId.replace(/:/g, '-');
   return `---
 name: "${invocationName}"
-description: ${entry.displayName} (OpenDesign) — use only when the user explicitly runs this skill
+description: ${entry.displayName} (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill \`${entry.publicId}\` (${entry.displayName}).
+Use the Open Design skill \`${entry.publicId}\` (${entry.displayName}).
 
 Brief: "$ARGUMENTS", or if empty: "${placeholder}"
 

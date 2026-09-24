@@ -20,7 +20,7 @@ export class SetActiveDesignSystemTool implements vscode.LanguageModelTool<SetAc
     );
 
     if (result.outcome === 'cleared') {
-      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart('Cleared the active OpenDesign design system.')]);
+      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart('Cleared the active Open Design design system.')]);
     }
 
     if (result.outcome === 'unknown') {
@@ -33,7 +33,7 @@ export class SetActiveDesignSystemTool implements vscode.LanguageModelTool<SetAc
     }
 
     return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(`Active OpenDesign design system set to "${designSystemId}" (${result.designSystem.name}).`),
+      new vscode.LanguageModelTextPart(`Active Open Design design system set to "${designSystemId}" (${result.designSystem.name}).`),
     ]);
   }
 }

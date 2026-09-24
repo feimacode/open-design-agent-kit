@@ -1,6 +1,6 @@
 # @feimacode/open-design-agent-kit-content
 
-The vendored [OpenDesign](https://github.com/nexu-io/open-design) content library — 163 skills, 114 design templates, 152 brand design systems, 167 remixable examples, and 11 craft docs — packaged as plain data, no code.
+The vendored [Open Design](https://github.com/nexu-io/open-design) content library — 163 skills, 114 design templates, 152 brand design systems, 167 remixable examples, and 11 craft docs — packaged as plain data, no code.
 
 You almost certainly don't want to depend on this directly. It exists so [`@feimacode/open-design-agent-kit-mcp`](https://www.npmjs.com/package/@feimacode/open-design-agent-kit-mcp) (and the VS Code extension, and the Claude Code plugin, and the `init` CLI) can all read the exact same synced catalog instead of each vendoring their own copy.
 

@@ -13,11 +13,11 @@ export function registerSyncCommunityContentCommand(context: vscode.ExtensionCon
     log.info('Command: openDesign.syncCommunityContent');
     const outcome = await syncCommunityContent(context, log);
     if (!outcome.ok) {
-      vscode.window.showErrorMessage(`OpenDesign: community content sync failed — ${outcome.error}`);
+      vscode.window.showErrorMessage(`Open Design: community content sync failed — ${outcome.error}`);
       return;
     }
     onSynced();
-    vscode.window.showInformationMessage(`OpenDesign: synced ${outcome.exampleCount} community design(s) from awesome-open-design@${outcome.ref}.`);
+    vscode.window.showInformationMessage(`Open Design: synced ${outcome.exampleCount} community design(s) from awesome-open-design@${outcome.ref}.`);
   });
   context.subscriptions.push(disposable);
 }

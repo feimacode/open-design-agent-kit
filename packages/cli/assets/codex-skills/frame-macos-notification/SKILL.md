@@ -1,11 +1,11 @@
 ---
 name: frame-macos-notification
-description: macOS Notification Banner (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: macOS Notification Banner (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:video:frame-macos-notification` (macOS Notification Banner).
+Use the Open Design skill `od:video:frame-macos-notification` (macOS Notification Banner).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the macOS Notification Banner template to turn my content into a realistic macOS notification banner for a video overlay or product teaser. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

@@ -1,11 +1,11 @@
 ---
 name: mockup-device-3d
-description: Device 3D Showcase (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Device 3D Showcase (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:prototype:mockup-device-3d` (Device 3D Showcase).
+Use the Open Design skill `od:prototype:mockup-device-3d` (Device 3D Showcase).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Device 3D Showcase template to turn my content into a static iPhone and MacBook 3D-style showcase with real HTML embedded on the screens. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

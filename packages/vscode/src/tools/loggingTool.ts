@@ -3,7 +3,7 @@ import type { ILogService } from '../extension/log/logService';
 
 /**
  * Wraps any languageModelTool so every invocation is written to the
- * "OpenDesign Tools" Output panel channel — a single instrumentation point
+ * "Open Design Tools" Output panel channel — a single instrumentation point
  * rather than adding logging calls inside each of the 7 tool classes.
  * Failures are logged (with the full error, including any `.cause` chain)
  * and then rethrown unchanged, so VS Code's own tool-error handling still

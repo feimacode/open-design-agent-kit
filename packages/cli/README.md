@@ -1,6 +1,17 @@
 # @feimacode/open-design-agent-kit
 
-`npx @feimacode/open-design-agent-kit init` sets up [OpenDesign](https://github.com/nexu-io/open-design)'s Claude Code and/or Codex integration directly in your own project — no plugin marketplace add, no manual copying. Modeled on `openspec init`'s own pattern.
+**Build pro-grade design into Claude Code and Codex with one command.**
+
+```bash
+npx @feimacode/open-design-agent-kit init
+```
+
+That's the whole setup. `init` writes [Open Design](https://github.com/nexu-io/open-design)'s design skills straight into your project, in each agent's own native skill format, and registers the MCP server that goes with them. From then on, ask your agent for a deck, a landing page, a dashboard, or a prototype. It draws on 163 skills, 114 design templates, 152 brand design systems, and 167 remixable examples to build something that looks designed rather than generated.
+
+- **No desktop app, no daemon, no account.** There's nothing running in the background, and the skills are plain files in your repo.
+- **No API keys or model settings.** Your agent's own model does all the generation.
+- **No marketplace add or manual copying.** It's modeled on `openspec init`: pick your agents, and it writes the files.
+- **Shareable.** Commit the generated `.claude/skills/`, `.agents/skills/`, and MCP config, and everyone who clones the repo gets the same design skills.
 
 ## Quick start
 
@@ -37,7 +48,7 @@ Generated skill files are always fully refreshed — no stale entries left behin
 
 ## More
 
-Full project layout and the other ways to use OpenDesign (VS Code extension, the Claude Code plugin marketplace, the standalone MCP server) live in the [main repo](https://github.com/feimacode/open-design-agent-kit).
+Full project layout and the other ways to use Open Design (VS Code extension, the Claude Code plugin marketplace, the standalone MCP server) live in the [main repo](https://github.com/feimacode/open-design-agent-kit).
 
 ## License
 

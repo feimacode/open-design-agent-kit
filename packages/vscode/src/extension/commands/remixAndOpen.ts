@@ -20,13 +20,13 @@ export async function remixAndOpen(
   const outcome = await performRemix(contentIndex, assetsRoot, skillId, communityContentDir);
   if (!outcome.ok) {
     log.warn(`remixAndOpen: ${outcome.error}`);
-    vscode.window.showErrorMessage(`OpenDesign: ${outcome.error}`);
+    vscode.window.showErrorMessage(`Open Design: ${outcome.error}`);
     return;
   }
 
   const { entryPath, displayName } = outcome.result;
   log.info(`remixAndOpen: remixed "${displayName}" (${skillId}) into ${entryPath}`);
-  vscode.window.showInformationMessage(`OpenDesign: remixed "${displayName}" into ${entryPath}.`);
+  vscode.window.showInformationMessage(`Open Design: remixed "${displayName}" into ${entryPath}.`);
   await vscode.commands.executeCommand('openDesign.openArtifactPreview', vscode.Uri.file(path.join(getWorkspaceRoot(), entryPath)));
 }
 

@@ -1,10 +1,10 @@
 ---
 name: "od-video-frame-data-chart-nyt"
-description: NYT-Style Data Chart Frame (OpenDesign)
+description: NYT-Style Data Chart Frame (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:video:frame-data-chart-nyt` (NYT-Style Data Chart Frame).
+Use the Open Design skill `od:video:frame-data-chart-nyt` (NYT-Style Data Chart Frame).
 
 Brief: ${input:brief:Use the NYT-Style Data Chart Frame template to turn my content into a frame with NYT-newsroom typography, staggered reveal animation, and editorial-grade charts. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

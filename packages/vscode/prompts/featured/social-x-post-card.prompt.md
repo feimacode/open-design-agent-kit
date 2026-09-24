@@ -1,10 +1,10 @@
 ---
 name: "od-prototype-social-x-post-card"
-description: X / Twitter Post Card (OpenDesign)
+description: X / Twitter Post Card (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:prototype:social-x-post-card` (X / Twitter Post Card).
+Use the Open Design skill `od:prototype:social-x-post-card` (X / Twitter Post Card).
 
 Brief: ${input:brief:Use the X / Twitter Post Card template to turn my content into a realistic X post card with engagement metrics for a video overlay or shareable image card. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

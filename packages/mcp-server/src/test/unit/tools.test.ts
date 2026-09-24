@@ -79,7 +79,7 @@ describe('mcp-server tools', () => {
     const [prompt] = await tools.listRemixablePrompts(ctx);
     assert.strictEqual(
       tools.buildRemixPromptMessage(prompt),
-      'Remix the OpenDesign example "holo-hero" — call the open-design MCP server\'s remix_open_design_example tool with skillId "od:prototype:holo-hero". Build a holographic hero section.',
+      'Remix the Open Design example "holo-hero" — call the open-design MCP server\'s remix_open_design_example tool with skillId "od:prototype:holo-hero". Build a holographic hero section.',
     );
     // Regression guard for the live-observed bug: this phrasing must never read as an instruction to invoke Claude Code's own Skill tool.
     assert.ok(!/\bskill "/i.test(tools.buildRemixPromptMessage(prompt)), 'message must not contain the ambiguous `skill "<id>"` phrasing');
@@ -87,7 +87,7 @@ describe('mcp-server tools', () => {
 
   it('buildRemixPromptMessage omits the trailing brief when examplePrompt is absent', () => {
     const message = tools.buildRemixPromptMessage({ name: 'od-prototype-x', publicId: 'od:prototype:x', displayName: 'X' });
-    assert.strictEqual(message, 'Remix the OpenDesign example "X" — call the open-design MCP server\'s remix_open_design_example tool with skillId "od:prototype:x".');
+    assert.strictEqual(message, 'Remix the Open Design example "X" — call the open-design MCP server\'s remix_open_design_example tool with skillId "od:prototype:x".');
   });
 
   it('listDesignSystems marks the active one', async () => {

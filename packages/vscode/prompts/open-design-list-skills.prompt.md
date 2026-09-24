@@ -1,5 +1,5 @@
 ---
-description: Browse OpenDesign's bundled design skills
+description: Browse Open Design's bundled design skills
 mode: agent
 ---
 

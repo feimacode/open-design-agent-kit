@@ -1,10 +1,10 @@
 ---
 name: "od-video-frame-glitch-title"
-description: Glitch Title Frame (OpenDesign)
+description: Glitch Title Frame (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:video:frame-glitch-title` (Glitch Title Frame).
+Use the Open Design skill `od:video:frame-glitch-title` (Glitch Title Frame).
 
 Brief: ${input:brief:Use the Glitch Title Frame template to turn my content into a digital-glitch, chromatic-offset, data-corruption title frame for a video transition or cyberpunk hero. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

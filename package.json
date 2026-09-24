@@ -2,7 +2,7 @@
   "name": "open-design-agent-kit",
   "version": "0.1.0",
   "private": true,
-  "description": "OpenDesign, ported for AI coding agents — a VS Code extension today, with shared logic (packages/core) already separated out for a future npm package usable from Claude Code, Codex, and other agent hosts.",
+  "description": "Open Design, ported for AI coding agents — a VS Code extension today, with shared logic (packages/core) already separated out for a future npm package usable from Claude Code, Codex, and other agent hosts.",
   "license": "MIT",
   "workspaces": [
     "packages/*"

@@ -37,7 +37,7 @@ export class PullFigmaFrameTool implements vscode.LanguageModelTool<PullFigmaFra
     if (!token) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          'No Figma access token is set. Run the "OpenDesign: Set Figma Access Token" command (paste a personal access token from Figma → Settings → Personal access tokens), then try again.',
+          'No Figma access token is set. Run the "Open Design: Set Figma Access Token" command (paste a personal access token from Figma → Settings → Personal access tokens), then try again.',
         ),
       ]);
     }

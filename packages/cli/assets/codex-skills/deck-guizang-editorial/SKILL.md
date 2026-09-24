@@ -1,11 +1,11 @@
 ---
 name: deck-guizang-editorial
-description: Guizang Editorial E-Ink Deck (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Guizang Editorial E-Ink Deck (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:deck:deck-guizang-editorial` (Guizang Editorial E-Ink Deck).
+Use the Open Design skill `od:deck:deck-guizang-editorial` (Guizang Editorial E-Ink Deck).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Guizang Editorial E-Ink Deck template to turn my content into an editorial magazine x e-ink horizontal deck with 10 layouts and 5 palettes. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

@@ -1,9 +1,9 @@
 ---
-description: Create a custom OpenDesign design system for your own brand
+description: Create a custom Open Design design system for your own brand
 mode: agent
 ---
 
-Create a new custom OpenDesign design system.
+Create a new custom Open Design design system.
 
 Name: ${input:name:What's the brand/design system called? (e.g. "Acme Corp")}
 

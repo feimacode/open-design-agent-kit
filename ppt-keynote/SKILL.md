@@ -1,13 +1,13 @@
 ---
 name: "od:deck:ppt-keynote"
-description: Keynote-style Slides (OpenDesign) — use only when the user explicitly runs this skill
+description: Keynote-style Slides (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:deck:ppt-keynote` (Keynote-style Slides).
+Use the Open Design skill `od:deck:ppt-keynote` (Keynote-style Slides).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Keynote-style Slides template to turn my content into Apple Keynote-quality slides with one card per screen and keyboard left/right navigation. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

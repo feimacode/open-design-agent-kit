@@ -1,10 +1,10 @@
 ---
 name: "od-prototype-social-reddit-card"
-description: Reddit Post Card (OpenDesign)
+description: Reddit Post Card (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:prototype:social-reddit-card` (Reddit Post Card).
+Use the Open Design skill `od:prototype:social-reddit-card` (Reddit Post Card).
 
 Brief: ${input:brief:Use the Reddit Post Card template to turn my content into a realistic Reddit post card with vote rail and comment count for a video overlay or story share. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 

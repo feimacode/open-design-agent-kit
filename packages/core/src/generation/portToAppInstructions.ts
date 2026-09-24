@@ -72,7 +72,7 @@ export function composePortToAppInstructions(input: ComposePortToAppInstructions
   const parts: string[] = [];
 
   parts.push(
-    `# Promote an OpenDesign prototype into this app's real code\n\nYou are porting the finished OpenDesign artifact below into this workspace's actual, existing application — reproducing its visual design as idiomatic, real production code, not copying it into the app verbatim.`,
+    `# Promote an Open Design prototype into this app's real code\n\nYou are porting the finished Open Design artifact below into this workspace's actual, existing application — reproducing its visual design as idiomatic, real production code, not copying it into the app verbatim.`,
   );
 
   parts.push(`\n\n## The artifact\n\nEntry file: \`${artifactEntryPath}\`\n\n\`\`\`html\n${artifactContent.trim()}\n\`\`\``);

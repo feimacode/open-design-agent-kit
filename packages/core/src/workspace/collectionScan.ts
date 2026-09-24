@@ -94,7 +94,7 @@ export async function findCollectionArtifacts(workspaceRoot: string, outputDir: 
   );
 }
 
-/** Every collection with at least one registered screen under outputDir, grouped by collectionId — powers the "OpenDesign Collections" tree view. */
+/** Every collection with at least one registered screen under outputDir, grouped by collectionId — powers the "Open Design Collections" tree view. */
 export async function listCollections(workspaceRoot: string, outputDir: string): Promise<Collection[]> {
   const absOutputDir = path.join(workspaceRoot, outputDir);
   if (!(await pathExists(absOutputDir))) return [];

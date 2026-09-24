@@ -1,11 +1,11 @@
 ---
 name: data-report
-description: Data Visualization Report (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Data Visualization Report (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:prototype:data-report` (Data Visualization Report).
+Use the Open Design skill `od:prototype:data-report` (Data Visualization Report).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Data Visualization Report template to turn my CSV, Excel, or JSON data into a polished visual report page. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

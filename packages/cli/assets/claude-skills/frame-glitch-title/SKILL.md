@@ -1,13 +1,13 @@
 ---
 name: "od-video-frame-glitch-title"
-description: Glitch Title Frame (OpenDesign) — use only when the user explicitly runs this skill
+description: Glitch Title Frame (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:video:frame-glitch-title` (Glitch Title Frame).
+Use the Open Design skill `od:video:frame-glitch-title` (Glitch Title Frame).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Glitch Title Frame template to turn my content into a digital-glitch, chromatic-offset, data-corruption title frame for a video transition or cyberpunk hero. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

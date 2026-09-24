@@ -1,11 +1,11 @@
 ---
 name: article-magazine
-description: Magazine Article (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Magazine Article (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:prototype:article-magazine` (Magazine Article).
+Use the Open Design skill `od:prototype:article-magazine` (Magazine Article).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Magazine Article template to turn my content into a Huashu / huashu-md-html-inspired long-form HTML essay. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

@@ -15,7 +15,7 @@ function nonce(): string {
 
 /**
  * Editor-area WebviewPanel showing a searchable card grid of remixable
- * OpenDesign examples — modeled on feima-copilot-ai-flow's gallery
+ * Open Design examples — modeled on feima-copilot-ai-flow's gallery
  * (webview-src/gallery/): a search bar + filter chips above a CSS-grid of
  * cards, as a singleton panel that reveals itself if already open. Built in
  * plain DOM/TS rather than React to stay consistent with this extension's
@@ -41,7 +41,7 @@ export class GalleryGridProvider {
       return;
     }
 
-    const panel = vscode.window.createWebviewPanel('openDesign.galleryGrid', 'OpenDesign Gallery', vscode.ViewColumn.One, {
+    const panel = vscode.window.createWebviewPanel('openDesign.galleryGrid', 'Open Design Gallery', vscode.ViewColumn.One, {
       enableScripts: true,
       retainContextWhenHidden: true,
       localResourceRoots: [context.extensionUri],

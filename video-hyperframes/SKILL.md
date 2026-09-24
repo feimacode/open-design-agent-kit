@@ -1,13 +1,13 @@
 ---
 name: "od:video:video-hyperframes"
-description: Hyperframes Video (OpenDesign) — use only when the user explicitly runs this skill
+description: Hyperframes Video (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:video:video-hyperframes` (Hyperframes Video).
+Use the Open Design skill `od:video:video-hyperframes` (Hyperframes Video).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Hyperframes Video template to turn my content into a Hyperframes / Remotion-compatible continuous frame animation with autoplay support. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

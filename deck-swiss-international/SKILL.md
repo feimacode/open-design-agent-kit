@@ -1,13 +1,13 @@
 ---
 name: "od:deck:deck-swiss-international"
-description: Swiss International Deck (OpenDesign) — use only when the user explicitly runs this skill
+description: Swiss International Deck (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:deck:deck-swiss-international` (Swiss International Deck).
+Use the Open Design skill `od:deck:deck-swiss-international` (Swiss International Deck).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Swiss International Deck template to turn my content into a 16-column-grid deck with one saturated accent and 22 locked layouts. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

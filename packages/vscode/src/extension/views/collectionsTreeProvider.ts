@@ -16,7 +16,7 @@ interface ScreenNode {
 type CollectionsTreeNode = CollectionNode | ScreenNode;
 
 /**
- * TreeDataProvider for the "OpenDesign Collections" activity-bar view — the
+ * TreeDataProvider for the "Open Design Collections" activity-bar view — the
  * first UI in this extension for the user's own generated artifacts (Gallery
  * is the bundled example catalog, a completely different data source; see
  * galleryTreeProvider.ts). Live-scans the workspace's output directory on

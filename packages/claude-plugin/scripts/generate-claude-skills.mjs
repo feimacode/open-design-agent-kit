@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Generates one explicit-only Claude Code skill per curated OpenDesign
+// Generates one explicit-only Claude Code skill per curated Open Design
 // entry (see packages/content/scripts/curatedEntries.mjs for the shared
 // detection logic shared with packages/vscode's chatPromptFiles generator).
 // `disable-model-invocation: true` gives each one exactly the old
@@ -31,14 +31,14 @@ function skillMdContent(entry) {
   const invocationName = entry.publicId.replace(/:/g, '-');
   return `---
 name: "${invocationName}"
-description: ${entry.displayName} (OpenDesign) — use only when the user explicitly runs this skill
+description: ${entry.displayName} (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 ${GENERATED_MARKER}
 
-Use the OpenDesign skill \`${entry.publicId}\` (${entry.displayName}).
+Use the Open Design skill \`${entry.publicId}\` (${entry.displayName}).
 
 Brief: "$ARGUMENTS", or if empty: "${placeholder}"
 
@@ -83,7 +83,7 @@ async function main() {
   await fs.mkdir(referencesDir, { recursive: true });
   await fs.writeFile(path.join(referencesDir, 'remixable-examples.md'), await buildRemixableExamplesReference(assetsRoot));
 
-  console.log(`Generated ${entries.length} curated OpenDesign skills under ${path.relative(pluginRoot, skillsDir)}/.`);
+  console.log(`Generated ${entries.length} curated Open Design skills under ${path.relative(pluginRoot, skillsDir)}/.`);
 }
 
 main().catch((err) => {

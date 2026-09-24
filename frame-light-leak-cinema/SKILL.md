@@ -1,13 +1,13 @@
 ---
 name: "od:video:frame-light-leak-cinema"
-description: Light-Leak Cinematic Frame (OpenDesign) — use only when the user explicitly runs this skill
+description: Light-Leak Cinematic Frame (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:video:frame-light-leak-cinema` (Light-Leak Cinematic Frame).
+Use the Open Design skill `od:video:frame-light-leak-cinema` (Light-Leak Cinematic Frame).
 
 Brief: "$ARGUMENTS", or if empty: "Use the Light-Leak Cinematic Frame template to turn my content into a cinematic opening or chapter card with film light leaks, grain, letterbox framing, and large serif type. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

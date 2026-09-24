@@ -1,10 +1,17 @@
 # @feimacode/open-design-agent-kit-mcp
 
-The [OpenDesign](https://github.com/nexu-io/open-design) skill/design-system/artifact workflow as a standalone MCP server — for Claude Code, Codex, Cursor, or any other MCP-capable coding agent. Same nine tools and the same content library (163 skills, 114 design templates, 152 brand design systems, 167 remixable examples) as the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=feima.open-design-agent-kit), over stdio instead of native `languageModelTools`.
+**Pro-grade design for any MCP-capable coding agent. One command, nothing else to run.**
 
-No daemon, no account, no editor required. Your agent's own selected model does the actual generation with its normal file-editing tools; this server only composes instructions and does the bookkeeping (manifests, active design system) around them.
+This is [Open Design](https://github.com/nexu-io/open-design)'s design library and workflow, packaged as a plain stdio MCP server for Claude Code, Codex, Cursor, and anything else that speaks MCP. It includes 163 skills, 114 design templates, 152 brand design systems, and 167 remixable examples. Ask your agent for a deck, a landing page, a dashboard, or a prototype, and it builds one that looks designed rather than generated, as real files in your project.
 
-## What you get
+- **No desktop app, no daemon, no account.** Your agent launches the server on demand over stdio, and it exits when the agent does.
+- **No API keys or model settings.** The server never calls a model. Your agent's own selected model does the generation with its normal file-editing tools. The server supplies the library and handles the bookkeeping (manifests, active design system).
+- **Zero config.** It works in the current project out of the box. The active design system is remembered in `.open-design/config.json`.
+- **Plain files.** Everything it produces is ordinary HTML plus small JSON sidecars in your repo, so you can diff, review, and commit it.
+
+It has the same core tools and the same content as the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=feima.open-design-agent-kit), over MCP instead of native `languageModelTools`.
+
+## See what it builds
 
 Four of the ~280 vendored skills and templates, rendered exactly as-is:
 

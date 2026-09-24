@@ -5,7 +5,7 @@ import { readArtifact, writeArtifactManifest, type ReadArtifactResult, type Json
 export function getWorkspaceRoot(): string {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) {
-    throw new Error('No workspace folder is open. Open a folder in VS Code before generating an OpenDesign artifact.');
+    throw new Error('No workspace folder is open. Open a folder in VS Code before generating an Open Design artifact.');
   }
   return folders[0].uri.fsPath;
 }

@@ -1,11 +1,11 @@
 ---
 name: deck-swiss-international
-description: Swiss International Deck (OpenDesign) — use only when explicitly invoked, not for general design requests
+description: Swiss International Deck (Open Design) — use only when explicitly invoked, not for general design requests
 ---
 
 <!-- generated:open-design-agent-kit -->
 
-Use the OpenDesign skill `od:deck:deck-swiss-international` (Swiss International Deck).
+Use the Open Design skill `od:deck:deck-swiss-international` (Swiss International Deck).
 
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "Use the Swiss International Deck template to turn my content into a 16-column-grid deck with one saturated accent and 22 locked layouts. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

@@ -1,13 +1,13 @@
 ---
 name: "od-prototype-social-x-post-card"
-description: X / Twitter Post Card (OpenDesign) — use only when the user explicitly runs this skill
+description: X / Twitter Post Card (Open Design) — use only when the user explicitly runs this skill
 disable-model-invocation: true
 argument-hint: a brief describing what to build (optional — defaults to a starting example)
 ---
 
 <!-- generated:curated-entry -->
 
-Use the OpenDesign skill `od:prototype:social-x-post-card` (X / Twitter Post Card).
+Use the Open Design skill `od:prototype:social-x-post-card` (X / Twitter Post Card).
 
 Brief: "$ARGUMENTS", or if empty: "Use the X / Twitter Post Card template to turn my content into a realistic X post card with engagement metrics for a video overlay or shareable image card. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images."
 

@@ -14,7 +14,7 @@ interface ExampleNode {
 type GalleryTreeNode = CategoryNode | ExampleNode;
 
 /**
- * TreeDataProvider for the Explorer sidebar's "OpenDesign Gallery" view —
+ * TreeDataProvider for the Explorer sidebar's "Open Design Gallery" view —
  * a lightweight, always-visible way to browse and remix the vendored
  * example pool, grouped by category (same grouping as the "Browse Gallery"
  * QuickPick, for consistency). Entries are populated once, lazily, on first

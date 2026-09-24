@@ -29,7 +29,7 @@ import { ArtifactEditorProvider } from './customEditors/artifactEditorProvider';
 
 export function activate(context: vscode.ExtensionContext): void {
   const log = createLogService(context);
-  log.info('Activating OpenDesign Tools');
+  log.info('Activating Open Design Tools');
 
   const assetsRoot = path.join(context.extensionUri.fsPath, 'assets', 'open-design');
   const communityContentDir = getCommunityContentDir(context);
@@ -61,7 +61,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   maybeAutoSyncCommunityContent(context, log, () => galleryTreeProvider.refresh());
 
-  log.info('OpenDesign Tools activated');
+  log.info('Open Design Tools activated');
 }
 
 // Fire-and-forget: activate() stays synchronous (matching every other call
@@ -80,7 +80,7 @@ function maybeAutoSyncCommunityContent(context: vscode.ExtensionContext, log: Re
       onSynced();
       vscode.window
         .showInformationMessage(
-          `OpenDesign: synced ${outcome.exampleCount} community design(s) from awesome-open-design@${outcome.ref}. These aren't reviewed by the extension author.`,
+          `Open Design: synced ${outcome.exampleCount} community design(s) from awesome-open-design@${outcome.ref}. These aren't reviewed by the extension author.`,
           'Disable',
         )
         .then((choice) => {

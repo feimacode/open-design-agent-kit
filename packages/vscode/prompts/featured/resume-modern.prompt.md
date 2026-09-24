@@ -1,10 +1,10 @@
 ---
 name: "od-prototype-resume-modern"
-description: Modern Resume (OpenDesign)
+description: Modern Resume (Open Design)
 mode: agent
 ---
 
-Use the OpenDesign skill `od:prototype:resume-modern` (Modern Resume).
+Use the Open Design skill `od:prototype:resume-modern` (Modern Resume).
 
 Brief: ${input:brief:Use the Modern Resume template to turn my content into a modern minimal single-page A4 resume ready for print or PDF export. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.}
 
