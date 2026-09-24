@@ -258,7 +258,7 @@ async function testMcpServerResolution(scratchDir) {
     const call = await waitForResponse(3);
 
     assert(init?.result?.serverInfo?.name === 'open-design', 'initialize did not return the expected serverInfo');
-    assert(list?.result?.tools?.length === 9, `expected 9 tools, got ${list?.result?.tools?.length}`);
+    assert(list?.result?.tools?.length === 10, `expected 10 tools, got ${list?.result?.tools?.length}`);
     const callText = call?.result?.content?.[0]?.text;
     const parsedCall = callText ? JSON.parse(callText) : undefined;
     assert(Array.isArray(parsedCall) && parsedCall.length > 0, 'list_open_design_skills returned no entries');
