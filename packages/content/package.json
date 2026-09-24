@@ -1,6 +1,6 @@
 {
   "name": "@feimacode/open-design-agent-kit-content",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Vendored Open Design content (skills, design-templates, design systems, craft, examples), synced from the public open-design repo. Consumed by @feimacode/open-design-agent-kit-core's ContentIndex via this package's assets/open-design directory. No build step.",
   "license": "MIT",
   "engines": {

@@ -2,7 +2,7 @@
   "name": "open-design-agent-kit",
   "displayName": "Open Design Agent Kit",
   "description": "Pro-grade UI design, built into GitHub Copilot Chat: 270+ design skills, 150+ brand design systems, 160+ remixable examples. No desktop app, no daemon, no API keys. Your agent's own model builds decks, landing pages, and prototypes as real files in your repo.",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "publisher": "feima",
   "icon": "assets/icons/extension-icon.png",
   "private": true,
