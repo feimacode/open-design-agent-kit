@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { ContentIndex, exportArtifact, formatExportResult, type ExportArtifactOptions, type ExportFormat } from '@feimacode/open-design-agent-kit-core';
+import { TROUBLESHOOTING_URL } from './docsLinks';
 import { getContentAssetsRoot } from './env';
 
 export interface ExportCliOptions {
@@ -104,6 +105,7 @@ export async function runExport(entryArg: string, flags: ExportCliOptions, cwd =
   });
   if (!result.ok) {
     console.error(formatExportResult(result));
+    console.error(`See ${TROUBLESHOOTING_URL}`);
     return 1;
   }
   // stdout: one path per line, for scripts; details to stderr.

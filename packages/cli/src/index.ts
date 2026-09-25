@@ -7,6 +7,7 @@ import { getClaudeSkillsAssetRoot, getCodexSkillsAssetRoot } from './env';
 import { mergeClaudeMcpConfig, writeClaudeSkills } from './claudeSetup';
 import { CODEX_CONFIG_SNIPPET, ensureCodexMcpConfig, writeCodexSkills } from './codexSetup';
 import { runExport, runRenderVideo, type ExportCliOptions } from './exportCommand';
+import { cliHelpEpilogue } from './docsLinks';
 
 async function resolveTools(toolsFlag: string | undefined): Promise<ToolId[]> {
   if (toolsFlag !== undefined) return parseToolsArg(toolsFlag);
@@ -55,7 +56,10 @@ async function runInit(targetPathArg: string, toolsFlag: string | undefined): Pr
 }
 
 const program = new Command();
-program.name('open-design-agent-kit').description("Set up Open Design's Claude Code and/or Codex integration in your project");
+program
+  .name('open-design-agent-kit')
+  .description("Set up Open Design's Claude Code and/or Codex integration in your project, and export or render Open Design artifacts")
+  .addHelpText('after', cliHelpEpilogue());
 
 program
   .command('init [path]')

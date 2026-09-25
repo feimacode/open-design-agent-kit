@@ -663,6 +663,11 @@
         "title": "Sync Community Designs",
         "category": "Open Design",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "openDesign.openDocs",
+        "title": "Open Docs",
+        "category": "Open Design"
       }
     ],
     "customEditors": [
@@ -776,7 +781,65 @@
           "markdownDescription": "Absolute path to a Chrome, Edge, or Chromium executable used to export artifacts to PNG/JPEG. Leave empty to auto-detect an installed browser (or set the `OPEN_DESIGN_BROWSER_PATH` environment variable)."
         }
       }
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "getStarted",
+        "title": "Get started with Open Design",
+        "description": "Design decks, pages, dashboards and social posts in Copilot Chat, using Open Design's skills and brand design systems.",
+        "steps": [
+          {
+            "id": "generate",
+            "title": "Generate your first design",
+            "description": "Describe what you want in Copilot Chat (agent mode). Copilot picks a recipe, writes the files and opens a live preview.\n[Try a sample request](command:workbench.action.chat.open?%7B%22query%22%3A%20%22Make%20me%20a%20pitch%20deck%20for%20a%20Series%20A%20fintech%20startup%2C%20editorial%20style.%22%2C%20%22isPartialQuery%22%3A%20true%7D)",
+            "media": {
+              "markdown": "media/walkthrough/generate.md"
+            }
+          },
+          {
+            "id": "gallery",
+            "title": "Start from a real example",
+            "description": "Browse 167 rendered examples and remix one instead of starting blank.\n[Open the gallery](command:openDesign.openGalleryGrid)",
+            "media": {
+              "markdown": "media/walkthrough/gallery.md"
+            },
+            "completionEvents": [
+              "onCommand:openDesign.openGalleryGrid"
+            ]
+          },
+          {
+            "id": "designSystem",
+            "title": "Pick a design system",
+            "description": "Choose a brand look once; every design after that follows it.\n[Browse design systems](command:openDesign.browseDesignSystems)",
+            "media": {
+              "markdown": "media/walkthrough/design-system.md"
+            },
+            "completionEvents": [
+              "onCommand:openDesign.browseDesignSystems"
+            ]
+          },
+          {
+            "id": "socialPost",
+            "title": "Make a social media post",
+            "description": "Design a post at the right size for X, Instagram, LinkedIn, Xiaohongshu, Stories or YouTube, and export it ready to upload.\n[Start a social post](command:workbench.action.chat.open?%7B%22query%22%3A%20%22/open-design-social-post%20%22%2C%20%22isPartialQuery%22%3A%20true%7D)",
+            "media": {
+              "markdown": "media/walkthrough/social-post.md"
+            }
+          },
+          {
+            "id": "export",
+            "title": "Export images, PDF or PowerPoint",
+            "description": "Turn any design into PNG or JPEG, a deck into PowerPoint or PDF, or a page into a PDF.\n[Open the docs](command:openDesign.openDocs)",
+            "media": {
+              "markdown": "media/walkthrough/export.md"
+            },
+            "completionEvents": [
+              "onCommand:openDesign.openDocs"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "sync-content": "npm run sync --workspace=@feimacode/open-design-agent-kit-content && node ./scripts/copy-content-assets.mjs && node ./scripts/generate-featured-prompts.mjs",

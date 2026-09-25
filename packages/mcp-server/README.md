@@ -18,21 +18,21 @@ Four of the ~280 vendored skills and templates, rendered exactly as-is:
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="../../docs/screenshots/examples/dating-web.png" alt="Consumer dating-app dashboard, editorial typography" width="100%"/><br/>
+<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/examples/dating-web.png" alt="Consumer dating-app dashboard, editorial typography" width="100%"/><br/>
 <sub><b>"Design a dating-site dashboard — mutuals, match rate, a 30-day trend."</b></sub>
 </td>
 <td width="50%" valign="top">
-<img src="../../docs/screenshots/examples/gamified-app.png" alt="Gamified habit-tracking mobile app, three phone frames" width="100%"/><br/>
+<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/examples/gamified-app.png" alt="Gamified habit-tracking mobile app, three phone frames" width="100%"/><br/>
 <sub><b>"A habit-tracking app with daily quests and XP."</b></sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="../../docs/screenshots/examples/deck-swiss-international.png" alt="Board strategy deck, Swiss International style" width="100%"/><br/>
+<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/examples/deck-swiss-international.png" alt="Board strategy deck, Swiss International style" width="100%"/><br/>
 <sub><b>"A board-ready strategy deck, Swiss International style."</b></sub>
 </td>
 <td width="50%" valign="top">
-<img src="../../docs/screenshots/examples/card-xiaohongshu.png" alt="Xiaohongshu-style swipeable knowledge card" width="100%"/><br/>
+<img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/examples/card-xiaohongshu.png" alt="Xiaohongshu-style swipeable knowledge card" width="100%"/><br/>
 <sub><b>"5 tips, as a Xiaohongshu-style swipeable card carousel."</b></sub>
 </td>
 </tr>
@@ -54,7 +54,7 @@ That's a plain stdio MCP server. Register it with your agent:
 claude mcp add open-design -- npx -y @feimacode/open-design-agent-kit-mcp
 ```
 
-Or install the [Claude Code plugin](https://github.com/feimacode/open-design-agent-kit#ways-to-use-it) instead — it registers this server automatically and adds 23 curated `/open-design:*` skills on top.
+Or install the [Claude Code plugin](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/claude-code.md) instead: it registers this server automatically and adds the Open Design skills on top.
 
 **Codex CLI**
 
@@ -70,7 +70,7 @@ command = "npx"
 args = ["-y", "@feimacode/open-design-agent-kit-mcp"]
 ```
 
-See [docs/codex.md](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/codex.md) for the matching `SKILL.md` you can copy into `.agents/skills/open-design/`.
+Or run `npx @feimacode/open-design-agent-kit init --tools codex` to add the matching skills too. See [Codex setup](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/codex.md).
 
 **Any other MCP host** — the generic config shape:
 
@@ -85,34 +85,23 @@ See [docs/codex.md](https://github.com/feimacode/open-design-agent-kit/blob/main
 }
 ```
 
-## Tools
+## Tools and prompts
 
-| Tool | Does |
-|---|---|
-| `list_open_design_skills` | Browse skills, design templates, and remixable examples — filter by free-text query or an exact mode (`prototype`, `deck`, `design-system`, `image`, `video`, `template`, `utility`, `audio`). |
-| `list_open_design_design_systems` | Browse the ~152 brand design systems — filter by query or category. |
-| `prepare_open_design_brief` | Compose generation instructions from a skill, an optional design system, and your brief. Writes nothing — you author the file(s) yourself, then register them. |
-| `register_open_design_artifact` | Validate an artifact you've written and record its manifest sidecar (`<entry>.artifact.json`). |
-| `get_open_design_artifact` | Read back a registered artifact's manifest, entry content, and any open comments. |
-| `set_active_design_system` | Set (or clear) the workspace's active design system, used automatically by `prepare_open_design_brief`. |
-| `create_open_design_design_system` | Compose instructions to author a new `DESIGN.md`, optionally seeded from a reference URL's colors/fonts. |
-| `port_open_design_artifact_to_app` | Compose instructions to port a finished artifact into your real app as idiomatic production code. |
-| `remix_open_design_example` | Copy a curated example artifact into the workspace as a starting point, and get instructions to modify — not regenerate — it. |
-| `export_open_design_artifact` | Render a registered artifact under its `exports/` folder: PNG/JPEG images (sized from the source skill, one per `[data-od-card]` card, re-encoded to fit `maxBytes`), a deck to `pptx` (one slide image per slide) or `pdf`, or a page to a vector `pdf`. Needs an installed Chrome/Edge/Chromium. |
+11 tools, the same as the VS Code extension's (minus community sharing):
 
-It also serves an `open-design-social-post` prompt (takes an optional `brief` argument) that walks the agent through platform → size → skill → generate → export, including YouTube videos via the HyperFrames CLI.
+- **Catalog:** `list_open_design_skills`, `list_open_design_design_systems`
+- **Generating:** `prepare_open_design_brief`, `register_open_design_artifact`, `get_open_design_artifact`, `remix_open_design_example`
+- **Design systems:** `set_active_design_system`, `create_open_design_design_system`
+- **Beyond the prototype:** `port_open_design_artifact_to_app`, `pull_open_design_figma_frame`
+- **Export:** `export_open_design_artifact` (PNG/JPEG, deck PowerPoint/PDF, page PDF; needs an installed Chrome, Edge or Chromium)
 
-JSON Schemas mirror the VS Code extension's `languageModelTools` 1:1 — see [`src/index.ts`](https://github.com/feimacode/open-design-agent-kit/blob/main/packages/mcp-server/src/index.ts) for the exact shapes.
+MCP prompts: `open-design-social-post`, and one `od-<mode>-<id>` prompt per remixable example.
+
+Arguments, results and errors: [tools reference](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/tools.md). Prompts: [prompts and commands](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/prompts-and-commands.md#claude-code).
 
 ## Configuration
 
-| Environment variable | Default | |
-|---|---|---|
-| `OPEN_DESIGN_WORKSPACE_ROOT` | the launching process's `cwd` | Where artifacts get written and `.open-design/config.json` (active design system) is read/written. |
-| `OPEN_DESIGN_OUTPUT_DIR` | `.open-design` | Workspace-relative directory new artifacts are suggested under. |
-| `OPEN_DESIGN_BROWSER_PATH` | auto-detect | Chrome/Edge/Chromium executable for `export_open_design_artifact`. Auto-detection checks system installs, then the Playwright/Puppeteer caches. On a headless box: `npx @puppeteer/browsers install chrome-headless-shell@stable --path ~/.cache/puppeteer`. |
-
-Both Claude Code and Codex already launch a local stdio MCP server with `cwd` set to the active project, so the default is usually right — the override exists for testing or an unusual host.
+Zero config by default. The server works in the directory your agent starts it in. Optional environment variables (`OPEN_DESIGN_WORKSPACE_ROOT`, `OPEN_DESIGN_OUTPUT_DIR`, `OPEN_DESIGN_FIGMA_TOKEN`, `OPEN_DESIGN_BROWSER_PATH`) are described in [settings and environment variables](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/settings-and-env.md#environment-variables).
 
 ## What's not here
 
@@ -120,7 +109,7 @@ Live preview, inline comments, and WYSIWYG editing are webview-based and stay VS
 
 ## More
 
-Full project layout, how content is vendored/synced, and development instructions live in the [main repo](https://github.com/feimacode/open-design-agent-kit).
+[Documentation](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/README.md) · [Troubleshooting](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/troubleshooting.md) · [Social media posts](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/social-posts.md) · [Export decks and PDFs](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/export-decks.md)
 
 ## License
 

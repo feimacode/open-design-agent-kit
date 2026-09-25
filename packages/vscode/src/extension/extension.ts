@@ -25,6 +25,7 @@ import { registerCollectionsTreeView } from './views/collectionsTreeProvider';
 import { registerImportDesignSystemCommand } from './commands/importDesignSystemCommand';
 import { registerSetFigmaTokenCommand } from './commands/setFigmaTokenCommand';
 import { registerRevealFigmaPluginCommand } from './commands/revealFigmaPluginCommand';
+import { registerOpenDocsCommand } from './commands/openDocsCommand';
 import { ArtifactEditorProvider } from './customEditors/artifactEditorProvider';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -56,6 +57,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerImportDesignSystemCommand(context, log);
   registerSetFigmaTokenCommand(context, log);
   registerRevealFigmaPluginCommand(context, log);
+  registerOpenDocsCommand(context, log);
   registerSyncCommunityContentCommand(context, log, () => galleryTreeProvider.refresh());
   context.subscriptions.push(ArtifactEditorProvider.register(context, log));
 

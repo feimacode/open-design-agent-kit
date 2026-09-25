@@ -18,7 +18,7 @@ assets/open-design/
 
 ## How it's kept up to date
 
-This content is synced from the official public [open-design](https://github.com/nexu-io/open-design) repo, pinned to a tagged release (not `main`, for reproducibility), by `npm run sync` in this package (or `npm run sync-content` from the monorepo root, which also regenerates every downstream host's copy). Nothing here is hand-edited — re-running the sync is the only way this directory changes.
+This content is synced from the official public [open-design](https://github.com/nexu-io/open-design) repo, pinned to a tagged release (not `main`, for reproducibility), then this project's own additions (a few skills and prompts) are layered on top from `local/`. Nothing under `assets/` is hand-edited. See [Content sync](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/contributing/content-sync.md).
 
 ## License
 

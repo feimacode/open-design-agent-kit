@@ -14,8 +14,8 @@
     "package": "npm run package --workspace=packages/vscode",
     "vscode:prepublish": "npm run vscode:prepublish --workspace=packages/vscode",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
-    "test:unit": "npm run test:unit --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present && node scripts/check-docs.mjs",
+    "test:unit": "npm run test:unit --workspaces --if-present && node --test scripts/test/*.test.mjs",
     "version": "node scripts/bump-version.mjs"
   },
   "devDependencies": {

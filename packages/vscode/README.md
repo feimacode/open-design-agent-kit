@@ -52,7 +52,7 @@ Six of the ~280 bundled skills and templates, rendered exactly as-is:
 - **152 brand design systems.** Use `#od-design-systems`, or **Open Design: Browse Design Systems** in the Command Palette or status bar (fuzzy-searchable, grouped into ~22 categories). Picking one makes it the workspace's active design system, and `prepare_open_design_brief` applies its tokens automatically from then on. Say "use Starbucks" once per session, not on every request.
 - **167 remixable examples,** browsable as a searchable card grid with live thumbnails (above) via **Open Design: Open Gallery Grid**, or from the Open Design activity-bar icon. Picking one copies it into your workspace and tells the model to modify it instead of starting from scratch.
 - **Community designs.** An optional, growing catalog of community-contributed designs from [awesome-open-design](https://github.com/feimacode/awesome-open-design) appears next to the built-in gallery. When you're proud of something you built, `#od-share-to-community` packages it up and opens a PR to share it back. It always checks with you before publishing.
-- **23 one-click slash commands** for the most-curated entries: `/guizang-ppt`, `/data-report`, `/deck-swiss-international`, and 20 more. There's also `/open-design-generate` and `/open-design-skills` as general entry points, and `/open-design-custom-design-system` for inventing a new one.
+- **27 one-click slash commands** for the most-curated entries: `/od-deck-guizang-ppt`, `/od-prototype-data-report`, `/od-deck-deck-swiss-international` and more. There's also `/open-design-generate` and `/open-design-list-skills` as general entry points, `/open-design-social-post` for social media, and `/open-design-custom-design-system` for inventing a design system. [All prompts and commands](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/prompts-and-commands.md).
 - **Multi-screen collections.** Generate a whole flow (onboarding, checkout, a set of app screens) as one collection. The **Collections** view lists each collection's screens, and the preview has next/previous navigation between them.
 - **Figma, both directions.** Paste a Figma frame link and `#od-pull-figma-frame` rebuilds it as code. Going the other way, the preview's Figma button exports any artifact as editable Figma layers through the bundled import plugin.
 - **A live artifact preview** that opens automatically for generated HTML, with three modes:
@@ -74,7 +74,7 @@ Six of the ~280 bundled skills and templates, rendered exactly as-is:
 
 ## Requirements
 
-- VS Code 1.138+
+- VS Code 1.104+
 - [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat), or any other chat agent that can call VS Code's built-in language model tools. The Gallery, Collections, and preview work without one; generation needs a chat agent.
 - For exporting to PNG/JPEG/PDF/PPTX: an installed Chrome, Edge, or Chromium (found automatically; nothing is downloaded). On Linux, install an emoji font (e.g. `fonts-noto-color-emoji`) if your designs use emoji.
 - For rendering YouTube/HyperFrames videos: Node and [FFmpeg](https://ffmpeg.org/).
@@ -91,60 +91,27 @@ Open Copilot Chat in agent mode and just ask:
 
 Copilot calls `list_open_design_skills` and `list_open_design_design_systems` on its own and writes the files. Or be explicit:
 
-- `/guizang-ppt A 10-slide pitch deck for...` runs one of the 27 curated one-click commands
+- `/od-deck-guizang-ppt A 10-slide pitch deck for...` runs one of the 27 curated one-click commands
 - `/open-design-social-post An X post announcing our v2 launch` designs the post and exports the PNG
 - "Use the Starbucks design system, then build me a landing page" sets it active and generates against it
 - Click a card in **Open Design: Open Gallery Grid** to remix a real example instead of starting blank
 - "Turn this Figma frame into code: <link>" rebuilds a frame (after **Open Design: Set Figma Access Token**)
 - `#od-artifact` has Copilot look at what's already registered in the workspace
 
-## Settings
+## Learn more
 
-None are required. These are here in case you want to change the defaults:
-
-| Setting | Default | Description |
-|---|---|---|
-| `openDesign.outputDirectory` | `.open-design` | Workspace-relative directory new artifacts are suggested under, e.g. `.open-design/<slug>/index.html`. |
-| `openDesign.activeDesignSystemId` | *(empty)* | The current active design system id. Set via the browse picker, the `set_active_design_system` tool, or by generating with an explicit id. |
-| `openDesign.communityContentEnabled` | `true` | Show community-contributed designs from awesome-open-design next to the built-in gallery. This content isn't reviewed by the extension author. |
-| `openDesign.communityContentRef` | `v0.1.0` | The awesome-open-design tag to fetch community designs from. |
-| `openDesign.export.browserPath` | *(empty)* | Chrome/Edge/Chromium executable for PNG/JPEG export. Empty means auto-detect (or the `OPEN_DESIGN_BROWSER_PATH` environment variable). |
-
-## Commands
-
-`Open Design: Browse Design Systems` · `Open Design: Import Design System` · `Open Design: Browse Gallery` · `Open Design: Open Gallery Grid` · `Open Design: Open Artifact Preview` (also on the right-click menu for `.html` files) · `Open Design: Sync Community Designs` · `Open Design: Set Figma Access Token` · `Open Design: Show Figma Import Plugin Folder`. All are in the Command Palette.
-
-## Under the hood
-
-More detail than most people need, but here for the curious (and for anyone extending this).
-
-### Preview, comments, and WYSIWYG editing
-
-This is a from-scratch (not literally line-for-line ported) implementation of the same mechanism open-design's own product uses. Two things carry over exactly from upstream's actual behavior: comments are never "applied" by a special engine — they're gathered into a scoped instruction block and sent into a new chat message, prefilled but unsent, and the model edits the file with its own tools like any other request; and comments persist as a plain sidecar file next to the artifact, visible and git-trackable, no database.
-
-The edit panel is modeled on open-design's own `ManualEditPanel.tsx`. Deliberately not ported: upstream's flex-layout controls (direction/justify/gap/align-items), its design-token reference strip (needs a codebase-scanning index this extension doesn't have), drag-to-reposition, and its own in-panel undo/redo history — VS Code's native document undo already covers every applied edit. Known limitation: relative asset paths (`<img src="assets/x.png">`) inside a previewed artifact may not resolve in the sandboxed preview iframe — the file on disk is unaffected.
-
-### Gallery and Remix
-
-There are three ways to browse and remix the same 167-example pool, for different situations:
-
-- **QuickPick** (`Open Design: Browse Gallery`) — fastest, keyboard-driven; selecting an item remixes it directly, no separate preview/chat step.
-- **Tree view** (the Open Design activity-bar icon → Gallery) — always one click away, grouped by category. Clicking an item, or its inline "Use in Chat" icon, populates Copilot Chat with a prefilled (still-editable, not-yet-sent) message naming the example — mirroring upstream open-design's own Gallery, where clicking a card populates the chat composer rather than doing anything immediately. A read-only preview and a direct Remix are both available separately via inline icons.
-- **Grid view** (`Open Design: Open Gallery Grid`, screenshot above) — a searchable card grid (search box + category filter chips) with a live thumbnail per card, fetched lazily as it scrolls into view and rendered straight from this extension's bundled assets into `iframe.srcdoc` — never through a resource fetch the webview's browser engine would have to load from a URL.
-
-All four entry points (the tool, QuickPick, tree, grid) call the same underlying remix logic, so behavior is identical regardless of which one you use.
-
-### Visual design
-
-The three webviews (Artifact Preview editor, Gallery grid, example preview panel) follow open-design's own actual visual design language, hand-transcribed from its real stylesheets: near-black/near-white "ink" buttons with a fully pill-shaped primary action; a lime-green brand accent (`#87ea5c`) reserved for active/selected states; a terracotta (`#d96a46`) teardrop shape for comment pins; frosted-glass floating panels; a named radius ladder from 2px to 16px; and the Albert Sans variable font (SIL OFL-licensed, vendored locally) at 600 weight. All three switch between open-design's own light/dark token sets based on VS Code's `vscode-dark`/`vscode-light` body classes, so they stay theme-aware without adopting the ambient editor theme's arbitrary colors.
+- **First steps:** [Get started in VS Code](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/vscode.md), or open **Welcome → Walkthroughs → Get started with Open Design**.
+- **Guides:** [social media posts](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/social-posts.md), [export images](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/export-images.md), [export decks and PDFs](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/export-decks.md), [preview, comment and edit](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/preview-comments-edit.md), [Figma](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/figma.md), and more.
+- **Reference:** [settings](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/settings-and-env.md#vs-code-settings), [commands and prompts](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/prompts-and-commands.md#vs-code), [tools](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/tools.md).
+- **Help:** [troubleshooting](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/troubleshooting.md). The **Open Design: Open Docs** command opens [the full documentation](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/README.md).
 
 ## Not using VS Code?
 
-The same library is built natively into other agents too: a Claude Code plugin, Codex skills, and a standalone [MCP server](https://www.npmjs.com/package/@feimacode/open-design-agent-kit-mcp) for Cursor and any other MCP-capable agent. See the [main repo](https://github.com/feimacode/open-design-agent-kit) for setup.
+The same library is built natively into other agents too: a Claude Code plugin, Codex skills, and a standalone [MCP server](https://www.npmjs.com/package/@feimacode/open-design-agent-kit-mcp) for Cursor and any other MCP-capable agent. See [Claude Code](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/claude-code.md), [Codex](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/codex.md) and the [CLI](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/cli.md).
 
 ## Content & attribution
 
-Skills, design systems, craft rules, and examples are vendored from the official [open-design](https://github.com/nexu-io/open-design) repo (Apache-2.0), pinned to a tagged release — see the [main repo's Content section](https://github.com/feimacode/open-design-agent-kit#content) for how the sync works, and `packages/core/src/vendored/SOURCE.md` for exactly what code was ported vs. rewritten.
+Skills, design systems, craft rules, and examples are vendored from the official [open-design](https://github.com/nexu-io/open-design) repo (Apache-2.0), pinned to a tagged release — see [Content sync](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/contributing/content-sync.md) for how the sync works, and [Upstream ports](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/contributing/upstream-ports.md) for what code was adapted.
 
 ## License
 
