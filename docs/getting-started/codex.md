@@ -53,6 +53,14 @@ Codex loads the `open-design` skill, calls `list_open_design_skills` to pick a r
 
 To run a curated recipe directly, pick its skill (for example `guizang-ppt` for an editorial slide deck) and add your brief. See [Prompts and commands](../reference/prompts-and-commands.md#codex) for the full list.
 
+## Pick a design system
+
+Designs follow the workspace's **active design system**. Set it once:
+
+> Use the Stripe design system from now on.
+
+It stays until you switch ("switch to Apple") or clear it ("stop using a design system"). It's stored in `.open-design/config.json`. See [Design systems](../guides/design-systems.md#specify-and-switch).
+
 ## Next
 
 - [Generate a design](../guides/generate-a-design.md)

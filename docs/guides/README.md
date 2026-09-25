@@ -11,6 +11,7 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [Generate a design](generate-a-design.md)
 - [Design systems](design-systems.md)
 - [Remix and the gallery](remix-and-gallery.md)
+- [Community designs](community-designs.md)
 - [Preview, comment and edit](preview-comments-edit.md)
 - [Figma](figma.md)
 - [Promote to app code](promote-to-app-code.md)

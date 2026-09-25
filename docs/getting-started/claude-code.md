@@ -48,6 +48,14 @@ Claude loads the `open-design` skill, browses the catalog, prepares a brief, wri
 
 The server writes to the project Claude Code was started in. To point it somewhere else, set [`OPEN_DESIGN_WORKSPACE_ROOT`](../reference/settings-and-env.md#open_design_workspace_root).
 
+## Pick a design system
+
+Designs follow the workspace's **active design system**. Set it once:
+
+> Use the Stripe design system from now on.
+
+It stays until you switch ("switch to Apple") or clear it ("stop using a design system"). It's stored in `.open-design/config.json`. See [Design systems](../guides/design-systems.md#specify-and-switch).
+
 ## Next
 
 - [Generate a design](../guides/generate-a-design.md) and [Design systems](../guides/design-systems.md)

@@ -2,6 +2,12 @@
 
 Open Design Agent Kit brings [Open Design](https://github.com/nexu-io/open-design)'s design skills, brand design systems and remixable examples into the coding agent you already use: GitHub Copilot Chat in VS Code, Claude Code, Codex, or any MCP-capable agent. Your agent's own model writes the design as plain files in your repo.
 
+## Key concepts
+
+- **Skills:** recipes for a kind of design (a deck, a dashboard, a social card). The agent picks one, or you name it. See [Generate a design](guides/generate-a-design.md).
+- **Design systems:** a brand's visual language (colors, type, spacing, components). One is **active per workspace**, and every new design follows it until you switch. See [Design systems](guides/design-systems.md), especially [Specify and switch](guides/design-systems.md#specify-and-switch).
+- **Artifacts:** the designs themselves: plain files in your repo, each with a small manifest. See [Artifact manifest](reference/artifact-manifest.md).
+
 ## Start here
 
 Pick the place you work ([all getting-started pages](getting-started/README.md)):
@@ -16,8 +22,9 @@ Pick the place you work ([all getting-started pages](getting-started/README.md))
 Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 
 - [Generate a design](guides/generate-a-design.md): skills, briefs, collections of screens
-- [Design systems](guides/design-systems.md): pick a brand look, invent one, or import your own
+- [Design systems](guides/design-systems.md): the active design system, and how to specify, switch, invent or import one
 - [Remix and the gallery](guides/remix-and-gallery.md): start from a real example instead of a blank page
+- [Community designs](guides/community-designs.md): the awesome-open-design catalog, and contributing your own (VS Code)
 - [Preview, comment and edit](guides/preview-comments-edit.md) (VS Code)
 - [Figma](guides/figma.md): frame to code, and artifact to Figma layers
 - [Promote to app code](guides/promote-to-app-code.md): turn a prototype into real components

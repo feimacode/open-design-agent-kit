@@ -90,7 +90,7 @@ Every one of these started from `remix_open_design_example` (copy a real example
 Everything lives in [`docs/`](docs/README.md):
 
 - **Guides:**
-  - [generate a design](docs/guides/generate-a-design.md), [design systems](docs/guides/design-systems.md), [remix and the gallery](docs/guides/remix-and-gallery.md);
+  - [generate a design](docs/guides/generate-a-design.md), [design systems](docs/guides/design-systems.md), [remix and the gallery](docs/guides/remix-and-gallery.md), [community designs](docs/guides/community-designs.md);
   - [preview, comment and edit](docs/guides/preview-comments-edit.md), [Figma](docs/guides/figma.md), [promote to app code](docs/guides/promote-to-app-code.md);
   - [social media posts](docs/guides/social-posts.md), [YouTube videos](docs/guides/youtube-video.md), [export images](docs/guides/export-images.md), [export decks and PDFs](docs/guides/export-decks.md).
 - **Reference:** [tools](docs/reference/tools.md), [prompts and commands](docs/reference/prompts-and-commands.md), [CLI](docs/reference/cli.md), [settings and environment variables](docs/reference/settings-and-env.md), [artifact manifest](docs/reference/artifact-manifest.md).

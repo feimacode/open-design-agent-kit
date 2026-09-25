@@ -16,7 +16,7 @@ Default: empty (none). The workspace's active design system, applied by `prepare
 
 ### openDesign.communityContentEnabled
 
-Default: `true`. Show community-contributed designs from [awesome-open-design](https://github.com/feimacode/awesome-open-design) next to the built-in gallery. This content isn't reviewed by the extension's authors. It's fetched once on first activation, then again whenever you run **Open Design: Sync Community Designs**.
+Default: `true`. Show community-contributed designs from [awesome-open-design](https://github.com/feimacode/awesome-open-design) next to the built-in gallery. This content isn't reviewed by the extension's authors. It's fetched once on first activation, then again whenever you run **Open Design: Sync Community Designs**. See [Community designs](../guides/community-designs.md).
 
 ### openDesign.communityContentRef
 

@@ -22,9 +22,7 @@ Three ways into the same examples:
 
 ## Community designs (VS Code)
 
-The gallery also shows designs contributed to [awesome-open-design](https://github.com/feimacode/awesome-open-design). They aren't reviewed by this project and are marked `community`. They're fetched on first run; **Open Design: Sync Community Designs** refreshes them. Turn them off with [`openDesign.communityContentEnabled`](../reference/settings-and-env.md#opendesigncommunitycontentenabled).
-
-To contribute your own design, ask Copilot to share it (`#od-share-to-community`). [`share_open_design_artifact_to_community`](../reference/tools.md#share_open_design_artifact_to_community) prepares the entry and opens a pull request under your own GitHub account, and it always asks you before publishing anything.
+The gallery also shows designs contributed to [awesome-open-design](https://github.com/feimacode/awesome-open-design), labelled **Community**. They aren't reviewed by this project. You can also share your own designs back with `#od-share-to-community`. See [Community designs](community-designs.md) for how syncing, safety and contributing work.
 
 ## What you get
 
