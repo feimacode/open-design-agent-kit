@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { registerArtifact, getWorkspaceRoot } from '../workspace/artifactWriter';
+import { exportsForKind } from '@feimacode/open-design-agent-kit-core';
 
 interface RegisterArtifactInput {
   entryPath: string;
@@ -27,18 +28,6 @@ const KIND_TO_RENDERER: Record<string, string> = {
   'design-system': 'design-system',
 };
 
-const KIND_TO_EXPORTS: Record<string, string[]> = {
-  html: ['html', 'pdf', 'zip'],
-  deck: ['html', 'pdf', 'zip'],
-  'react-component': ['jsx', 'zip'],
-  'markdown-document': ['md', 'html', 'pdf', 'zip'],
-  svg: ['svg', 'zip'],
-  diagram: ['svg', 'zip'],
-  'code-snippet': ['txt', 'zip'],
-  'mini-app': ['zip'],
-  'design-system': ['zip'],
-};
-
 export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterArtifactInput> {
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<RegisterArtifactInput>,
@@ -54,7 +43,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
     const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole } = options.input;
 
     const renderer = KIND_TO_RENDERER[kind];
-    const exportsList = KIND_TO_EXPORTS[kind];
+    const exportsList = exportsForKind(kind);
     if (!renderer || !exportsList) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(`Unsupported kind "${kind}". Allowed: ${Object.keys(KIND_TO_RENDERER).join(', ')}`),

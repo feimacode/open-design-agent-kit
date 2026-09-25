@@ -466,3 +466,17 @@ describe('ContentIndex community content', () => {
     assert.strictEqual(bareIdResolved!.source, 'skill', 'bare-id lookup must still prefer the official skill over the community entry');
   });
 });
+
+describe('ContentIndex against the real vendored assets', () => {
+  const assetsRoot = path.resolve(__dirname, '..', '..', '..', '..', 'content', 'assets', 'open-design');
+
+  it('finds the local-overlay YouTube thumbnail skill by query, with its aspect hint', async () => {
+    const index = new ContentIndex(assetsRoot);
+    const results = await index.listSkills('youtube thumbnail');
+    const hit = results.find((s) => s.id === 'od:prototype:social-youtube-thumbnail');
+    assert.ok(hit, 'expected od:prototype:social-youtube-thumbnail in results');
+    assert.ok(hit.examplePrompt);
+    const detail = await index.getSkill('od:prototype:social-youtube-thumbnail');
+    assert.strictEqual(detail?.aspectHint, '1280×720 (16:9)');
+  });
+});

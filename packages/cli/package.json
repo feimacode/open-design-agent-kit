@@ -1,7 +1,7 @@
 {
   "name": "@feimacode/open-design-agent-kit",
   "version": "0.1.7",
-  "description": "npx @feimacode/open-design-agent-kit init — sets up Open Design's Claude Code and/or Codex integration directly in your own project, no marketplace or manual copying required.",
+  "description": "npx @feimacode/open-design-agent-kit init — sets up Open Design's Claude Code and/or Codex integration directly in your own project, no marketplace or manual copying required. Also `export` (artifact → upload-ready PNG/JPEG) and `render-video` (HyperFrames → MP4) for scripted social-post pipelines.",
   "license": "MIT",
   "engines": {
     "node": ">=18"
@@ -36,7 +36,7 @@
   ],
   "scripts": {
     "copy-skill-content": "node ./scripts/copy-skill-content.mjs",
-    "compile": "tsc -p tsconfig.build.json",
+    "compile": "tsx .esbuild.ts",
     "typecheck": "tsc -p . --noEmit",
     "lint": "eslint src --ext ts && node ./scripts/check-cli-assets-sync.mjs",
     "test:unit": "mocha --require tsx/cjs 'src/test/unit/**/*.test.ts' --timeout 5000"
@@ -44,6 +44,10 @@
   "dependencies": {
     "@inquirer/prompts": "^7.8.0",
     "commander": "^14.0.0",
-    "smol-toml": "^1.8.0"
+    "smol-toml": "^1.8.0",
+    "@feimacode/open-design-agent-kit-content": "*"
+  },
+  "devDependencies": {
+    "@feimacode/open-design-agent-kit-core": "*"
   }
 }

@@ -42,6 +42,8 @@ export interface ComposeInstructionsInput {
   existingAppFrameworks?: string[];
   /** Set when this artifact is one screen of a multi-screen design collection — see workspace/collectionScan.ts. */
   collectionContext?: CollectionContext;
+  /** Daemon-free replacement/notice for the skill's daemon-backed steps — see hostOverrides.ts. */
+  hostOverride?: string;
 }
 
 export function composeInstructions(input: ComposeInstructionsInput): string {
@@ -60,6 +62,10 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
   }
 
   parts.push(`\n\n## Active skill — ${input.skillName}\n\nFollow this skill's workflow exactly (see the disclaimer above about path-looking text).\n\n${input.skillBody.trim()}`);
+
+  if (input.hostOverride) {
+    parts.push(`\n\n## Host override — takes precedence over the skill text above\n\n${input.hostOverride.trim()}`);
+  }
 
   if (input.craftSections && input.craftSections.length > 0) {
     parts.push(

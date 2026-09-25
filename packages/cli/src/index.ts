@@ -6,6 +6,7 @@ import { ALL_TOOL_IDS, buildToolChoices, InvalidToolsArgError, parseToolsArg, ty
 import { getClaudeSkillsAssetRoot, getCodexSkillsAssetRoot } from './env';
 import { mergeClaudeMcpConfig, writeClaudeSkills } from './claudeSetup';
 import { CODEX_CONFIG_SNIPPET, ensureCodexMcpConfig, writeCodexSkills } from './codexSetup';
+import { runExport, runRenderVideo, type ExportCliOptions } from './exportCommand';
 
 async function resolveTools(toolsFlag: string | undefined): Promise<ToolId[]> {
   if (toolsFlag !== undefined) return parseToolsArg(toolsFlag);
@@ -68,6 +69,38 @@ program
       console.error(`Error: ${message}`);
       process.exitCode = 1;
     }
+  });
+
+program
+  .command('export <entryPath>')
+  .description('Export a registered Open Design artifact to PNG/JPEG image(s), a deck to PPTX/PDF, or a page to PDF, under its exports/ folder (needs an installed Chrome, Edge, or Chromium)')
+  .option('--width <px>', 'Viewport width (give with --height); default: the source skill\'s size')
+  .option('--height <px>', 'Viewport height (give with --width)')
+  .option('--scale <n>', 'Device scale factor, 1-3 (default 2 for deck pdf/pptx, else 1)')
+  .option('--format <png|jpeg|pdf|pptx>', 'Output format (default png); pptx is for decks, pdf works for decks and pages')
+  .option('--quality <1-100>', 'JPEG quality (default 90)')
+  .option('--selector <css>', 'Export each matching element as its own numbered image, e.g. "[data-od-card]"')
+  .option('--max-bytes <n>', 'Per-file byte budget; over-budget images are re-encoded as JPEG until they fit')
+  .option('--deck', 'Treat the artifact as a slide deck (auto-detected for decks registered as kind "deck")')
+  .option('--slides <list>', 'Decks: comma-separated 1-based slide numbers to export, e.g. 1,3')
+  .option('--browser <path>', 'Browser executable (default: OPEN_DESIGN_BROWSER_PATH, then auto-detect)')
+  .option('--workspace <dir>', 'Workspace root (default: nearest ancestor containing .open-design/)')
+  .action(async (entryPath: string, options: ExportCliOptions) => {
+    try {
+      process.exitCode = await runExport(entryPath, options);
+    } catch (err) {
+      console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command('render-video <compositionDir>')
+  .description('Render a HyperFrames composition to MP4 via `npx hyperframes render` (needs FFmpeg)')
+  .requiredOption('--output <file.mp4>', 'Output MP4 path')
+  .option('--quality <draft|standard|high>', 'HyperFrames render quality (default high)')
+  .action(async (compositionDir: string, options: { output: string; quality?: string }) => {
+    process.exitCode = await runRenderVideo(compositionDir, options);
   });
 
 program.parseAsync(process.argv).catch((err) => {

@@ -3,6 +3,7 @@ import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import {
   composeInstructions,
   findCollectionArtifacts,
+  hostOverrideFor,
   resolveActiveDesignSystem,
   selectCraftSections,
   suggestCollectionScreenEntryPath,
@@ -107,6 +108,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       suggestedEntryPath,
       existingAppFrameworks,
       collectionContext,
+      hostOverride: hostOverrideFor(skill.id, skill.body),
     });
 
     const payload = {

@@ -258,6 +258,89 @@ const TOOL_DEFS: ToolDef[] = [
     },
     handler: (ctx, args) => tools.remixExample(ctx, args as { skillId: string }),
   },
+  {
+    tool: {
+      name: 'export_open_design_artifact',
+      description:
+        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: {
+            type: 'string',
+            description: "Workspace-relative path to the registered artifact's entry file.",
+          },
+          format: {
+            type: 'string',
+            enum: ['png', 'jpeg', 'pdf', 'pptx'],
+            description: 'Output format. png/jpeg: images; pdf: deck slides or a printed page; pptx: decks only. Default png.',
+          },
+          quality: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
+            description: 'JPEG quality (jpeg only). Default 90.',
+          },
+          width: {
+            type: 'integer',
+            minimum: 16,
+            maximum: 8192,
+            description: "Width in CSS pixels, given with height. Overrides the skill's size for images, the measured slide size for decks, or the print page size for page PDFs.",
+          },
+          height: {
+            type: 'integer',
+            minimum: 16,
+            maximum: 8192,
+            description: 'Viewport height in CSS pixels. Give together with width.',
+          },
+          scale: {
+            type: 'number',
+            minimum: 1,
+            maximum: 3,
+            description: 'Device scale factor (1–3). Default 2 for deck pptx/pdf (crisp when projected), 1 otherwise.',
+          },
+          selector: {
+            type: 'string',
+            description: 'CSS selector; each matching element is exported as its own numbered image (e.g. "[data-od-card]").',
+          },
+          maxBytes: {
+            type: 'integer',
+            minimum: 1,
+            description: 'Per-file byte budget; over-budget images are re-encoded as progressively lower-quality JPEG until they fit.',
+          },
+          deck: {
+            type: 'boolean',
+            description: "Force deck handling (true) or page handling (false). Omit to detect it from the artifact's kind and source skill.",
+          },
+          slides: {
+            type: 'array',
+            items: {
+              type: 'integer',
+              minimum: 1,
+            },
+            description: 'Decks only: 1-based slide numbers to export, e.g. [1, 3]. With png/jpeg, one image per slide; with pdf/pptx, only these slides in this order.',
+          },
+        },
+        required: ['entryPath'],
+      },
+    },
+    handler: (ctx, args) =>
+      tools.exportArtifact(
+        ctx,
+        args as {
+          entryPath: string;
+          format?: 'png' | 'jpeg' | 'pdf' | 'pptx';
+          quality?: number;
+          width?: number;
+          height?: number;
+          scale?: number;
+          selector?: string;
+          maxBytes?: number;
+          deck?: boolean;
+          slides?: number[];
+        },
+      ),
+  },
 ];
 
 function buildContext(): ToolContext {
@@ -293,12 +376,36 @@ async function main(): Promise<void> {
   // /mcp__open-design__<name> picker) prefill a starting brief for the user
   // to review/edit, mirroring packages/vscode's chatWithExample.ts. Selecting
   // one writes nothing — same non-destructive "just browsing" guarantee.
+  // Hand-written workflow prompts (e.g. open-design-social-post) are listed
+  // first, each taking the user's brief as an optional argument.
   server.setRequestHandler(ListPromptsRequestSchema, async () => {
+    const localPrompts = await tools.listLocalPrompts(ctx);
     const prompts = await tools.listRemixablePrompts(ctx);
-    return { prompts: prompts.map((p) => ({ name: p.name, description: `${p.displayName} (Open Design remixable example)` })) };
+    return {
+      prompts: [
+        ...localPrompts.map((p) => ({
+          name: p.name,
+          description: p.description,
+          arguments: [{ name: 'brief', description: p.argumentHint ?? p.placeholder, required: false }],
+        })),
+        ...prompts.map((p) => ({ name: p.name, description: `${p.displayName} (Open Design remixable example)` })),
+      ],
+    };
   });
 
   server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const localPrompt = (await tools.listLocalPrompts(ctx)).find((p) => p.name === request.params.name);
+    if (localPrompt) {
+      return {
+        description: localPrompt.description,
+        messages: [
+          {
+            role: 'user' as const,
+            content: { type: 'text' as const, text: tools.buildLocalPromptMessage(localPrompt, request.params.arguments?.brief) },
+          },
+        ],
+      };
+    }
     const prompts = await tools.listRemixablePrompts(ctx);
     const prompt = prompts.find((p) => p.name === request.params.name);
     if (!prompt) {

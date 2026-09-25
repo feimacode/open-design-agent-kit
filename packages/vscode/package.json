@@ -413,6 +413,82 @@
             "figmaUrl"
           ]
         }
+      },
+      {
+        "name": "export_open_design_artifact",
+        "displayName": "Export Open Design Artifact",
+        "modelDescription": "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions.",
+        "userDescription": "Export an Open Design artifact to PNG/JPEG",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-export",
+        "icon": "$(export)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryPath": {
+              "type": "string",
+              "description": "Workspace-relative path to the registered artifact's entry file."
+            },
+            "format": {
+              "type": "string",
+              "enum": [
+                "png",
+                "jpeg",
+                "pdf",
+                "pptx"
+              ],
+              "description": "Output format. png/jpeg: images; pdf: deck slides or a printed page; pptx: decks only. Default png."
+            },
+            "quality": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "JPEG quality (jpeg only). Default 90."
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 16,
+              "maximum": 8192,
+              "description": "Width in CSS pixels, given with height. Overrides the skill's size for images, the measured slide size for decks, or the print page size for page PDFs."
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 16,
+              "maximum": 8192,
+              "description": "Viewport height in CSS pixels. Give together with width."
+            },
+            "scale": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 3,
+              "description": "Device scale factor (1–3). Default 2 for deck pptx/pdf (crisp when projected), 1 otherwise."
+            },
+            "selector": {
+              "type": "string",
+              "description": "CSS selector; each matching element is exported as its own numbered image (e.g. \"[data-od-card]\")."
+            },
+            "maxBytes": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Per-file byte budget; over-budget images are re-encoded as progressively lower-quality JPEG until they fit."
+            },
+            "deck": {
+              "type": "boolean",
+              "description": "Force deck handling (true) or page handling (false). Omit to detect it from the artifact's kind and source skill."
+            },
+            "slides": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "description": "Decks only: 1-based slide numbers to export, e.g. [1, 3]. With png/jpeg, one image per slide; with pdf/pptx, only these slides in this order."
+            }
+          },
+          "required": [
+            "entryPath"
+          ]
+        }
       }
     ],
     "chatInstructions": [
@@ -431,7 +507,13 @@
         "path": "./prompts/open-design-custom-design-system.prompt.md"
       },
       {
+        "path": "./prompts/local/open-design-social-post.prompt.md"
+      },
+      {
         "path": "./prompts/featured/article-magazine.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/card-twitter.prompt.md"
       },
       {
         "path": "./prompts/featured/card-xiaohongshu.prompt.md"
@@ -479,10 +561,16 @@
         "path": "./prompts/featured/mockup-device-3d.prompt.md"
       },
       {
+        "path": "./prompts/featured/poster-hero.prompt.md"
+      },
+      {
         "path": "./prompts/featured/ppt-keynote.prompt.md"
       },
       {
         "path": "./prompts/featured/resume-modern.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/social-carousel.prompt.md"
       },
       {
         "path": "./prompts/featured/social-reddit-card.prompt.md"
@@ -492,6 +580,9 @@
       },
       {
         "path": "./prompts/featured/social-x-post-card.prompt.md"
+      },
+      {
+        "path": "./prompts/featured/social-youtube-thumbnail.prompt.md"
       },
       {
         "path": "./prompts/featured/vfx-text-cursor.prompt.md"
@@ -678,6 +769,11 @@
           "type": "string",
           "default": "v0.1.0",
           "markdownDescription": "The tag of [awesome-open-design](https://github.com/feimacode/awesome-open-design) to fetch community designs from. Change this, then run \"Open Design: Sync Community Designs\", to track a different release."
+        },
+        "openDesign.export.browserPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Absolute path to a Chrome, Edge, or Chromium executable used to export artifacts to PNG/JPEG. Leave empty to auto-detect an installed browser (or set the `OPEN_DESIGN_BROWSER_PATH` environment variable)."
         }
       }
     }

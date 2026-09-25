@@ -32,3 +32,29 @@ The webview client (`../../webview/`) is **adapted, not ported verbatim**, from 
 ## Visual design tokens, added 2026-09-19 — see `openspec/changes/archive/2026-09-19-open-design-visual-language/design.md`
 
 `src/extension/webviews/openDesignTheme.ts`'s color/radius/shadow/typography values are **hand-transcribed** (not copy-pasted CSS, but the same numbers) from upstream's `apps/web/src/styles/{tokens.css,base.css,primitives.css}`, `apps/web/src/styles/viewer/{core.css,memory.css}`, and `apps/web/src/styles/home/plugin-marketplace-demo.css` — read directly, not guessed. Also vendored: `assets/fonts/AlbertSans-VariableFont_wght.ttf`, copied byte-for-byte from `apps/web/public/fonts/AlbertSans-VariableFont_wght.ttf`. Albert Sans is a Google Font distributed under the **SIL Open Font License 1.1** (open-design itself bundles/self-hosts it under the same license, not a custom commercial font) — freely redistributable and embeddable; no attribution string is required in the UI, but this notice records where the copy came from. Only the regular (non-italic) variable-weight file was vendored; open-design also ships an italic variant, not needed here.
+
+## Export formats, added 2026-09-25
+
+`artifactManifest.ts`'s `ALLOWED_EXPORTS` gained `png`, `jpeg` and `pptx`: the raster and deck formats this project's export pipeline produces (`src/export/`). Upstream's allow-list has no such values because its desktop app never records them in a manifest. Which formats each kind advertises is decided by `src/export/exportFormats.ts` (not ported), which replaced three host-local copies of upstream's `['html', 'pdf', 'zip']`-style lists. Legacy manifests listing `zip` still validate.
+
+## Deck export, added 2026-09-25 (see `openspec/changes/deck-pptx-pdf-export/`)
+
+Adapted from upstream at commit `1b47e60bd466` (Apache-2.0). Each file carries a header naming its origin:
+
+- **`src/export/deck/selectors.ts`**: selector constants from `apps/desktop/src/main/deck-capture.ts`. Divergence: `HIDE_CHROME_SELECTOR` adds `.nav-hint`, a keyboard-hint bar several vendored decks place outside their slides.
+- **`src/export/deck/pageScripts.ts`**: `countRealSlides`, `prepareDeckStage`, `pinDeckStage`, `measureSlide`, `showSlide`, `restackActiveSlide`, `restoreActiveSlideCapture` (nested) and `showAllSlides` from the same file. Divergences:
+  - Each function is **self-contained**. Upstream composes siblings by name at call time, which breaks once a bundler minifies names; `pageScripts.test.ts` checks both the compiled and the esbuild-minified output for free identifiers.
+  - Selectors are passed in as arguments.
+  - `prepareDeckStage` also forces lazy images eager.
+  - `restackActiveSlide` falls back from `Element.moveBefore` to `insertBefore`/`appendChild` on older browsers and reports it.
+  - Types are `any` so no DOM lib types leak into the rest of core.
+- **`src/export/deck/deckStageFallback.ts`**: the `<deck-stage>` fallback script from `packages/contracts/src/runtime/deck-stage-fallback.ts`, extracted verbatim. Divergences:
+  - protocol constants are inlined;
+  - injection goes before the last `</body>` instead of upstream's ~900-line HTML scanner;
+  - it's skipped when the page already loads a `deck-stage` runtime script.
+- **`src/export/deck/assemble.ts`**: `resolvePptxConstructor`, `buildScreenshotPptx` → `assemblePptx` and `buildScreenshotPdf` → `assemblePdf` from `apps/daemon/src/deck-export.ts`. Unchanged apart from the PDF title and producer metadata.
+- **`src/export/deck/captureDeck.ts`**: the capture loop, adapted from `renderDeckSlides` for puppeteer. Divergences:
+  - clipped `page.screenshot` replaces Electron `capturePage` and CDP;
+  - a compressed-size heuristic flags blank slides, replacing upstream's bitmap scan;
+  - the page-versus-deck decision also consults the manifest `kind` and an `od:deck:*` source skill.
+- **Not ported:** editable PPTX (`dom-to-pptx` plus its normalization passes), stitched whole-deck images, and upstream's Electron window and IPC plumbing.

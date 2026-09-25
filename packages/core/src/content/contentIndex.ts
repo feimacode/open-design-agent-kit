@@ -81,6 +81,8 @@ export interface SkillSummary {
 
 export interface SkillDetail extends SkillSummary {
   body: string;
+  /** Upstream's free-form canvas-size hint, e.g. "1600×900 (16:9)" — see parseAspectHint. */
+  aspectHint?: string;
 }
 
 export type DesignSystemSource = 'built-in' | 'user';
@@ -169,6 +171,7 @@ async function loadSkillLikeDir(assetsRoot: string, subdir: string, source: Skil
       examplePrompt: typeof od?.example_prompt === 'string' ? od.example_prompt : undefined,
       featured: isFeatured(data as Record<string, unknown>, od),
       body: content.trim(),
+      aspectHint: typeof data.aspect_hint === 'string' ? data.aspect_hint : undefined,
     });
   }
   return result;
@@ -228,6 +231,7 @@ async function loadExamples(assetsRoot: string, source: SkillSource = 'example')
       featured: false,
       exampleArtifactPath: path.posix.join('examples', entry.name, 'example.html'),
       body: content.trim(),
+      aspectHint: typeof data.aspect_hint === 'string' ? data.aspect_hint : undefined,
     });
   }
   return result;

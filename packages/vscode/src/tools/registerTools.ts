@@ -12,6 +12,7 @@ import { CreateCustomDesignSystemTool } from './createCustomDesignSystemTool';
 import { PortToAppCodeTool } from './portToAppCodeTool';
 import { ShareToCommunityTool } from './shareToCommunityTool';
 import { PullFigmaFrameTool } from './pullFigmaFrameTool';
+import { ExportArtifactTool } from './exportArtifactTool';
 import { LoggingTool } from './loggingTool';
 
 export function registerTools(
@@ -33,6 +34,7 @@ export function registerTools(
     ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
     ['share_open_design_artifact_to_community', new ShareToCommunityTool()],
     ['pull_open_design_figma_frame', new PullFigmaFrameTool(context)],
+    ['export_open_design_artifact', new ExportArtifactTool(contentIndex)],
   ];
 
   for (const [name, tool] of registrations) {

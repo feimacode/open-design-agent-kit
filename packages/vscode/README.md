@@ -68,12 +68,16 @@ Six of the ~280 bundled skills and templates, rendered exactly as-is:
   **View**: just the rendered page.
 - **Your own design systems** beyond the bundled 152. Invent one from a brief (`create_open_design_design_system`, optionally seeded from a reference URL), or import an existing one from a file, pasted content, or a GitHub repo with **Open Design: Import Design System**. Import doesn't use a model, and the original source is always kept.
 - **From prototype to production.** When you're happy with an artifact, `port_open_design_artifact_to_app` (or the "Promote to App Code" button in the preview toolbar) ports it into your real app as idiomatic production code, modeled on an existing component you point to or one it finds itself. It runs once rather than syncing, and it leaves routing and navigation for you to wire up.
+- **Social posts, ready to upload.** `/open-design-social-post` asks where you're posting (X, Instagram, LinkedIn, Xiaohongshu, Stories/Reels, a YouTube thumbnail or video), picks the right size and skill, and exports PNG/JPEG files into the artifact's `exports/` folder with `export_open_design_artifact` (`#od-export`). Carousels come out as one image per card, and files over the platform's size limit are re-encoded as JPEG. YouTube videos render to MP4 with the HyperFrames CLI.
+- **Decks to PowerPoint and PDF.** Ask Copilot to "export this deck as PowerPoint" (or PDF) and `export_open_design_artifact` writes a `.pptx` with one full-bleed image per slide (pixel-perfect, not editable text) or a one-page-per-slide `.pdf`. Ordinary pages export to a vector PDF with selectable text.
 - **Grounded in your codebase.** When the workspace looks like a React, Vue, Next.js, Nuxt, Svelte, Angular, Astro, or Solid project, the instructions have the model look at a few of your real components first, so prototypes look like they belong in your app.
 
 ## Requirements
 
 - VS Code 1.138+
 - [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat), or any other chat agent that can call VS Code's built-in language model tools. The Gallery, Collections, and preview work without one; generation needs a chat agent.
+- For exporting to PNG/JPEG/PDF/PPTX: an installed Chrome, Edge, or Chromium (found automatically; nothing is downloaded). On Linux, install an emoji font (e.g. `fonts-noto-color-emoji`) if your designs use emoji.
+- For rendering YouTube/HyperFrames videos: Node and [FFmpeg](https://ffmpeg.org/).
 
 ## Install
 
@@ -87,7 +91,8 @@ Open Copilot Chat in agent mode and just ask:
 
 Copilot calls `list_open_design_skills` and `list_open_design_design_systems` on its own and writes the files. Or be explicit:
 
-- `/guizang-ppt A 10-slide pitch deck for...` runs one of the 23 curated one-click commands
+- `/guizang-ppt A 10-slide pitch deck for...` runs one of the 27 curated one-click commands
+- `/open-design-social-post An X post announcing our v2 launch` designs the post and exports the PNG
 - "Use the Starbucks design system, then build me a landing page" sets it active and generates against it
 - Click a card in **Open Design: Open Gallery Grid** to remix a real example instead of starting blank
 - "Turn this Figma frame into code: <link>" rebuilds a frame (after **Open Design: Set Figma Access Token**)
@@ -103,6 +108,7 @@ None are required. These are here in case you want to change the defaults:
 | `openDesign.activeDesignSystemId` | *(empty)* | The current active design system id. Set via the browse picker, the `set_active_design_system` tool, or by generating with an explicit id. |
 | `openDesign.communityContentEnabled` | `true` | Show community-contributed designs from awesome-open-design next to the built-in gallery. This content isn't reviewed by the extension author. |
 | `openDesign.communityContentRef` | `v0.1.0` | The awesome-open-design tag to fetch community designs from. |
+| `openDesign.export.browserPath` | *(empty)* | Chrome/Edge/Chromium executable for PNG/JPEG export. Empty means auto-detect (or the `OPEN_DESIGN_BROWSER_PATH` environment variable). |
 
 ## Commands
 

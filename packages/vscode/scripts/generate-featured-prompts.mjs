@@ -12,12 +12,29 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '@feimacode/open-design-agent-kit-content/scripts/curatedEntries.mjs';
+import { loadLocalPrompts, renderPromptBody } from '@feimacode/open-design-agent-kit-content/scripts/localPrompts.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const assetsRoot = path.join(repoRoot, 'assets', 'open-design');
 const featuredPromptsDir = path.join(repoRoot, 'prompts', 'featured');
 const GENERATED_PREFIX = './prompts/featured/';
+// Hand-written, host-agnostic prompts from packages/content/local/prompts/
+// (e.g. open-design-social-post), rendered as VS Code prompt files.
+const localPromptsDir = path.join(repoRoot, 'prompts', 'local');
+const LOCAL_PREFIX = './prompts/local/';
+
+function localPromptFileContent(prompt) {
+  const placeholder = prompt.placeholder.replace(/"/g, '\\"');
+  return `---
+name: "${prompt.name}"
+description: ${prompt.description}
+mode: agent
+---
+
+${renderPromptBody(prompt, `\${input:brief:${placeholder}}`)}
+`;
+}
 
 function promptFileContent(entry) {
   const placeholder = entry.examplePrompt
@@ -51,14 +68,24 @@ async function main() {
     await fs.writeFile(path.join(featuredPromptsDir, `${entry.id}.prompt.md`), promptFileContent(entry));
   }
 
+  const localPrompts = await loadLocalPrompts(assetsRoot);
+  await fs.rm(localPromptsDir, { recursive: true, force: true });
+  await fs.mkdir(localPromptsDir, { recursive: true });
+  for (const prompt of localPrompts) {
+    await fs.writeFile(path.join(localPromptsDir, `${prompt.name}.prompt.md`), localPromptFileContent(prompt));
+  }
+
   const pkgPath = path.join(repoRoot, 'package.json');
   const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf8'));
-  const handAuthored = (pkg.contributes.chatPromptFiles || []).filter((e) => !e.path.startsWith(GENERATED_PREFIX));
+  const handAuthored = (pkg.contributes.chatPromptFiles || []).filter(
+    (e) => !e.path.startsWith(GENERATED_PREFIX) && !e.path.startsWith(LOCAL_PREFIX),
+  );
+  const local = localPrompts.map((prompt) => ({ path: `${LOCAL_PREFIX}${prompt.name}.prompt.md` }));
   const generated = entries.map((entry) => ({ path: `${GENERATED_PREFIX}${entry.id}.prompt.md` }));
-  pkg.contributes.chatPromptFiles = [...handAuthored, ...generated];
+  pkg.contributes.chatPromptFiles = [...handAuthored, ...local, ...generated];
   await fs.writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 
-  console.log(`Generated ${entries.length} featured prompt files, updated package.json contributes.chatPromptFiles.`);
+  console.log(`Generated ${entries.length} featured and ${localPrompts.length} local prompt files, updated package.json contributes.chatPromptFiles.`);
 }
 
 main().catch((err) => {

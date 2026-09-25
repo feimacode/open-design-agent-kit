@@ -1,4 +1,4 @@
-import { copyExampleArtifact, resolveContentRoot, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import { copyExampleArtifact, exportsForKind, resolveContentRoot, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import { getWorkspaceRoot, getOutputDirectory, slugify, registerArtifact } from './artifactWriter';
 
 export interface RemixResult {
@@ -52,7 +52,7 @@ export async function performRemix(
     artifactManifest: {
       kind: 'html',
       renderer: 'html',
-      exports: ['html', 'pdf', 'zip'],
+      exports: exportsForKind('html'),
       title: skill.name,
       supportingFiles,
       sourceSkillId: skillId,

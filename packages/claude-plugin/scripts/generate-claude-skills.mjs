@@ -11,6 +11,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '@feimacode/open-design-agent-kit-content/scripts/curatedEntries.mjs';
+import { loadLocalPrompts, renderPromptBody } from '@feimacode/open-design-agent-kit-content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '@feimacode/open-design-agent-kit-content/scripts/remixableExamplesReference.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -43,6 +44,23 @@ Use the Open Design skill \`${entry.publicId}\` (${entry.displayName}).
 Brief: "$ARGUMENTS", or if empty: "${placeholder}"
 
 Call \`prepare_open_design_brief\` (the open-design MCP server's tool) with skillId "${entry.publicId}" and this brief — call \`list_open_design_design_systems\` first only if the user names a brand or visual direction. Author the files yourself with your own file-editing tools per the returned instructions, then call \`register_open_design_artifact\`.
+`;
+}
+
+// Hand-written, host-agnostic prompts from packages/content/local/prompts/
+// (e.g. open-design-social-post), rendered as explicit-only skills.
+// Unlike the per-entry curated skills, these are workflows the model should
+// reach on its own for a matching request — so no disable-model-invocation.
+function localPromptSkillMdContent(prompt) {
+  return `---
+name: "${prompt.name}"
+description: ${prompt.description} — use whenever the user wants something to post on social media (an X/Twitter image, Instagram or LinkedIn post or carousel, Xiaohongshu cards, a Story/Reels cover, a YouTube thumbnail or video), even if they don't mention Open Design
+argument-hint: ${prompt.argumentHint ?? 'a brief'}
+---
+
+<!-- generated:curated-entry -->
+
+${renderPromptBody(prompt, `"$ARGUMENTS" — or, if that is empty, the user's request in this conversation (ask them what to post and where if it isn't clear)`)}
 `;
 }
 
@@ -79,11 +97,18 @@ async function main() {
     await fs.writeFile(path.join(dir, 'SKILL.md'), skillMdContent(entry));
   }
 
+  const localPrompts = await loadLocalPrompts(assetsRoot);
+  for (const prompt of localPrompts) {
+    const dir = path.join(skillsDir, prompt.name);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, 'SKILL.md'), localPromptSkillMdContent(prompt));
+  }
+
   const referencesDir = path.join(skillsDir, 'open-design', 'references');
   await fs.mkdir(referencesDir, { recursive: true });
   await fs.writeFile(path.join(referencesDir, 'remixable-examples.md'), await buildRemixableExamplesReference(assetsRoot));
 
-  console.log(`Generated ${entries.length} curated Open Design skills under ${path.relative(pluginRoot, skillsDir)}/.`);
+  console.log(`Generated ${entries.length} curated and ${localPrompts.length} local-prompt Open Design skills under ${path.relative(pluginRoot, skillsDir)}/.`);
 }
 
 main().catch((err) => {

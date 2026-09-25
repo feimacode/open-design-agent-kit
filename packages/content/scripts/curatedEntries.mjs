@@ -3,10 +3,28 @@
 // commands/) so "which entries are curated" is decided in exactly one
 // place, regardless of how many hosts render it. A curated entry is one
 // carrying a top-level `featured`, a top-level `recommended`, or an
-// `od.default_for` field in its SKILL.md frontmatter.
+// `od.default_for` field in its SKILL.md frontmatter — or one whose id is
+// listed in the extension-owned local/curated.json (see local/README.md).
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import matter from 'gray-matter';
+
+const LOCAL_CURATED_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'local', 'curated.json');
+
+async function readLocalCurated(localCuratedPath) {
+  let raw;
+  try {
+    raw = await fs.readFile(localCuratedPath, 'utf8');
+  } catch {
+    return new Set();
+  }
+  const ids = JSON.parse(raw);
+  if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) {
+    throw new Error(`${localCuratedPath} must be a JSON array of entry id strings.`);
+  }
+  return new Set(ids);
+}
 
 // Mirrors packages/core/src/content/contentIndex.ts's SKILL_MODES/normalizeMode.
 const SKILL_MODES = new Set(['prototype', 'deck', 'design-system', 'image', 'video', 'template', 'utility', 'audio']);
@@ -32,7 +50,7 @@ async function pathExists(p) {
   }
 }
 
-async function collectFrom(assetsRoot, subdir) {
+async function collectFrom(assetsRoot, subdir, localCurated, seen) {
   const dir = path.join(assetsRoot, subdir);
   const entries = [];
   if (!(await pathExists(dir))) return entries;
@@ -44,7 +62,8 @@ async function collectFrom(assetsRoot, subdir) {
     const raw = await fs.readFile(skillMdPath, 'utf8');
     const { data } = matter(raw);
     const od = data.od;
-    if (!isCurated(data, od)) continue;
+    seen.add(entry.name);
+    if (!isCurated(data, od) && !localCurated.has(entry.name)) continue;
     const mode = normalizeMode(od && od.mode);
     entries.push({
       id: entry.name,
@@ -57,8 +76,21 @@ async function collectFrom(assetsRoot, subdir) {
   return entries;
 }
 
-/** Every curated skill/design-template entry, sorted by id. */
-export async function collectCuratedEntries(assetsRoot) {
-  const [skills, templates] = await Promise.all([collectFrom(assetsRoot, 'skills'), collectFrom(assetsRoot, 'design-templates')]);
+/**
+ * Every curated skill/design-template entry, sorted by id. Throws if the
+ * local curation list names an id that matches no entry (a typo, or an
+ * upstream rename) — silently dropping it would lose a command unnoticed.
+ */
+export async function collectCuratedEntries(assetsRoot, localCuratedPath = LOCAL_CURATED_PATH) {
+  const localCurated = await readLocalCurated(localCuratedPath);
+  const seen = new Set();
+  const [skills, templates] = await Promise.all([
+    collectFrom(assetsRoot, 'skills', localCurated, seen),
+    collectFrom(assetsRoot, 'design-templates', localCurated, seen),
+  ]);
+  const unknown = [...localCurated].filter((id) => !seen.has(id));
+  if (unknown.length > 0) {
+    throw new Error(`${localCuratedPath} names unknown entry id(s): ${unknown.join(', ')}`);
+  }
   return [...skills, ...templates].sort((a, b) => a.id.localeCompare(b.id));
 }

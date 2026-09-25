@@ -3,9 +3,7 @@
 ## Purpose
 
 Lets VS Code Copilot Chat browse OpenDesign's bundled design skills, design templates, design systems, and remixable example artifacts, compose a generation brief for one of them, and register a workspace file as a recognized OpenDesign artifact — all in-process via native `languageModelTools`, with no daemon process and no MCP server involved. The model already selected in Copilot Chat performs the actual generation using its own native file-editing tools. A curated subset of skills/templates is also reachable as zero-ambiguity `/` slash commands. A single active design system persists per workspace, visible in the status bar, so it doesn't need to be re-specified on every request. A live preview editor lets a user view, comment on, and directly (WYSIWYG) edit HTML artifacts; a chat tool, a QuickPick command, an Explorer tree view, and a grid webview all let a user remix a vendored example into a real starting file, sharing identical remix logic.
-
 ## Requirements
-
 ### Requirement: Skill and Design System Discovery
 The system SHALL expose the vendored skill, design-template, and design system catalogs as `languageModelTools` (`list_open_design_skills`, `list_open_design_design_systems`) that return id/name/description for each entry, optionally filtered by a free-text query matched against name, description, and (for skills/design-templates) triggers and tags. Skills and design-templates SHALL be merged into a single catalog exposed by `list_open_design_skills`, each entry tagged with a `source` of `skill` or `design-template`; either may be passed as `skillId` to `prepare_open_design_brief`. Each entry's display name SHALL prefer an upstream `en_name` field over the raw `name` field when present, since `name` is frequently a machine slug rather than a human-readable title.
 
@@ -85,11 +83,23 @@ The system SHALL expose `get_open_design_artifact`, returning the manifest (if p
 - **THEN** the tool SHALL return a clear "not found" result rather than throwing
 
 ### Requirement: No Daemon or MCP Dependency
-The system SHALL perform all of the above without spawning open-design's daemon process and without an MCP transport. All skill/design-system content SHALL be vendored into the extension at build time, not fetched live from a daemon or an open-design checkout at runtime.
+The system SHALL perform all of the above without spawning open-design's daemon process and without an MCP transport. All skill/design-system content SHALL be vendored into the extension at build time, not fetched live from a daemon or an open-design checkout at runtime. When a vendored skill's text instructs the model to use the Open Design daemon (e.g. `$OD_BIN`, `od media`, "OD daemon"), `prepare_open_design_brief` SHALL append after the skill text either a skill-specific host override that gives a daemon-free equivalent or, if none exists, a notice that the daemon-backed step is unavailable in this host and the model should tell the user rather than improvise. Vendored skill files SHALL NOT be edited to achieve this.
 
 #### Scenario: Extension used with no open-design checkout present
 - **WHEN** the extension is installed and activated on a machine with no open-design checkout and no `od` daemon running
 - **THEN** all five tools SHALL function normally, sourcing content from the extension's own bundled `assets/open-design/` directory
+
+#### Scenario: Skill with a daemon-free override
+- **WHEN** `prepare_open_design_brief` is called for a skill that references the daemon and has a registered host override (e.g. `hyperframes`)
+- **THEN** the returned instructions SHALL include the override, headed as taking precedence over the skill text above it
+
+#### Scenario: Skill with no override
+- **WHEN** `prepare_open_design_brief` is called for a skill that references the daemon and has no host override (e.g. `image-poster`)
+- **THEN** the returned instructions SHALL include a notice that the daemon-backed step isn't available in this host
+
+#### Scenario: Vendored content untouched
+- **WHEN** content sync parity is checked after this change
+- **THEN** every vendored upstream SKILL.md SHALL still match upstream byte for byte
 
 ### Requirement: Native File Authoring
 The system SHALL NOT provide any tool that writes design content (HTML/CSS/JS/etc.) on the caller's behalf. Artifact content SHALL be authored by the calling model using VS Code's own native file-editing tools; the extension's only file-write responsibility is the artifact manifest sidecar.
@@ -99,14 +109,22 @@ The system SHALL NOT provide any tool that writes design content (HTML/CSS/JS/et
 - **THEN** the entry and supporting files SHALL be written by the calling model's own tools, and this extension SHALL only have written the `.artifact.json` sidecar
 
 ### Requirement: Curated Slash-Command Shortcuts
-The system SHALL generate a `chatPromptFiles` entry for each catalog entry flagged as curated in upstream frontmatter (presence of a top-level `featured`, a top-level `recommended`, or an `od.default_for` field), pinning that entry's exact `skillId` and, when available, its curated `example_prompt` as the default input. This generation SHALL be idempotent and re-derived from vendored content on every content sync, not hand-maintained.
+The system SHALL generate a `chatPromptFiles` entry for each catalog entry that is curated. An entry is curated if it is flagged in upstream frontmatter (a top-level `featured`, a top-level `recommended`, or an `od.default_for` field) or if its id appears in the extension-owned local curation list. Each entry SHALL pin that entry's exact `skillId` and, when available, its curated `example_prompt` as the default input. This generation SHALL be idempotent and re-derived from vendored content and the local curation list on every content sync, not hand-maintained per host.
 
 #### Scenario: A named, curated entry gets its own command
 - **WHEN** a catalog entry carries a top-level `featured` or `recommended` key, or `od.default_for`
 - **THEN** a `prompts/featured/<id>.prompt.md` file SHALL be generated pinning that exact `skillId`, and its path SHALL be included in `package.json`'s `contributes.chatPromptFiles`
 
+#### Scenario: Locally curated entry gets its own command
+- **WHEN** an entry with no upstream curation flag (e.g. `card-twitter`) is listed in the local curation list
+- **THEN** a `prompts/featured/card-twitter.prompt.md` file SHALL be generated exactly as for an upstream-curated entry
+
+#### Scenario: Unknown id in the local curation list
+- **WHEN** the local curation list names an id that matches no catalog entry
+- **THEN** content sync SHALL fail and name the unknown id
+
 #### Scenario: Re-running content sync does not accumulate stale commands
-- **WHEN** `npm run sync-content` is run again after upstream content changes which entries are curated
+- **WHEN** `npm run sync-content` is run again after upstream content or the local curation list changes which entries are curated
 - **THEN** the generated `prompts/featured/` directory and the generated slice of `contributes.chatPromptFiles` SHALL both be fully replaced to match the current curated set, not merged with the previous run's output
 
 ### Requirement: Design System Category Filtering and Native Browsing
@@ -347,3 +365,4 @@ The system SHALL provide a tree view, in its own standalone activity-bar contain
 #### Scenario: QuickPick selection still remixes directly
 - **WHEN** a user selects an example from the `OpenDesign: Browse Gallery` QuickPick
 - **THEN** that example SHALL be remixed immediately, without an intermediate preview step
+

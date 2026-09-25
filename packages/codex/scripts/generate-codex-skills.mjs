@@ -17,6 +17,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '@feimacode/open-design-agent-kit-content/scripts/curatedEntries.mjs';
+import { loadLocalPrompts, renderPromptBody } from '@feimacode/open-design-agent-kit-content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '@feimacode/open-design-agent-kit-content/scripts/remixableExamplesReference.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -43,6 +44,22 @@ Use the Open Design skill \`${entry.publicId}\` (${entry.displayName}).
 Treat the rest of the user's message as the brief. If nothing more specific was given, use: "${placeholder}"
 
 Call \`prepare_open_design_brief\` (the open-design MCP server's tool) with skillId "${entry.publicId}" and this brief — call \`list_open_design_design_systems\` first only if the user names a brand or visual direction. Author the files yourself with your own file-editing tools per the returned instructions, then call \`register_open_design_artifact\`.
+`;
+}
+
+// Hand-written, host-agnostic prompts from packages/content/local/prompts/
+// (e.g. open-design-social-post), rendered as explicit-only skills.
+// Unlike the per-entry curated skills, these are workflows the model should
+// reach on its own for a matching request — so no explicit-only policy sidecar.
+function localPromptSkillMdContent(prompt) {
+  return `---
+name: ${prompt.name}
+description: ${prompt.description} — use whenever the user wants something to post on social media (an X/Twitter image, Instagram or LinkedIn post or carousel, Xiaohongshu cards, a Story/Reels cover, a YouTube thumbnail or video), even if they don't mention Open Design
+---
+
+${GENERATED_MARKER}
+
+${renderPromptBody(prompt, `the rest of the user's message (if there is none, ask the user: "${prompt.placeholder}")`)}
 `;
 }
 
@@ -100,7 +117,16 @@ async function main() {
     await fs.writeFile(path.join(dir, 'agents', 'openai.yaml'), EXPLICIT_ONLY_POLICY);
   }
 
-  console.log(`Generated ${entries.length + 1} Codex skills (1 overview + ${entries.length} curated) under .agents/skills/.`);
+  const localPrompts = await loadLocalPrompts(assetsRoot);
+  for (const prompt of localPrompts) {
+    const dir = path.join(skillsDir, prompt.name);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, 'SKILL.md'), localPromptSkillMdContent(prompt));
+  }
+
+  console.log(
+    `Generated ${entries.length + localPrompts.length + 1} Codex skills (1 overview + ${entries.length} curated + ${localPrompts.length} local prompts) under .agents/skills/.`,
+  );
 }
 
 main().catch((err) => {

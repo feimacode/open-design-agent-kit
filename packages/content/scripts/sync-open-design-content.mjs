@@ -21,6 +21,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { applyLocalOverlay } from './apply-local-overlay.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -248,11 +249,16 @@ async function main() {
     };
     await fs.writeFile(path.join(targetRoot, 'MANIFEST.json'), JSON.stringify(manifest, null, 2) + '\n');
 
+    // Extension-owned content (local/) goes on top of the fresh upstream
+    // copy — see apply-local-overlay.mjs. Throws on an id collision.
+    const overlay = await applyLocalOverlay(targetRoot);
+
     console.log(
       `Synced ${skillCount} skills, ${templateCount} design templates, ${designSystemCount} design systems, ${craftCount} craft files, ` +
         `${examplesResult.count} remixable examples (${examplesResult.skippedForSize} skipped for size) from ` +
         (resolved.usedRef ? `${repoUrl} @ ${resolved.usedRef}` : srcRoot) +
-        (manifest.sourceCommit ? ` (${manifest.sourceCommit.slice(0, 12)})` : ''),
+        (manifest.sourceCommit ? ` (${manifest.sourceCommit.slice(0, 12)})` : '') +
+        `, plus local overlay (${overlay.skills} skills, ${overlay.prompts} prompts)`,
     );
   } finally {
     await resolved.cleanup();

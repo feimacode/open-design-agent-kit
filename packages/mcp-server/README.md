@@ -98,6 +98,9 @@ See [docs/codex.md](https://github.com/feimacode/open-design-agent-kit/blob/main
 | `create_open_design_design_system` | Compose instructions to author a new `DESIGN.md`, optionally seeded from a reference URL's colors/fonts. |
 | `port_open_design_artifact_to_app` | Compose instructions to port a finished artifact into your real app as idiomatic production code. |
 | `remix_open_design_example` | Copy a curated example artifact into the workspace as a starting point, and get instructions to modify — not regenerate — it. |
+| `export_open_design_artifact` | Render a registered artifact under its `exports/` folder: PNG/JPEG images (sized from the source skill, one per `[data-od-card]` card, re-encoded to fit `maxBytes`), a deck to `pptx` (one slide image per slide) or `pdf`, or a page to a vector `pdf`. Needs an installed Chrome/Edge/Chromium. |
+
+It also serves an `open-design-social-post` prompt (takes an optional `brief` argument) that walks the agent through platform → size → skill → generate → export, including YouTube videos via the HyperFrames CLI.
 
 JSON Schemas mirror the VS Code extension's `languageModelTools` 1:1 — see [`src/index.ts`](https://github.com/feimacode/open-design-agent-kit/blob/main/packages/mcp-server/src/index.ts) for the exact shapes.
 
@@ -107,6 +110,7 @@ JSON Schemas mirror the VS Code extension's `languageModelTools` 1:1 — see [`s
 |---|---|---|
 | `OPEN_DESIGN_WORKSPACE_ROOT` | the launching process's `cwd` | Where artifacts get written and `.open-design/config.json` (active design system) is read/written. |
 | `OPEN_DESIGN_OUTPUT_DIR` | `.open-design` | Workspace-relative directory new artifacts are suggested under. |
+| `OPEN_DESIGN_BROWSER_PATH` | auto-detect | Chrome/Edge/Chromium executable for `export_open_design_artifact`. Auto-detection checks system installs, then the Playwright/Puppeteer caches. On a headless box: `npx @puppeteer/browsers install chrome-headless-shell@stable --path ~/.cache/puppeteer`. |
 
 Both Claude Code and Codex already launch a local stdio MCP server with `cwd` set to the active project, so the default is usually right — the override exists for testing or an unusual host.
 

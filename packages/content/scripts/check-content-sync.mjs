@@ -10,11 +10,38 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_OPEN_DESIGN_REF } from './sync-open-design-content.mjs';
+import { LOCAL_ROOT, listOverlayFiles } from './apply-local-overlay.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const manifestPath = path.join(__dirname, '..', 'assets', 'open-design', 'MANIFEST.json');
+const assetsRoot = path.join(__dirname, '..', 'assets', 'open-design');
+const manifestPath = path.join(assetsRoot, 'MANIFEST.json');
+
+// Every file under local/ must be present, byte-identical, in the assets tree
+// — catches an overlay edit that wasn't followed by `npm run apply-overlay`.
+async function checkLocalOverlay() {
+  const problems = [];
+  for (const rel of await listOverlayFiles()) {
+    const expected = await fs.readFile(path.join(LOCAL_ROOT, rel));
+    let actual;
+    try {
+      actual = await fs.readFile(path.join(assetsRoot, rel));
+    } catch {
+      problems.push(`missing ${rel}`);
+      continue;
+    }
+    if (!expected.equals(actual)) problems.push(`stale ${rel}`);
+  }
+  if (problems.length > 0) {
+    console.error(
+      `Local overlay drift in assets/open-design/: ${problems.join(', ')}.\nRun \`npm run apply-overlay --workspace=@feimacode/open-design-agent-kit-content\` (then \`npm run sync-content\`'s mirror/generate steps) and commit the result.`,
+    );
+    process.exit(1);
+  }
+}
 
 async function main() {
+  await checkLocalOverlay();
+
   let manifest;
   try {
     manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));

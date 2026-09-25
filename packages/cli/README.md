@@ -42,6 +42,23 @@ npx @feimacode/open-design-agent-kit init --tools codex
 
 Both hosts end up pointed at [`@feimacode/open-design-agent-kit-mcp`](https://www.npmjs.com/package/@feimacode/open-design-agent-kit-mcp) via `npx`, the same server the VS Code extension and Claude Code plugin use.
 
+## Export and render (for scripts)
+
+For pipelines that turn designs into files without an agent in the loop:
+
+```bash
+# Registered artifact → PNG(s) under its exports/ folder; prints each file path on stdout
+npx @feimacode/open-design-agent-kit export .open-design/launch/launch.html --max-bytes 5000000
+# Carousel / Xiaohongshu cards → one image per card
+npx @feimacode/open-design-agent-kit export .open-design/tips/tips.html --selector "[data-od-card]"
+# Deck → PowerPoint (one full-bleed image per slide), or PDF; --slides 1,3 for a subset
+npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format pptx
+# HyperFrames composition → MP4 (runs `npx hyperframes render`; needs FFmpeg)
+npx @feimacode/open-design-agent-kit render-video .open-design/promo --output .open-design/promo/exports/promo.mp4
+```
+
+`export` sizes the image from the artifact's source skill unless you pass `--width`/`--height`, and it also accepts `--scale`, `--format png|jpeg|pdf|pptx`, `--deck`, `--slides`, `--quality`, `--browser` and `--workspace`. It uses an installed Chrome, Edge or Chromium (or `OPEN_DESIGN_BROWSER_PATH`) and never downloads one. It exits non-zero on failure.
+
 ## Safe to re-run
 
 Generated skill files are always fully refreshed — no stale entries left behind from a previous run. A skill directory *you* created by hand under the same location is never touched or deleted; only directories this tool generated itself get replaced. `.mcp.json` only ever has its own `open-design` entry updated; an existing `.codex/config.toml` is never rewritten at all.

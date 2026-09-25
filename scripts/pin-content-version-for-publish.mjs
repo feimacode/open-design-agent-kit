@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Rewrites packages/mcp-server/package.json's dependency on
+// Rewrites packages/mcp-server/package.json's (and packages/cli/package.json's)
+// dependency on
 // @feimacode/open-design-agent-kit-content from the wildcard "*" (correct
 // for local development — npm workspaces always resolves it to the sibling
 // package via a symlink regardless of version) to a real, pinned range
@@ -21,7 +22,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const CONTENT_PKG_PATH = path.join(repoRoot, 'packages', 'content', 'package.json');
-const MCP_SERVER_PKG_PATH = path.join(repoRoot, 'packages', 'mcp-server', 'package.json');
+const DEPENDENT_PKG_PATHS = [
+  path.join(repoRoot, 'packages', 'mcp-server', 'package.json'),
+  path.join(repoRoot, 'packages', 'cli', 'package.json'),
+];
 const DEP_NAME = '@feimacode/open-design-agent-kit-content';
 
 async function main() {
@@ -29,20 +33,20 @@ async function main() {
   const contentVersion = contentPkg.version;
   if (!contentVersion) throw new Error(`${CONTENT_PKG_PATH} has no version field`);
 
-  const mcpPkg = JSON.parse(await fs.readFile(MCP_SERVER_PKG_PATH, 'utf8'));
-  const previous = mcpPkg.dependencies?.[DEP_NAME];
-  if (previous === undefined) {
-    throw new Error(`${MCP_SERVER_PKG_PATH} has no "${DEP_NAME}" dependency to pin`);
-  }
-
   const pinned = `^${contentVersion}`;
-  mcpPkg.dependencies[DEP_NAME] = pinned;
-  await fs.writeFile(MCP_SERVER_PKG_PATH, JSON.stringify(mcpPkg, null, 2) + '\n', 'utf8');
-
-  if (previous !== '*') {
-    console.warn(`Note: "${DEP_NAME}" was already "${previous}" (not the expected "*") before this rewrite.`);
+  for (const pkgPath of DEPENDENT_PKG_PATHS) {
+    const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf8'));
+    const previous = pkg.dependencies?.[DEP_NAME];
+    if (previous === undefined) {
+      throw new Error(`${pkgPath} has no "${DEP_NAME}" dependency to pin`);
+    }
+    pkg.dependencies[DEP_NAME] = pinned;
+    await fs.writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+    if (previous !== '*') {
+      console.warn(`Note: "${DEP_NAME}" in ${pkgPath} was already "${previous}" (not the expected "*") before this rewrite.`);
+    }
+    console.log(`Pinned ${pkgPath}'s "${DEP_NAME}" dependency: "${previous}" -> "${pinned}"`);
   }
-  console.log(`Pinned ${MCP_SERVER_PKG_PATH}'s "${DEP_NAME}" dependency: "${previous}" -> "${pinned}"`);
 }
 
 main().catch((err) => {

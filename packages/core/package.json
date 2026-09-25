@@ -7,7 +7,10 @@
   "types": "src/index.ts",
   "license": "MIT",
   "dependencies": {
-    "gray-matter": "^4.0.3"
+    "gray-matter": "^4.0.3",
+    "pdf-lib": "^1.17.1",
+    "pptxgenjs": "^4.0.1",
+    "puppeteer-core": "^24.43.1"
   },
   "scripts": {
     "typecheck": "tsc -p . --noEmit",

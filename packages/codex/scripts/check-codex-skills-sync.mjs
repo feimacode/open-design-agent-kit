@@ -8,6 +8,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '@feimacode/open-design-agent-kit-content/scripts/curatedEntries.mjs';
+import { loadLocalPrompts, renderPromptBody } from '@feimacode/open-design-agent-kit-content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '@feimacode/open-design-agent-kit-content/scripts/remixableExamplesReference.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -37,6 +38,22 @@ Call \`prepare_open_design_brief\` (the open-design MCP server's tool) with skil
 `;
 }
 
+// Hand-written, host-agnostic prompts from packages/content/local/prompts/
+// (e.g. open-design-social-post), rendered as explicit-only skills.
+// Unlike the per-entry curated skills, these are workflows the model should
+// reach on its own for a matching request — so no explicit-only policy sidecar.
+function localPromptSkillMdContent(prompt) {
+  return `---
+name: ${prompt.name}
+description: ${prompt.description} — use whenever the user wants something to post on social media (an X/Twitter image, Instagram or LinkedIn post or carousel, Xiaohongshu cards, a Story/Reels cover, a YouTube thumbnail or video), even if they don't mention Open Design
+---
+
+${GENERATED_MARKER}
+
+${renderPromptBody(prompt, `the rest of the user's message (if there is none, ask the user: "${prompt.placeholder}")`)}
+`;
+}
+
 const YAML_GENERATED_MARKER = '# generated:open-design-agent-kit';
 const EXPLICIT_ONLY_POLICY = `${YAML_GENERATED_MARKER}\npolicy:\n  allow_implicit_invocation: false\n`;
 
@@ -51,7 +68,8 @@ async function pathExists(p) {
 
 async function main() {
   const entries = await collectCuratedEntries(assetsRoot);
-  const expectedIds = new Set(entries.map((e) => e.id));
+  const localPrompts = await loadLocalPrompts(assetsRoot);
+  const expectedIds = new Set([...entries.map((e) => e.id), ...localPrompts.map((p) => p.name)]);
   const problems = [];
 
   const overviewSource = await fs.readFile(overviewSkillSource, 'utf8');
@@ -79,6 +97,23 @@ async function main() {
       problems.push(`stale generated Codex policy sidecar for "${entry.id}"`);
     }
   }
+
+  for (const prompt of localPrompts) {
+    const dir = path.join(skillsDir, prompt.name);
+    const skillMdPath = path.join(dir, 'SKILL.md');
+    if (!(await pathExists(skillMdPath))) {
+      problems.push(`missing generated Codex skill for local prompt "${prompt.name}"`);
+      continue;
+    }
+    if ((await fs.readFile(skillMdPath, 'utf8')) !== localPromptSkillMdContent(prompt)) {
+      problems.push(`stale generated Codex skill content for local prompt "${prompt.name}"`);
+    }
+    // Must stay implicitly invocable: an explicit-only policy sidecar would hide it from the model.
+    if (await pathExists(path.join(dir, 'agents', 'openai.yaml'))) {
+      problems.push(`local prompt skill "${prompt.name}" must not have an explicit-only agents/openai.yaml`);
+    }
+  }
+
 
   const existingDirs = (await fs.readdir(skillsDir, { withFileTypes: true }))
     .filter((e) => e.isDirectory() && e.name !== 'open-design')

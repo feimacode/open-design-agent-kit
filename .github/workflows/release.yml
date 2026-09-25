@@ -137,7 +137,7 @@ jobs:
       # workflow, and why the pin/smoke-test/pack order below matters.
 
       - name: Pin cross-package npm dependency versions for release
-        # Rewrites packages/mcp-server/package.json's dependency on
+        # Rewrites packages/mcp-server/package.json's (and packages/cli's) dependency on
         # @feimacode/open-design-agent-kit-content from "*" (correct for
         # local development, where npm workspaces always resolves it to the
         # sibling package via a symlink regardless of version) to a real

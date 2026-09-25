@@ -6,10 +6,16 @@ import {
   composePullFigmaInstructions,
   copyExampleArtifact,
   detectExistingApp,
+  exportArtifact as exportArtifactCore,
+  exportsForKind,
+  formatExportResult,
+  loadLocalPrompts,
+  renderLocalPrompt,
   extractBrandEvidence,
   fetchFigmaFrameImage,
   fetchFigmaNode,
   findCollectionArtifacts,
+  hostOverrideFor,
   parseFigmaUrl,
   readArtifact,
   readArtifactComments,
@@ -23,6 +29,8 @@ import {
   FigmaApiError,
   type ActiveDesignSystemStore,
   type ContentIndex,
+  type ExportFormat,
+  type LocalPrompt,
 } from '@feimacode/open-design-agent-kit-core';
 
 export interface ToolContext {
@@ -59,18 +67,6 @@ const KIND_TO_RENDERER: Record<string, string> = {
   'code-snippet': 'code',
   'mini-app': 'mini-app',
   'design-system': 'design-system',
-};
-
-const KIND_TO_EXPORTS: Record<string, string[]> = {
-  html: ['html', 'pdf', 'zip'],
-  deck: ['html', 'pdf', 'zip'],
-  'react-component': ['jsx', 'zip'],
-  'markdown-document': ['md', 'html', 'pdf', 'zip'],
-  svg: ['svg', 'zip'],
-  diagram: ['svg', 'zip'],
-  'code-snippet': ['txt', 'zip'],
-  'mini-app': ['zip'],
-  'design-system': ['zip'],
 };
 
 export async function listSkills(
@@ -203,6 +199,7 @@ export async function prepareBrief(
     suggestedEntryPath,
     existingAppFrameworks,
     collectionContext,
+    hostOverride: hostOverrideFor(skill.id, skill.body),
   });
 
   const payload = {
@@ -231,7 +228,7 @@ export async function registerArtifact(
   },
 ): Promise<string> {
   const renderer = KIND_TO_RENDERER[input.kind];
-  const exportsList = KIND_TO_EXPORTS[input.kind];
+  const exportsList = exportsForKind(input.kind);
   if (!renderer || !exportsList) {
     return `Unsupported kind "${input.kind}". Allowed: ${Object.keys(KIND_TO_RENDERER).join(', ')}`;
   }
@@ -379,7 +376,7 @@ export async function remixExample(ctx: ToolContext, input: { skillId: string })
     artifactManifest: {
       kind: 'html',
       renderer: 'html',
-      exports: ['html', 'pdf', 'zip'],
+      exports: exportsForKind('html'),
       title: skill.name,
       supportingFiles,
       sourceSkillId: input.skillId,
@@ -392,4 +389,38 @@ export async function remixExample(ctx: ToolContext, input: { skillId: string })
   const instructions = `The file at "${entryPath}" already exists — it's a copy of the "${skill.name}" example. Read it first, then apply the following as a targeted MODIFICATION to the existing content, not a from-scratch regeneration:\n\n${brief}\n\nAfter making changes, call register_open_design_artifact again with the same entryPath if the kind/title/supportingFiles need updating.`;
 
   return JSON.stringify({ entryPath, instructions, manifest }, null, 2);
+}
+
+export async function exportArtifact(
+  ctx: ToolContext,
+  input: {
+    entryPath: string;
+    format?: ExportFormat;
+    quality?: number;
+    width?: number;
+    height?: number;
+    scale?: number;
+    selector?: string;
+    maxBytes?: number;
+    deck?: boolean;
+    slides?: number[];
+  },
+): Promise<string> {
+  // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
+  const result = await exportArtifactCore({
+    ...input,
+    workspaceRoot: ctx.workspaceRoot,
+    lookupAspectHint: async (id) => (await ctx.contentIndex.getSkill(id))?.aspectHint,
+  });
+  return formatExportResult(result);
+}
+
+/** Hand-written prompts (e.g. open-design-social-post) shipped under the content assets' prompts/ folder. */
+export function listLocalPrompts(ctx: ToolContext): Promise<LocalPrompt[]> {
+  return loadLocalPrompts(ctx.assetsRoot);
+}
+
+export function buildLocalPromptMessage(prompt: LocalPrompt, brief: string | undefined): string {
+  const briefText = brief?.trim() ? brief.trim() : `(none given yet — ask the user: "${prompt.placeholder}")`;
+  return renderLocalPrompt(prompt, briefText);
 }

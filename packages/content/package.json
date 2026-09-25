@@ -23,7 +23,9 @@
   ],
   "scripts": {
     "sync": "node ./scripts/sync-open-design-content.mjs",
-    "check-sync": "node ./scripts/check-content-sync.mjs"
+    "apply-overlay": "node ./scripts/apply-local-overlay.mjs",
+    "check-sync": "node ./scripts/check-content-sync.mjs",
+    "test:unit": "node --test scripts/test/*.test.mjs"
   },
   "dependencies": {
     "gray-matter": "^4.0.3"

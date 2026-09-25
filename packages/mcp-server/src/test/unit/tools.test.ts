@@ -237,3 +237,35 @@ describe('mcp-server tools', () => {
     assert.match(payload.instructions, /\*\*value-prop\*\* — "value-prop"/);
   });
 });
+
+describe('mcp-server local prompts', () => {
+  it('lists local prompts from the assets prompts/ folder and renders the brief (or an ask-the-user fallback)', async () => {
+    const ctx = await makeContext();
+    await fs.mkdir(path.join(ctx.assetsRoot, 'prompts'), { recursive: true });
+    await fs.writeFile(
+      path.join(ctx.assetsRoot, 'prompts', 'social-post.md'),
+      ['---', 'name: open-design-social-post', 'description: Design a social post', 'placeholder: What should the post say?', '---', '', 'Brief: {{brief}}'].join('\n'),
+    );
+    const [prompt] = await tools.listLocalPrompts(ctx);
+    assert.strictEqual(prompt.name, 'open-design-social-post');
+    assert.strictEqual(tools.buildLocalPromptMessage(prompt, 'X post for v2'), 'Brief: X post for v2');
+    assert.strictEqual(tools.buildLocalPromptMessage(prompt, undefined), 'Brief: (none given yet — ask the user: "What should the post say?")');
+  });
+
+  it('exportArtifact reports a missing artifact without launching a browser', async () => {
+    const ctx = await makeContext();
+    const text = await tools.exportArtifact(ctx, { entryPath: '.open-design/nope/nope.html' });
+    assert.match(text, /^Export failed \(not-found\)/);
+  });
+});
+
+describe('mcp-server registration exports', () => {
+  it('records the accurate export list for a deck', async () => {
+    const ctx = await makeContext();
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design', 'd'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, '.open-design', 'd', 'd.html'), '<div class="slide"></div>');
+    await tools.registerArtifact(ctx, { entryPath: '.open-design/d/d.html', kind: 'deck', title: 'D' });
+    const manifest = JSON.parse(await fs.readFile(path.join(ctx.workspaceRoot, '.open-design', 'd', 'd.html.artifact.json'), 'utf8'));
+    assert.deepStrictEqual(manifest.exports, ['html', 'png', 'jpeg', 'pdf', 'pptx']);
+  });
+});

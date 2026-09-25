@@ -5,6 +5,7 @@
 
 export * from './content/contentIndex';
 export * from './content/exampleHtml';
+export * from './content/localPrompts';
 
 export * from './generation/composeInstructions';
 export * from './generation/brandExtraction';
@@ -13,6 +14,7 @@ export * from './generation/customDesignSystemInstructions';
 export * from './generation/designSystemImport';
 export * from './generation/figmaPull';
 export * from './generation/githubImport';
+export * from './generation/hostOverrides';
 export * from './generation/portToAppInstructions';
 export * from './generation/shareToCommunityInstructions';
 export * from './generation/tokenExtraction';
@@ -26,3 +28,8 @@ export * from './workspace/artifactComments';
 export * from './workspace/collectionScan';
 export * from './workspace/figmaCapture';
 export * from './workspace/remixExample';
+
+export * from './export/browserDiscovery';
+export * from './export/exportArtifact';
+export * from './export/exportFormats';
+export * from './export/exportSize';

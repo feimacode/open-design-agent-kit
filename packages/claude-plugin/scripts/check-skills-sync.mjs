@@ -10,6 +10,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '@feimacode/open-design-agent-kit-content/scripts/curatedEntries.mjs';
+import { loadLocalPrompts, renderPromptBody } from '@feimacode/open-design-agent-kit-content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '@feimacode/open-design-agent-kit-content/scripts/remixableExamplesReference.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -45,6 +46,23 @@ Call \`prepare_open_design_brief\` (the open-design MCP server's tool) with skil
 `;
 }
 
+// Hand-written, host-agnostic prompts from packages/content/local/prompts/
+// (e.g. open-design-social-post), rendered as explicit-only skills.
+// Unlike the per-entry curated skills, these are workflows the model should
+// reach on its own for a matching request — so no disable-model-invocation.
+function localPromptSkillMdContent(prompt) {
+  return `---
+name: "${prompt.name}"
+description: ${prompt.description} — use whenever the user wants something to post on social media (an X/Twitter image, Instagram or LinkedIn post or carousel, Xiaohongshu cards, a Story/Reels cover, a YouTube thumbnail or video), even if they don't mention Open Design
+argument-hint: ${prompt.argumentHint ?? 'a brief'}
+---
+
+<!-- generated:curated-entry -->
+
+${renderPromptBody(prompt, `"$ARGUMENTS" — or, if that is empty, the user's request in this conversation (ask them what to post and where if it isn't clear)`)}
+`;
+}
+
 async function pathExists(p) {
   try {
     await fs.access(p);
@@ -56,7 +74,8 @@ async function pathExists(p) {
 
 async function main() {
   const entries = await collectCuratedEntries(assetsRoot);
-  const expectedIds = new Set(entries.map((e) => e.id));
+  const localPrompts = await loadLocalPrompts(assetsRoot);
+  const expectedIds = new Set([...entries.map((e) => e.id), ...localPrompts.map((p) => p.name)]);
 
   const problems = [];
 
@@ -69,6 +88,17 @@ async function main() {
     const committed = await fs.readFile(committedPath, 'utf8');
     const expected = skillMdContent(entry);
     if (committed !== expected) problems.push(`stale generated skill content for "${entry.id}"`);
+  }
+
+  for (const prompt of localPrompts) {
+    const committedPath = path.join(committedSkillsDir, prompt.name, 'SKILL.md');
+    if (!(await pathExists(committedPath))) {
+      problems.push(`missing generated skill for local prompt "${prompt.name}"`);
+      continue;
+    }
+    if ((await fs.readFile(committedPath, 'utf8')) !== localPromptSkillMdContent(prompt)) {
+      problems.push(`stale generated skill content for local prompt "${prompt.name}"`);
+    }
   }
 
   // Only flags directories the generator itself would recognize as its own
