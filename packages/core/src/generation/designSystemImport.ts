@@ -7,6 +7,8 @@
 // away is ever lost. Fits the "org already has a real design system, don't
 // let anything invent or reinterpret it" use case.
 
+import { getAllSchemaNames } from '../vendored/designTokenSchema';
+import { parseTokensCss } from './designSystemTokens';
 import { extractFontFamilies, extractHexColors, rankColors } from './tokenExtraction';
 
 const MAX_COLORS = 12;
@@ -63,6 +65,30 @@ export function buildDesignSystemMarkdown(input: BuildDesignSystemMarkdownInput)
     '```',
     rawContent.trim(),
     '```',
+    '',
+  ].join('\n');
+}
+
+/**
+ * The imported design system's tokens.css — but only from declarations the
+ * source already makes under token-contract names (`--bg`, `--accent`, …),
+ * copied with their values unchanged. Extracted colors/fonts are NEVER
+ * assigned to token roles by inference here: that would be guessing, which
+ * this import path promises not to do. Returns undefined when the source
+ * declares no contract tokens (or is itself a DESIGN.md); the preview then
+ * shows the design system as approximated, with a Generate tokens.css action.
+ */
+export function buildDesignSystemTokensCss(rawContent: string, sourceLabel: string): string | undefined {
+  if (looksLikeDesignMd(rawContent)) return undefined;
+  const contract = new Set(getAllSchemaNames());
+  const declarations = [...parseTokensCss(rawContent)].filter(([name]) => contract.has(name));
+  if (declarations.length === 0) return undefined;
+  return [
+    `/* Imported from ${sourceLabel.replace(/\*\//g, '* /')}.`,
+    ' * Only declarations using Open Design token-contract names were copied, values unchanged. */',
+    ':root {',
+    ...declarations.map(([name, value]) => `  ${name}: ${value};`),
+    '}',
     '',
   ].join('\n');
 }

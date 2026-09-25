@@ -33,6 +33,7 @@ async function main() {
       { in: 'src/webview/main.ts', out: 'main' },
       { in: 'src/webview/gallery/main.ts', out: 'gallery' },
       { in: 'src/webview/preview/main.ts', out: 'preview' },
+      { in: 'src/webview/designSystem/main.ts', out: 'designSystem' },
     ],
     platform: 'browser',
     format: 'iife',

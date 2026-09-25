@@ -312,7 +312,7 @@
       {
         "name": "create_open_design_design_system",
         "displayName": "Create Custom Design System",
-        "modelDescription": "Composes instructions for authoring a brand-new, custom design system as a DESIGN.md file in the workspace (the same file shape and selection mechanism as the ~150 bundled design systems, just workspace-local). Does NOT write any files. If sourceUrl is given, performs a best-effort, no-daemon extraction of candidate colors/fonts/favicon from that page to include as a starting point. After writing the returned instructions' file, call set_active_design_system with the returned id.",
+        "modelDescription": "Composes instructions for authoring a brand-new, custom design system as a DESIGN.md file plus a sibling tokens.css following the Open Design token contract (the same file shape and selection mechanism as the ~150 bundled design systems, just workspace-local). Does NOT write any files. If sourceUrl is given, performs a best-effort, no-daemon extraction of candidate colors/fonts/favicon from that page to include as a starting point. After writing the returned instructions' files, call set_active_design_system with the returned id. To write ONLY a tokens.css for an existing custom design system (id starting with user:), pass existingDesignSystemId instead of name/brief.",
         "userDescription": "Create a custom Open Design design system for your own brand",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-create-design-system",
@@ -322,21 +322,21 @@
           "properties": {
             "name": {
               "type": "string",
-              "description": "A short name for the design system, e.g. \"Acme Corp\"."
+              "description": "A short name for the design system, e.g. \"Acme Corp\". Required unless existingDesignSystemId is given."
             },
             "brief": {
               "type": "string",
-              "description": "A description of the brand — colors, tone, industry, anything distinctive — in the user's own words."
+              "description": "A description of the brand — colors, tone, industry, anything distinctive — in the user's own words. Required unless existingDesignSystemId is given."
             },
             "sourceUrl": {
               "type": "string",
               "description": "Optional: a website URL to extract a starting palette/fonts from."
+            },
+            "existingDesignSystemId": {
+              "type": "string",
+              "description": "Optional: the id of an existing custom design system (user:…). Returns instructions to write only its tokens.css, from its current DESIGN.md; name, brief and sourceUrl are then ignored."
             }
-          },
-          "required": [
-            "name",
-            "brief"
-          ]
+          }
         }
       },
       {
@@ -605,6 +605,36 @@
         "icon": "$(cloud-download)"
       },
       {
+        "command": "openDesign.previewDesignSystem",
+        "title": "Preview Design System",
+        "category": "Open Design",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "openDesign.setActiveDesignSystem",
+        "title": "Set as Active Design System",
+        "category": "Open Design",
+        "icon": "$(check)"
+      },
+      {
+        "command": "openDesign.useDesignSystemInChat",
+        "title": "Use Design System in Chat",
+        "category": "Open Design",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "openDesign.generateDesignSystemTokens",
+        "title": "Generate tokens.css",
+        "category": "Open Design",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "openDesign.refreshDesignSystems",
+        "title": "Refresh Design Systems",
+        "category": "Open Design",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "openDesign.browseGallery",
         "title": "Browse Gallery",
         "category": "Open Design",
@@ -699,6 +729,11 @@
           "contextualTitle": "Open Design Gallery"
         },
         {
+          "id": "openDesign.designSystemsView",
+          "name": "Design Systems",
+          "contextualTitle": "Open Design Design Systems"
+        },
+        {
           "id": "openDesign.collectionsView",
           "name": "Collections",
           "contextualTitle": "Open Design Collections"
@@ -718,6 +753,22 @@
         {
           "command": "openDesign.chatWithExample",
           "when": "false"
+        },
+        {
+          "command": "openDesign.setActiveDesignSystem",
+          "when": "false"
+        },
+        {
+          "command": "openDesign.useDesignSystemInChat",
+          "when": "false"
+        },
+        {
+          "command": "openDesign.generateDesignSystemTokens",
+          "when": "false"
+        },
+        {
+          "command": "openDesign.refreshDesignSystems",
+          "when": "false"
         }
       ],
       "explorer/context": [
@@ -728,6 +779,16 @@
         }
       ],
       "view/title": [
+        {
+          "command": "openDesign.importDesignSystem",
+          "when": "view == openDesign.designSystemsView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "openDesign.refreshDesignSystems",
+          "when": "view == openDesign.designSystemsView",
+          "group": "navigation@2"
+        },
         {
           "command": "openDesign.refreshCollections",
           "when": "view == openDesign.collectionsView",
@@ -749,6 +810,41 @@
           "command": "openDesign.remixExample",
           "when": "view == openDesign.galleryView && viewItem == openDesignGalleryExample",
           "group": "inline@3"
+        },
+        {
+          "command": "openDesign.useDesignSystemInChat",
+          "when": "view == openDesign.designSystemsView && viewItem =~ /^openDesignDesignSystem\\./",
+          "group": "inline@1"
+        },
+        {
+          "command": "openDesign.setActiveDesignSystem",
+          "when": "view == openDesign.designSystemsView && viewItem =~ /^openDesignDesignSystem\\..*\\.inactive$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "openDesign.previewDesignSystem",
+          "when": "view == openDesign.designSystemsView && viewItem =~ /^openDesignDesignSystem\\./",
+          "group": "inline@3"
+        },
+        {
+          "command": "openDesign.previewDesignSystem",
+          "when": "view == openDesign.designSystemsView && viewItem =~ /^openDesignDesignSystem\\./",
+          "group": "1_designSystem@1"
+        },
+        {
+          "command": "openDesign.useDesignSystemInChat",
+          "when": "view == openDesign.designSystemsView && viewItem =~ /^openDesignDesignSystem\\./",
+          "group": "1_designSystem@2"
+        },
+        {
+          "command": "openDesign.setActiveDesignSystem",
+          "when": "view == openDesign.designSystemsView && viewItem =~ /^openDesignDesignSystem\\..*\\.inactive$/",
+          "group": "1_designSystem@3"
+        },
+        {
+          "command": "openDesign.generateDesignSystemTokens",
+          "when": "view == openDesign.designSystemsView && viewItem =~ /^openDesignDesignSystem\\.custom\\./",
+          "group": "2_tokens@1"
         }
       ]
     },

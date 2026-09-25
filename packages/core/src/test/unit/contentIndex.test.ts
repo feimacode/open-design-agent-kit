@@ -315,6 +315,45 @@ describe('ContentIndex', () => {
     assert.strictEqual(starbucks!.source, 'built-in');
   });
 
+  it('reads a built-in tokens.css and its local override, and flags hasTokens', async () => {
+    const assetsRoot = await makeFixture();
+    await fs.writeFile(path.join(assetsRoot, 'design-systems', 'acme', 'tokens.css'), ':root { --accent: #2563eb; }\n');
+    await fs.writeFile(path.join(assetsRoot, 'design-systems', 'acme', 'tokens.override.css'), ':root { --accent: #9333ea; }\n');
+    const index = new ContentIndex(assetsRoot);
+
+    const acme = await index.getDesignSystem('acme');
+    assert.strictEqual(acme!.tokensCss, ':root { --accent: #2563eb; }\n');
+    assert.strictEqual(acme!.tokensOverrideCss, ':root { --accent: #9333ea; }\n');
+    const starbucks = await index.getDesignSystem('starbucks');
+    assert.strictEqual(starbucks!.tokensCss, undefined);
+
+    const all = await index.listDesignSystems();
+    assert.deepStrictEqual(
+      all.map((d) => [d.id, d.hasTokens]),
+      [
+        ['starbucks', false],
+        ['acme', true],
+      ],
+    );
+  });
+
+  it("reads a custom design system's tokens.css live, and never an override for it", async () => {
+    const assetsRoot = await makeFixture();
+    const userDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-ext-user-ds-tokens-'));
+    await fs.mkdir(path.join(userDir, 'brand'), { recursive: true });
+    await fs.writeFile(path.join(userDir, 'brand', 'DESIGN.md'), '# Brand\n');
+    const index = new ContentIndex(assetsRoot, () => userDir);
+
+    assert.strictEqual((await index.getDesignSystem('user:brand'))!.hasTokens, false);
+
+    await fs.writeFile(path.join(userDir, 'brand', 'tokens.css'), ':root { --bg: #fff; }\n');
+    await fs.writeFile(path.join(userDir, 'brand', 'tokens.override.css'), ':root { --bg: #000; }\n');
+    const brand = await index.getDesignSystem('user:brand');
+    assert.strictEqual(brand!.hasTokens, true);
+    assert.strictEqual(brand!.tokensCss, ':root { --bg: #fff; }\n');
+    assert.strictEqual(brand!.tokensOverrideCss, undefined);
+  });
+
   it('re-scans the user design-systems directory on every call rather than caching it', async () => {
     const assetsRoot = await makeFixture();
     const userDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-ext-user-ds-live-'));

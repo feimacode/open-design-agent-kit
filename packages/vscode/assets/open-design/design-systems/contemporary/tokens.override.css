@@ -1,0 +1,12 @@
+/* Local override for upstream design-systems/contemporary/tokens.css (open-design-v0.22.2).
+ * Upstream ships the placeholder accent #2563eb (plus --meta/--focus-ring
+ * derived from it), contradicting its own DESIGN.md "**Primary:** `#C800DF`".
+ * Upstream's --accent-on (#ffffff) already has the higher contrast, so it is kept.
+ * Applied on top of tokens.css by core's resolveDesignSystemTokens(); delete
+ * once upstream fixes it (the content drift check reports it when redundant).
+ */
+:root {
+  --accent: #c800df;
+  --meta: #c800df;
+  --focus-ring: 0 0 0 4px rgba(200, 0, 223, 0.22);
+}

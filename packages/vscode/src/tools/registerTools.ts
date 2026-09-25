@@ -30,7 +30,7 @@ export function registerTools(
     ['get_open_design_artifact', new GetArtifactTool()],
     ['set_active_design_system', new SetActiveDesignSystemTool(contentIndex)],
     ['remix_open_design_example', new RemixExampleTool(contentIndex, assetsRoot, communityContentDir)],
-    ['create_open_design_design_system', new CreateCustomDesignSystemTool()],
+    ['create_open_design_design_system', new CreateCustomDesignSystemTool(contentIndex)],
     ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
     ['share_open_design_artifact_to_community', new ShareToCommunityTool()],
     ['pull_open_design_figma_frame', new PullFigmaFrameTool(context)],

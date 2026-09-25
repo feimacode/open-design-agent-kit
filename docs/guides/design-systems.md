@@ -37,6 +37,7 @@ Each bundled design system is a folder with:
   8. Voice & Brand
   9. Anti-patterns
 - **`manifest.json`**: the id, display name, category and summary, plus `craft.suggested`, the universal craft rules that pair with this system (e.g. `color`, `accessibility-baseline`).
+- **`tokens.css`**: the system's tokens (`--bg`, `--fg`, `--accent`, `--font-display`, spacing, radius…) as one `:root { … }` block, following upstream Open Design's token contract. It's what the [preview](#preview-a-design-system) renders from. The agent still generates from `DESIGN.md`.
 
 When a design system is active, [`prepare_open_design_brief`](../reference/tools.md#prepare_open_design_brief) puts its `DESIGN.md` into the instructions under **Active design system**, marked as **authoritative** for color, typography, spacing and component rules, with the instruction not to invent tokens outside its palette. It also narrows the craft rules to the system's suggested ones; without a design system, every craft rule applies.
 
@@ -85,6 +86,20 @@ Some ids you might reach for: `apple`, `stripe`, `linear-app`, `notion`, `vercel
 
 - **Status bar:** the bottom-right item shows the active system (e.g. `Stripe`, or `No design system`). Click it to change it.
 - **Open Design: Browse Design Systems:** a searchable list grouped by category, with the active one ticked. Picking one makes it active and prefills Copilot Chat with `Using the Open Design design system "<id>" (<name>) — ` so your next request names it explicitly. The list also has **Clear active design system** and **Import a design system…**.
+- **Design Systems view:** in the Open Design activity bar, every design system grouped by category, your custom ones first under **Custom**, the active one ticked. Clicking one opens its [preview](#preview-a-design-system); it doesn't make it active. Hover for **Use in chat**, **Set as active** and **Preview**; custom ones also have **Generate tokens.css** on the right-click menu. The title bar has **Import** and **Refresh**.
+
+### Preview a design system
+
+See what a design system looks like before you commit to it. Open it from the Design Systems view, or run **Open Design: Preview Design System**. The preview is read-only: it writes nothing and doesn't change the active system.
+
+- **Visualize:** identity, typography specimens, palette (each token with its value and role, plus any other colours the `DESIGN.md` names), voice, imagery and layout (radius, spacing, elevation), and the **component kit**, with a Light/Dark switch.
+- **Showcase:** a full product page (navigation, hero, features, pricing, FAQ…) styled with the system.
+- **Side panel:** the system's `DESIGN.md` or `tokens.css` source. Collapse it with the thin bar on its left edge.
+- **Set as active** and **Use in chat** buttons in the header.
+
+Built-in and custom design systems go through the same rendering, so a custom system with a `tokens.css` previews just like a bundled one. A custom system without one shows a note that the preview is **approximated from DESIGN.md**, with a **Generate tokens.css** button (see [below](#tokenscss-for-custom-design-systems)). An open preview of a custom system updates as soon as its files change.
+
+> Clicking in the Design Systems view previews, while clicking in the Gallery view opens chat. Previewing a design system is harmless, but making it active on a single click would silently change your workspace.
 
 ### In Claude Code / Codex
 
@@ -109,13 +124,13 @@ To give your whole team the same design system, commit that file. Note that VS C
 
 ## Your own design system
 
-Custom design systems live in the workspace at `<outputDirectory>/design-systems/<slug>/DESIGN.md` (by default `.open-design/design-systems/…`). Their ids are `user:<slug>`. They're picked up immediately, with no restart or registration, and appear in the picker marked **custom**.
+Custom design systems live in the workspace at `<outputDirectory>/design-systems/<slug>/DESIGN.md` (by default `.open-design/design-systems/…`), with an optional `tokens.css` next to it. Their ids are `user:<slug>`. They're picked up immediately, with no restart or registration, and appear in the picker marked **custom**.
 
 ### Invent one from a brief
 
 > Create a design system for Acme Corp: deep navy and signal orange, confident, engineering-focused. Base it on acme.com.
 
-The agent calls [`create_open_design_design_system`](../reference/tools.md#create_open_design_design_system). If you give a website, it first makes a quick best-effort pass over the page and up to three of its stylesheets for candidate colors, fonts and a logo. That's a starting point, not ground truth. The agent then writes the `DESIGN.md` and makes it active (`user:acme-corp`).
+The agent calls [`create_open_design_design_system`](../reference/tools.md#create_open_design_design_system). If you give a website, it first makes a quick best-effort pass over the page and up to three of its stylesheets for candidate colors, fonts and a logo. That's a starting point, not ground truth. The agent then writes the `DESIGN.md` and a matching `tokens.css`, and makes it active (`user:acme-corp`).
 
 > **In VS Code:** `/open-design-custom-design-system` starts this explicitly.
 
@@ -133,6 +148,7 @@ Import never uses a model:
 
 - **Content that already is a `DESIGN.md`** (it starts with a `#` heading) is used exactly as-is.
 - **Anything else** becomes a `DESIGN.md` with the colors and font families found in it, and the full original kept in a **Source Reference** section, so nothing is reinterpreted or lost.
+- **A `tokens.css` is written only from what the source already declares.** CSS that uses token-contract names (`--bg`, `--accent`, `--font-body`…) has exactly those declarations copied, unchanged. A GitHub repo whose root has a `DESIGN.md` also has its root `tokens.css` imported as-is. Found colors are never assigned to roles by guessing; without such declarations, no `tokens.css` is written.
 
 The new file opens in the editor, and **Set as Active** makes it active.
 
@@ -162,12 +178,23 @@ A custom design system is just Markdown, so you can write it or refine a generat
 - Everything else is read by the agent as-is, so the more specific you are (hex values, sizes, do's and don'ts), the more consistent the output.
 - Changes apply from the next generation on.
 
+### tokens.css for custom design systems
+
+A `tokens.css` next to your `DESIGN.md` makes the preview exact rather than approximated. It's a single `:root { … }` block. Required are the identity tokens (`--bg`, `--surface`, `--fg`, `--muted`, `--border`, `--accent`, `--font-display`, `--font-body`) and the type-scale, section-spacing and container tokens. Everything else (status colors, spacing steps, radius, elevation, motion, secondary text and surface tiers) is optional, with defaults. [`create_open_design_design_system`](../reference/tools.md#create_open_design_design_system) spells out the full list for the agent.
+
+To add one to an existing custom system, use **Generate tokens.css** (in the preview or on the Design Systems view's right-click menu), or ask:
+
+> Write the tokens.css for my Acme design system.
+
+The agent calls `create_open_design_design_system` with `existingDesignSystemId: "user:acme"`, reads your `DESIGN.md`, and writes only the `tokens.css`. You can also write or edit it by hand.
+
 ## Troubleshooting
 
 - **"Unknown designSystemId"**: the id doesn't exist. The message lists some valid ones; ask the agent to list design systems. Custom ids need the `user:` prefix.
 - **The status bar says "No design system" but you set one**: the stored id no longer exists (a renamed folder, or content changed after an update). Pick one again. Generation meanwhile runs without a design system rather than failing.
 - **A design ignores parts of the brand**: make the `DESIGN.md` more specific, especially the Color, Typography and Anti-patterns sections, and ask for a regeneration. For an existing artifact, ask the agent to restyle it with the design system.
 - **VS Code and Claude Code disagree about the active system**: they store it separately (see above).
+- **A preview's colors look wrong for a custom system**: if it says *approximated*, add a `tokens.css`. If it has one, check the values in the preview's `tokens.css` panel. Only the top-level `:root` block counts, and values containing `url(…)`, `<`, `{` or `;` are ignored.
 
 ## Related
 

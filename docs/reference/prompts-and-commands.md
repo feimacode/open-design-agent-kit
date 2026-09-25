@@ -41,6 +41,11 @@ Copilot also receives Open Design's chat instructions on every request, so a pla
 |---|---|---|
 | Open Design: Browse Design Systems | `openDesign.browseDesignSystems` | Fuzzy-search the design systems and set the active one (also on the status bar). |
 | Open Design: Import Design System | `openDesign.importDesignSystem` | Import a design system from a file, pasted text or a GitHub repo. No model is involved. |
+| Open Design: Preview Design System | `openDesign.previewDesignSystem` | Open the read-only preview (Visualize, Showcase, DESIGN.md / tokens.css) of a design system. Doesn't change the active one. |
+| Open Design: Set as Active Design System | `openDesign.setActiveDesignSystem` | Make the selected design system active (Design Systems view). |
+| Open Design: Use Design System in Chat | `openDesign.useDesignSystemInChat` | Prefill Copilot Chat naming the selected design system (not sent). |
+| Open Design: Generate tokens.css | `openDesign.generateDesignSystemTokens` | Prefill Copilot Chat asking the agent to write a custom design system's `tokens.css` (not sent). |
+| Open Design: Refresh Design Systems | `openDesign.refreshDesignSystems` | Rescan the Design Systems view. |
 | Open Design: Browse Gallery | `openDesign.browseGallery` | Quick-pick the remixable examples; picking one remixes it. |
 | Open Design: Open Gallery Grid | `openDesign.openGalleryGrid` | Searchable card grid of examples with live thumbnails. |
 | Open Design: Open Artifact Preview | `openDesign.openArtifactPreview` | Open an HTML file in the preview (also on the Explorer's right-click menu). |
@@ -53,7 +58,7 @@ Copilot also receives Open Design's chat instructions on every request, so a pla
 | Open Design: Sync Community Designs | `openDesign.syncCommunityContent` | Fetch the community catalog at [`openDesign.communityContentRef`](settings-and-env.md#opendesigncommunitycontentref). |
 | Open Design: Open Docs | `openDesign.openDocs` | Open this documentation in the browser. |
 
-The Open Design activity-bar icon has two views: **Gallery** (examples by category) and **Collections** (multi-screen collections in the workspace).
+The Open Design activity-bar icon has three views: **Gallery** (examples by category), **Design Systems** (every design system by category, with a [preview](../guides/design-systems.md#preview-a-design-system)) and **Collections** (multi-screen collections in the workspace).
 
 For a guided tour, open **Welcome → Walkthroughs → Get started with Open Design** (five steps: first design, gallery, design system, social post, export).
 

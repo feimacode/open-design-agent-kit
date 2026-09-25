@@ -17,6 +17,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, '..');
 export const LOCAL_ROOT = path.join(packageRoot, 'local');
 export const OVERLAY_MARKER = '.od-local-overlay';
+// The only file an overlay may contribute to an upstream design system:
+// additive token overrides, applied on top of (never instead of) the
+// vendored tokens.css by core's resolveDesignSystemTokens().
+export const TOKENS_OVERRIDE_FILE = 'tokens.override.css';
 
 async function pathExists(p) {
   try {
@@ -54,7 +58,35 @@ export async function listOverlayFiles(localRoot = LOCAL_ROOT) {
   }
   for (const id of await listDirs(path.join(localRoot, 'skills'))) await walk(path.join('skills', id));
   for (const name of await listFiles(path.join(localRoot, 'prompts'))) files.push(path.join('prompts', name));
+  for (const id of await listDirs(path.join(localRoot, 'design-systems'))) files.push(path.join('design-systems', id, TOKENS_OVERRIDE_FILE));
   return files;
+}
+
+/** `--name: value;` declarations in a CSS text, last one wins (same regex upstream's asset generator uses). */
+export function parseCssCustomProperties(css) {
+  const out = new Map();
+  for (const match of css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+);/g)) {
+    out.set(match[1], match[2].trim().replace(/\s+/g, ' '));
+  }
+  return out;
+}
+
+/**
+ * Override declarations whose value the vendored upstream tokens.css now
+ * already has — i.e. upstream fixed it and the override can be deleted.
+ * Returns `<id>: --name` strings.
+ */
+export async function findRedundantOverrides(targetRoot, localRoot = LOCAL_ROOT) {
+  const redundant = [];
+  for (const id of await listDirs(path.join(localRoot, 'design-systems'))) {
+    const override = parseCssCustomProperties(await fs.readFile(path.join(localRoot, 'design-systems', id, TOKENS_OVERRIDE_FILE), 'utf8'));
+    const upstreamPath = path.join(targetRoot, 'design-systems', id, 'tokens.css');
+    const upstream = (await pathExists(upstreamPath)) ? parseCssCustomProperties(await fs.readFile(upstreamPath, 'utf8')) : new Map();
+    for (const [name, value] of override) {
+      if (upstream.get(name)?.toLowerCase() === value.toLowerCase()) redundant.push(`${id}: ${name}`);
+    }
+  }
+  return redundant;
 }
 
 export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
@@ -78,6 +110,25 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
     );
   }
 
+  // Design-system token overrides target an existing upstream design system
+  // (the opposite of skills, which must NOT collide), and may only contain
+  // TOKENS_OVERRIDE_FILE: anything else would shadow or extend an upstream
+  // package in ways nothing reads.
+  const overrideIds = await listDirs(path.join(localRoot, 'design-systems'));
+  const overrideProblems = [];
+  for (const id of overrideIds) {
+    if (!(await pathExists(path.join(targetRoot, 'design-systems', id, 'DESIGN.md')))) {
+      overrideProblems.push(`${id} (no such upstream design system)`);
+    }
+    const names = await listFiles(path.join(localRoot, 'design-systems', id));
+    if (names.length !== 1 || names[0] !== TOKENS_OVERRIDE_FILE) {
+      overrideProblems.push(`${id} (must contain exactly ${TOKENS_OVERRIDE_FILE}, found: ${names.join(', ') || 'nothing'})`);
+    }
+  }
+  if (overrideProblems.length > 0) {
+    throw new Error(`Invalid design-system token override: ${overrideProblems.join(', ')}. See packages/content/local/README.md.`);
+  }
+
   for (const id of skillIds) {
     const dst = path.join(targetRoot, 'skills', id);
     await fs.rm(dst, { recursive: true, force: true });
@@ -94,21 +145,37 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
     for (const name of promptNames) await fs.copyFile(path.join(localRoot, 'prompts', name), path.join(promptsDst, name));
   }
 
+  // Drop overrides from a previous run that local/ no longer has, so a
+  // standalone re-apply after deleting one doesn't leave it in effect.
+  const overrideIdSet = new Set(overrideIds);
+  for (const id of await listDirs(path.join(targetRoot, 'design-systems'))) {
+    if (!overrideIdSet.has(id)) await fs.rm(path.join(targetRoot, 'design-systems', id, TOKENS_OVERRIDE_FILE), { force: true });
+  }
+  for (const id of overrideIds) {
+    await fs.copyFile(
+      path.join(localRoot, 'design-systems', id, TOKENS_OVERRIDE_FILE),
+      path.join(targetRoot, 'design-systems', id, TOKENS_OVERRIDE_FILE),
+    );
+  }
+
+  const counts = { skills: skillIds.length, prompts: promptNames.length, designSystemOverrides: overrideIds.length };
   const manifestPath = path.join(targetRoot, 'MANIFEST.json');
   if (await pathExists(manifestPath)) {
     const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
-    manifest.localOverlay = { skills: skillIds.length, prompts: promptNames.length };
+    manifest.localOverlay = counts;
     await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
   }
 
-  return { skills: skillIds.length, prompts: promptNames.length };
+  return counts;
 }
 
 const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMainModule) {
   const targetRoot = path.join(packageRoot, 'assets', 'open-design');
   applyLocalOverlay(targetRoot)
-    .then(({ skills, prompts }) => console.log(`Applied local overlay: ${skills} skills, ${prompts} prompts.`))
+    .then(({ skills, prompts, designSystemOverrides }) =>
+      console.log(`Applied local overlay: ${skills} skills, ${prompts} prompts, ${designSystemOverrides} design-system token overrides.`),
+    )
     .catch((err) => {
       console.error(err.message ?? err);
       process.exit(1);

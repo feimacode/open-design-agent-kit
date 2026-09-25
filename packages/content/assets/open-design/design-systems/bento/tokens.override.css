@@ -1,0 +1,13 @@
+/* Local override for upstream design-systems/bento/tokens.css (open-design-v0.22.2).
+ * Upstream ships the placeholder accent #2563eb (plus --meta/--focus-ring
+ * derived from it), contradicting its own DESIGN.md "**Primary:** `#FAD4C0`".
+ * --accent-on is the higher-contrast of #ffffff / #111111 against the new accent.
+ * Applied on top of tokens.css by core's resolveDesignSystemTokens(); delete
+ * once upstream fixes it (the content drift check reports it when redundant).
+ */
+:root {
+  --accent: #fad4c0;
+  --meta: #fad4c0;
+  --accent-on: #111111;
+  --focus-ring: 0 0 0 4px rgba(250, 212, 192, 0.22);
+}

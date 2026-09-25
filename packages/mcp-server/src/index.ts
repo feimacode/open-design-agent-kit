@@ -198,18 +198,22 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'create_open_design_design_system',
       description:
-        'Composes instructions for authoring a brand-new, custom design system as a DESIGN.md file in the workspace. Does NOT write any files. If sourceUrl is given, performs a best-effort extraction of candidate colors/fonts from that page. After writing the file, call set_active_design_system with the returned id.',
+        'Composes instructions for authoring a brand-new, custom design system as a DESIGN.md file plus a sibling tokens.css following the Open Design token contract. Does NOT write any files. If sourceUrl is given, performs a best-effort extraction of candidate colors/fonts from that page. After writing the files, call set_active_design_system with the returned id. To write ONLY a tokens.css for an existing custom design system (id starting with user:), pass existingDesignSystemId instead of name/brief.',
       inputSchema: {
         type: 'object',
         properties: {
-          name: { type: 'string', description: 'A short name for the design system.' },
-          brief: { type: 'string', description: "A description of the brand, in the user's own words." },
+          name: { type: 'string', description: 'A short name for the design system. Required unless existingDesignSystemId is given.' },
+          brief: { type: 'string', description: "A description of the brand, in the user's own words. Required unless existingDesignSystemId is given." },
           sourceUrl: { type: 'string', description: 'Optional: a website URL to extract a starting palette/fonts from.' },
+          existingDesignSystemId: {
+            type: 'string',
+            description: 'Optional: the id of an existing custom design system (user:…). Returns instructions to write only its tokens.css, from its current DESIGN.md.',
+          },
         },
-        required: ['name', 'brief'],
       },
     },
-    handler: (ctx, args) => tools.createCustomDesignSystem(ctx, args as { name: string; brief: string; sourceUrl?: string }),
+    handler: (ctx, args) =>
+      tools.createCustomDesignSystem(ctx, args as { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string }),
   },
   {
     tool: {

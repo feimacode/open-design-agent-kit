@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { buildDesignSystemMarkdown } from '@feimacode/open-design-agent-kit-core';
+import { buildDesignSystemMarkdown, buildDesignSystemTokensCss } from '@feimacode/open-design-agent-kit-core';
 import { fetchGithubDesignTokens } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot, slugify } from '../../workspace/artifactWriter';
 import { setActiveDesignSystemId } from '../../workspace/activeDesignSystem';
@@ -64,6 +64,19 @@ async function runWizard(log: ILogService): Promise<void> {
   await fs.writeFile(entryPath, markdown, 'utf8');
   log.info(`importDesignSystem: wrote ${entryPath} (source: ${source.sourceLabel})`);
 
+  // Only verbatim contract-named declarations (or a repo's own sibling
+  // tokens.css) — never tokens inferred from extracted colors/fonts. Without
+  // one, the preview shows the system as approximated with a "Generate
+  // tokens.css" action.
+  const tokensCss = source.tokensCss ?? buildDesignSystemTokensCss(source.content, source.sourceLabel);
+  if (tokensCss) {
+    const tokensPath = path.join(path.dirname(entryPath), 'tokens.css');
+    await fs.writeFile(tokensPath, tokensCss, 'utf8');
+    log.info(`importDesignSystem: wrote ${tokensPath}`);
+  } else {
+    log.info('importDesignSystem: source declares no token-contract names; no tokens.css written');
+  }
+
   if (source.warnings.length > 0) {
     log.warn(`importDesignSystem: ${source.warnings.join(' | ')}`);
   }
@@ -79,7 +92,10 @@ async function runWizard(log: ILogService): Promise<void> {
   }
 }
 
-async function resolveSource(kind: SourceKind, log: ILogService): Promise<{ sourceLabel: string; content: string; warnings: string[] } | undefined> {
+async function resolveSource(
+  kind: SourceKind,
+  log: ILogService,
+): Promise<{ sourceLabel: string; content: string; warnings: string[]; tokensCss?: string } | undefined> {
   if (kind === 'file') {
     const picked = await vscode.window.showOpenDialog({
       title: 'Select a design system file to import',

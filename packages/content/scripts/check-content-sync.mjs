@@ -10,7 +10,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_OPEN_DESIGN_REF } from './sync-open-design-content.mjs';
-import { LOCAL_ROOT, listOverlayFiles } from './apply-local-overlay.mjs';
+import { LOCAL_ROOT, findRedundantOverrides, listOverlayFiles } from './apply-local-overlay.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const assetsRoot = path.join(__dirname, '..', 'assets', 'open-design');
@@ -39,8 +39,45 @@ async function checkLocalOverlay() {
   }
 }
 
+// A token override whose value upstream's tokens.css now has is dead weight
+// that would silently mask a later upstream change to that token.
+async function checkRedundantOverrides() {
+  const redundant = await findRedundantOverrides(assetsRoot);
+  if (redundant.length > 0) {
+    console.error(
+      `Redundant design-system token overrides (upstream tokens.css now has the same value): ${redundant.join(', ')}.\n` +
+        `Remove those declarations (or the whole file) from packages/content/local/design-systems/ and run \`npm run apply-overlay\`.`,
+    );
+    process.exit(1);
+  }
+}
+
+// Every vendored design system that upstream shipped a tokens.css for must
+// still have it — the preview renders from it. MANIFEST records the count
+// the sync copied.
+async function checkDesignSystemTokens(manifest) {
+  const expected = manifest.counts?.designSystemTokens;
+  if (expected == null) return;
+  const dsRoot = path.join(assetsRoot, 'design-systems');
+  let actual = 0;
+  for (const entry of await fs.readdir(dsRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    try {
+      await fs.access(path.join(dsRoot, entry.name, 'tokens.css'));
+      actual++;
+    } catch {
+      // DESIGN.md-only legacy entry
+    }
+  }
+  if (actual !== expected) {
+    console.error(`Design-system tokens drift: MANIFEST.json records ${expected} vendored tokens.css files but ${actual} are present. Run \`npm run sync-content\`.`);
+    process.exit(1);
+  }
+}
+
 async function main() {
   await checkLocalOverlay();
+  await checkRedundantOverrides();
 
   let manifest;
   try {
@@ -51,6 +88,8 @@ async function main() {
     );
     process.exit(1);
   }
+
+  await checkDesignSystemTokens(manifest);
 
   if (manifest.sourceRef == null) {
     // Synced from a local OPEN_DESIGN_SRC override rather than a real

@@ -1,14 +1,39 @@
 import * as vscode from 'vscode';
-import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import type { ContentIndex, DesignSystemSummary } from '@feimacode/open-design-agent-kit-core';
 import { getActiveDesignSystemId, setActiveDesignSystemId } from '../../workspace/activeDesignSystem';
+import { openChatWithDesignSystem } from '../designSystems/designSystemActions';
 import type { ILogService } from '../log/logService';
 
 // A fourth pseudo-id alongside a real design system id (pick one), `null`
 // (clear active), and `undefined` (separator, unselectable).
 const IMPORT_SENTINEL = '__import__';
 
-interface DesignSystemPickItem extends vscode.QuickPickItem {
+export interface DesignSystemPickItem extends vscode.QuickPickItem {
   id?: string | null; // null = "clear active", undefined = separator, IMPORT_SENTINEL = open the import wizard
+}
+
+/** Category-separated QuickPick items for every design system, the active one checked. Shared with Preview Design System. */
+export function buildDesignSystemPickItems(designSystems: DesignSystemSummary[], activeId: string | undefined): DesignSystemPickItem[] {
+  const items: DesignSystemPickItem[] = [];
+  let lastCategory: string | undefined;
+  for (const ds of designSystems) {
+    const category = ds.category ?? 'Uncategorized';
+    if (category !== lastCategory) {
+      items.push({ label: category, kind: vscode.QuickPickItemKind.Separator });
+      lastCategory = category;
+    }
+    const isActive = ds.id === activeId;
+    const descriptionParts = [ds.category, ds.source === 'user' ? 'custom' : undefined, isActive ? 'active' : undefined].filter(
+      (p): p is string => !!p,
+    );
+    items.push({
+      id: ds.id,
+      label: isActive ? `$(check) ${ds.name}` : ds.name,
+      description: descriptionParts.length > 0 ? descriptionParts.join(' · ') : undefined,
+      detail: ds.summary,
+    });
+  }
+  return items;
 }
 
 export function registerBrowseDesignSystemsCommand(context: vscode.ExtensionContext, contentIndex: ContentIndex, log: ILogService): void {
@@ -29,24 +54,7 @@ export function registerBrowseDesignSystemsCommand(context: vscode.ExtensionCont
       items.push({ id: null, label: '$(close) Clear active design system', description: 'Stop pinning a design system' });
     }
 
-    let lastCategory: string | undefined;
-    for (const ds of designSystems) {
-      const category = ds.category ?? 'Uncategorized';
-      if (category !== lastCategory) {
-        items.push({ label: category, kind: vscode.QuickPickItemKind.Separator });
-        lastCategory = category;
-      }
-      const isActive = ds.id === activeId;
-      const descriptionParts = [ds.category, ds.source === 'user' ? 'custom' : undefined, isActive ? 'active' : undefined].filter(
-        (p): p is string => !!p,
-      );
-      items.push({
-        id: ds.id,
-        label: isActive ? `$(check) ${ds.name}` : ds.name,
-        description: descriptionParts.length > 0 ? descriptionParts.join(' · ') : undefined,
-        detail: ds.summary,
-      });
-    }
+    items.push(...buildDesignSystemPickItems(designSystems, activeId));
 
     const picked = await vscode.window.showQuickPick(items, {
       title: 'Open Design: Browse Design Systems',
@@ -74,10 +82,7 @@ export function registerBrowseDesignSystemsCommand(context: vscode.ExtensionCont
     log.info(`browseDesignSystems: set active design system to ${picked.id}`);
     await setActiveDesignSystemId(picked.id);
     const name = picked.label.replace(/^\$\(check\)\s*/, '');
-    await vscode.commands.executeCommand('workbench.action.chat.open', {
-      query: `Using the Open Design design system "${picked.id}" (${name}) — `,
-      isPartialQuery: true,
-    });
+    await openChatWithDesignSystem(picked.id, name);
   });
 
   context.subscriptions.push(disposable);

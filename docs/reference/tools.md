@@ -127,15 +127,16 @@ The active system is stored in the [`openDesign.activeDesignSystemId`](settings-
 
 ### create_open_design_design_system
 
-Composes instructions for writing a custom `DESIGN.md`. **It writes nothing.**
+Composes instructions for writing a custom design system: a `DESIGN.md` plus a sibling `tokens.css` following the Open Design token contract. **It writes nothing.**
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `name` | string | yes | Name, e.g. `Acme Corp`. |
-| `brief` | string | yes | The brand in the user's words: colors, tone, industry. |
+| `name` | string | yes, unless `existingDesignSystemId` is given | Name, e.g. `Acme Corp`. |
+| `brief` | string | yes, unless `existingDesignSystemId` is given | The brand in the user's words: colors, tone, industry. |
 | `sourceUrl` | string | no | A website to extract a starting palette, fonts and favicon from (best effort). |
+| `existingDesignSystemId` | string | no | An existing custom design system (`user:<slug>`). Returns instructions to write **only** its `tokens.css`, from its current `DESIGN.md`; the other arguments are ignored. Built-in ids are rejected. |
 
-**Result:** `{ instructions, suggestedEntryPath, id }`. The file goes to `<outputDirectory>/design-systems/<slug>/DESIGN.md`, and the id is `user:<slug>`. After writing it, call `set_active_design_system` with that id. See [Design systems](../guides/design-systems.md).
+**Result:** `{ instructions, suggestedEntryPath, id }`. The files go to `<outputDirectory>/design-systems/<slug>/DESIGN.md` and `…/tokens.css`, and the id is `user:<slug>`. After writing them, call `set_active_design_system` with that id. In tokens-only mode, `suggestedEntryPath` is the `tokens.css` path. See [Design systems](../guides/design-systems.md).
 
 ## Beyond the prototype
 

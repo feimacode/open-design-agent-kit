@@ -1,0 +1,13 @@
+/* Local override for upstream design-systems/professional/tokens.css (open-design-v0.22.2).
+ * Upstream ships the placeholder accent #2563eb (plus --meta/--focus-ring
+ * derived from it), contradicting its own DESIGN.md "**Primary:** `#FECE14`".
+ * --accent-on is the higher-contrast of #ffffff / #111111 against the new accent.
+ * Applied on top of tokens.css by core's resolveDesignSystemTokens(); delete
+ * once upstream fixes it (the content drift check reports it when redundant).
+ */
+:root {
+  --accent: #fece14;
+  --meta: #fece14;
+  --accent-on: #111111;
+  --focus-ring: 0 0 0 4px rgba(254, 206, 20, 0.22);
+}

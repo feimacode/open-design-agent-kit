@@ -7,7 +7,7 @@ The skills, design templates, design systems, craft rules and examples come from
 ```mermaid
 flowchart TD
   up["upstream open-design<br/>pinned tag (DEFAULT_OPEN_DESIGN_REF)"] -->|"sparse clone"| sync["packages/content/scripts/<br/>sync-open-design-content.mjs"]
-  local["packages/content/local/<br/>skills/, prompts/, curated.json"] -->|"apply-local-overlay.mjs"| assets
+  local["packages/content/local/<br/>skills/, prompts/, design-systems/, curated.json"] -->|"apply-local-overlay.mjs"| assets
   sync --> assets["packages/content/assets/open-design/<br/>+ MANIFEST.json"]
   assets -->|"copy-content-assets.mjs"| vsassets["packages/vscode/assets/open-design/"]
   assets -->|"generate-featured-prompts.mjs"| vsprompts["packages/vscode/prompts/featured/ + prompts/local/<br/>+ package.json chatPromptFiles"]
@@ -25,7 +25,7 @@ npm run sync-content
 
 ## Upstream pin
 
-`sync-open-design-content.mjs` shallow-clones the **official repo at a tagged release** (`DEFAULT_OPEN_DESIGN_REF`, e.g. `open-design-v0.22.2`), sparse-checking out only `skills`, `design-templates`, `design-systems`, `craft` and `plugins/_official/examples`. Examples over 2 MB are skipped. The result and its source commit are recorded in `assets/open-design/MANIFEST.json`.
+`sync-open-design-content.mjs` shallow-clones the **official repo at a tagged release** (`DEFAULT_OPEN_DESIGN_REF`, e.g. `open-design-v0.22.2`), sparse-checking out only `skills`, `design-templates`, `design-systems`, `craft` and `plugins/_official/examples`. For each design system only `DESIGN.md`, `manifest.json` and `tokens.css` are copied; the rest of upstream's package (pre-rendered kits, `components.html`, `design-tokens.json`…) isn't, because the preview renders from `tokens.css` at runtime. Examples over 2 MB are skipped. The result and its source commit are recorded in `assets/open-design/MANIFEST.json`.
 
 To update: check the [upstream tags](https://github.com/nexu-io/open-design/tags), bump `DEFAULT_OPEN_DESIGN_REF`, run `npm run sync-content`, and review the diff. For testing against a fork, set `OPEN_DESIGN_SRC` (a local checkout), `OPEN_DESIGN_REPO` or `OPEN_DESIGN_REF`. See [the variables](../reference/settings-and-env.md#contributor-only-variables).
 
@@ -35,6 +35,7 @@ Files under `packages/content/assets/open-design/` are never hand-edited. This p
 
 - `local/skills/<id>/SKILL.md`: extension-authored skills (e.g. `social-youtube-thumbnail`). An id that collides with an upstream skill or template fails the sync.
 - `local/prompts/<name>.md`: host-agnostic prompts (e.g. `social-post.md`), rendered per host by the generators.
+- `local/design-systems/<id>/tokens.override.css`: additive token fixes for an upstream design system, applied on top of its vendored `tokens.css` (which stays untouched) when previews resolve tokens. The id must exist upstream and the folder may hold only this file. Today these fix 8 systems whose upstream `tokens.css` still has the placeholder accent `#2563eb`; see `local/README.md`.
 - `local/curated.json`: extra entries that get a curated command even though upstream doesn't flag them. An unknown id fails generation.
 
 See [Adding a skill or prompt](adding-a-skill-or-prompt.md).
@@ -47,7 +48,7 @@ An entry gets a one-step command when upstream frontmatter has `featured`, `reco
 
 | Check | Fails when |
 |---|---|
-| `packages/content/scripts/check-content-sync.mjs` | The pinned ref and `MANIFEST.json` disagree, or an overlay file is missing or stale in `assets/`. |
+| `packages/content/scripts/check-content-sync.mjs` | The pinned ref and `MANIFEST.json` disagree, an overlay file is missing or stale in `assets/`, a vendored `tokens.css` is missing, or a token override repeats a value upstream now has (delete it). |
 | `packages/vscode/scripts/check-content-mirror.mjs` | The VS Code mirror differs from `packages/content`. |
 | `packages/claude-plugin/scripts/check-skills-sync.mjs` | Generated Claude skills don't match the curated set and local prompts. |
 | `packages/codex/scripts/check-codex-skills-sync.mjs` | Generated Codex skills don't match, or a local-prompt skill gained an explicit-only policy. |

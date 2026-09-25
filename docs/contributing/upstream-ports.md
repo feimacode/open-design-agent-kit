@@ -8,12 +8,14 @@ Some code is adapted from upstream [Open Design](https://github.com/nexu-io/open
 |---|---|---|
 | Artifact manifests | `packages/core/src/vendored/artifactManifest.ts`, `artifactCreate.ts` | `apps/daemon/src/artifacts/` |
 | Preview editing and comments | `packages/vscode/src/webview/dom/*` | `apps/web/src/edit-mode/`, `apps/web/src/comments.ts` (adapted, reduced) |
+| Design-system preview | `packages/core/src/vendored/designTokenSchema.ts`, `designMdParse.ts`, `designSystemKit.ts`, `designSystemShowcase.ts` | `packages/contracts/src/design-systems/token-schema.ts`, `apps/web/src/runtime/design-md-parse.ts`, `scripts/generate-design-system-system-assets.ts`, `apps/daemon/src/design-systems/showcase.ts` (one local deviation: resolved tokens) |
 | Deck export | `packages/core/src/export/deck/*` | `apps/desktop/src/main/deck-capture.ts`, `apps/daemon/src/deck-export.ts`, `packages/contracts/src/runtime/deck-stage-fallback.ts` |
 
 Not ported on purpose:
 
 - upstream's system-prompt composer (tied to its own UI protocol and daemon); `generation/composeInstructions.ts` is written from scratch instead;
 - editable PowerPoint export (`dom-to-pptx`);
+- the design-system preview's React view (`DesignKitView`) and its Tokens tab (`design-systems/preview.ts`); `generation/designSystemVisualize.ts` re-implements the Visualize tab instead;
 - anything that needs the daemon, whose steps are replaced by host overrides.
 
 ## Rules for porting

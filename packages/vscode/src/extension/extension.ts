@@ -22,6 +22,7 @@ import { registerOpenGalleryGridCommand } from './commands/openGalleryGridComman
 import { registerSyncCommunityContentCommand } from './commands/syncCommunityContentCommand';
 import { registerGalleryTreeView } from './views/galleryTreeProvider';
 import { registerCollectionsTreeView } from './views/collectionsTreeProvider';
+import { registerDesignSystemsTreeView } from './views/designSystemsTreeProvider';
 import { registerImportDesignSystemCommand } from './commands/importDesignSystemCommand';
 import { registerSetFigmaTokenCommand } from './commands/setFigmaTokenCommand';
 import { registerRevealFigmaPluginCommand } from './commands/revealFigmaPluginCommand';
@@ -53,6 +54,7 @@ export function activate(context: vscode.ExtensionContext): void {
   registerChatWithExampleCommand(context, contentIndex, log);
   registerOpenGalleryGridCommand(context, contentIndex, assetsRoot, log, communityContentDir);
   const galleryTreeProvider = registerGalleryTreeView(context, contentIndex);
+  registerDesignSystemsTreeView(context, contentIndex, log);
   registerCollectionsTreeView(context);
   registerImportDesignSystemCommand(context, log);
   registerSetFigmaTokenCommand(context, log);

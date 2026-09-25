@@ -94,11 +94,25 @@ export interface DesignSystemSummary {
   category?: string;
   /** 'built-in' = bundled with the extension (read-only); 'user' = written into the workspace via create_open_design_design_system. */
   source: DesignSystemSource;
+  /** Whether the design system ships a `tokens.css` (upstream's canonical token source). Custom systems may not yet. */
+  hasTokens: boolean;
 }
 
 export interface DesignSystemDetail extends DesignSystemSummary {
   body: string;
   craftSuggested: string[];
+  /** The design system's `tokens.css`, when it has one. */
+  tokensCss?: string;
+  /** Built-in only: the extension's additive local override (content overlay `tokens.override.css`), applied on top of `tokensCss`. */
+  tokensOverrideCss?: string;
+}
+
+async function readOptional(p: string): Promise<string | undefined> {
+  try {
+    return await fs.readFile(p, 'utf8');
+  } catch {
+    return undefined;
+  }
 }
 
 export interface CraftSection {
@@ -277,6 +291,9 @@ async function loadDesignSystems(assetsRoot: string): Promise<Map<string, Design
     const designMdPath = path.join(dsDir, entry.name, 'DESIGN.md');
     if (!(await pathExists(designMdPath))) continue;
     const raw = await fs.readFile(designMdPath, 'utf8');
+    const tokensCss = await readOptional(path.join(dsDir, entry.name, 'tokens.css'));
+    const tokensOverrideCss = await readOptional(path.join(dsDir, entry.name, 'tokens.override.css'));
+    const tokens = { hasTokens: tokensCss !== undefined, tokensCss, tokensOverrideCss };
 
     const manifestPath = path.join(dsDir, entry.name, 'manifest.json');
     let manifest: DesignSystemManifest | undefined;
@@ -297,6 +314,7 @@ async function loadDesignSystems(assetsRoot: string): Promise<Map<string, Design
         craftSuggested: normalizeStringArray(manifest.craft?.suggested),
         source: 'built-in',
         body: raw.trim(),
+        ...tokens,
       });
     } else {
       const fallback = parseDesignSystemMarkdown(entry.name, raw);
@@ -308,6 +326,7 @@ async function loadDesignSystems(assetsRoot: string): Promise<Map<string, Design
         craftSuggested: [],
         source: 'built-in',
         body: raw.trim(),
+        ...tokens,
       });
     }
   }
@@ -339,6 +358,8 @@ async function loadUserDesignSystems(dir: string | undefined): Promise<Map<strin
     // unambiguously wherever an id surfaces (tool output, QuickPick).
     const id = `user:${entry.name}`;
     const fallback = parseDesignSystemMarkdown(id, raw);
+    // Never an override for custom systems: the user owns tokens.css directly.
+    const tokensCss = await readOptional(path.join(dir, entry.name, 'tokens.css'));
     result.set(id, {
       id,
       name: fallback.name,
@@ -347,6 +368,8 @@ async function loadUserDesignSystems(dir: string | undefined): Promise<Map<strin
       craftSuggested: [],
       source: 'user',
       body: raw.trim(),
+      hasTokens: tokensCss !== undefined,
+      tokensCss,
     });
   }
   return result;
@@ -535,7 +558,7 @@ export class ContentIndex {
     for (const ds of designSystems.values()) {
       if (wantedCategory && (ds.category ?? '').toLowerCase() !== wantedCategory) continue;
       if (query && !matchesQuery([ds.id, ds.name, ds.summary, ds.category ?? ''], query)) continue;
-      results.push({ id: ds.id, name: ds.name, summary: ds.summary, category: ds.category, source: ds.source });
+      results.push({ id: ds.id, name: ds.name, summary: ds.summary, category: ds.category, source: ds.source, hasTokens: ds.hasTokens });
     }
     results.sort((a, b) => (a.category ?? '').localeCompare(b.category ?? '') || a.name.localeCompare(b.name));
     return results;

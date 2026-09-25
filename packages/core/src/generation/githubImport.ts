@@ -103,6 +103,12 @@ export interface FetchGithubDesignTokensResult {
   sourceLabel: string;
   content: string;
   warnings: string[];
+  /**
+   * The repository's root tokens.css, verbatim, when `content` is its root
+   * DESIGN.md — the bundled Open Design package shape (DESIGN.md + tokens.css
+   * side by side). Written as the imported design system's tokens.css.
+   */
+  tokensCss?: string;
 }
 
 export async function fetchGithubDesignTokens(url: string): Promise<FetchGithubDesignTokensResult> {
@@ -127,7 +133,8 @@ export async function fetchGithubDesignTokens(url: string): Promise<FetchGithubD
 
   const designMd = await fetchText(`https://raw.githubusercontent.com/${ref.owner}/${ref.repo}/${branch}/DESIGN.md`);
   if (designMd) {
-    return { sourceLabel: `${ref.owner}/${ref.repo}/DESIGN.md`, content: designMd, warnings };
+    const tokensCss = await fetchText(`https://raw.githubusercontent.com/${ref.owner}/${ref.repo}/${branch}/tokens.css`);
+    return { sourceLabel: `${ref.owner}/${ref.repo}/DESIGN.md`, content: designMd, warnings, ...(tokensCss ? { tokensCss } : {}) };
   }
 
   const foundPaths: string[] = [];

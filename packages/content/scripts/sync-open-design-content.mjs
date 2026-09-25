@@ -82,6 +82,8 @@ async function copyDesignSystems() {
   await rmrf(dstDir);
   const entries = await fs.readdir(srcDir, { withFileTypes: true });
   let count = 0;
+  let tokensBytes = 0;
+  let tokensCount = 0;
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.name.startsWith('_')) continue;
     const designMd = path.join(srcDir, entry.name, 'DESIGN.md');
@@ -97,9 +99,21 @@ async function copyDesignSystems() {
     if (await pathExists(manifestJson)) {
       await fs.copyFile(manifestJson, path.join(dstDir, entry.name, 'manifest.json'));
     }
+    // tokens.css is upstream's canonical token source (its token contract,
+    // packages/contracts/src/design-systems/token-schema.ts) and what the
+    // design-system preview renders from. Nothing else in the package
+    // (pre-rendered kit HTML, components.html, design-tokens.json, …) is
+    // vendored: the preview re-renders those from these tokens at runtime.
+    const tokensCss = path.join(srcDir, entry.name, 'tokens.css');
+    if (await pathExists(tokensCss)) {
+      await fs.copyFile(tokensCss, path.join(dstDir, entry.name, 'tokens.css'));
+      tokensBytes += (await fs.stat(tokensCss)).size;
+      tokensCount++;
+    }
     count++;
   }
-  return count;
+  console.log(`Vendored design-system tokens.css: ${tokensCount} files, ${(tokensBytes / 1024).toFixed(0)} KiB total.`);
+  return { count, tokensCount };
 }
 
 const MAX_EXAMPLE_DIR_BYTES = 2 * 1024 * 1024; // see SOURCE.md: caps vendored size, ~2 outlier examples excluded out of 169
@@ -225,7 +239,7 @@ async function main() {
   try {
     await fs.mkdir(targetRoot, { recursive: true });
 
-    const [skillCount, templateCount, designSystemCount, craftCount, examplesResult] = await Promise.all([
+    const [skillCount, templateCount, designSystemsResult, craftCount, examplesResult] = await Promise.all([
       copySkillLikeDir('skills'),
       copySkillLikeDir('design-templates'),
       copyDesignSystems(),
@@ -241,7 +255,8 @@ async function main() {
       counts: {
         skills: skillCount,
         designTemplates: templateCount,
-        designSystems: designSystemCount,
+        designSystems: designSystemsResult.count,
+        designSystemTokens: designSystemsResult.tokensCount,
         craft: craftCount,
         examples: examplesResult.count,
         examplesSkippedForSize: examplesResult.skippedForSize,
@@ -254,11 +269,11 @@ async function main() {
     const overlay = await applyLocalOverlay(targetRoot);
 
     console.log(
-      `Synced ${skillCount} skills, ${templateCount} design templates, ${designSystemCount} design systems, ${craftCount} craft files, ` +
+      `Synced ${skillCount} skills, ${templateCount} design templates, ${designSystemsResult.count} design systems, ${craftCount} craft files, ` +
         `${examplesResult.count} remixable examples (${examplesResult.skippedForSize} skipped for size) from ` +
         (resolved.usedRef ? `${repoUrl} @ ${resolved.usedRef}` : srcRoot) +
         (manifest.sourceCommit ? ` (${manifest.sourceCommit.slice(0, 12)})` : '') +
-        `, plus local overlay (${overlay.skills} skills, ${overlay.prompts} prompts)`,
+        `, plus local overlay (${overlay.skills} skills, ${overlay.prompts} prompts, ${overlay.designSystemOverrides} design-system token overrides)`,
     );
   } finally {
     await resolved.cleanup();

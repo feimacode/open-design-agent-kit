@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import {
   composeCustomDesignSystemInstructions,
+  composeDesignSystemTokensInstructions,
   composeInstructions,
   composePortToAppInstructions,
   composePullFigmaInstructions,
@@ -287,8 +288,17 @@ export async function setActiveDesignSystemTool(ctx: ToolContext, input: { desig
 
 export async function createCustomDesignSystem(
   ctx: ToolContext,
-  input: { name: string; brief: string; sourceUrl?: string },
+  input: { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string },
 ): Promise<string> {
+  if (input.existingDesignSystemId) {
+    const id = input.existingDesignSystemId.trim();
+    const result = composeDesignSystemTokensInstructions(id, await ctx.contentIndex.getDesignSystem(id), ctx.outputDir);
+    if (!result.ok) return result.error;
+    return JSON.stringify({ instructions: result.instructions, suggestedEntryPath: result.suggestedEntryPath, id: result.id }, null, 2);
+  }
+  if (!input.name?.trim() || !input.brief?.trim()) {
+    return 'Both "name" and "brief" are required to create a new design system (or pass "existingDesignSystemId" to write only tokens.css for an existing custom one).';
+  }
   const slug = slugify(input.name);
   const id = `user:${slug}`;
   const suggestedEntryPath = path.posix.join(ctx.outputDir, 'design-systems', slug, 'DESIGN.md');
