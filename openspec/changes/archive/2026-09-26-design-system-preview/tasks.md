@@ -5,7 +5,7 @@
 - [x] 1.3 Add overrides for the 8 placeholder-accent systems (`application`, `bento`, `contemporary`, `corporate`, `flat`, `perspective`, `professional`, `simple`), setting `--accent` / `--meta` to each DESIGN.md's stated `**Primary:**` hex. Document them in `local/README.md`
 - [x] 1.4 Extend `check-content-sync.mjs` (+ tests in `packages/content/scripts/test/`) to cover vendored `tokens.css` and to report overrides whose values now equal upstream
 - [x] 1.5 Run `npm run sync-content`. Confirm `tokens.css` + 8 overrides land under `packages/content/assets/open-design/design-systems/` and no kit/package files do
-- [ ] 1.6 File an upstream issue listing the 8 placeholder-accent systems
+- [ ] 1.6 File an upstream issue listing the 8 placeholder-accent systems (the user will file it; draft text is in the 2026-09-26 session)
 
 ## 2. Core: vendored pure modules
 

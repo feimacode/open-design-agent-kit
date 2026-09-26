@@ -35,6 +35,7 @@ Ways in:
 - **[Codex CLI](docs/getting-started/codex.md)**: the same skills in Codex's own `.agents/skills` format, plus the MCP server.
 - **[One-command project setup](packages/cli/README.md)**: `npx @feimacode/open-design-agent-kit init` wires Claude Code and/or Codex into your project.
 - **[MCP server](packages/mcp-server/README.md)**: `npx @feimacode/open-design-agent-kit-mcp` for Cursor or any other MCP-capable agent.
+- **Any agent via [`npx skills add`](https://github.com/vercel-labs/skills)**: `npx skills add https://github.com/feimacode/open-design-agent-kit/tree/main/packages/claude-plugin/skills/open-design` drops the same skill into any of the 75+ agents `skills` supports (Cursor, OpenCode, Cline, and more). It registers the MCP server itself the first time you ask it to design something — nothing else to run first.
 
 Published under the **feimacode** entity; the VS Code extension's publisher id is `feima`.
 
@@ -83,6 +84,7 @@ Every one of these started from `remix_open_design_example` (copy a real example
 - **Claude Code:** `/plugin marketplace add feimacode/open-design-agent-kit`, then `/plugin install open-design`. Or run `npx @feimacode/open-design-agent-kit init --tools claude` in your project. See the [getting-started guide](docs/getting-started/claude-code.md).
 - **Codex CLI:** `npx @feimacode/open-design-agent-kit init --tools codex`. See the [getting-started guide](docs/getting-started/codex.md).
 - **Any MCP agent (Cursor and others):** register `npx -y @feimacode/open-design-agent-kit-mcp` as a stdio MCP server. See the [MCP server README](packages/mcp-server/README.md).
+- **Any of the [75+ agents `skills` supports](https://github.com/vercel-labs/skills):** `npx skills add https://github.com/feimacode/open-design-agent-kit/tree/main/packages/claude-plugin/skills/open-design` (add `--agent <name>` to target one directly). The skill wires up the MCP server on its own the first time it runs.
 - **Scripts and CI:** `npx @feimacode/open-design-agent-kit export …` and `render-video …`. See the [CLI guide](docs/getting-started/cli.md).
 
 ## Documentation
