@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "sega",
+  "name": "Sega",
+  "category": "Retro & Nostalgic",
+  "description": "An arcade-inspired game interface: vivid royal-blue canvas, pixel-mono display type, white cabinet panels with a hard offset shadow, and a bright-yellow accent.",
+  "source": {
+    "type": "inspired",
+    "origin": "Aesthetic concept from bergside/awesome-design-skills (typeui.sh), independently re-authored",
+    "url": "https://github.com/bergside/awesome-design-skills/tree/main/skills/sega"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": ["color", "accessibility-baseline"],
+    "exemptions": []
+  }
+}

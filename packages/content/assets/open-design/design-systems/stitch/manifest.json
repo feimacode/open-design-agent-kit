@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "stitch",
+  "name": "Stitch",
+  "category": "Professional & Corporate",
+  "description": "A clean, high-contrast enterprise system for data-driven workflows: warm cream canvas, deep forest-green ink/accent, and a refined serif headline face.",
+  "source": {
+    "type": "inspired",
+    "origin": "Aesthetic concept from bergside/awesome-design-skills (typeui.sh), independently re-authored",
+    "url": "https://github.com/bergside/awesome-design-skills/tree/main/skills/stitch"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": ["color", "accessibility-baseline"],
+    "exemptions": []
+  }
+}

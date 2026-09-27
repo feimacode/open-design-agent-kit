@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "fiction",
+  "name": "Fiction",
+  "category": "Bold & Expressive",
+  "description": "A playful storybook-inspired interface: warm cream surfaces, chunky black outlines on every card and control, and a confident violet accent.",
+  "source": {
+    "type": "inspired",
+    "origin": "Aesthetic concept from bergside/awesome-design-skills (typeui.sh), independently re-authored",
+    "url": "https://github.com/bergside/awesome-design-skills/tree/main/skills/fiction"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": ["color", "accessibility-baseline"],
+    "exemptions": []
+  }
+}

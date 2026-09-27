@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "immersive",
+  "name": "Immersive",
+  "category": "Bold & Expressive",
+  "description": "An exhibit-style, game-like interface: a continuous deep-green canvas, chunky comic-panel outlines, and a bright magenta pop reserved for highlights.",
+  "source": {
+    "type": "inspired",
+    "origin": "Aesthetic concept from bergside/awesome-design-skills (typeui.sh), independently re-authored",
+    "url": "https://github.com/bergside/awesome-design-skills/tree/main/skills/immersive"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": ["color", "accessibility-baseline"],
+    "exemptions": []
+  }
+}

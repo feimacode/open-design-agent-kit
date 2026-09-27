@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "codex",
+  "name": "Codex",
+  "category": "Modern & Minimal",
+  "description": "A radically minimal, genuinely monochrome interface: pure white canvas, black carrying every structural and interactive signal, no second accent color.",
+  "source": {
+    "type": "inspired",
+    "origin": "Aesthetic concept from bergside/awesome-design-skills (typeui.sh), independently re-authored",
+    "url": "https://github.com/bergside/awesome-design-skills/tree/main/skills/codex"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  },
+  "craft": {
+    "applies": [],
+    "suggested": ["color", "accessibility-baseline"],
+    "exemptions": []
+  }
+}

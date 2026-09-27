@@ -54,10 +54,13 @@ async function checkRedundantOverrides() {
 
 // Every vendored design system that upstream shipped a tokens.css for must
 // still have it — the preview renders from it. MANIFEST records the count
-// the sync copied.
+// the sync copied; the local overlay's own new-package count (each ships its
+// own tokens.css — see NEW_DESIGN_SYSTEM_FILES) is recorded separately by
+// applyLocalOverlay and added on top, since it isn't part of what upstream shipped.
 async function checkDesignSystemTokens(manifest) {
-  const expected = manifest.counts?.designSystemTokens;
-  if (expected == null) return;
+  const upstreamExpected = manifest.counts?.designSystemTokens;
+  if (upstreamExpected == null) return;
+  const expected = upstreamExpected + (manifest.localOverlay?.designSystemPackages ?? 0);
   const dsRoot = path.join(assetsRoot, 'design-systems');
   let actual = 0;
   for (const entry of await fs.readdir(dsRoot, { withFileTypes: true })) {

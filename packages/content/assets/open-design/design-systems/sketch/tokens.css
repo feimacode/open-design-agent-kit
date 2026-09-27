@@ -1,0 +1,80 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/sketch/tokens.css
+ *
+ * Hand-drawn notebook-page aesthetic.
+ *
+ * Key brand decisions encoded here:
+ *   - Warm cream paper (#fbf3e6) as canvas, brighter near-white card faces
+ *   - Warm near-black ink for headlines/structure, softer gray for body
+ *   - A single soft teal accent, reserved for actions/badges
+ *   - Every border is dashed, not solid — the one signature move
+ *   - Handwritten face for headlines ONLY; body stays in a clean sans
+ *   - Generous, near-pill radii — soft and tactile, not boxy
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #fbf3e6;
+  --surface: #fffefa;
+  --surface-warm: #f3e9d6;
+
+  /* Foreground */
+  --fg: #2a2420;
+  --fg-2: #443b32;
+  --muted: #7a7268;
+  --meta: #9a917f;
+
+  /* Border — always applied with border-style: dashed, per DESIGN.md */
+  --border: #3a342c;
+  --border-soft: #ded4c2;
+
+  /* Accent */
+  --accent: #1dad97;
+  --accent-on: #ffffff;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #16a34a;
+  --warn: #d97706;
+  --danger: #dc2626;
+
+  /* Typography — fonts */
+  --font-display: "Delicious Handrawn", cursive;
+  --font-body: "Inter", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radius — generous, near-pill */
+  --radius-sm: 10px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-pill: 9999px;
+
+  /* Typography — type scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 36px;
+  --text-3xl: 52px;
+  --text-4xl: 72px;
+
+  /* Typography — leading & tracking (looser than a corporate baseline — a
+     hand-drawn, notebook feel wants room to breathe, especially in the
+     handwritten display face) */
+  --leading-body: 1.6;
+  --leading-tight: 1.2;
+  --tracking-display: 0em;
+
+  /* Section rhythm */
+  --section-y-desktop: 88px;
+  --section-y-tablet: 64px;
+  --section-y-phone: 44px;
+
+  /* Layout */
+  --container-max: 1140px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

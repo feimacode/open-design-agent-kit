@@ -1,0 +1,71 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/power/tokens.css
+ *
+ * High-end dark, monochromatic-plus-one system. Deep indigo-black canvas
+ * (never flat pure black), one confident orange accent, IBM Plex Mono
+ * throughout for a precise/engineered rather than soft-luxury feel.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #201f33;
+  --surface: #2a2942;
+  --surface-warm: #34324f;
+
+  /* Foreground */
+  --fg: #fafafa;
+  --fg-2: #d8d7e6;
+  --muted: #9694b0;
+  --meta: #6f6d89;
+
+  /* Border */
+  --border: #3b3a56;
+  --border-soft: #2e2d46;
+
+  /* Accent */
+  --accent: #ff6101;
+  --accent-on: #1a0d02;
+  --accent-hover: color-mix(in oklab, var(--accent), white 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 10%);
+
+  /* Semantic */
+  --success: #4ade80;
+  --warn: #fbbf24;
+  --danger: #f87171;
+
+  /* Typography — fonts */
+  --font-display: "IBM Plex Mono", ui-monospace, monospace;
+  --font-body: "IBM Plex Mono", ui-monospace, monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Radius — fully-rounded pill controls, confident cards */
+  --radius-sm: 10px;
+  --radius-md: 18px;
+  --radius-pill: 9999px;
+
+  /* Typography — type scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 26px;
+  --text-2xl: 38px;
+  --text-3xl: 56px;
+  --text-4xl: 76px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.5;
+  --leading-tight: 1.05;
+  --tracking-display: -0.01em;
+
+  /* Section rhythm */
+  --section-y-desktop: 96px;
+  --section-y-tablet: 68px;
+  --section-y-phone: 48px;
+
+  /* Layout */
+  --container-max: 1180px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

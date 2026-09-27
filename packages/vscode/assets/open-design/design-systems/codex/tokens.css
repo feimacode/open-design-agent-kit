@@ -1,0 +1,70 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/codex/tokens.css
+ *
+ * Radically minimal, genuinely monochrome interface. Accent deliberately
+ * equals the ink color — this system never introduces a second hue.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-warm: #f3f4f6;
+
+  /* Foreground */
+  --fg: #0a0a0a;
+  --fg-2: #262626;
+  --muted: #6b7280;
+  --meta: #9ca3af;
+
+  /* Border */
+  --border: #e5e7eb;
+  --border-soft: #f0f1f3;
+
+  /* Accent — deliberately the same as --fg; see DESIGN.md */
+  --accent: #0a0a0a;
+  --accent-on: #ffffff;
+  --accent-hover: color-mix(in oklab, var(--accent), white 15%);
+  --accent-active: color-mix(in oklab, var(--accent), white 25%);
+
+  /* Semantic */
+  --success: #16a34a;
+  --warn: #d97706;
+  --danger: #dc2626;
+
+  /* Typography — fonts */
+  --font-display: "Open Sans", "Helvetica Neue", sans-serif;
+  --font-body: "Open Sans", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radius — fully rounded pills, moderate cards */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-pill: 9999px;
+
+  /* Typography — type scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 34px;
+  --text-3xl: 48px;
+  --text-4xl: 64px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.5;
+  --leading-tight: 1.1;
+  --tracking-display: -0.01em;
+
+  /* Section rhythm */
+  --section-y-desktop: 96px;
+  --section-y-tablet: 68px;
+  --section-y-phone: 48px;
+
+  /* Layout */
+  --container-max: 1160px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

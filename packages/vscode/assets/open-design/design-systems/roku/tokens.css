@@ -1,0 +1,71 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/roku/tokens.css
+ *
+ * Purple-themed app-dashboard aesthetic. Light, glass-like canvas for the
+ * product body; a deep-purple gradient hero band is a per-section
+ * treatment, not the base --bg.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #f7f5fc;
+  --surface: #ffffff;
+  --surface-warm: #ede7f7;
+
+  /* Foreground */
+  --fg: #09090b;
+  --fg-2: #26212e;
+  --muted: #6b6478;
+  --meta: #8d8697;
+
+  /* Border */
+  --border: #e7e2f2;
+  --border-soft: #f0ecf8;
+
+  /* Accent */
+  --accent: #9333ea;
+  --accent-on: #ffffff;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #10b981;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+
+  /* Typography — fonts */
+  --font-display: "Inter", "Helvetica Neue", sans-serif;
+  --font-body: "Inter", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radius — generous, glass-like */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+
+  /* Typography — type scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 34px;
+  --text-3xl: 48px;
+  --text-4xl: 64px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.55;
+  --leading-tight: 1.1;
+  --tracking-display: -0.015em;
+
+  /* Section rhythm */
+  --section-y-desktop: 96px;
+  --section-y-tablet: 68px;
+  --section-y-phone: 48px;
+
+  /* Layout */
+  --container-max: 1180px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

@@ -1,0 +1,70 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/sega/tokens.css
+ *
+ * Arcade-inspired game interface. Vivid blue canvas, genuinely white
+ * panels (two reading zones — see DESIGN.md), hard offset shadows instead
+ * of blurred drop shadows, bright yellow accent.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #4502ff;
+  --surface: #ffffff;
+  --surface-warm: #f2f0ff;
+
+  /* Foreground (on-panel ink; see DESIGN.md for the on-canvas exception) */
+  --fg: #111827;
+  --fg-2: #1f2937;
+  --muted: #5b6472;
+  --meta: #7c8592;
+
+  /* Border — doubles as the offset-shadow color; see DESIGN.md */
+  --border: #111827;
+  --border-soft: #dcd6ff;
+
+  /* Accent */
+  --accent: #ffda14;
+  --accent-on: #1a1400;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #16a34a;
+  --warn: #d97706;
+  --danger: #dc2626;
+
+  /* Typography — fonts */
+  --font-display: "VT323", ui-monospace, monospace;
+  --font-body: "Inter", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radius — small, hard-edged */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  /* Typography — type scale */
+  --text-xs: 13px;
+  --text-sm: 15px;
+  --text-base: 17px;
+  --text-lg: 21px;
+  --text-xl: 27px;
+  --text-2xl: 35px;
+  --text-3xl: 50px;
+  --text-4xl: 68px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.5;
+  --leading-tight: 1.05;
+  --tracking-display: 0.02em;
+
+  /* Section rhythm */
+  --section-y-desktop: 88px;
+  --section-y-tablet: 64px;
+  --section-y-phone: 44px;
+
+  /* Layout */
+  --container-max: 1160px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

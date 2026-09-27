@@ -1,0 +1,78 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/riso/tokens.css
+ *
+ * Joyful two-color risograph print aesthetic.
+ *
+ * Key brand decisions encoded here:
+ *   - Warm off-white paper (#f2eee1) as page canvas — never pure white
+ *   - Federal blue as the primary ink (--fg) — carries headings/structure,
+ *     as the first pass of a two-color print run
+ *   - A single fluorescent pink (--accent) — the second print pass,
+ *     reserved for the interactive layer only
+ *   - Blue-tinted hairline borders read as registration lines
+ *   - Space Grotesk for display and body; Overpass Mono for labels
+ *   - Small, boxy radii — a print aesthetic, not a bubble one
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #f2eee1;
+  --surface: #fbf8ef;
+  --surface-warm: #ede7d4;
+
+  /* Foreground */
+  --fg: #2c3a8c;
+  --fg-2: #23306f;
+  --muted: #5b5f86;
+  --meta: #7b7ea0;
+
+  /* Border */
+  --border: #b9bfdd;
+  --border-soft: #d8dced;
+
+  /* Accent */
+  --accent: #f0248f;
+  --accent-on: #fdfbf5;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #16a34a;
+  --warn: #d97706;
+  --danger: #c0392b;
+
+  /* Typography — fonts */
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-body: "Space Grotesk", "Inter", sans-serif;
+  --font-mono: "Overpass Mono", ui-monospace, monospace;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* Typography — type scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 36px;
+  --text-3xl: 54px;
+  --text-4xl: 76px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.5;
+  --leading-tight: 1.08;
+  --tracking-display: -0.015em;
+
+  /* Section rhythm */
+  --section-y-desktop: 96px;
+  --section-y-tablet: 68px;
+  --section-y-phone: 48px;
+
+  /* Layout */
+  --container-max: 1180px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

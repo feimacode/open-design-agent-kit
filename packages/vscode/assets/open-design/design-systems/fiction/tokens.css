@@ -1,0 +1,72 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/fiction/tokens.css
+ *
+ * Playful storybook aesthetic. Signature move: every card/button/badge
+ * carries a thick (2–3px) ink-black outline, applied with border-color:
+ * var(--border) and an explicit border-width in component CSS.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #fce6c8;
+  --surface: #fff8ec;
+  --surface-warm: #f6dcb8;
+
+  /* Foreground */
+  --fg: #1e1b18;
+  --fg-2: #322c26;
+  --muted: #6b6259;
+  --meta: #8a8177;
+
+  /* Border — thick, always ink-black; see DESIGN.md craft notes */
+  --border: #1e1b18;
+  --border-soft: #ccb894;
+
+  /* Accent */
+  --accent: #7c5cfc;
+  --accent-on: #ffffff;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #16a34a;
+  --warn: #d97706;
+  --danger: #dc2626;
+
+  /* Typography — fonts */
+  --font-display: "Cossette Texte", "Poppins", sans-serif;
+  --font-body: "Nunito", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radius — generously rounded, near-pill buttons */
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-pill: 9999px;
+
+  /* Typography — type scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 19px;
+  --text-xl: 26px;
+  --text-2xl: 38px;
+  --text-3xl: 54px;
+  --text-4xl: 72px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.55;
+  --leading-tight: 1.12;
+  --tracking-display: 0em;
+
+  /* Section rhythm */
+  --section-y-desktop: 88px;
+  --section-y-tablet: 64px;
+  --section-y-phone: 44px;
+
+  /* Layout */
+  --container-max: 1140px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

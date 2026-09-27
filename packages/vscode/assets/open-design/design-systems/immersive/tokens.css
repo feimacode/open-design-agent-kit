@@ -1,0 +1,72 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/immersive/tokens.css
+ *
+ * Exhibit-style, game-like dark-green system. Unified dark canvas (bg and
+ * surface both stay in the green family) so text stays legible everywhere
+ * with a single --fg — the comic-panel outline is light-on-dark, not the
+ * black-on-white a print reference might suggest.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #0b5c34;
+  --surface: #14713f;
+  --surface-warm: #1a824a;
+
+  /* Foreground */
+  --fg: #f5faf6;
+  --fg-2: #dcefe0;
+  --muted: #b9d6c2;
+  --meta: #8fb89a;
+
+  /* Border — light outline, always 2px+ per DESIGN.md */
+  --border: #f5faf6;
+  --border-soft: #3a8f5e;
+
+  /* Accent */
+  --accent: #f062b0;
+  --accent-on: #1a0d15;
+  --accent-hover: color-mix(in oklab, var(--accent), white 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 10%);
+
+  /* Semantic */
+  --success: #4ade80;
+  --warn: #fbbf24;
+  --danger: #f87171;
+
+  /* Typography — fonts */
+  --font-display: "Oswald", "Arial Narrow", sans-serif;
+  --font-body: "Inter", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radius */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-pill: 9999px;
+
+  /* Typography — type scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 19px;
+  --text-xl: 27px;
+  --text-2xl: 40px;
+  --text-3xl: 58px;
+  --text-4xl: 76px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.5;
+  --leading-tight: 1.05;
+  --tracking-display: 0.01em;
+
+  /* Section rhythm */
+  --section-y-desktop: 96px;
+  --section-y-tablet: 68px;
+  --section-y-phone: 48px;
+
+  /* Layout */
+  --container-max: 1180px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

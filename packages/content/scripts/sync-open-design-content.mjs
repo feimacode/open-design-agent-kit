@@ -31,7 +31,7 @@ const targetRoot = path.join(repoRoot, 'assets', 'open-design');
 // this pin against what's actually committed in MANIFEST.json's sourceRef,
 // without parsing this file as text.
 export const DEFAULT_OPEN_DESIGN_REPO = 'https://github.com/nexu-io/open-design.git';
-export const DEFAULT_OPEN_DESIGN_REF = 'open-design-v0.22.2';
+export const DEFAULT_OPEN_DESIGN_REF = 'open-design-v0.24.1';
 const SPARSE_PATHS = ['skills', 'design-templates', 'design-systems', 'craft', 'plugins/_official/examples'];
 
 const explicitSrcRoot = process.env.OPEN_DESIGN_SRC;

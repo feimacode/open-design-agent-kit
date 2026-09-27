@@ -1,0 +1,68 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/basic/tokens.css
+ *
+ * Print-inspired editorial system for publications and reports.
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --surface-warm: #ece9e2;
+
+  /* Foreground */
+  --fg: #0a1829;
+  --fg-2: #1b2b3d;
+  --muted: #5b6472;
+  --meta: #7c8592;
+
+  /* Border */
+  --border: #dee1e6;
+  --border-soft: #ececef;
+
+  /* Accent */
+  --accent: #4f5fea;
+  --accent-on: #ffffff;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #16a34a;
+  --warn: #d97706;
+  --danger: #dc2626;
+
+  /* Typography — fonts */
+  --font-display: "Oswald", "Arial Narrow", sans-serif;
+  --font-body: "Nunito", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radius — modest, editorial */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  /* Typography — type scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 26px;
+  --text-2xl: 38px;
+  --text-3xl: 56px;
+  --text-4xl: 72px;
+
+  /* Typography — leading & tracking */
+  --leading-body: 1.55;
+  --leading-tight: 1.05;
+  --tracking-display: -0.01em;
+
+  /* Section rhythm */
+  --section-y-desktop: 96px;
+  --section-y-tablet: 68px;
+  --section-y-phone: 48px;
+
+  /* Layout */
+  --container-max: 1200px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}

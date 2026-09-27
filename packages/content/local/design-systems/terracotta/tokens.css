@@ -1,0 +1,77 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * design-systems/terracotta/tokens.css
+ *
+ * Sun-baked, clay-toned editorial system.
+ *
+ * Key brand decisions encoded here:
+ *   - Warm cream canvas (#f7eee0), deeper warm-tan card surface (#efe3d0)
+ *   - Warm near-black ink for headlines/structure, warm brown-gray for body
+ *   - A single burnt-terracotta accent — muted rust, not safety-orange
+ *   - Serif display face for headlines only; body stays in a clean sans
+ *   - Moderate, confident radii — handmade, not sharp or corporate
+ * ─────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface */
+  --bg: #f7eee0;
+  --surface: #efe3d0;
+  --surface-warm: #e6d7bf;
+
+  /* Foreground */
+  --fg: #241c15;
+  --fg-2: #3a2e22;
+  --muted: #7a6f62;
+  --meta: #9c9284;
+
+  /* Border */
+  --border: #dccdb4;
+  --border-soft: #e9ddc8;
+
+  /* Accent */
+  --accent: #bd5b34;
+  --accent-on: #fdf8f0;
+  --accent-hover: color-mix(in oklab, var(--accent), black 8%);
+  --accent-active: color-mix(in oklab, var(--accent), black 14%);
+
+  /* Semantic */
+  --success: #16a34a;
+  --warn: #d97706;
+  --danger: #c0392b;
+
+  /* Typography — fonts */
+  --font-display: "DM Serif Display", Georgia, serif;
+  --font-body: "Inter", "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radius — moderate, confident */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+
+  /* Typography — type scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 19px;
+  --text-xl: 25px;
+  --text-2xl: 34px;
+  --text-3xl: 52px;
+  --text-4xl: 68px;
+
+  /* Typography — leading & tracking (editorial pacing — a serif display
+     face reads best with generous line-height and no compression) */
+  --leading-body: 1.6;
+  --leading-tight: 1.12;
+  --tracking-display: 0em;
+
+  /* Section rhythm */
+  --section-y-desktop: 96px;
+  --section-y-tablet: 68px;
+  --section-y-phone: 48px;
+
+  /* Layout */
+  --container-max: 1200px;
+  --container-gutter-desktop: 24px;
+  --container-gutter-tablet: 16px;
+  --container-gutter-phone: 16px;
+}
