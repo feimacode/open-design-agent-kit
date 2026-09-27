@@ -195,6 +195,18 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
             isPartialQuery: true,
           });
           break;
+        case 'publish-to-canva':
+          if (!location) {
+            this.log.warn(`ArtifactEditorProvider: cannot prepare ${document.uri.fsPath} for Canva — it is outside any open workspace folder`);
+            vscode.window.showWarningMessage('Open Design: this artifact must be inside an open workspace folder to prepare it for Canva.');
+            break;
+          }
+          this.log.info(`ArtifactEditorProvider: preparing ${location.entryPath} for Canva`);
+          await vscode.commands.executeCommand('workbench.action.chat.open', {
+            query: `Use the publish_open_design_artifact_to_canva tool to prepare the Open Design artifact at "${location.entryPath}" for Canva, then follow its instructions.`,
+            isPartialQuery: true,
+          });
+          break;
         case 'figma-capture':
           if (!location) {
             this.log.warn(`ArtifactEditorProvider: cannot push ${document.uri.fsPath} to Figma — it is outside any open workspace folder`);

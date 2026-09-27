@@ -162,6 +162,16 @@ VS Code only. Composes instructions to package a finished artifact as a new entr
 
 **Result:** the instructions text.
 
+### publish_open_design_artifact_to_canva
+
+VS Code only. Composes instructions to export a finished artifact and prepare it for import into Canva. **It writes nothing and does not talk to Canva itself** — Canva has no CLI and this project has no connected account, so every step past the export happens manually in your own Canva session.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | yes | The artifact to prepare. |
+
+**Result:** the instructions text. Directs the agent to call `export_open_design_artifact` itself (`pptx` for a registered deck, `pdf` otherwise), then hand the exported file to you for Canva's own **Import a file** flow. Also explains — without attempting any of them — the three things "publish as a template" can mean in Canva: personal reuse, a Brand Template (Canva Pro/Teams), or a public Creator template (gated behind Canva's own Creator program).
+
 ### pull_open_design_figma_frame
 
 Fetches a Figma frame's structure (and a rendered image, best effort) through the Figma REST API, and composes instructions to rebuild it as code with 1:1 fidelity. **It writes nothing.** It needs a Figma token: the "Open Design: Set Figma Access Token" command in VS Code, or [`OPEN_DESIGN_FIGMA_TOKEN`](settings-and-env.md#open_design_figma_token) for MCP.

@@ -20,6 +20,7 @@ export * from './generation/figmaPull';
 export * from './generation/githubImport';
 export * from './generation/hostOverrides';
 export * from './generation/portToAppInstructions';
+export * from './generation/publishCanvaTemplateInstructions';
 export * from './generation/shareToCommunityInstructions';
 export * from './generation/tokenExtraction';
 

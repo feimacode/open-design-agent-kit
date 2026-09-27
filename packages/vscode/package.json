@@ -390,6 +390,27 @@
         }
       },
       {
+        "name": "publish_open_design_artifact_to_canva",
+        "displayName": "Publish Artifact to Canva",
+        "modelDescription": "Composes instructions for turning a finished Open Design artifact into a Canva design the user can import and, if they choose, publish as a template. Does NOT write any files and does NOT talk to Canva itself — Canva has no CLI and this extension has no connected account. The returned instructions direct the model to: (1) derive a title/description/tags from the artifact itself, (2) call export_open_design_artifact for the right format (pptx for a registered deck — image-per-slide, not editable text; pdf otherwise — real vector text via the browser's print engine, the best realistic shot at an editable Canva import), then (3) hand the exported file to the user to import at canva.com themselves (Create a design → Import a file), and (4) explain — without attempting any of them — the three different things \"publish as a template\" can mean in Canva: personal reuse (just duplicate the design), a Brand Template (Canva Pro/Teams, reusable within their own account), or a public Creator template (Canva's marketplace, gated behind Canva's own Creator program application).",
+        "userDescription": "Prepare a finished Open Design artifact for Canva",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-publish-to-canva",
+        "icon": "$(link-external)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryPath": {
+              "type": "string",
+              "description": "The workspace-relative path of the artifact to prepare for Canva (as passed to register_open_design_artifact)."
+            }
+          },
+          "required": [
+            "entryPath"
+          ]
+        }
+      },
+      {
         "name": "pull_open_design_figma_frame",
         "displayName": "Pull Figma Frame",
         "modelDescription": "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. Fetches the frame's structure via the Figma REST API (requires a Figma personal access token, set via the \"Open Design: Set Figma Access Token\" command) and a best-effort rendered image export, then returns instructions embedding a deterministic structural summary as ground truth. Does NOT write any files — after calling it, author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\"), not a bare file link.",
