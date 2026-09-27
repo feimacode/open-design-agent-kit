@@ -5,3 +5,4 @@ out-webview/
 *.vsix
 .vscode-test/
 *.log
+packages/content/scripts/.typeui-scaffold/

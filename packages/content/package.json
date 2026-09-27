@@ -25,6 +25,7 @@
     "sync": "node ./scripts/sync-open-design-content.mjs",
     "apply-overlay": "node ./scripts/apply-local-overlay.mjs",
     "check-sync": "node ./scripts/check-content-sync.mjs",
+    "extract-typeui": "node ./scripts/extract-typeui-design-system.mjs",
     "test:unit": "node --test scripts/test/*.test.mjs"
   },
   "dependencies": {
