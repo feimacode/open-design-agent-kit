@@ -1,6 +1,6 @@
 {
   "name": "@feimacode/open-design-agent-kit",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "npx @feimacode/open-design-agent-kit init — sets up Open Design's Claude Code and/or Codex integration directly in your own project, no marketplace or manual copying required. Also `export` (artifact → upload-ready PNG/JPEG) and `render-video` (HyperFrames → MP4) for scripted social-post pipelines.",
   "license": "MIT",
   "engines": {
