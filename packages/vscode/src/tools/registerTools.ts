@@ -14,6 +14,7 @@ import { ShareToCommunityTool } from './shareToCommunityTool';
 import { PublishCanvaTemplateTool } from './publishCanvaTemplateTool';
 import { PullFigmaFrameTool } from './pullFigmaFrameTool';
 import { ExportArtifactTool } from './exportArtifactTool';
+import { PublishArtifactTool } from './publishArtifactTool';
 import { ChooseDirectionTool, CompareExplorationTool, PrepareExplorationTool } from './explorationTools';
 import { LoggingTool } from './loggingTool';
 
@@ -41,6 +42,7 @@ export function registerTools(
     ['publish_open_design_artifact_to_canva', new PublishCanvaTemplateTool()],
     ['pull_open_design_figma_frame', new PullFigmaFrameTool(context)],
     ['export_open_design_artifact', new ExportArtifactTool(contentIndex)],
+    ['publish_open_design_artifact', new PublishArtifactTool()],
   ];
 
   for (const [name, tool] of registrations) {

@@ -33,6 +33,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [YouTube videos](guides/youtube-video.md): HyperFrames compositions rendered to MP4
 - [Export images](guides/export-images.md): PNG and JPEG, sizes, cards, file-size budgets
 - [Export decks and PDFs](guides/export-decks.md): PowerPoint, deck PDF, page PDF
+- [Share and publish](guides/share-and-publish.md): one HTML file, a temporary link, or your own Netlify, Vercel, Cloudflare or GitHub Pages
 
 ## Reference
 

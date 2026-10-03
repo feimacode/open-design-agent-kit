@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import * as esbuild from 'esbuild';
+import { cheerioLoadParsePlugin } from '../core/build/cheerioLoadParsePlugin';
 
 // Bundles @feimacode/open-design-agent-kit-core (raw TS source, no compiled
 // output of its own — same resolution strategy packages/vscode's esbuild
@@ -23,6 +24,7 @@ async function main() {
     target: 'node18',
     outfile: 'out/index.js',
     external: ['@feimacode/open-design-agent-kit-content', '@modelcontextprotocol/sdk'],
+    plugins: [cheerioLoadParsePlugin],
     // No banner: src/index.ts already starts with its own shebang line, and
     // esbuild preserves a leading shebang from the entry point automatically
     // — adding another via `banner` would duplicate it and break as invalid

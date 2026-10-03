@@ -14,11 +14,15 @@ import { assemblePdf, assemblePptx } from './deck/assemble';
 import { captureDeckSlides, capturePagePdf, countSlides, resolveExportMode, validateSlideNumbers, type ExportMode } from './deck/captureDeck';
 import { injectDeckStageFallback } from './deck/deckStageFallback';
 import { isValidDimension, resolveExportSize, type SizeSource } from './exportSize';
+import { formatPackageResult, isPackageFormat, packageArtifact, type PackageExportResult, type PackageFormat } from './packageArtifact';
 import { startStaticServer, urlForPath } from './staticServer';
 
 export type ImageFormat = 'png' | 'jpeg';
-export type ExportFormat = ImageFormat | 'pdf' | 'pptx';
-const EXPORT_FORMATS: readonly ExportFormat[] = ['png', 'jpeg', 'pdf', 'pptx'];
+/** Formats rendered in a headless browser. */
+export type CaptureFormat = ImageFormat | 'pdf' | 'pptx';
+/** Every format: captures, plus the browserless `standalone`/`site` packaging formats. */
+export type ExportFormat = CaptureFormat | PackageFormat;
+const EXPORT_FORMATS: readonly ExportFormat[] = ['png', 'jpeg', 'pdf', 'pptx', 'standalone', 'site'];
 
 export interface ExportArtifactOptions {
   workspaceRoot: string;
@@ -47,6 +51,12 @@ export interface ExportArtifactOptions {
   readyTimeoutMs?: number;
   /** Extra settle time after load for entrance animations, ms. Default 500. */
   settleMs?: number;
+  /** standalone/site: add the "Made with Open Design" footer badge (default: on for site, off for standalone). */
+  badge?: boolean;
+  /** standalone/site: the host's badge setting; false turns the badge off unless `badge` or the env var says otherwise. */
+  badgeSetting?: boolean;
+  /** site: the https URL the bundle will be served from, so og:image can be absolute. */
+  baseUrl?: string;
 }
 
 export interface ExportedFile {
@@ -55,7 +65,7 @@ export interface ExportedFile {
   width: number;
   height: number;
   bytes: number;
-  format: ExportFormat;
+  format: CaptureFormat;
   quality?: number;
 }
 
@@ -112,13 +122,19 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
   }
   if (o.maxBytes !== undefined && !(Number.isInteger(o.maxBytes) && o.maxBytes > 0)) return 'maxBytes must be a positive integer.';
   if (o.selector !== undefined && o.selector.trim() === '') return 'selector must not be empty.';
+  if (isPackageFormat(o.format) && (o.selector !== undefined || o.slides !== undefined || o.maxBytes !== undefined)) {
+    return `selector, slides and maxBytes apply to image, PDF and PPTX exports, not "${o.format}".`;
+  }
+  if (!isPackageFormat(o.format) && (o.badge !== undefined || o.baseUrl !== undefined)) {
+    return 'badge and baseUrl apply to the "standalone" and "site" formats only.';
+  }
   return undefined;
 }
 
 /** `<artifact-dir>/exports/<entry-basename>[-NN].<ext>`, workspace-relative with forward slashes. */
-const EXTENSIONS: Record<ExportFormat, string> = { png: 'png', jpeg: 'jpg', pdf: 'pdf', pptx: 'pptx' };
+const EXTENSIONS: Record<CaptureFormat, string> = { png: 'png', jpeg: 'jpg', pdf: 'pdf', pptx: 'pptx' };
 
-export function exportFilePath(entryPath: string, index: number | undefined, format: ExportFormat): string {
+export function exportFilePath(entryPath: string, index: number | undefined, format: CaptureFormat): string {
   const posixEntry = entryPath.replace(/\\/g, '/');
   const dir = path.posix.dirname(posixEntry);
   const base = path.posix.basename(posixEntry, path.posix.extname(posixEntry));
@@ -193,7 +209,13 @@ export async function loadPage(page: Page, url: string, readyTimeoutMs: number, 
   for (const f of failed) if (!/\/favicon\.ico \(/.test(f)) warnings.push(`Failed to load: ${f}`);
 }
 
-export async function exportArtifact(options: ExportArtifactOptions): Promise<ExportArtifactResult> {
+/** A capture result, or a packaging result for the `standalone`/`site` formats. */
+export type AnyExportResult = ExportArtifactResult | PackageExportResult;
+
+export function exportArtifact(options: ExportArtifactOptions & { format: PackageFormat }): Promise<PackageExportResult>;
+export function exportArtifact(options: ExportArtifactOptions & { format?: CaptureFormat }): Promise<ExportArtifactResult>;
+export function exportArtifact(options: ExportArtifactOptions): Promise<AnyExportResult>;
+export async function exportArtifact(options: ExportArtifactOptions): Promise<AnyExportResult> {
   const invalid = validateOptions(options);
   if (invalid) return fail('invalid-args', invalid);
 
@@ -207,6 +229,20 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<Ex
   if (!artifact.manifest) {
     return fail('not-registered', `${options.entryPath} exists but isn't registered (no .artifact.json sidecar). Call register_open_design_artifact first.`);
   }
+  if (isPackageFormat(options.format)) {
+    // Browserless: never looks for Chrome, so it works on CI and bare machines.
+    const relEntry = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath)).split(path.sep).join('/');
+    return packageArtifact({
+      workspaceRoot: options.workspaceRoot,
+      entryPath: relEntry,
+      entryContent: artifact.entryContent,
+      manifest: artifact.manifest,
+      format: options.format,
+      badge: options.badge,
+      badgeSetting: options.badgeSetting,
+      baseUrl: options.baseUrl,
+    });
+  }
   const renderer = typeof artifact.manifest.renderer === 'string' ? artifact.manifest.renderer : 'html';
   if (!EXPORTABLE_RENDERERS.has(renderer)) {
     return fail('unsupported-kind', `Artifacts rendered as "${renderer}" can't be exported to an image — only HTML-based artifacts (html, deck-html, mini-app, svg).`);
@@ -218,7 +254,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<Ex
   const title = typeof manifest.title === 'string' ? manifest.title : undefined;
   const aspectHint = sourceSkillId && options.lookupAspectHint ? await options.lookupAspectHint(sourceSkillId) : undefined;
   const size = resolveExportSize({ width: options.width, height: options.height, aspectHint, sourceSkillId, selector: options.selector });
-  const format = options.format ?? 'png';
+  const format: CaptureFormat = options.format ?? 'png';
   const quality = format === 'jpeg' ? (options.quality ?? 90) : undefined;
 
   const browser = await findBrowser({ explicitPath: options.browserPath });
@@ -415,8 +451,9 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<Ex
 }
 
 /** Compact, model-friendly text rendering of a result, shared by every host. */
-export function formatExportResult(result: ExportArtifactResult): string {
+export function formatExportResult(result: AnyExportResult): string {
   if (!result.ok) return `Export failed (${result.code}): ${result.error}`;
+  if ('output' in result) return formatPackageResult(result);
   const lines = [
     `Exported ${result.files.length} file(s):`,
     ...result.files.map(

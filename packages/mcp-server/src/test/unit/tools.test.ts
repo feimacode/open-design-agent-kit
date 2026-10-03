@@ -305,6 +305,40 @@ describe('mcp-server registration exports', () => {
     await fs.writeFile(path.join(ctx.workspaceRoot, '.open-design', 'd', 'd.html'), '<div class="slide"></div>');
     await tools.registerArtifact(ctx, { entryPath: '.open-design/d/d.html', kind: 'deck', title: 'D' });
     const manifest = JSON.parse(await fs.readFile(path.join(ctx.workspaceRoot, '.open-design', 'd', 'd.html.artifact.json'), 'utf8'));
-    assert.deepStrictEqual(manifest.exports, ['html', 'png', 'jpeg', 'pdf', 'pptx']);
+    assert.deepStrictEqual(manifest.exports, ['html', 'standalone', 'site', 'png', 'jpeg', 'pdf', 'pptx']);
+  });
+});
+
+describe('mcp-server publishing', () => {
+  async function registered(ctx: Awaited<ReturnType<typeof makeContext>>): Promise<string> {
+    const entryPath = '.open-design/p/p.html';
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design', 'p'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, entryPath), '<!doctype html><html><head></head><body><h1>Hi</h1></body></html>');
+    await tools.registerArtifact(ctx, { entryPath, kind: 'html', title: 'Hi' });
+    return entryPath;
+  }
+
+  it('exports a standalone file without a browser', async () => {
+    const ctx = await makeContext();
+    const entryPath = await registered(ctx);
+    const text = await tools.exportArtifact(ctx, { entryPath, format: 'standalone' });
+    assert.match(text, /^Exported a self-contained HTML file: \.open-design\/p\/exports\/p\.html/);
+  });
+
+  it('publishArtifact builds the bundle and returns staged instructions, then records the link', async () => {
+    const ctx = await makeContext();
+    const entryPath = await registered(ctx);
+    const text = await tools.publishArtifact(ctx, { entryPath, provider: 'netlify-temporary' });
+    assert.match(text, /## Stage 2 — confirm before anything goes online/);
+    assert.match(text, /--allow-anonymous/);
+    await fs.access(path.join(ctx.workspaceRoot, '.open-design', 'p', 'exports', 'site', 'index.html'));
+
+    const recorded = await tools.publishArtifact(ctx, {
+      entryPath,
+      published: { provider: 'netlify-temporary', url: 'https://x.netlify.app', claimUrl: 'https://app.netlify.com/drop/x', expiresAt: '2030-01-01T00:00:00Z' },
+    });
+    assert.match(recorded, /^Recorded:/);
+    const manifest = JSON.parse(await fs.readFile(path.join(ctx.workspaceRoot, `${entryPath}.artifact.json`), 'utf8'));
+    assert.strictEqual(manifest.metadata.shares[0].url, 'https://x.netlify.app');
   });
 });

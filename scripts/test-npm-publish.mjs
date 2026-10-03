@@ -258,7 +258,7 @@ async function testMcpServerResolution(scratchDir) {
     const call = await waitForResponse(3);
 
     assert(init?.result?.serverInfo?.name === 'open-design', 'initialize did not return the expected serverInfo');
-    assert(list?.result?.tools?.length === 14, `expected 14 tools, got ${list?.result?.tools?.length}`);
+    assert(list?.result?.tools?.length === 15, `expected 15 tools, got ${list?.result?.tools?.length}`);
     const callText = call?.result?.content?.[0]?.text;
     const parsedCall = callText ? JSON.parse(callText) : undefined;
     assert(Array.isArray(parsedCall) && parsedCall.length > 0, 'list_open_design_skills returned no entries');
@@ -278,8 +278,8 @@ async function testCliInit(scratchDir) {
 
   const claudeSkills = await fs.readdir(path.join(scratchDir, '.claude', 'skills'));
   const codexSkills = await fs.readdir(path.join(scratchDir, '.agents', 'skills'));
-  assert(claudeSkills.length === 29, `expected 29 Claude skills, got ${claudeSkills.length}`);
-  assert(codexSkills.length === 29, `expected 29 Codex skills, got ${codexSkills.length}`);
+  assert(claudeSkills.length === 31, `expected 31 Claude skills, got ${claudeSkills.length}`);
+  assert(codexSkills.length === 31, `expected 31 Codex skills, got ${codexSkills.length}`);
   assert(
     JSON.parse(await fs.readFile(path.join(scratchDir, '.mcp.json'), 'utf8')).mcpServers['open-design'],
     '.mcp.json missing the open-design entry',

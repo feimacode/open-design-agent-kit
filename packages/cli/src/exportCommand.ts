@@ -18,6 +18,8 @@ export interface ExportCliOptions {
   deck?: boolean;
   /** Comma-separated 1-based slide numbers, e.g. "1,3". */
   slides?: string;
+  /** --badge / --no-badge (standalone and site only); undefined keeps the format default. */
+  badge?: boolean;
 }
 
 export class ExportArgsError extends Error {}
@@ -41,9 +43,9 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
   let format: ExportFormat | undefined;
   if (flags.format !== undefined) {
     const f = flags.format.toLowerCase();
-    if (f === 'png' || f === 'pdf' || f === 'pptx') format = f;
+    if (f === 'png' || f === 'pdf' || f === 'pptx' || f === 'standalone' || f === 'site') format = f;
     else if (f === 'jpeg' || f === 'jpg') format = 'jpeg';
-    else throw new ExportArgsError(`--format must be png, jpeg, pdf or pptx (got "${flags.format}").`);
+    else throw new ExportArgsError(`--format must be png, jpeg, pdf, pptx, standalone or site (got "${flags.format}").`);
   }
   let slides: number[] | undefined;
   if (flags.slides !== undefined) {
@@ -64,6 +66,7 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     browserPath: flags.browser,
     deck: flags.deck,
     slides,
+    badge: flags.badge,
   };
 }
 
@@ -108,8 +111,9 @@ export async function runExport(entryArg: string, flags: ExportCliOptions, cwd =
     console.error(`See ${TROUBLESHOOTING_URL}`);
     return 1;
   }
-  // stdout: one path per line, for scripts; details to stderr.
-  for (const file of result.files) console.log(path.join(workspaceRoot, file.path));
+  // stdout: one path per line, for scripts (the folder, for a site bundle); details to stderr.
+  if ('output' in result) console.log(path.join(workspaceRoot, result.output));
+  else for (const file of result.files) console.log(path.join(workspaceRoot, file.path));
   console.error(formatExportResult(result));
   return 0;
 }

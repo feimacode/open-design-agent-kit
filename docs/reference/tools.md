@@ -4,7 +4,7 @@ Every tool the agent can call. In VS Code these are language-model tools (refere
 
 Two rules apply to every tool:
 
-- **Tools never write your design.** The generation tools return *instructions*; the agent writes the HTML with its own file-editing tools and then calls [`register_open_design_artifact`](#register_open_design_artifact). The only files these tools write themselves are manifests, copied examples ([`remix_open_design_example`](#remix_open_design_example)) and export outputs ([`export_open_design_artifact`](#export_open_design_artifact)).
+- **Tools never write your design.** The generation tools return *instructions*; the agent writes the HTML with its own file-editing tools and then calls [`register_open_design_artifact`](#register_open_design_artifact). The only files these tools write themselves are manifests, copied examples ([`remix_open_design_example`](#remix_open_design_example)) and export outputs ([`export_open_design_artifact`](#export_open_design_artifact), [`publish_open_design_artifact`](#publish_open_design_artifact)). No tool deploys anything or talks to a hosting service.
 - **Paths are workspace-relative**, e.g. `.open-design/coffee-landing/coffee-landing.html`. The workspace is the open VS Code folder, or for MCP the server's working directory (see [`OPEN_DESIGN_WORKSPACE_ROOT`](settings-and-env.md#open_design_workspace_root)).
 
 | Tool | VS Code ref | MCP | What it does |
@@ -23,7 +23,8 @@ Two rules apply to every tool:
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
 | [`pull_open_design_figma_frame`](#pull_open_design_figma_frame) | `#od-pull-figma-frame` | yes | Instructions to rebuild a Figma frame as code |
-| [`export_open_design_artifact`](#export_open_design_artifact) | `#od-export` | yes | Export to PNG, JPEG, PDF or PowerPoint |
+| [`export_open_design_artifact`](#export_open_design_artifact) | `#od-export` | yes | Export to PNG, JPEG, PDF, PowerPoint, standalone HTML or a site folder |
+| [`publish_open_design_artifact`](#publish_open_design_artifact) | `#od-publish` | yes | Package for hosting and get instructions to publish a link |
 
 ## Catalog
 
@@ -247,12 +248,12 @@ Fetches a Figma frame's structure (and a rendered image, best effort) through th
 
 ### export_open_design_artifact
 
-Renders a registered artifact in a headless browser (an installed Chrome, Edge or Chromium, never downloaded) and writes the result under the artifact's own `exports/` folder. The artifact's source files are never modified.
+Renders a registered artifact in a headless browser (an installed Chrome, Edge or Chromium, never downloaded) and writes the result under the artifact's own `exports/` folder. The packaging formats `standalone` and `site` need no browser. The artifact's source files are never modified.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `entryPath` | string | yes | The registered artifact's entry file. |
-| `format` | `png` · `jpeg` · `pdf` · `pptx` | no | Default `png`. `pdf` works for decks (one page per slide) and pages (printed, vector). `pptx` is for decks only. |
+| `format` | `png` · `jpeg` · `pdf` · `pptx` · `standalone` · `site` | no | Default `png`. `pdf` works for decks (one page per slide) and pages (printed, vector). `pptx` is for decks only. `standalone` writes one self-contained `exports/<name>.html`. `site` writes a deploy-ready `exports/site/` folder. See [Share and publish](../guides/share-and-publish.md). |
 | `quality` | integer 1–100 | no | JPEG quality. Default 90. |
 | `width`, `height` | integer 16–8192 | no | CSS pixels, given together. They override the skill's size for images, the measured slide size for decks, or the page size for page PDFs. |
 | `scale` | number 1–3 | no | Device scale factor. Default 2 for deck `pptx`/`pdf`, 1 otherwise. |
@@ -260,6 +261,8 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `maxBytes` | integer | no | Per-file byte budget. Oversized images are re-encoded as JPEG at quality 90 down to 40. For `pdf`/`pptx` it only warns. |
 | `deck` | boolean | no | Force deck (`true`) or page (`false`) handling. Detected automatically when omitted. |
 | `slides` | integer[] | no | Decks only: 1-based slide numbers, e.g. `[1, 3]`. With `png`/`jpeg` you get one image per slide; with `pdf`/`pptx`, only those slides in that order. |
+| `badge` | boolean | no | `standalone`/`site` only: add the closeable "Made with Open Design" footer badge. Default: on for `site`, off for `standalone`. See [the badge](../guides/share-and-publish.md#the-made-with-open-design-badge). |
+| `baseUrl` | string | no | `site` only: the https address the bundle will be served from, so the preview image (`og:image`) gets a full URL. |
 
 **Result (text):** each written file with its pixel size, file size and format; for decks, the slide count and the stage size and scale used; where the size came from; and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md) and [Export decks and PDFs](../guides/export-decks.md).
 
@@ -277,9 +280,35 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `no-slides` | [Deck export found no slides](../troubleshooting.md#export-failed-no-slides). |
 | `not-a-deck` | [PPTX or `slides` requested for something that isn't a deck](../troubleshooting.md#export-failed-not-a-deck). |
 | `capture-failed` | The browser failed or timed out (each browser call is capped at 60 s). |
+| `missing-references` | `standalone`/`site`: the page references a file that doesn't exist (the message names it and what referenced it). |
+| `path-outside-workspace` | `standalone`/`site`: a reference (or a symlink) points outside the workspace. |
+| `package-failed` | `standalone`/`site`: packaging failed for another reason, such as a size limit. |
 
 **Example (MCP arguments):**
 
 ```json
 { "entryPath": ".open-design/pitch/pitch.html", "format": "pptx" }
+```
+
+## Sharing
+
+### publish_open_design_artifact
+
+Packages a registered artifact into a deploy-ready folder (`exports/site/`) and composes step-by-step instructions to publish it as a link, with the host's own CLI and the user's own login, or as a temporary no-account link. **It deploys nothing and handles no tokens.** The instructions stop for the user's explicit yes before any deploy command. A second mode records the link afterwards. See [Share and publish](../guides/share-and-publish.md).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | yes | The registered artifact's entry file. |
+| `provider` | `netlify-temporary` · `cloudflare-temporary` · `netlify` · `vercel` · `cloudflare-pages` · `github-pages` | no | Where to publish. Omitted: the instructions list the choices for the user to pick. |
+| `badge` | boolean | no | Add the closeable "Made with Open Design" footer badge. Default `true`, unless [`openDesign.share.badge`](settings-and-env.md#opendesignsharebadge) is off or [`OPEN_DESIGN_SHARE_BADGE`](settings-and-env.md#open_design_share_badge) is `0`. |
+| `published` | object | no | Record mode, after a successful deploy: `{ provider, url, claimUrl?, expiresAt?, siteRef? }`. `url` and `claimUrl` must be `https:`. Nothing is rebuilt. |
+
+**Result (text):**
+- Without `published`: the bundle's file list and preflight findings, then either the provider choices or the instructions for the chosen provider (check, confirm, deploy, report and record).
+- With `published`: a confirmation. The link is stored in the manifest's [`metadata.shares`](artifact-manifest.md#metadatashares), replacing an earlier record for the same provider and site.
+
+**Example (MCP arguments):**
+
+```json
+{ "entryPath": ".open-design/launch/launch.html", "provider": "netlify-temporary" }
 ```

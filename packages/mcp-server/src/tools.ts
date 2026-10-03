@@ -15,6 +15,7 @@ import {
   copyExampleArtifact,
   detectExistingApp,
   exportArtifact as exportArtifactCore,
+  publishArtifact as publishArtifactCore,
   exportsForKind,
   formatExportResult,
   loadLocalPrompts,
@@ -433,15 +434,32 @@ export async function exportArtifact(
     maxBytes?: number;
     deck?: boolean;
     slides?: number[];
+    badge?: boolean;
+    baseUrl?: string;
   },
 ): Promise<string> {
-  // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
+  // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself;
+  // OPEN_DESIGN_SHARE_BADGE by core's badge resolution.
   const result = await exportArtifactCore({
     ...input,
     workspaceRoot: ctx.workspaceRoot,
     lookupAspectHint: async (id) => (await ctx.contentIndex.getSkill(id))?.aspectHint,
   });
   return formatExportResult(result);
+}
+
+/** publish_open_design_artifact: builds the site bundle and returns publish instructions, or records a deploy. Never deploys. */
+export async function publishArtifact(
+  ctx: ToolContext,
+  input: {
+    entryPath: string;
+    provider?: string;
+    badge?: boolean;
+    published?: { provider: string; url: string; claimUrl?: string; expiresAt?: string; siteRef?: string };
+  },
+): Promise<string> {
+  const result = await publishArtifactCore({ ...input, workspaceRoot: ctx.workspaceRoot });
+  return result.text;
 }
 
 /** Hand-written prompts (e.g. open-design-social-post) shipped under the content assets' prompts/ folder. */

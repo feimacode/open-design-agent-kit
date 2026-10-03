@@ -77,16 +77,18 @@ program
 
 program
   .command('export <entryPath>')
-  .description('Export a registered Open Design artifact to PNG/JPEG image(s), a deck to PPTX/PDF, or a page to PDF, under its exports/ folder (needs an installed Chrome, Edge, or Chromium)')
+  .description('Export a registered Open Design artifact to PNG/JPEG image(s), a deck to PPTX/PDF, a page to PDF (these need an installed Chrome, Edge, or Chromium), or package it as a self-contained HTML file or a deploy-ready site folder (no browser needed), under its exports/ folder')
   .option('--width <px>', 'Viewport width (give with --height); default: the source skill\'s size')
   .option('--height <px>', 'Viewport height (give with --width)')
   .option('--scale <n>', 'Device scale factor, 1-3 (default 2 for deck pdf/pptx, else 1)')
-  .option('--format <png|jpeg|pdf|pptx>', 'Output format (default png); pptx is for decks, pdf works for decks and pages')
+  .option('--format <png|jpeg|pdf|pptx|standalone|site>', 'Output format (default png); pptx is for decks, pdf works for decks and pages, standalone is one self-contained .html, site is a deploy-ready folder')
   .option('--quality <1-100>', 'JPEG quality (default 90)')
   .option('--selector <css>', 'Export each matching element as its own numbered image, e.g. "[data-od-card]"')
   .option('--max-bytes <n>', 'Per-file byte budget; over-budget images are re-encoded as JPEG until they fit')
   .option('--deck', 'Treat the artifact as a slide deck (auto-detected for decks registered as kind "deck")')
   .option('--slides <list>', 'Decks: comma-separated 1-based slide numbers to export, e.g. 1,3')
+  .option('--badge', 'standalone/site: add the "Made with Open Design" footer badge (default: on for site, off for standalone)')
+  .option('--no-badge', 'standalone/site: leave the footer badge out')
   .option('--browser <path>', 'Browser executable (default: OPEN_DESIGN_BROWSER_PATH, then auto-detect)')
   .option('--workspace <dir>', 'Workspace root (default: nearest ancestor containing .open-design/)')
   .action(async (entryPath: string, options: ExportCliOptions) => {

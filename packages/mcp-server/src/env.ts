@@ -40,3 +40,12 @@ export function getAssetsRoot(): string {
   const contentPackageJson = require.resolve('@feimacode/open-design-agent-kit-content/package.json');
   return path.join(path.dirname(contentPackageJson), 'assets', 'open-design');
 }
+
+/**
+ * OPEN_DESIGN_SHARE_BADGE (1/true, 0/false) overrides the default for the
+ * "Made with Open Design" footer badge on standalone/site exports and
+ * publish bundles. Read by core's resolveBadge() from this same process env,
+ * so this server passes nothing; listed here so every env var this server
+ * honours is in one place.
+ */
+export const SHARE_BADGE_ENV = 'OPEN_DESIGN_SHARE_BADGE';

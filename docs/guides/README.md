@@ -20,3 +20,4 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [YouTube videos](youtube-video.md)
 - [Export images](export-images.md)
 - [Export decks and PDFs](export-decks.md)
+- [Share and publish](share-and-publish.md)

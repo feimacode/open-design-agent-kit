@@ -368,8 +368,9 @@ const TOOL_DEFS: ToolDef[] = [
           },
           format: {
             type: 'string',
-            enum: ['png', 'jpeg', 'pdf', 'pptx'],
-            description: 'Output format. png/jpeg: images; pdf: deck slides or a printed page; pptx: decks only. Default png.',
+            enum: ['png', 'jpeg', 'pdf', 'pptx', 'standalone', 'site'],
+            description:
+              'Output format. png/jpeg: images; pdf: deck slides or a printed page; pptx: decks only; standalone: one self-contained .html with local CSS, scripts, images and fonts inlined (to attach or send); site: a deploy-ready folder (exports/site/) with index.html and its files (to publish — prefer publish_open_design_artifact, which builds it for you). standalone/site need no browser. Default png.',
           },
           quality: {
             type: 'integer',
@@ -416,6 +417,14 @@ const TOOL_DEFS: ToolDef[] = [
             },
             description: 'Decks only: 1-based slide numbers to export, e.g. [1, 3]. With png/jpeg, one image per slide; with pdf/pptx, only these slides in this order.',
           },
+          badge: {
+            type: 'boolean',
+            description: 'standalone/site only: add a small, closeable "Made with Open Design" footer badge. Default: on for site, off for standalone (OPEN_DESIGN_SHARE_BADGE overrides the default).',
+          },
+          baseUrl: {
+            type: 'string',
+            description: "site only: the https address the bundle will be served from, so the link-preview image (og:image) can be an absolute URL.",
+          },
         },
         required: ['entryPath'],
       },
@@ -425,7 +434,7 @@ const TOOL_DEFS: ToolDef[] = [
         ctx,
         args as {
           entryPath: string;
-          format?: 'png' | 'jpeg' | 'pdf' | 'pptx';
+          format?: 'png' | 'jpeg' | 'pdf' | 'pptx' | 'standalone' | 'site';
           quality?: number;
           width?: number;
           height?: number;
@@ -434,6 +443,56 @@ const TOOL_DEFS: ToolDef[] = [
           maxBytes?: number;
           deck?: boolean;
           slides?: number[];
+          badge?: boolean;
+          baseUrl?: string;
+        },
+      ),
+  },
+  {
+    tool: {
+      name: 'publish_open_design_artifact',
+      description:
+        "Publishes a registered Open Design artifact as a live web page, so the user can share a link with teammates or stakeholders. Use when the user asks to share, publish, deploy, host or \"get a link\" for a design. (For a single file to attach or send, use export_open_design_artifact with format \"standalone\" instead.) It builds a deploy-ready folder (exports/site/) locally, then returns step-by-step instructions for publishing it with the host's own CLI from your terminal, under the user's own login or a temporary no-account link: netlify-temporary or cloudflare-temporary (no account, about 60 minutes unless claimed), or netlify, vercel, cloudflare-pages or github-pages (the user's own account). It never deploys anything itself and never handles tokens. Without provider, the instructions ask the user to choose. The instructions require the user's explicit yes before anything goes online. After a successful deploy, call this tool again with published: { provider, url, claimUrl?, expiresAt?, siteRef? } to record the link, so the next publish updates the same site.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: {
+            type: 'string',
+            description: "Workspace-relative path to the registered artifact's entry file.",
+          },
+          provider: {
+            type: 'string',
+            enum: ['netlify-temporary', 'cloudflare-temporary', 'netlify', 'vercel', 'cloudflare-pages', 'github-pages'],
+            description: 'Where to publish. Omit to get the choices to show the user.',
+          },
+          badge: {
+            type: 'boolean',
+            description: 'Add the small, closeable "Made with Open Design" footer badge to the published page. Default true (OPEN_DESIGN_SHARE_BADGE=0 turns the default off).',
+          },
+          published: {
+            type: 'object',
+            description: 'Record mode: what the deploy reported. Doesn\'t rebuild anything.',
+            properties: {
+              provider: { type: 'string', enum: ['netlify-temporary', 'cloudflare-temporary', 'netlify', 'vercel', 'cloudflare-pages', 'github-pages'] },
+              url: { type: 'string', description: 'The public https link.' },
+              claimUrl: { type: 'string', description: "Temporary providers: the https link the user claims the site with. It's private to the user." },
+              expiresAt: { type: 'string', description: 'Temporary providers: ISO date-time when the link stops working unless claimed.' },
+              siteRef: { type: 'string', description: 'Site id, project name or owner/repo/folder to redeploy to next time.' },
+            },
+            required: ['provider', 'url'],
+          },
+        },
+        required: ['entryPath'],
+      },
+    },
+    handler: (ctx, args) =>
+      tools.publishArtifact(
+        ctx,
+        args as {
+          entryPath: string;
+          provider?: string;
+          badge?: boolean;
+          published?: { provider: string; url: string; claimUrl?: string; expiresAt?: string; siteRef?: string };
         },
       ),
   },

@@ -26,6 +26,10 @@ Default: `v0.1.0`. The awesome-open-design tag to fetch. Change it, then run **O
 
 Default: empty (auto-detect). The Chrome, Edge or Chromium executable used by [`export_open_design_artifact`](tools.md#export_open_design_artifact). It takes precedence over [`OPEN_DESIGN_BROWSER_PATH`](#open_design_browser_path).
 
+### openDesign.share.badge
+
+Default: `true`. Adds a small, closeable "Made with Open Design · Remix this" badge to pages you publish ([`publish_open_design_artifact`](tools.md#publish_open_design_artifact), export format `site`). It loads nothing from the internet and doesn't track viewers. Turn it off to never add it; one publish can still leave it out with `badge: false`. Standalone HTML files never get it unless asked. See [the badge](../guides/share-and-publish.md#the-made-with-open-design-badge).
+
 ## Environment variables
 
 For the MCP server and the CLI, set these in the environment of the process that launches them, e.g. the `env` block of your agent's MCP config:
@@ -53,6 +57,10 @@ MCP server. Default: `.open-design`. The MCP equivalent of [`openDesign.outputDi
 ### OPEN_DESIGN_FIGMA_TOKEN
 
 MCP server. A Figma personal access token (Figma → Settings → Personal access tokens), needed by [`pull_open_design_figma_frame`](tools.md#pull_open_design_figma_frame). In VS Code, use **Open Design: Set Figma Access Token** instead; it stores the token encrypted.
+
+### OPEN_DESIGN_SHARE_BADGE
+
+All hosts. `1`/`true` or `0`/`false`. Overrides the default for the footer badge on `standalone` and `site` exports and on publish bundles; a call's own `badge` argument (or the CLI's `--badge`/`--no-badge`) still wins. In VS Code it also overrides [`openDesign.share.badge`](#opendesignsharebadge).
 
 ### OPEN_DESIGN_BROWSER_PATH
 

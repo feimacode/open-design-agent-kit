@@ -32,17 +32,18 @@ Packaging is deterministic, local and reversible, so it's core code: `standalone
 
 ### D2. Vendor upstream's bundler as is
 Copy `standalone-html.ts` into `packages/core/src/vendored/standaloneHtml.ts` with an Apache-2.0 provenance note in `SOURCE.md`. Wrap it with a workspace-backed `readAsset` that refuses paths outside the workspace, reusing the absolute-path-safe workspace check. Add `@babel/parser`, `cheerio` and `postcss` to core.
-- *Alternative*: write a small inliner covering only `<link rel=stylesheet>`, `<script src>`, `<img>` and CSS `url()`. Fewer dependencies, but it silently produces broken output for module imports, `@import` chains, `srcset` and workers. Upstream already found and fixed those edge cases. The dependencies are pure JS and get bundled, so the cost is VSIX size only. Measure it in tasks; it's acceptable if under about 1.5 MB minified.
+- *Alternative*: write a small inliner covering only `<link rel=stylesheet>`, `<script src>`, `<img>` and CSS `url()`. Fewer dependencies, but it silently produces broken output for module imports, `@import` chains, `srcset` and workers. Upstream already found and fixed those edge cases. The dependencies are pure JS and get bundled, so the cost is VSIX size only. Measured at about 0.84 MB minified once every host bundle resolves `cheerio` to its `load-parse` module (a shared esbuild plugin); cheerio's main entry would have added undici and encoding-sniffer, for 2.3 MB in total.
 
 ### D3. `site` is the unit of publishing, and `standalone` is the unit of download
 `site` mirrors upstream's file plan. The entry is rewritten to root `index.html` and references are copied at their relative paths. That's what static hosts expect, and it keeps large images as separate cacheable files instead of base64 bloat. Both formats are export formats, so the CLI and every host get them for free, and the publish tool simply calls `exportArtifact({ format: 'site' })`.
+- The `site` plan also follows relative `import`/`export from`/`import()` specifiers in local and inline scripts, parsed with `@babel/parser`. Upstream's deploy plan doesn't, so a module page that imports a sibling deploys with a 404; an end-to-end run caught this.
 - Neither format launches a browser. `exportArtifact` routes them before `findBrowser`, so they work on CI and on machines without Chrome.
 - Missing or invalid references fail `site` with `missing-references`, listing them, like upstream's `MISSING_REFERENCES`. For `standalone` they fail with the bundler's typed error kind. The preflight's other findings are warnings.
 
 ### D4. Footer badge: inline, closeable, on for `site`, off for `standalone`
 The badge is a small fixed-position `<aside data-od-badge>` with scoped inline CSS and a one-line inline close handler. It reads "Made with Open Design · Remix this". It links to the project README and the community gallery, with a `?ref=badge` query and no script fetch, so it doesn't track anyone.
 - It's inserted at the document's real `</body>`, using upstream's `findRealTagOffset` approach so a `</body>` inside a script string isn't hit (upstream bug #7410).
-- It's skipped for decks in present mode. It doesn't appear in the PNG, PDF or PPTX exports, which read the source, not `site`.
+- It doesn't appear in the PNG, PDF or PPTX exports, which read the source, not `site`.
 - Precedence: the per-call `badge` argument, then `OPEN_DESIGN_SHARE_BADGE`, then the `openDesign.share.badge` setting, then the format default.
 - *Why on for `site`*: the user framed it as the growth loop, "optional, removable". The publish instructions tell the model to mention the badge and how to drop it during the confirmation step, so it's never a surprise.
 - *Alternative*: upstream's external hook script (`OD_DEPLOY_HOOK_SCRIPT_URL`). Rejected. A third-party script on users' pages is a privacy and trust cost we don't need.
@@ -70,18 +71,17 @@ The instructions have stages, like Share to Community:
 The rules: never invent an account or team, never retry with guessed commands, and never deploy from the workspace root (only the bundle folder).
 
 ### D7. Provider recipes are data, kept in one table
-Each provider entry holds:
-- detect and auth commands
-- the deploy command template
-- how to read the URL (and claim URL) from the output
-- the reuse key (site id, project name, repo)
-- notes on the provider's limits
+`generation/publishProviders.ts` holds, for each provider:
+- the check command (CLI present, logged in or deliberately not)
+- the deploy commands, always run from the bundle folder
+- how to read the URL, claim URL, expiry and reuse key from the output
+- the caveats said at confirmation
 
-Where a host doesn't serve a bare static folder, the recipe says so:
-- **wrangler**: deploying static assets needs a minimal `wrangler.jsonc` with an `assets.directory`. The recipe writes it inside the bundle, never in the user's repo.
-- **github-pages**: the recipe pushes the bundle to a `gh-pages` branch of a dedicated `<user>/od-shares` repo created through `gh`, with one subfolder per artifact. It warns that Pages sites are public even from private repos.
-
-The table is the single place to update when CLIs change.
+It's the single place to update when CLIs change. Commands run through `npx -y <cli>@latest` so nothing has to be installed first. They were checked against the CLIs' own source (netlify-cli 27.10, wrangler 4.147, vercel 62.2), not only their docs:
+- **netlify-temporary**: `netlify deploy --allow-anonymous --dir . --no-build --json` prints `site_url`, `claim_url` and, unless the deploy names another source with `--created-via`, a fixed `password`. Netlify password-protects anonymous sites until they're claimed. We don't pass `--created-via` to avoid that protection; the confirmation step tells the user about the password instead. A logged-in CLI refuses `--allow-anonymous` without a linked site, so the check step redirects logged-in users to `netlify`. Anonymous deploys have a daily cap (HTTP 429).
+- **cloudflare-temporary**: `wrangler deploy . --temporary --name <name> --compatibility-date <date>`. The flag is hidden from `--help` but present. A folder path deploys static assets with no `wrangler.jsonc`, so the generated config from the first draft of this design isn't needed. Wrangler refuses `--temporary` while logged in, prints "Claim URL:" and "Claim within:", reuses the temporary account for 60 minutes, and asks for "yes" to its terms in an interactive terminal.
+- **netlify / vercel / cloudflare-pages**: a recorded `siteRef` (site id or project name) is reused. Vercel's `--project` names the project explicitly, because the bundle folder is rebuilt on every export and would lose a `.vercel/` link.
+- **github-pages**: a dedicated public `<owner>/od-shares` repository with one subfolder per artifact, served from the default branch with `.nojekyll`. Pages sites are public even from private repositories, and the free plan needs a public repository anyway.
 
 ### D8. Share records
 `metadata.shares: Array<{ provider, url, claimUrl?, expiresAt?, siteRef?, publishedAt }>`. There's at most one record per `(provider, siteRef)`; republishing replaces it. Records for temporary providers past `expiresAt` are reported as expired, not deleted. This is the same pattern as `metadata.exports` and stays within the 16 KB metadata cap; the oldest records are trimmed past 20.
@@ -113,5 +113,7 @@ This change is purely additive.
 
 ## Open Questions
 
-- Whether `cloudflare-temporary` works for a static-assets-only Worker with a generated `wrangler.jsonc`, and the exact output lines for both anonymous flows. Verify by hand during implementation and adjust the recipes. Don't ship unverified command templates.
+- **Live check of the two no-account flows (task 3.3).** The commands and output lines above come from reading the CLIs' source. A real anonymous deploy of a sample bundle on each, to confirm the printed output matches the recipe text, still needs a person to approve putting a page online.
+- **Netlify's anonymous password.** Passing `--created-via open-design` would identify the source honestly and, as a side effect, skip the password. That's Netlify's anti-abuse default, so for now we keep it and tell the user. Revisit only with Netlify's guidance.
+- **Vercel `--temporary`.** Vercel CLI 62 also deploys without an account (claimable, refused in CI). It's a candidate seventh provider; it's left out to keep this change's provider set as specified.
 - The footer badge link target: the GitHub repo, a future landing page, or the awesome-open-design gallery. The default for now is the repo README, plus a gallery link for "Remix this".

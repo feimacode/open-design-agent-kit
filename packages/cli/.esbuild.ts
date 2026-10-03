@@ -4,6 +4,7 @@
 // external and are installed normally.
 import { promises as fs } from 'node:fs';
 import * as esbuild from 'esbuild';
+import { cheerioLoadParsePlugin } from '../core/build/cheerioLoadParsePlugin';
 
 async function main() {
   await fs.rm('out', { recursive: true, force: true });
@@ -15,6 +16,7 @@ async function main() {
     target: 'node18',
     outfile: 'out/index.js',
     external: ['@feimacode/open-design-agent-kit-content', '@inquirer/prompts', 'commander', 'smol-toml'],
+    plugins: [cheerioLoadParsePlugin],
     logLevel: 'info',
   });
 }

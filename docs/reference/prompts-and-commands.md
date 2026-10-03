@@ -32,6 +32,7 @@ All of them are explicit-only. To see the current list, type `/od-` in the chat 
 | `/open-design-custom-design-system` | Invent a design system for your brand. |
 | `/open-design-social-post` | [Design a social media post](../guides/social-posts.md) for a platform and export ready-to-upload files. |
 | `/open-design-explore` | [Explore 2–4 design directions](../guides/explore-directions.md) side by side, then take one forward. |
+| `/open-design-publish` | [Share a design](../guides/share-and-publish.md) as a link or as one HTML file. |
 | `/od-<mode>-<id>` | The [curated entries](#curated-entries). |
 
 Copilot also receives Open Design's chat instructions on every request, so a plain request ("make me a pricing page") works without any command.
@@ -73,11 +74,12 @@ Installed by the plugin (`/plugin install open-design`) or by [`init --tools cla
 | `open-design` | picked up from any design request | yes |
 | `open-design-social-post` | `/open-design:open-design-social-post` (plugin) or `/open-design-social-post` (init) | yes, from social-post requests |
 | `open-design-explore` | `/open-design:open-design-explore` (plugin) or `/open-design-explore` (init) | yes, from requests for several options |
+| `open-design-publish` | `/open-design:open-design-publish` (plugin) or `/open-design-publish` (init) | yes, from requests to share, publish or get a link |
 | curated entries | see [Curated entries](#curated-entries) | no |
 
 The MCP server also offers **MCP prompts**. In Claude Code they appear as `/mcp__open-design__<name>`:
 
-- `open-design-social-post` and `open-design-explore` take an optional `brief` argument.
+- `open-design-social-post`, `open-design-explore` and `open-design-publish` take an optional `brief` argument.
 - There's one prompt per remixable example, named `od-<mode>-<id>`, e.g. `od-deck-deck-guizang-editorial-example`. Selecting one prefills a remix request; nothing runs until you send it.
 
 ## Codex
@@ -89,6 +91,7 @@ Skills in `.agents/skills/` (from [`init --tools codex`](cli.md#init) or copied 
 | `open-design` | yes |
 | `open-design-social-post` | yes |
 | `open-design-explore` | yes |
+| `open-design-publish` | yes |
 | curated entries (`guizang-ppt`, `card-twitter`, …) | no: each has `agents/openai.yaml` with `policy.allow_implicit_invocation: false` |
 
 MCP prompts are the same as for Claude Code, if your Codex version surfaces them.

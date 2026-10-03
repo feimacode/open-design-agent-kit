@@ -603,8 +603,8 @@
       {
         "name": "export_open_design_artifact",
         "displayName": "Export Open Design Artifact",
-        "modelDescription": "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions.",
-        "userDescription": "Export an Open Design artifact to PNG/JPEG",
+        "modelDescription": "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). PACKAGING (no browser needed): format \"standalone\" writes one self-contained .html with the page's local CSS, scripts, images and fonts inlined, to attach or send; format \"site\" writes a deploy-ready folder (exports/site/) — to put a design online, prefer publish_open_design_artifact, which builds it for you. Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions.",
+        "userDescription": "Export an Open Design artifact to PNG/JPEG, PDF, PPTX or a standalone HTML file",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-export",
         "icon": "$(export)",
@@ -621,9 +621,11 @@
                 "png",
                 "jpeg",
                 "pdf",
-                "pptx"
+                "pptx",
+                "standalone",
+                "site"
               ],
-              "description": "Output format. png/jpeg: images; pdf: deck slides or a printed page; pptx: decks only. Default png."
+              "description": "Output format. png/jpeg: images; pdf: deck slides or a printed page; pptx: decks only; standalone: one self-contained .html (to attach or send); site: a deploy-ready folder. Default png."
             },
             "quality": {
               "type": "integer",
@@ -669,6 +671,88 @@
                 "minimum": 1
               },
               "description": "Decks only: 1-based slide numbers to export, e.g. [1, 3]. With png/jpeg, one image per slide; with pdf/pptx, only these slides in this order."
+            },
+            "badge": {
+              "type": "boolean",
+              "description": "standalone/site only: add a small, closeable \"Made with Open Design\" footer badge. Default: on for site, off for standalone; the openDesign.share.badge setting turns it off."
+            },
+            "baseUrl": {
+              "type": "string",
+              "description": "site only: the https address the bundle will be served from, so the link-preview image (og:image) can be an absolute URL."
+            }
+          },
+          "required": [
+            "entryPath"
+          ]
+        }
+      },
+      {
+        "name": "publish_open_design_artifact",
+        "displayName": "Publish Open Design Artifact",
+        "modelDescription": "Publishes a registered Open Design artifact as a live web page, so the user can share a link with teammates or stakeholders. Use when the user asks to share, publish, deploy, host or \"get a link\" for a design. (For a single file to attach or send, use export_open_design_artifact with format \"standalone\" instead.) It builds a deploy-ready folder (exports/site/) locally, then returns step-by-step instructions for publishing it with the host's own CLI from your terminal, under the user's own login or a temporary no-account link: netlify-temporary or cloudflare-temporary (no account, about 60 minutes unless claimed), or netlify, vercel, cloudflare-pages or github-pages (the user's own account). It never deploys anything itself and never handles tokens. Without provider, the instructions ask the user to choose. The instructions require the user's explicit yes before anything goes online. After a successful deploy, call this tool again with published: { provider, url, claimUrl?, expiresAt?, siteRef? } to record the link, so the next publish updates the same site.",
+        "userDescription": "Publish an Open Design artifact as a shareable web link",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-publish",
+        "icon": "$(globe)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryPath": {
+              "type": "string",
+              "description": "Workspace-relative path to the registered artifact's entry file."
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "netlify-temporary",
+                "cloudflare-temporary",
+                "netlify",
+                "vercel",
+                "cloudflare-pages",
+                "github-pages"
+              ],
+              "description": "Where to publish. Omit to get the choices to show the user."
+            },
+            "badge": {
+              "type": "boolean",
+              "description": "Add the small, closeable \"Made with Open Design\" footer badge to the published page. Default true; the openDesign.share.badge setting turns it off."
+            },
+            "published": {
+              "type": "object",
+              "description": "Record mode: what the deploy reported. Doesn't rebuild anything.",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "netlify-temporary",
+                    "cloudflare-temporary",
+                    "netlify",
+                    "vercel",
+                    "cloudflare-pages",
+                    "github-pages"
+                  ]
+                },
+                "url": {
+                  "type": "string",
+                  "description": "The public https link."
+                },
+                "claimUrl": {
+                  "type": "string",
+                  "description": "Temporary providers: the https link the user claims the site with. It's private to the user."
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "description": "Temporary providers: ISO date-time when the link stops working unless claimed."
+                },
+                "siteRef": {
+                  "type": "string",
+                  "description": "Site id, project name or owner/repo/folder to redeploy to next time."
+                }
+              },
+              "required": [
+                "provider",
+                "url"
+              ]
             }
           },
           "required": [
@@ -694,6 +778,9 @@
       },
       {
         "path": "./prompts/local/open-design-explore.prompt.md"
+      },
+      {
+        "path": "./prompts/local/open-design-publish.prompt.md"
       },
       {
         "path": "./prompts/local/open-design-social-post.prompt.md"
@@ -1074,6 +1161,11 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Absolute path to a Chrome, Edge, or Chromium executable used to export artifacts to PNG/JPEG. Leave empty to auto-detect an installed browser (or set the `OPEN_DESIGN_BROWSER_PATH` environment variable)."
+        },
+        "openDesign.share.badge": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Add a small, closeable \"Made with Open Design · Remix this\" footer badge to pages you publish (`publish_open_design_artifact`, export format `site`). It loads nothing from the internet and doesn't track viewers. Turn this off to never add it; a single publish can still leave it out with `badge: false`. Standalone HTML downloads never get it unless asked."
         }
       }
     },

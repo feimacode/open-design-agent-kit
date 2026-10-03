@@ -1,8 +1,14 @@
 import { promises as fs } from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
+  exportArtifact,
   findCollectionArtifacts,
+  formatExportResult,
+  liveShareRecords,
+  PUBLISH_RECIPES,
+  readShareRecords,
   findExplorationArtifacts,
   readExplorationPlan,
   injectScriptNonce,
@@ -224,6 +230,13 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
             isPartialQuery: true,
           });
           break;
+        case 'share':
+          if (!location) {
+            vscode.window.showWarningMessage('Open Design: this artifact must be inside an open workspace folder to share it.');
+            break;
+          }
+          await this.share(location);
+          break;
         case 'share-to-community':
           if (!location) {
             this.log.warn(`ArtifactEditorProvider: cannot share ${document.uri.fsPath} — it is outside any open workspace folder`);
@@ -284,6 +297,86 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length));
     edit.replace(document.uri, fullRange, newSource);
     await vscode.workspace.applyEdit(edit);
+  }
+
+  // The Share button: a native quick pick. Download runs here (no chat, no
+  // browser needed); publishing only ever opens a chat prefill — the button
+  // itself never deploys anything.
+  private async share(location: { workspaceRoot: string; entryPath: string }): Promise<void> {
+    const artifact = await readArtifact(location).catch(() => null);
+    if (!artifact?.manifest) {
+      vscode.window.showWarningMessage('Open Design: register this artifact first (register_open_design_artifact) to share it.');
+      return;
+    }
+    type ShareItem = vscode.QuickPickItem & { action: 'download' | 'temporary' | 'own' | 'copy'; url?: string };
+    const items: ShareItem[] = [
+      { action: 'download', label: '$(desktop-download) Download standalone HTML', detail: 'One self-contained .html file, to attach or send. Nothing goes online.' },
+      { action: 'temporary', label: '$(clock) Get a temporary link', detail: 'No account needed; the link lasts about an hour unless you claim it.' },
+      { action: 'own', label: '$(globe) Publish to my hosting', detail: 'Netlify, Vercel, Cloudflare Pages or GitHub Pages, with your own login.' },
+    ];
+    const live = liveShareRecords(readShareRecords(artifact.manifest));
+    if (live.length > 0) items.push({ action: 'copy', label: 'Published', kind: vscode.QuickPickItemKind.Separator });
+    for (const record of live) {
+      items.push({
+        action: 'copy',
+        url: record.url,
+        label: `$(copy) Copy link (${PUBLISH_RECIPES[record.provider].label})`,
+        description: record.url,
+        detail: record.expiresAt ? `Expires ${new Date(record.expiresAt).toLocaleString()} unless claimed` : undefined,
+      });
+    }
+    const picked = await vscode.window.showQuickPick(items, { title: 'Share this design', placeHolder: 'How do you want to share it?' });
+    if (!picked) return;
+
+    if (picked.action === 'copy' && picked.url) {
+      await vscode.env.clipboard.writeText(picked.url);
+      vscode.window.showInformationMessage(`Copied ${picked.url}`);
+      return;
+    }
+    if (picked.action === 'download') {
+      await this.downloadStandalone(location);
+      return;
+    }
+    let provider = '';
+    if (picked.action === 'temporary') {
+      const host = await vscode.window.showQuickPick(
+        [
+          { label: 'Netlify', id: 'netlify-temporary', detail: 'Password-protected until claimed; Netlify gives the password.' },
+          { label: 'Cloudflare', id: 'cloudflare-temporary', detail: 'Public for 60 minutes unless claimed.' },
+        ],
+        { title: 'Temporary link', placeHolder: 'Which host?' },
+      );
+      if (!host) return;
+      provider = ` with provider "${host.id}"`;
+    }
+    this.log.info(`ArtifactEditorProvider: publishing ${location.entryPath}${provider}`);
+    await vscode.commands.executeCommand('workbench.action.chat.open', {
+      query: `Use the publish_open_design_artifact tool to publish the Open Design artifact at "${location.entryPath}"${provider}, then follow its instructions.`,
+      isPartialQuery: true,
+    });
+  }
+
+  private async downloadStandalone(location: { workspaceRoot: string; entryPath: string }): Promise<void> {
+    const config = vscode.workspace.getConfiguration('openDesign');
+    const result = await exportArtifact({ ...location, format: 'standalone', badgeSetting: config.get<boolean>('share.badge', true) });
+    if (!result.ok) {
+      vscode.window.showErrorMessage(`Open Design: ${formatExportResult(result)}`);
+      return;
+    }
+    const fileName = path.basename(result.output);
+    const downloads = path.join(os.homedir(), 'Downloads');
+    const defaultDir = await fs.stat(downloads).then((s) => (s.isDirectory() ? downloads : os.homedir()), () => os.homedir());
+    const target = await vscode.window.showSaveDialog({
+      defaultUri: vscode.Uri.file(path.join(defaultDir, fileName)),
+      filters: { HTML: ['html'] },
+      title: 'Save standalone HTML',
+    });
+    if (!target) return;
+    await vscode.workspace.fs.copy(vscode.Uri.file(path.join(location.workspaceRoot, result.output)), target, { overwrite: true });
+    this.log.info(`ArtifactEditorProvider: saved standalone HTML for ${location.entryPath} to ${target.fsPath}`);
+    const warning = result.externalDependencies.length > 0 ? ` It still loads ${result.externalDependencies.length} file(s) from the internet (e.g. web fonts).` : '';
+    const action = await vscode.window.showInformationMessage(`Saved ${path.basename(target.fsPath)}.${warning}`, 'Reveal in File Explorer');
+    if (action) await vscode.commands.executeCommand('revealFileInOS', target);
   }
 
   private async pushToFigma(location: { workspaceRoot: string; entryPath: string }, capture: FigmaCaptureDocument): Promise<void> {

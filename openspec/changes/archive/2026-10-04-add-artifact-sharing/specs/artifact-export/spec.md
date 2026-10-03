@@ -22,13 +22,17 @@
 ### Requirement: Site Bundle Export
 `export_open_design_artifact` and the CLI `export` command SHALL accept `format: "site"` for artifacts of kind `html`, `mini-app` and `deck`. It SHALL replace `<artifact-dir>/exports/site/` with a folder containing:
 - the entry, rewritten to `index.html`, with its relative references adjusted
-- every workspace file reachable from the entry's HTML references, inline CSS references, linked CSS (recursively), and the manifest's `supportingFiles`, at paths relative to the entry's folder
+- every workspace file reachable from the entry's HTML references, inline CSS references, linked CSS (recursively), relative `import`/`export from`/`import()` specifiers of local and inline scripts (recursively; bare specifiers are left alone), and the manifest's `supportingFiles`, at paths relative to the entry's folder
 
 The result SHALL list each file with its size, the total bytes, and preflight warnings. When any reference is missing or outside the workspace, the export SHALL fail with code `missing-references` listing them, and SHALL leave no partial bundle.
 
 #### Scenario: Bundle layout
 - **WHEN** `.open-design/pitch/pitch.html` referencing `assets/hero.jpg` is exported with `format: "site"`
 - **THEN** `.open-design/pitch/exports/site/index.html` and `.open-design/pitch/exports/site/assets/hero.jpg` SHALL exist, and `index.html`'s reference SHALL resolve to the copied image
+
+#### Scenario: Module imports are bundled
+- **WHEN** the entry loads `<script type="module" src="app.js">` and `app.js` imports `./lib/dep.js` and `react`
+- **THEN** the bundle SHALL contain `app.js` and `lib/dep.js`, and SHALL NOT fail over the bare `react` specifier
 
 #### Scenario: Re-export replaces the bundle
 - **WHEN** the artifact drops an image and is exported as `site` again

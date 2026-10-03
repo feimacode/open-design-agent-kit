@@ -13,6 +13,8 @@ interface ExportArtifactInput {
   maxBytes?: number;
   deck?: boolean;
   slides?: number[];
+  badge?: boolean;
+  baseUrl?: string;
 }
 
 export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifactInput> {
@@ -28,11 +30,14 @@ export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifa
     options: vscode.LanguageModelToolInvocationOptions<ExportArtifactInput>,
     token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
-    const browserPath = vscode.workspace.getConfiguration('openDesign').get<string>('export.browserPath', '') || undefined;
+    const config = vscode.workspace.getConfiguration('openDesign');
+    const browserPath = config.get<string>('export.browserPath', '') || undefined;
+    const packaging = options.input.format === 'standalone' || options.input.format === 'site';
     const result = await exportArtifact({
       ...options.input,
       workspaceRoot: getWorkspaceRoot(),
       browserPath,
+      badgeSetting: packaging ? config.get<boolean>('share.badge', true) : undefined,
       lookupAspectHint: async (id) => (await this.contentIndex.getSkill(id))?.aspectHint,
     });
     if (token.isCancellationRequested) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart('Export cancelled.')]);

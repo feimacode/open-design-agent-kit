@@ -1,4 +1,5 @@
 import * as esbuild from 'esbuild';
+import { cheerioLoadParsePlugin } from '../core/build/cheerioLoadParsePlugin';
 
 const isWatch = process.argv.includes('--watch');
 const isDev = process.argv.includes('--dev');
@@ -21,6 +22,7 @@ async function main() {
     target: 'node18',
     outdir: 'dist',
     external: ['vscode'],
+    plugins: [cheerioLoadParsePlugin],
   });
 
   // Browser-target bundle(s) for webview client scripts. Neither touches the

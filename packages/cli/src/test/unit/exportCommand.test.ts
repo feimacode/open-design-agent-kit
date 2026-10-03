@@ -8,7 +8,7 @@ describe('export command', () => {
   it('maps string flags onto export options', () => {
     assert.deepStrictEqual(
       parseExportFlags({ width: '1080', height: '1350', scale: '2', format: 'jpg', quality: '80', maxBytes: '5000000', selector: '[data-od-card]', browser: '/b' }),
-      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined },
+      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined },
     );
     assert.deepStrictEqual(parseExportFlags({}), {
       width: undefined,
@@ -21,7 +21,13 @@ describe('export command', () => {
       browserPath: undefined,
       deck: undefined,
       slides: undefined,
+      badge: undefined,
     });
+  });
+
+  it('parses packaging formats and the badge flag', () => {
+    assert.deepStrictEqual([parseExportFlags({ format: 'standalone' }).format, parseExportFlags({ format: 'SITE' }).format], ['standalone', 'site']);
+    assert.strictEqual(parseExportFlags({ format: 'site', badge: false }).badge, false);
   });
 
   it('parses deck flags', () => {
@@ -33,7 +39,7 @@ describe('export command', () => {
 
   it('rejects malformed flags', () => {
     assert.throws(() => parseExportFlags({ width: '10.5' }), ExportArgsError);
-    assert.throws(() => parseExportFlags({ format: 'gif' }), /--format must be png, jpeg, pdf or pptx/);
+    assert.throws(() => parseExportFlags({ format: 'gif' }), /--format must be png, jpeg, pdf, pptx, standalone or site/);
     assert.throws(() => parseExportFlags({ scale: 'big' }), /--scale must be a number/);
   });
 

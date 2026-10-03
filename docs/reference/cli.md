@@ -38,7 +38,7 @@ Safe to re-run: generated skills are refreshed, stale generated ones are removed
 
 ### export
 
-Exports a registered artifact under its `exports/` folder: images (PNG/JPEG), a deck as PowerPoint or PDF, or a page as PDF. Uses an installed Chrome, Edge or Chromium; nothing is downloaded. It calls the same code as the [`export_open_design_artifact`](tools.md#export_open_design_artifact) tool.
+Exports a registered artifact under its `exports/` folder: images (PNG/JPEG), a deck as PowerPoint or PDF, or a page as PDF, using an installed Chrome, Edge or Chromium (nothing is downloaded). It can also package the artifact as one self-contained HTML file or a deploy-ready site folder, which needs no browser. It calls the same code as the [`export_open_design_artifact`](tools.md#export_open_design_artifact) tool.
 
 ```bash
 npx @feimacode/open-design-agent-kit export <entryPath> [options]
@@ -46,7 +46,7 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 
 | Option | Meaning |
 |---|---|
-| `--format <png\|jpeg\|pdf\|pptx>` | Output format. Default `png`. `pptx` is for decks; `pdf` works for decks and pages. `jpg` is accepted for `jpeg`. |
+| `--format <png\|jpeg\|pdf\|pptx\|standalone\|site>` | Output format. Default `png`. `pptx` is for decks; `pdf` works for decks and pages. `standalone` is one self-contained `.html`; `site` is a deploy-ready folder. `jpg` is accepted for `jpeg`. |
 | `--width <px>` | Width in CSS pixels, given with `--height`. Overrides the source skill's size, the measured slide size, or the page-PDF size. |
 | `--height <px>` | Height in CSS pixels, given with `--width`. |
 | `--scale <n>` | Device scale factor, 1–3. Default 2 for deck `pdf`/`pptx`, else 1. |
@@ -55,10 +55,11 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--max-bytes <n>` | Per-file byte budget. Oversized images are re-encoded as JPEG; documents only get a warning. |
 | `--deck` | Treat the artifact as a slide deck. Decks registered as kind `deck`, or made from an `od:deck:*` skill, are detected without it. |
 | `--slides <list>` | Decks only: 1-based slide numbers, e.g. `1,3`. |
+| `--badge`, `--no-badge` | `standalone`/`site` only: add or leave out the "Made with Open Design" footer badge. Default: on for `site`, off for `standalone`, unless [`OPEN_DESIGN_SHARE_BADGE`](settings-and-env.md#open_design_share_badge) says otherwise. |
 | `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |
 | `--workspace <dir>` | Workspace root. Default: the nearest folder above the entry file that contains `.open-design/`, else the current directory. |
 
-Output: each written file's absolute path on **stdout**, one per line, and a summary with any warnings on **stderr**. Exit code `0` on success, `1` on failure (the error is printed to stderr).
+Output: each written file's absolute path on **stdout**, one per line (for `site`, the bundle folder), and a summary with any warnings on **stderr**. Exit code `0` on success, `1` on failure (the error is printed to stderr).
 
 Examples:
 
@@ -73,11 +74,15 @@ npx @feimacode/open-design-agent-kit export .open-design/tips/tips.html --select
 npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format pptx
 npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format png --slides 1,3
 
+# One HTML file to email, and a folder to upload to any static host
+npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format standalone
+npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format site --no-badge
+
 # A report page as a vector PDF
 npx @feimacode/open-design-agent-kit export .open-design/report/report.html --format pdf
 ```
 
-See [Export images](../guides/export-images.md) and [Export decks and PDFs](../guides/export-decks.md).
+See [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Share and publish](../guides/share-and-publish.md).
 
 ### render-video
 
