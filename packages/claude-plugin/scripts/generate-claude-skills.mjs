@@ -54,13 +54,13 @@ Call \`prepare_open_design_brief\` (the open-design MCP server's tool) with skil
 function localPromptSkillMdContent(prompt) {
   return `---
 name: "${prompt.name}"
-description: ${prompt.description} — use whenever the user wants something to post on social media (an X/Twitter image, Instagram or LinkedIn post or carousel, Xiaohongshu cards, a Story/Reels cover, a YouTube thumbnail or video), even if they don't mention Open Design
+description: ${prompt.description}${prompt.modelTrigger ? ` — ${prompt.modelTrigger}` : ''}
 argument-hint: ${prompt.argumentHint ?? 'a brief'}
 ---
 
 <!-- generated:curated-entry -->
 
-${renderPromptBody(prompt, `"$ARGUMENTS" — or, if that is empty, the user's request in this conversation (ask them what to post and where if it isn't clear)`)}
+${renderPromptBody(prompt, `"$ARGUMENTS" — or, if that is empty, the user's request in this conversation (if it isn't clear, ask the user: "${prompt.placeholder}")`)}
 `;
 }
 

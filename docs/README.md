@@ -22,6 +22,7 @@ Pick the place you work ([all getting-started pages](getting-started/README.md))
 Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 
 - [Generate a design](guides/generate-a-design.md): skills, briefs, collections of screens
+- [Explore design directions](guides/explore-directions.md): 2–4 different sketches side by side, then build out the one you pick
 - [Design systems](guides/design-systems.md): the active design system, and how to specify, switch, invent or import one
 - [Remix and the gallery](guides/remix-and-gallery.md): start from a real example instead of a blank page
 - [Community designs](guides/community-designs.md): the awesome-open-design catalog, and contributing your own (VS Code)

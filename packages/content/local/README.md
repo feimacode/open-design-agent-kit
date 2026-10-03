@@ -10,7 +10,10 @@ the extension adds lives here instead:
   automatically after the upstream copy. An id that collides with an upstream
   skill or design template fails the sync.
 - `prompts/<name>.md`: hand-written, host-agnostic prompts (frontmatter
-  `name` and `description`, then the body). Copied into
+  `name` and `description`, optional `argument_hint`, `placeholder` and
+  `model_trigger`, then the body). `model_trigger` says when the model should
+  reach for the prompt's skill on its own; it is appended to the generated
+  Claude Code and Codex skill descriptions. Copied into
   `assets/open-design/prompts/`, then rendered per host (VS Code prompt file,
   MCP prompt, Claude Code and Codex skills).
 - `design-systems/<id>/` is one of two shapes, disambiguated by its own file

@@ -8,7 +8,7 @@ argument-hint: what to post, and optionally where (e.g. "X post announcing our v
 
 Design a social media post with Open Design and export files that are ready to upload.
 
-Brief: "$ARGUMENTS" — or, if that is empty, the user's request in this conversation (ask them what to post and where if it isn't clear)
+Brief: "$ARGUMENTS" — or, if that is empty, the user's request in this conversation (if it isn't clear, ask the user: "What should the post say, and for which platform?")
 
 ## 1. Pick the platform and format
 

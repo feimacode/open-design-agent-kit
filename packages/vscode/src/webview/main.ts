@@ -20,9 +20,9 @@ root.innerHTML = `
     <button data-mode="comment" class="od-tab">Comment</button>
     <button data-mode="edit" class="od-tab">Edit</button>
     <span id="od-collection-nav" class="od-collection-nav" hidden>
-      <button id="od-collection-prev" class="od-btn" title="Previous screen in this collection">◀</button>
+      <button id="od-collection-prev" class="od-btn" title="Previous">◀</button>
       <span id="od-collection-label" class="od-collection-label"></span>
-      <button id="od-collection-next" class="od-btn" title="Next screen in this collection">▶</button>
+      <button id="od-collection-next" class="od-btn" title="Next">▶</button>
     </span>
     <span class="od-toolbar-spacer"></span>
     <button id="od-promote-to-app" class="od-btn" title="Port this artifact into the app's real code">Promote to App Code</button>
@@ -598,6 +598,11 @@ window.addEventListener('message', (event) => {
       panel.hidden = true;
       applyCollectionInfo(message.collection);
       setIframeContent(message.html);
+      break;
+    case 'nav-updated':
+      // A sibling screen/direction was registered or removed: only the
+      // navigation changes, so the design itself is not re-rendered.
+      applyCollectionInfo(message.collection);
       break;
   }
 });

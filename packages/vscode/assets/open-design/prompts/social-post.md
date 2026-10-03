@@ -3,6 +3,7 @@ name: open-design-social-post
 description: Design a social media post (X, Instagram, LinkedIn, Xiaohongshu, Stories/Reels, YouTube thumbnail or video) and export upload-ready files
 argument_hint: what to post, and optionally where (e.g. "X post announcing our v2 launch")
 placeholder: What should the post say, and for which platform?
+model_trigger: use whenever the user wants something to post on social media (an X/Twitter image, Instagram or LinkedIn post or carousel, Xiaohongshu cards, a Story/Reels cover, a YouTube thumbnail or video), even if they don't mention Open Design
 ---
 
 Design a social media post with Open Design and export files that are ready to upload.

@@ -19,6 +19,20 @@ The webview client (`../../webview/`) is **adapted, not ported verbatim**, from 
 - **The "comments → chat" mechanism is not adapted, it's identical in spirit**: upstream never applies a comment through a special engine either — it serializes selected comments into the next chat message as a scoped instruction block, and the agent edits the file normally. `artifactEditorProvider.ts`'s `formatCommentsForChat()` reproduces that exact idea for `workbench.action.chat.open`.
 - **Gallery/Remix** (`src/core/workspace/remixExample.ts`, `remixOrchestrator.ts`) reproduce upstream's actual Remix *effect* (copy an example's rendered HTML + assets into a new file, tell the agent to treat it as an existing file to modify) without any of upstream's project-database/multi-user machinery — confirmed unnecessary by tracing the real implementation (`apps/daemon/src/plugins/duplicate-project.ts`).
 
+## Design directions, added 2026-10-03 — see `openspec/changes/add-explorations/design.md`
+
+**`designDirections.ts`** is vendored from `apps/daemon/src/prompts/directions.ts` at upstream commit `1b47e60bd466` (Apache-2.0). Upstream distilled the five schools from [`alchaincyf/huashu-design`](https://github.com/alchaincyf/huashu-design) (MIT, © alchaincyf / 花叔); upstream re-expressed them rather than copying, and this file copies upstream's expression. Keep both attributions if you redistribute it.
+
+- **Verbatim:** the `DesignDirection` interface's fields, the `DESIGN_DIRECTIONS` data (all five schools, including inline comments) and `renderDirectionSpec()`.
+- **Dropped:** `renderDirectionFormBody()` (renders upstream's `<question-form>` UI, which upstream itself marks dormant), `renderDirectionSpecBlock()`, `renderDirectionIndexBlock()`, `formatDirectionSpecText()` and `findDirectionByLabel()` (prompt blocks and lookups for upstream's `od tools directions` CLI, which doesn't exist here).
+- **Added:** `findDesignDirection(id)`, a plain id lookup. Interface doc comments are shortened (they referenced upstream web-app tickets).
+
+This is vendored code, not content: the content drift check does not cover it, so re-check this file during the manual upstream-port review.
+
+## Design explorations manifest fields, added 2026-10-03
+
+`artifactManifest.ts` gained two more optional fields, `explorationId` and `directionId`, validated exactly like the collection fields below (bounded-length optional strings). The same additive divergence from upstream; an exploration is a set of artifacts sharing an `explorationId`, plus a plan file (`workspace/explorationStore.ts`).
+
 ## Design collections, added 2026-09-23
 
 `artifactManifest.ts`'s validator/`sanitizeManifest()` gained four new optional fields — `collectionId`, `collectionName`, `screenRole`, `screenIndex` — a deliberate, additive divergence from the upstream-ported validator (upstream's own manifest shape has no such concept). Each is validated the same way the file already validates `sourceSkillId`/`designSystemId` (bounded-length optional string, or for `screenIndex` a bounded non-negative integer). No central collection registry exists anywhere in this codebase — a "collection" is just several artifacts whose manifests happen to share a `collectionId`, discovered by scanning (`workspace/collectionScan.ts`), not by any index file.

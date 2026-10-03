@@ -14,6 +14,7 @@ import { ShareToCommunityTool } from './shareToCommunityTool';
 import { PublishCanvaTemplateTool } from './publishCanvaTemplateTool';
 import { PullFigmaFrameTool } from './pullFigmaFrameTool';
 import { ExportArtifactTool } from './exportArtifactTool';
+import { ChooseDirectionTool, CompareExplorationTool, PrepareExplorationTool } from './explorationTools';
 import { LoggingTool } from './loggingTool';
 
 export function registerTools(
@@ -27,6 +28,9 @@ export function registerTools(
     ['list_open_design_skills', new ListSkillsTool(contentIndex)],
     ['list_open_design_design_systems', new ListDesignSystemsTool(contentIndex)],
     ['prepare_open_design_brief', new PrepareBriefTool(contentIndex)],
+    ['prepare_open_design_exploration', new PrepareExplorationTool(contentIndex)],
+    ['compare_open_design_exploration', new CompareExplorationTool(contentIndex)],
+    ['choose_open_design_direction', new ChooseDirectionTool(contentIndex)],
     ['register_open_design_artifact', new RegisterArtifactTool()],
     ['get_open_design_artifact', new GetArtifactTool()],
     ['set_active_design_system', new SetActiveDesignSystemTool(contentIndex)],

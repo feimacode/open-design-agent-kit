@@ -133,6 +133,45 @@ describe('mcp-server tools', () => {
     assert.strictEqual(JSON.parse(manifestRaw).title, 'X');
   });
 
+  it('runs an exploration round trip: prepare → register × N (refreshing compare.html) → compare → choose', async () => {
+    const ctx = await makeContext();
+    const prepared = JSON.parse(await tools.prepareExploration(ctx, { skillId: 'od:prototype:landing-page', brief: 'Bakery landing page', count: 2 }));
+    assert.strictEqual(prepared.explorationId, 'bakery-landing-page');
+    assert.strictEqual(prepared.directions.length, 2);
+
+    let registered = '';
+    for (const d of prepared.directions) {
+      await fs.writeFile(path.join(ctx.workspaceRoot, d.suggestedEntryPath), '<!doctype html><h1>Sketch</h1>');
+      registered = await tools.registerArtifact(ctx, {
+        entryPath: d.suggestedEntryPath,
+        kind: 'html',
+        title: d.label,
+        explorationId: prepared.explorationId,
+        directionId: d.directionId,
+      });
+    }
+    assert.match(registered, /comparison page updated/);
+    assert.match(registered, /all registered/);
+    const compareHtml = await fs.readFile(path.join(ctx.workspaceRoot, prepared.comparePath), 'utf8');
+    assert.strictEqual((compareHtml.match(/<iframe /g) ?? []).length, 2);
+
+    const compared = JSON.parse(await tools.compareExploration(ctx, { explorationId: prepared.explorationId }));
+    assert.deepStrictEqual(compared.missing, []);
+
+    const chosen = JSON.parse(
+      await tools.chooseDirection(ctx, { explorationId: prepared.explorationId, directionId: prepared.directions[1].directionId, next: 'build-out' }),
+    );
+    assert.match(chosen.instructions, /Build out the chosen direction/);
+  });
+
+  it('registerArtifact warns, but still registers, for an unknown explorationId', async () => {
+    const ctx = await makeContext();
+    await fs.writeFile(path.join(ctx.workspaceRoot, 'a.html'), '<!doctype html>');
+    const result = await tools.registerArtifact(ctx, { entryPath: 'a.html', kind: 'html', title: 'A', explorationId: 'nope', directionId: 'x' });
+    assert.match(result, /Artifact registered/);
+    assert.match(result, /Warning: No exploration plan/);
+  });
+
   it('getArtifact returns not-found for a missing entry', async () => {
     const ctx = await makeContext();
     const raw = await tools.getArtifact(ctx, { entryPath: 'nope.html' });

@@ -12,6 +12,9 @@ Two rules apply to every tool:
 | [`list_open_design_skills`](#list_open_design_skills) | `#od-skills` | yes | Browse skills, templates and remixable examples |
 | [`list_open_design_design_systems`](#list_open_design_design_systems) | `#od-design-systems` | yes | Browse brand design systems |
 | [`prepare_open_design_brief`](#prepare_open_design_brief) | `#od-prepare-brief` | yes | Compose instructions for a new design |
+| [`prepare_open_design_exploration`](#prepare_open_design_exploration) | `#od-explore` | yes | Plan 2–4 different directions to compare |
+| [`compare_open_design_exploration`](#compare_open_design_exploration) | `#od-compare-exploration` | yes | Comparison page and contact sheet for an exploration |
+| [`choose_open_design_direction`](#choose_open_design_direction) | `#od-choose-direction` | yes | Take a chosen direction forward |
 | [`register_open_design_artifact`](#register_open_design_artifact) | `#od-register-artifact` | yes | Record a written design as an artifact |
 | [`get_open_design_artifact`](#get_open_design_artifact) | `#od-artifact` | yes | Read an artifact back, with open comments |
 | [`set_active_design_system`](#set_active_design_system) | `#od-set-design-system` | yes | Set or clear the workspace's design system |
@@ -90,8 +93,10 @@ Call after the entry file (and any supporting files) is written. Validates the a
 | `collectionName` | string | no | Same as passed to `prepare_open_design_brief`. |
 | `screenIndex` | number | no | 0-based position in the collection. |
 | `screenRole` | string | no | Same as passed to `prepare_open_design_brief`. |
+| `explorationId` | string | no | The [exploration](#exploring-directions) this artifact belongs to. Registering refreshes its comparison page. |
+| `directionId` | string | no | The direction this sketch is. Leave it out for a built-out or merged version registered against the exploration. |
 
-**Result:** the written manifest. See [Artifact manifest](artifact-manifest.md).
+**Result:** the written manifest. See [Artifact manifest](artifact-manifest.md). With `explorationId`, the result also reports the comparison page's path and which directions are still missing. If the exploration has no plan, the artifact is still registered and the result carries a warning.
 
 ### get_open_design_artifact
 
@@ -112,6 +117,61 @@ Copies a real example into the workspace (with its assets), registers it, and re
 | `skillId` | string | yes | An id whose `exampleArtifactPath` is non-empty. |
 
 **Result:** `{ entryPath, instructions, manifest }`. Remixed artifacts are registered as kind `html` with `sourceSkillId` set, which is enough for [deck export](../guides/export-decks.md#how-decks-are-detected) to recognize remixed decks.
+
+## Exploring directions
+
+An exploration generates 2–4 deliberately different sketches for one brief, puts them side by side, and builds out the one the user picks. See [Explore design directions](../guides/explore-directions.md).
+
+### prepare_open_design_exploration
+
+Use it instead of `prepare_open_design_brief` when the user asks for options to compare. It assigns the directions itself, so they don't converge, writes the plan (`<output>/<explorationId>/exploration.json`) and an initial comparison page, and returns the instructions. **It writes no design files.**
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `skillId` | string | yes | A full `od:<mode>:<name>` id from `list_open_design_skills`. |
+| `brief` | string | yes | The request, in the user's words. |
+| `count` | integer 2–4 | no | Number of directions. Default 3. |
+| `axis` | `visual` · `structure` · `custom` | no | What the directions differ in. Default: `structure` when a design system is active, otherwise `visual`. `visual` with an active design system sets it aside for this exploration. |
+| `directionIds` | string[] | no | Specific directions, in order, from the axis's library (see below). Sets the count. |
+| `customDirections` | `{ label, brief }[]` | no | 2–4 directions for a user-named axis. Implies `axis: "custom"`. |
+| `designSystemId` | string | no | A design system id. When omitted, the active one is used. When given, it also becomes the active one. |
+
+Direction libraries:
+
+- **Visual** (from upstream Open Design): `modern-minimal`, `human-approachable`, `tech-utility`, `editorial-monocle`, `brutalist-experimental`. The default takes the first `count` in this order.
+- **Structure, pages:** `classic-hero-grid`, `story-led-scroll`, `product-ui-first`, `dense-utility`.
+- **Structure, decks:** `problem-solution`, `narrative-journey`, `data-led`, `demo-first`.
+
+**Result:** `{ explorationId, title, axis, designSystemId?, designSystemName?, designSystemSetAside?, comparePath, howToUse, sharedInstructions, directions: [{ directionId, label, suggestedEntryPath, suggestedKind, instructions }] }`. For each direction, follow `sharedInstructions` and then that direction's `instructions`, write the file at `suggestedEntryPath` (`<output>/<explorationId>/<directionId>.html`), and register it with `explorationId` and `directionId`. Directions are sketches: one screen, or a cover plus two slides for a deck.
+
+**Errors:** unknown `skillId`, `designSystemId` or direction id, `count` outside 2–4, repeated ids or labels, `axis: "custom"` without `customDirections`, and no open workspace.
+
+### compare_open_design_exploration
+
+Refreshes the exploration's comparison page and reports its state. Optionally renders a contact sheet with an [installed browser](../troubleshooting.md).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `explorationId` | string | yes | From `prepare_open_design_exploration`. |
+| `contactSheet` | boolean | no | Also render the comparison page to `<output>/<explorationId>/exports/contact-sheet.png`. Default false. |
+
+**Result:** `{ explorationId, title, comparePath, compareFile, registered, missing, chosen?, contactSheetPath?, contactSheetNote?, next }`. When no browser is found, `contactSheetNote` explains why and the rest of the result is unchanged.
+
+### choose_open_design_direction
+
+Records the user's choice (marked on the comparison page) and returns instructions for the next step. **It writes no design files.**
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `explorationId` | string | yes | The exploration. |
+| `directionId` | string | yes | The chosen direction. It must already be registered. |
+| `next` | `build-out` · `merge` · `save-design-system` | yes | `build-out`: the chosen sketch at full fidelity, at `<directionId>-full.html`. `merge`: the same, taking named aspects from other directions, at `merged.html`. `save-design-system`: instructions for a custom design system based on the direction. |
+| `notes` | string | no | The user's own adjustments, in their words. |
+| `mergeFrom` | `{ directionId, aspect }[]` | for `merge` | What to take from which other direction, e.g. `{ directionId: "editorial-monocle", aspect: "hero" }`. |
+
+**Result:** `{ explorationId, chosen, next, suggestedEntryPath, suggestedKind?, id?, comparePath, afterwards, instructions }`. `id` is the new design system's id for `save-design-system`.
+
+**Errors:** unknown exploration or direction, a direction that isn't registered yet, an unknown `next`, and `merge` without valid `mergeFrom`. On an error the plan is left unchanged.
 
 ## Design systems
 

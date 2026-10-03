@@ -171,7 +171,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | 'tim
   }
 }
 
-async function loadPage(page: Page, url: string, readyTimeoutMs: number, settleMs: number, warnings: string[]): Promise<void> {
+export async function loadPage(page: Page, url: string, readyTimeoutMs: number, settleMs: number, warnings: string[]): Promise<void> {
   const failed: string[] = [];
   page.on('requestfailed', (req) => failed.push(`${req.url()} (${req.failure()?.errorText ?? 'failed'})`));
   page.on('response', (res) => {

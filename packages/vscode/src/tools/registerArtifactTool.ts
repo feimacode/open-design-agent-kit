@@ -1,7 +1,8 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { registerArtifact, getWorkspaceRoot } from '../workspace/artifactWriter';
-import { exportsForKind } from '@feimacode/open-design-agent-kit-core';
+import { getOutputDirectory, getWorkspaceRoot, registerArtifact } from '../workspace/artifactWriter';
+import { exportsForKind, refreshExplorationCompare } from '@feimacode/open-design-agent-kit-core';
+import { COMPARE_PAGE_NOTE } from './explorationTools';
 
 interface RegisterArtifactInput {
   entryPath: string;
@@ -14,6 +15,8 @@ interface RegisterArtifactInput {
   collectionName?: string;
   screenIndex?: number;
   screenRole?: string;
+  explorationId?: string;
+  directionId?: string;
 }
 
 const KIND_TO_RENDERER: Record<string, string> = {
@@ -40,7 +43,8 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<RegisterArtifactInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole } = options.input;
+    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, explorationId, directionId } =
+      options.input;
 
     const renderer = KIND_TO_RENDERER[kind];
     const exportsList = exportsForKind(kind);
@@ -65,6 +69,8 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
           collectionName,
           screenIndex,
           screenRole,
+          explorationId,
+          directionId,
         },
       });
 
@@ -86,9 +92,17 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
         ? '\n\nIts preview has already been opened automatically in the Open Design Artifact Preview editor. Do not also open the file yourself (e.g. in Simple Browser or any other browser view, or via a file:// URL) — that is not how previews are shown in this extension and will be blocked.'
         : '';
 
+      let explorationNote = '';
+      if (explorationId) {
+        const compare = await refreshExplorationCompare(getWorkspaceRoot(), getOutputDirectory(), explorationId);
+        explorationNote = compare.ok
+          ? `\n\nExploration comparison page updated: ${compare.comparePath} (${compare.registered.length} of ${compare.plan.directions.length} directions registered${compare.missing.length > 0 ? `; still missing: ${compare.missing.join(', ')}` : '; all registered, so call compare_open_design_exploration next'}).${COMPARE_PAGE_NOTE}`
+          : `\n\nWarning: ${compare.warning}`;
+      }
+
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `Artifact registered at ${entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}${openNote}`,
+          `Artifact registered at ${entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}${openNote}${explorationNote}`,
         ),
       ]);
     } catch (err) {

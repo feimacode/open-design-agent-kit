@@ -16,6 +16,9 @@ export * from './generation/designSystemSource';
 export * from './generation/designSystemTokens';
 export * from './generation/designSystemVisualize';
 export * from './generation/designSystemImport';
+export * from './generation/explorationPlan';
+export * from './generation/explorationTools';
+export * from './generation/structuralDirections';
 export * from './generation/figmaPull';
 export * from './generation/githubImport';
 export * from './generation/hostOverrides';
@@ -26,11 +29,14 @@ export * from './generation/tokenExtraction';
 
 export * from './vendored/artifactManifest';
 export * from './vendored/artifactCreate';
+export * from './vendored/designDirections';
 
 export * from './workspace/activeDesignSystemStore';
 export * from './workspace/appDetection';
 export * from './workspace/artifactComments';
 export * from './workspace/collectionScan';
+export * from './workspace/explorationCompare';
+export * from './workspace/explorationStore';
 export * from './workspace/figmaCapture';
 export * from './workspace/remixExample';
 

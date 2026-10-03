@@ -1,5 +1,12 @@
 import * as path from 'node:path';
 import {
+  chooseDirection as chooseDirectionCore,
+  compareExploration as compareExplorationCore,
+  prepareExploration as prepareExplorationCore,
+  refreshExplorationCompare,
+  type ChooseDirectionInput,
+  type ExplorationToolContext,
+  type PrepareExplorationInput,
   composeCustomDesignSystemInstructions,
   composeDesignSystemTokensInstructions,
   composeInstructions,
@@ -226,6 +233,8 @@ export async function registerArtifact(
     collectionName?: string;
     screenIndex?: number;
     screenRole?: string;
+    explorationId?: string;
+    directionId?: string;
   },
 ): Promise<string> {
   const renderer = KIND_TO_RENDERER[input.kind];
@@ -250,10 +259,20 @@ export async function registerArtifact(
         collectionName: input.collectionName,
         screenIndex: input.screenIndex,
         screenRole: input.screenRole,
+        explorationId: input.explorationId,
+        directionId: input.directionId,
       },
     });
 
-    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}. This host has no live preview editor — there is nothing further to open.`;
+    let explorationNote = '';
+    if (input.explorationId) {
+      const compare = await refreshExplorationCompare(ctx.workspaceRoot, ctx.outputDir, input.explorationId);
+      explorationNote = compare.ok
+        ? `\n\nExploration comparison page updated: ${compare.comparePath} (${compare.registered.length} of ${compare.plan.directions.length} directions registered${compare.missing.length > 0 ? `; still missing: ${compare.missing.join(', ')}` : '; all registered, so call compare_open_design_exploration next'}).`
+        : `\n\nWarning: ${compare.warning}`;
+    }
+
+    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}. This host has no live preview editor — there is nothing further to open.${explorationNote}`;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return `Failed to register artifact: ${message}`;
@@ -433,4 +452,21 @@ export function listLocalPrompts(ctx: ToolContext): Promise<LocalPrompt[]> {
 export function buildLocalPromptMessage(prompt: LocalPrompt, brief: string | undefined): string {
   const briefText = brief?.trim() ? brief.trim() : `(none given yet — ask the user: "${prompt.placeholder}")`;
   return renderLocalPrompt(prompt, briefText);
+}
+
+function explorationContext(ctx: ToolContext, existingAppFrameworks?: string[]): ExplorationToolContext {
+  // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
+  return { contentIndex: ctx.contentIndex, store: ctx.store, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, existingAppFrameworks };
+}
+
+export async function prepareExploration(ctx: ToolContext, input: PrepareExplorationInput): Promise<string> {
+  return prepareExplorationCore(explorationContext(ctx, await detectExistingApp(ctx.workspaceRoot)), input);
+}
+
+export async function compareExploration(ctx: ToolContext, input: { explorationId: string; contactSheet?: boolean }): Promise<string> {
+  return compareExplorationCore(explorationContext(ctx), input);
+}
+
+export async function chooseDirection(ctx: ToolContext, input: ChooseDirectionInput): Promise<string> {
+  return chooseDirectionCore(explorationContext(ctx, await detectExistingApp(ctx.workspaceRoot)), input);
 }

@@ -1,6 +1,7 @@
 // New, minimal instruction composer for this project — NOT a port of
 // open-design's composeSystemPrompt(). See ../vendored/SOURCE.md for why.
-import type { CraftSection } from '../content/contentIndex';
+import type { CraftSection, SkillMode } from '../content/contentIndex';
+import type { PlannedDirection } from './explorationPlan';
 
 /**
  * Each design system's manifest.json carries its own `craft.suggested` list
@@ -30,6 +31,87 @@ export interface CollectionContext {
   siblingScreens: CollectionSiblingScreen[];
 }
 
+export interface ExplorationDirectionContext {
+  explorationId: string;
+  explorationTitle: string;
+  direction: PlannedDirection;
+  /** The other directions in this exploration, in plan order. */
+  siblings: Array<{ id: string; label: string }>;
+  index: number;
+  total: number;
+  /** `sketch` while exploring; `full` when building out the chosen direction. */
+  fidelity: 'sketch' | 'full';
+  skillMode: SkillMode;
+  /** True when an active design system was deliberately left out for a visual exploration. */
+  designSystemSetAside?: boolean;
+  /** Build-out only: the registered sketch to extend. */
+  startingPointPath?: string;
+}
+
+/** What "sketch" means for each kind of output. See design.md decision 4. */
+export function sketchFidelityText(mode: SkillMode): string {
+  if (mode === 'deck') {
+    return 'Produce a **cover slide plus two content slides** only, not the whole deck. Make them representative of how the rest would look.';
+  }
+  if (mode === 'prototype' || mode === 'template' || mode === 'other') {
+    return 'Produce **one screen**: what sits above the fold plus one key section below it, not the whole page. Make that one screen fully designed rather than a wireframe.';
+  }
+  return 'Produce **one representative view** of the output, not the full set.';
+}
+
+function bindingGuidance(direction: PlannedDirection): string {
+  if (direction.axis === 'visual') {
+    return "Bind this direction's `:root` palette and font stacks **verbatim**; do not improvise palette values. Honour its posture cues in layout, border, radius and accent choices.";
+  }
+  if (direction.axis === 'structure') {
+    return "Keep the active design system's tokens exactly (if any). This direction changes **structure only**: layout, order and density. Apply its cues literally.";
+  }
+  return 'Follow this direction literally; it is what makes this version different from the others.';
+}
+
+function explorationSection(ctx: ExplorationDirectionContext): string {
+  const { direction } = ctx;
+  const parts: string[] = [];
+  if (ctx.fidelity === 'sketch') {
+    parts.push(
+      `\n\n## Exploration — direction ${ctx.index} of ${ctx.total}: ${direction.label}\n\nThis is one of ${ctx.total} deliberately different directions for the same brief, in the exploration "${ctx.explorationTitle}". The user will compare them side by side and pick one, so **divergence matters more than polish**. ${bindingGuidance(direction)}\n\n${direction.spec.trim()}`,
+    );
+    if (ctx.siblings.length > 0) {
+      parts.push(
+        `\n\n### Differ from the other directions\n\nThe other directions in this exploration are:\n\n${ctx.siblings
+          .map((s) => `- ${s.label} (\`${s.id}\`)`)
+          .join('\n')}\n\nDo **not** resemble them. A person looking at all ${ctx.total} thumbnails side by side should see a different idea, not the same layout recoloured: vary the hero pattern, grid rhythm and type scale, not only the colours. Don't read their files.`,
+      );
+    }
+    parts.push(`\n\n### Fidelity: sketch\n\n${sketchFidelityText(ctx.skillMode)} Use real copy where the brief gives it, and honest labelled placeholders otherwise.`);
+  } else {
+    parts.push(
+      `\n\n## Build out the chosen direction: ${direction.label}\n\nThe user compared ${ctx.total} directions in the exploration "${ctx.explorationTitle}" and chose this one. Build it out at **full fidelity** (the complete page, deck or view the skill calls for). ${bindingGuidance(direction)}\n\n${direction.spec.trim()}`,
+    );
+    if (ctx.startingPointPath) {
+      parts.push(
+        `\n\n### Starting point\n\nRead the chosen sketch at \`${ctx.startingPointPath}\` with your own file tools and extend it, keeping its look, structure and copy. Leave the sketch file itself unchanged; write the full version to the output path below.`,
+      );
+    }
+  }
+  if (ctx.designSystemSetAside) {
+    parts.push('\n\n### Design system set aside\n\nThe workspace has an active design system, but this is a **visual** exploration, so it is deliberately not applied here. Use this direction\'s tokens instead.');
+  }
+  return parts.join('');
+}
+
+/** The direction-specific part of an exploration brief: direction spec, divergence, fidelity, and Output. */
+export function composeExplorationDirectionInstructions(ctx: ExplorationDirectionContext, suggestedEntryPath: string): string {
+  const registerIds =
+    ctx.fidelity === 'sketch'
+      ? `**explorationId \`${ctx.explorationId}\` and directionId \`${ctx.direction.id}\`** so it joins the exploration's comparison page`
+      : `**explorationId \`${ctx.explorationId}\` but no directionId** (this is the built-out version, not a sketch), so the comparison page links to it`;
+  return (
+    explorationSection(ctx) +
+    `\n\n## Output\n\nWrite the entry file at exactly \`${suggestedEntryPath}\` (don't rename it). Write any supporting files as siblings in that directory. After writing all files, call register_open_design_artifact with that entry path, a kind, a title, the supporting file paths (relative to the entry file's own directory), and ${registerIds}.`
+  );
+}
+
 export interface ComposeInstructionsInput {
   skillName: string;
   skillBody: string;
@@ -44,6 +126,14 @@ export interface ComposeInstructionsInput {
   collectionContext?: CollectionContext;
   /** Daemon-free replacement/notice for the skill's daemon-backed steps — see hostOverrides.ts. */
   hostOverride?: string;
+  /** Set for one direction of a design exploration — see explorationPlan.ts. */
+  explorationContext?: ExplorationDirectionContext;
+  /**
+   * Leave out the file-naming and Output sections. Used for an exploration's
+   * shared instructions, where each direction gets its own output section
+   * from composeExplorationDirectionInstructions().
+   */
+  omitOutput?: boolean;
 }
 
 export function composeInstructions(input: ComposeInstructionsInput): string {
@@ -91,6 +181,12 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
       `\n\n## Part of a design collection\n\nThis artifact is screen ${index} of ${total} in the design collection "${collectionName}" — this screen's role: **${role}**. The other screens in this collection so far:\n\n${siblingsText}\n\nKeep this screen visually and stylistically consistent with the others (same design system, same header/nav treatment, same component style) without re-reading their HTML — you already have their role and title above as context. Do not duplicate content that belongs on a different screen.`,
     );
   }
+
+  if (input.explorationContext) {
+    parts.push(composeExplorationDirectionInstructions(input.explorationContext, input.suggestedEntryPath));
+    return parts.join('');
+  }
+  if (input.omitOutput) return parts.join('');
 
   parts.push(
     `\n\n## Semantic output file names\n\nChoose a short semantic filename derived from the brief, product, or artifact type rather than always writing \`index.html\`. Good examples: \`coffee-shop-landing.html\`, \`investor-pitch-deck.html\`, \`refund-dashboard.html\`. Use \`index.html\` only when the skill's own convention requires a fixed entry name.`,

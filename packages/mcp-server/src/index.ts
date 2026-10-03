@@ -119,6 +119,91 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'prepare_open_design_exploration',
+      description:
+        "Use INSTEAD of prepare_open_design_brief when the user explicitly asks for options, directions, alternatives or several versions of a design. Assigns 2–4 deliberately different directions (visual styles when no design system is active, layout/narrative structures when one is, or labels you pass for a named axis), writes the exploration's plan, and returns sharedInstructions plus one short instructions block, entry path and directionId per direction. Directions are quick sketches; only the one the user picks is built out. Writes no design files: write each direction yourself (follow sharedInstructions + that direction's instructions), register it with explorationId and directionId, then call compare_open_design_exploration.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          skillId: { type: 'string', description: "A skill id from list_open_design_skills, in its full 'od:<mode>:<name>' form." },
+          brief: { type: 'string', description: "The user's design brief / request, in their own words." },
+          count: { type: 'integer', minimum: 2, maximum: 4, description: 'How many directions (2–4). Default 3.' },
+          axis: {
+            type: 'string',
+            enum: ['visual', 'structure', 'custom'],
+            description:
+              "What the directions differ in. Omit for the default: 'structure' when a design system is active (brand stays fixed), otherwise 'visual'. 'visual' with an active design system sets that system aside for this exploration. 'custom' needs customDirections.",
+          },
+          directionIds: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              "Optional: pick specific directions instead of the default order. Visual ids: modern-minimal, human-approachable, tech-utility, editorial-monocle (editorial/publishing briefs), brutalist-experimental (art, agency, manifesto). Structure ids for pages: classic-hero-grid, story-led-scroll, product-ui-first, dense-utility; for decks: problem-solution, narrative-journey, data-led, demo-first.",
+          },
+          customDirections: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { label: { type: 'string' }, brief: { type: 'string', description: 'What makes this direction different.' } },
+              required: ['label', 'brief'],
+            },
+            description: 'For a user-named axis (e.g. "three hero concepts"): 2–4 directions, each a distinct label and a one-paragraph brief.',
+          },
+          designSystemId: {
+            type: 'string',
+            description: 'Optional design system id. If omitted, the active one is used. If given, it also becomes the active one.',
+          },
+        },
+        required: ['skillId', 'brief'],
+      },
+    },
+    handler: (ctx, args) => tools.prepareExploration(ctx, args as unknown as Parameters<typeof tools.prepareExploration>[1]),
+  },
+  {
+    tool: {
+      name: 'compare_open_design_exploration',
+      description:
+        "Call after registering an exploration's directions. Refreshes and returns the path of its comparison page (compare.html: every direction side by side, opens in any browser from the file system), lists registered and missing directions, and with contactSheet: true renders a PNG of the comparison with the installed browser. If you can view images, check the contact sheet that the directions really differ before showing the user.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          explorationId: { type: 'string', description: 'The explorationId returned by prepare_open_design_exploration.' },
+          contactSheet: { type: 'boolean', description: 'Also render the comparison page to exports/contact-sheet.png. Default false.' },
+        },
+        required: ['explorationId'],
+      },
+    },
+    handler: (ctx, args) => tools.compareExploration(ctx, args as { explorationId: string; contactSheet?: boolean }),
+  },
+  {
+    tool: {
+      name: 'choose_open_design_direction',
+      description:
+        "Call when the user picks a direction from an exploration. Records the choice (marked on the comparison page) and returns instructions for the next step: 'build-out' builds the chosen sketch out at full fidelity, 'merge' does the same while taking named aspects from other directions (needs mergeFrom), and 'save-design-system' turns the direction into a reusable custom design system. Writes no design files.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          explorationId: { type: 'string', description: 'The exploration id.' },
+          directionId: { type: 'string', description: 'The chosen direction id. It must already be registered.' },
+          next: { type: 'string', enum: ['build-out', 'merge', 'save-design-system'], description: 'What to do with the chosen direction.' },
+          notes: { type: 'string', description: "Optional: the user's own adjustments, in their words." },
+          mergeFrom: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { directionId: { type: 'string' }, aspect: { type: 'string', description: 'What to take, e.g. "hero", "colour palette", "pricing table".' } },
+              required: ['directionId', 'aspect'],
+            },
+            description: "Required for 'merge': which aspects to take from which other directions.",
+          },
+        },
+        required: ['explorationId', 'directionId', 'next'],
+      },
+    },
+    handler: (ctx, args) => tools.chooseDirection(ctx, args as unknown as Parameters<typeof tools.chooseDirection>[1]),
+  },
+  {
+    tool: {
       name: 'register_open_design_artifact',
       description:
         "Call this AFTER you have written an artifact's entry file (and any supporting files) into the workspace with your normal file-editing tools. Validates the artifact and writes its manifest sidecar (<entry>.artifact.json) next to the entry file. Fails clearly if entryPath does not exist yet.",
@@ -143,6 +228,11 @@ const TOOL_DEFS: ToolDef[] = [
           collectionName: { type: 'string', description: 'The same collectionName passed to prepare_open_design_brief, if this screen is part of a design collection.' },
           screenIndex: { type: 'number', description: '0-based position of this screen within its collection (0 for the first screen, 1 for the second, ...).' },
           screenRole: { type: 'string', description: 'The same screenRole passed to prepare_open_design_brief, if this screen is part of a design collection.' },
+          explorationId: { type: 'string', description: 'The explorationId from prepare_open_design_exploration, if this artifact belongs to a design exploration. Updates its comparison page.' },
+          directionId: {
+            type: 'string',
+            description: "The direction's directionId, for an exploration sketch. Leave it out for a built-out or merged version registered against the exploration.",
+          },
         },
         required: ['entryPath', 'kind', 'title'],
       },
@@ -161,6 +251,8 @@ const TOOL_DEFS: ToolDef[] = [
           collectionName?: string;
           screenIndex?: number;
           screenRole?: string;
+          explorationId?: string;
+          directionId?: string;
         },
       ),
   },

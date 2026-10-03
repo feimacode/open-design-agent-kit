@@ -9,6 +9,7 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 > **From the CLI:** the scripted equivalent, where there is one.
 
 - [Generate a design](generate-a-design.md)
+- [Explore design directions](explore-directions.md)
 - [Design systems](design-systems.md)
 - [Remix and the gallery](remix-and-gallery.md)
 - [Community designs](community-designs.md)

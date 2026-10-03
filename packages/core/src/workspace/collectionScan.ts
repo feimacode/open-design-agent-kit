@@ -83,6 +83,15 @@ function sortScreens(screens: CollectionScreen[]): CollectionScreen[] {
   return [...screens].sort((a, b) => (a.screenIndex ?? Number.MAX_SAFE_INTEGER) - (b.screenIndex ?? Number.MAX_SAFE_INTEGER));
 }
 
+/** Every registered artifact under outputDir, with its parsed manifest. Shared by collection and exploration scans. */
+export async function scanArtifactManifests(workspaceRoot: string, outputDir: string): Promise<Array<{ entryPath: string; manifest: JsonRecord }>> {
+  const absOutputDir = path.join(workspaceRoot, outputDir);
+  if (!(await pathExists(absOutputDir))) return [];
+  const found: Array<{ entryPath: string; manifest: JsonRecord }> = [];
+  await walkArtifactSidecars(absOutputDir, workspaceRoot, found);
+  return found;
+}
+
 /** Screens already registered under the given collectionId, sorted by screenIndex. */
 export async function findCollectionArtifacts(workspaceRoot: string, outputDir: string, collectionId: string): Promise<CollectionScreen[]> {
   const absOutputDir = path.join(workspaceRoot, outputDir);

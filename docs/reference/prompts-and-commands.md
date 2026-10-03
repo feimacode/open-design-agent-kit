@@ -31,6 +31,7 @@ All of them are explicit-only. To see the current list, type `/od-` in the chat 
 | `/open-design-list-skills` | Browse the skill catalog. |
 | `/open-design-custom-design-system` | Invent a design system for your brand. |
 | `/open-design-social-post` | [Design a social media post](../guides/social-posts.md) for a platform and export ready-to-upload files. |
+| `/open-design-explore` | [Explore 2–4 design directions](../guides/explore-directions.md) side by side, then take one forward. |
 | `/od-<mode>-<id>` | The [curated entries](#curated-entries). |
 
 Copilot also receives Open Design's chat instructions on every request, so a plain request ("make me a pricing page") works without any command.
@@ -55,10 +56,11 @@ Copilot also receives Open Design's chat instructions on every request, so a pla
 | Open Design: Set Figma Access Token | `openDesign.setFigmaToken` | Store a Figma personal access token, encrypted. |
 | Open Design: Show Figma Import Plugin Folder | `openDesign.revealFigmaPlugin` | Reveal the bundled Figma import plugin for a one-time import into Figma desktop. |
 | Open Design: Refresh Collections | `openDesign.refreshCollections` | Rescan the Collections view. |
+| Open Design: Open Comparison in Browser | `openDesign.openExplorationComparison` | Open an [exploration's](../guides/explore-directions.md) comparison page in your browser (from the Collections view). |
 | Open Design: Sync Community Designs | `openDesign.syncCommunityContent` | Fetch the community catalog at [`openDesign.communityContentRef`](settings-and-env.md#opendesigncommunitycontentref). |
 | Open Design: Open Docs | `openDesign.openDocs` | Open this documentation in the browser. |
 
-The Open Design activity-bar icon has three views: **Gallery** (examples by category), **Design Systems** (every design system by category, with a [preview](../guides/design-systems.md#preview-a-design-system)) and **Collections** (multi-screen collections in the workspace).
+The Open Design activity-bar icon has three views: **Gallery** (examples by category), **Design Systems** (every design system by category, with a [preview](../guides/design-systems.md#preview-a-design-system)) and **Collections** (multi-screen collections and [explorations](../guides/explore-directions.md) in the workspace).
 
 For a guided tour, open **Welcome → Walkthroughs → Get started with Open Design** (five steps: first design, gallery, design system, social post, export).
 
@@ -70,11 +72,12 @@ Installed by the plugin (`/plugin install open-design`) or by [`init --tools cla
 |---|---|---|
 | `open-design` | picked up from any design request | yes |
 | `open-design-social-post` | `/open-design:open-design-social-post` (plugin) or `/open-design-social-post` (init) | yes, from social-post requests |
+| `open-design-explore` | `/open-design:open-design-explore` (plugin) or `/open-design-explore` (init) | yes, from requests for several options |
 | curated entries | see [Curated entries](#curated-entries) | no |
 
 The MCP server also offers **MCP prompts**. In Claude Code they appear as `/mcp__open-design__<name>`:
 
-- `open-design-social-post` takes an optional `brief` argument.
+- `open-design-social-post` and `open-design-explore` take an optional `brief` argument.
 - There's one prompt per remixable example, named `od-<mode>-<id>`, e.g. `od-deck-deck-guizang-editorial-example`. Selecting one prefills a remix request; nothing runs until you send it.
 
 ## Codex
@@ -85,6 +88,7 @@ Skills in `.agents/skills/` (from [`init --tools codex`](cli.md#init) or copied 
 |---|---|
 | `open-design` | yes |
 | `open-design-social-post` | yes |
+| `open-design-explore` | yes |
 | curated entries (`guizang-ppt`, `card-twitter`, …) | no: each has `agents/openai.yaml` with `policy.allow_implicit_invocation: false` |
 
 MCP prompts are the same as for Claude Code, if your Codex version surfaces them.

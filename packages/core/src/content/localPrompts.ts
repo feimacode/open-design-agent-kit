@@ -13,6 +13,8 @@ export interface LocalPrompt {
   name: string;
   description: string;
   argumentHint?: string;
+  /** When the model should reach for this prompt's skill on its own (appended to skill descriptions). */
+  modelTrigger?: string;
   placeholder: string;
   body: string;
 }
@@ -34,6 +36,7 @@ export async function loadLocalPrompts(assetsRoot: string): Promise<LocalPrompt[
       name: data.name,
       description: data.description,
       argumentHint: typeof data.argument_hint === 'string' ? data.argument_hint : undefined,
+      modelTrigger: typeof data.model_trigger === 'string' ? data.model_trigger : undefined,
       placeholder: typeof data.placeholder === 'string' ? data.placeholder : 'Describe what you want.',
       body: content.trim(),
     });

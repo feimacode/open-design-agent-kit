@@ -3,6 +3,8 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
   findCollectionArtifacts,
+  findExplorationArtifacts,
+  readExplorationPlan,
   injectScriptNonce,
   readArtifact,
   readArtifactComments,
@@ -83,22 +85,41 @@ interface CollectionNavInfo {
   nextEntryPath?: string;
 }
 
-/** Live-derived, never cached — mirrors this project's "always re-scan" posture for workspace-generated content (see collectionScan.ts). A screen can gain new siblings between opens in the same session. */
+/**
+ * Previous/next navigation between an artifact's siblings: the screens of a
+ * collection, or the directions of an exploration (plan order, registered
+ * sketches only). Live-derived, never cached — mirrors this project's
+ * "always re-scan" posture for workspace-generated content (see
+ * collectionScan.ts). A screen or direction can gain new siblings between
+ * opens in the same session.
+ */
 async function resolveCollectionNav(location: { workspaceRoot: string; entryPath: string } | undefined): Promise<CollectionNavInfo | undefined> {
   if (!location) return undefined;
   const artifact = await readArtifact({ workspaceRoot: location.workspaceRoot, entryPath: location.entryPath });
   const collectionId = artifact?.manifest?.collectionId;
-  if (typeof collectionId !== 'string' || !collectionId) return undefined;
-  const collectionName = typeof artifact?.manifest?.collectionName === 'string' ? artifact.manifest.collectionName : collectionId;
+  if (typeof collectionId === 'string' && collectionId) {
+    const collectionName = typeof artifact?.manifest?.collectionName === 'string' ? artifact.manifest.collectionName : collectionId;
+    const siblings = await findCollectionArtifacts(location.workspaceRoot, getOutputDirectory(), collectionId);
+    return navAmong(siblings.map((s) => s.entryPath), location.entryPath, (i, n) => `Screen ${i} of ${n} — ${collectionName}`);
+  }
 
-  const siblings = await findCollectionArtifacts(location.workspaceRoot, getOutputDirectory(), collectionId);
-  const index = siblings.findIndex((s) => s.entryPath === location.entryPath);
+  const explorationId = artifact?.manifest?.explorationId;
+  if (typeof explorationId === 'string' && explorationId && typeof artifact?.manifest?.directionId === 'string') {
+    const plan = await readExplorationPlan(location.workspaceRoot, getOutputDirectory(), explorationId);
+    const sketches = (await findExplorationArtifacts(location.workspaceRoot, getOutputDirectory(), explorationId, plan)).filter((a) => a.directionId);
+    const title = plan?.title ?? explorationId;
+    return navAmong(sketches.map((s) => s.entryPath), location.entryPath, (i, n) => `Direction ${i} of ${n} — ${title}`);
+  }
+  return undefined;
+}
+
+function navAmong(entryPaths: string[], current: string, label: (index: number, total: number) => string): CollectionNavInfo | undefined {
+  const index = entryPaths.indexOf(current);
   if (index === -1) return undefined;
-
   return {
-    label: `Screen ${index + 1} of ${siblings.length} — ${collectionName}`,
-    prevEntryPath: index > 0 ? siblings[index - 1].entryPath : undefined,
-    nextEntryPath: index < siblings.length - 1 ? siblings[index + 1].entryPath : undefined,
+    label: label(index + 1, entryPaths.length),
+    prevEntryPath: index > 0 ? entryPaths[index - 1] : undefined,
+    nextEntryPath: index < entryPaths.length - 1 ? entryPaths[index + 1] : undefined,
   };
 }
 
@@ -148,6 +169,26 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel.webview.postMessage({ type: 'source-updated', html: injectScriptNonce(document.getText(), panelNonce), collection });
       }
     });
+
+    // The navigation depends on sibling manifests, not this document: a
+    // preview opened when its screen/direction was the first one registered
+    // would otherwise keep showing "1 of 1" after the others are registered.
+    // Sidecars are written with plain fs (see collectionsTreeProvider.ts), so
+    // only a filesystem watcher sees them. Also refresh on becoming visible,
+    // in case a change landed while the watcher was not delivering events.
+    const sendNav = async () => {
+      webviewPanel.webview.postMessage({ type: 'nav-updated', collection: await resolveCollectionNav(location) });
+    };
+    const manifestWatcher = vscode.workspace.createFileSystemWatcher('**/*.artifact.json');
+    const navSubs = [
+      manifestWatcher,
+      manifestWatcher.onDidCreate(sendNav),
+      manifestWatcher.onDidChange(sendNav),
+      manifestWatcher.onDidDelete(sendNav),
+      webviewPanel.onDidChangeViewState((e) => {
+        if (e.webviewPanel.visible) void sendNav();
+      }),
+    ];
 
     const messageSub = webviewPanel.webview.onDidReceiveMessage(async (message) => {
       switch (message?.type) {
@@ -234,6 +275,7 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       this.log.debug(`ArtifactEditorProvider: closed ${document.uri.fsPath}`);
       changeSub.dispose();
       messageSub.dispose();
+      for (const sub of navSubs) sub.dispose();
     });
   }
 
