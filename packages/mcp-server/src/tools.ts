@@ -1,5 +1,11 @@
 import * as path from 'node:path';
 import {
+  findStaleSources,
+  formatSourceRegistration,
+  prepareSourceRegistration,
+  readSourceTool,
+  recordedSources,
+  resolveBriefSources,
   chooseDirection as chooseDirectionCore,
   compareExploration as compareExplorationCore,
   prepareExploration as prepareExplorationCore,
@@ -160,6 +166,7 @@ export async function prepareBrief(
     collectionName?: string;
     screenRole?: string;
     screenTotal?: number;
+    sources?: string[];
   },
 ): Promise<string> {
   const skill = await ctx.contentIndex.getSkill(input.skillId);
@@ -198,6 +205,16 @@ export async function prepareBrief(
     suggestedEntryPath = suggestEntryPath(ctx, input.brief, skill.name);
   }
 
+  const sources = await resolveBriefSources({
+    workspaceRoot: ctx.workspaceRoot,
+    outputDir: ctx.outputDir,
+    sourcePaths: input.sources,
+    skillId: skill.id,
+    skillMode: skill.mode,
+    suggestedEntryPath,
+  });
+  if (!sources.ok) return sources.error;
+
   const instructions = composeInstructions({
     skillName: skill.name,
     skillBody: skill.body,
@@ -209,6 +226,7 @@ export async function prepareBrief(
     existingAppFrameworks,
     collectionContext,
     hostOverride: hostOverrideFor(skill.id, skill.body),
+    sourceContext: sources.context,
   });
 
   const payload = {
@@ -217,6 +235,8 @@ export async function prepareBrief(
     suggestedKind: 'html',
     designSystemId: designSystem ? designSystemId : undefined,
     designSystemName: designSystem?.name,
+    outlinePath: sources.context?.outlinePath,
+    sources: sources.context?.sources.map((s) => ({ path: s.path, markdownPath: s.markdownPath, kind: s.kind })),
   };
   return JSON.stringify(payload, null, 2);
 }
@@ -236,6 +256,7 @@ export async function registerArtifact(
     screenRole?: string;
     explorationId?: string;
     directionId?: string;
+    sources?: string[];
   },
 ): Promise<string> {
   const renderer = KIND_TO_RENDERER[input.kind];
@@ -245,6 +266,9 @@ export async function registerArtifact(
   }
 
   try {
+    const sourceRegistration = input.sources?.length
+      ? await prepareSourceRegistration({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: input.entryPath, sourcePaths: input.sources })
+      : undefined;
     const manifest = await writeArtifactManifest({
       workspaceRoot: ctx.workspaceRoot,
       entryPath: input.entryPath,
@@ -262,8 +286,10 @@ export async function registerArtifact(
         screenRole: input.screenRole,
         explorationId: input.explorationId,
         directionId: input.directionId,
+        sources: sourceRegistration?.sources.length ? sourceRegistration.sources : undefined,
       },
     });
+    const sourceNote = sourceRegistration ? `\n\n${formatSourceRegistration(sourceRegistration)}` : '';
 
     let explorationNote = '';
     if (input.explorationId) {
@@ -273,7 +299,7 @@ export async function registerArtifact(
         : `\n\nWarning: ${compare.warning}`;
     }
 
-    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}. This host has no live preview editor — there is nothing further to open.${explorationNote}`;
+    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}. This host has no live preview editor — there is nothing further to open.${explorationNote}${sourceNote}`;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return `Failed to register artifact: ${message}`;
@@ -287,11 +313,13 @@ export async function getArtifact(ctx: ToolContext, input: { entryPath: string }
   }
   const comments = await readArtifactComments(ctx.workspaceRoot, input.entryPath);
   const openComments = comments.filter((c) => c.status === 'open');
+  const recorded = recordedSources(result.manifest);
   const payload = {
     manifest: result.manifest,
     supportingFiles: result.supportingFiles,
     entryContent: result.entryContent,
     openComments,
+    staleSources: recorded.length > 0 ? await findStaleSources(ctx.workspaceRoot, ctx.outputDir, recorded) : undefined,
   };
   return JSON.stringify(payload, null, 2);
 }
@@ -487,4 +515,8 @@ export async function compareExploration(ctx: ToolContext, input: { explorationI
 
 export async function chooseDirection(ctx: ToolContext, input: ChooseDirectionInput): Promise<string> {
   return chooseDirectionCore(explorationContext(ctx, await detectExistingApp(ctx.workspaceRoot)), input);
+}
+
+export async function readSource(ctx: ToolContext, input: { path: string }): Promise<string> {
+  return readSourceTool(ctx, input);
 }

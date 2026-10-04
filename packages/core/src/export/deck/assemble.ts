@@ -8,6 +8,8 @@ import * as PptxGenJSModule from 'pptxgenjs';
 export interface SlideImage {
   buffer: Buffer;
   jpeg: boolean;
+  /** Speaker notes for this slide, written as PowerPoint notes. */
+  notes?: string;
 }
 
 type PptxInstance = InstanceType<typeof import('pptxgenjs').default>;
@@ -57,6 +59,7 @@ export async function assemblePptx(images: SlideImage[], opts: { title?: string;
       w: '100%',
       h: '100%',
     });
+    if (img.notes) slide.addNotes(img.notes);
   }
   const out = await pptx.write({ outputType: 'nodebuffer' });
   return Buffer.isBuffer(out) ? out : Buffer.from(out as ArrayBuffer);

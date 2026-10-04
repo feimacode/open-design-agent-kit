@@ -2,6 +2,7 @@
 // open-design's composeSystemPrompt(). See ../vendored/SOURCE.md for why.
 import type { CraftSection, SkillMode } from '../content/contentIndex';
 import type { PlannedDirection } from './explorationPlan';
+import { composeSourceMaterialSection, composeSourceWorkflowSection, type SourceContext } from './sourceInstructions';
 
 /**
  * Each design system's manifest.json carries its own `craft.suggested` list
@@ -134,6 +135,8 @@ export interface ComposeInstructionsInput {
    * from composeExplorationDirectionInstructions().
    */
   omitOutput?: boolean;
+  /** Set when generating from source documents — see sourceInstructions.ts. */
+  sourceContext?: SourceContext;
 }
 
 export function composeInstructions(input: ComposeInstructionsInput): string {
@@ -144,6 +147,10 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
   );
 
   parts.push(`\n\n## User's brief\n\n${input.brief.trim()}`);
+
+  if (input.sourceContext && input.sourceContext.sources.length > 0) {
+    parts.push(`\n\n${composeSourceMaterialSection(input.sourceContext)}`);
+  }
 
   if (input.designSystemBody && input.designSystemBody.trim().length > 0) {
     parts.push(
@@ -180,6 +187,10 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
     parts.push(
       `\n\n## Part of a design collection\n\nThis artifact is screen ${index} of ${total} in the design collection "${collectionName}" — this screen's role: **${role}**. The other screens in this collection so far:\n\n${siblingsText}\n\nKeep this screen visually and stylistically consistent with the others (same design system, same header/nav treatment, same component style) without re-reading their HTML — you already have their role and title above as context. Do not duplicate content that belongs on a different screen.`,
     );
+  }
+
+  if (input.sourceContext && input.sourceContext.sources.length > 0) {
+    parts.push(`\n\n${composeSourceWorkflowSection(input.sourceContext)}`);
   }
 
   if (input.explorationContext) {

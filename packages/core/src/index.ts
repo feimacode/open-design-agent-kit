@@ -28,11 +28,15 @@ export * from './generation/hostOverrides';
 export * from './generation/portToAppInstructions';
 export * from './generation/publishCanvaTemplateInstructions';
 export * from './generation/shareToCommunityInstructions';
+export * from './generation/sourceBrief';
+export * from './generation/sourceInstructions';
+export * from './generation/sourceNumberCheck';
 export * from './generation/tokenExtraction';
 
 export * from './vendored/artifactManifest';
 export * from './vendored/artifactCreate';
 export * from './vendored/designDirections';
+export * from './vendored/documentExtract';
 
 export * from './workspace/activeDesignSystemStore';
 export * from './workspace/appDetection';
@@ -43,6 +47,7 @@ export * from './workspace/explorationStore';
 export * from './workspace/shareRecords';
 export * from './workspace/figmaCapture';
 export * from './workspace/remixExample';
+export * from './workspace/sourceStore';
 
 export * from './export/browserDiscovery';
 export * from './export/exportArtifact';

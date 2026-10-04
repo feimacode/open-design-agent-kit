@@ -11,6 +11,7 @@ Two rules apply to every tool:
 |---|---|---|---|
 | [`list_open_design_skills`](#list_open_design_skills) | `#od-skills` | yes | Browse skills, templates and remixable examples |
 | [`list_open_design_design_systems`](#list_open_design_design_systems) | `#od-design-systems` | yes | Browse brand design systems |
+| [`read_open_design_source`](#read_open_design_source) | `#od-read-source` | yes | Turn a document into Markdown source material |
 | [`prepare_open_design_brief`](#prepare_open_design_brief) | `#od-prepare-brief` | yes | Compose instructions for a new design |
 | [`prepare_open_design_exploration`](#prepare_open_design_exploration) | `#od-explore` | yes | Plan 2–4 different directions to compare |
 | [`compare_open_design_exploration`](#compare_open_design_exploration) | `#od-compare-exploration` | yes | Comparison page and contact sheet for an exploration |
@@ -60,6 +61,26 @@ Lists the brand design systems (~150 bundled, plus any custom ones in the worksp
 
 ## Generating
 
+### read_open_design_source
+
+Turns a workspace document into source material for a design: Markdown under `<output>/sources/<slug>/source.md`, its embedded images under `assets/`, and a `source.json` record. Returns the **outline**, not the text: the agent then reads `source.md` by line range. Re-reading an unchanged file reuses the extraction (matched by SHA-256). See [Turn a document into a deck](../guides/deck-from-a-document.md).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `path` | string | yes | Workspace-relative path of the document. |
+
+| Format | Extracted as |
+|---|---|
+| `.docx` | Headings (including custom heading styles), lists, tables and paragraphs in order |
+| `.pptx` | One section per slide in presentation order, with its title, text, tables and speaker notes |
+| `.xlsx` | One table per sheet, up to 200 rows each |
+| `.pdf` | One section per page, via `pdftotext` (poppler) when it's installed |
+| `.md`, `.markdown`, `.mdx`, `.txt`, `.csv` | As they are |
+
+**Result:** `{ path, kind, cached, markdownPath, lines, chars, sections: [{ heading, level, lines, chars }], assets, warnings?, pdfNote?, next }`. Without `pdftotext`, a PDF returns no text and a `pdfNote` telling the agent to read the PDF with its own tools.
+
+**Errors:** a path outside the workspace (symlinks included) or inside `<output>/sources/`, a missing file, an unsupported or legacy format (`.doc`, `.ppt`, `.xls`: save as the newer format), more than 50 MB, or XML with entity declarations.
+
 ### prepare_open_design_brief
 
 Composes the instructions for a new design. It combines the skill's workflow, the design system's tokens, the universal craft rules and the user's brief, plus any [host override](../guides/youtube-video.md#how-it-works) for skills that assume Open Design's desktop daemon. **It writes nothing.**
@@ -73,10 +94,11 @@ Composes the instructions for a new design. It combines the skill's workflow, th
 | `collectionName` | string | no | Display name of the collection. Required with `collectionId`. |
 | `screenRole` | string | no | This screen's role, e.g. `splash`, `checkout`. Required with `collectionId`. |
 | `screenTotal` | number | no | Planned number of screens, for "screen N of M" framing. |
+| `sources` | string[] (1–10) | no | Workspace paths of documents to [build from](../guides/deck-from-a-document.md). Each is extracted with [`read_open_design_source`](#read_open_design_source), and the instructions add the material, an outline-first workflow (write `outline.md`, get approval, then build) and accuracy rules. |
 
-**Result:** `{ instructions, suggestedEntryPath, suggestedKind, designSystemId?, designSystemName? }`.
+**Result:** `{ instructions, suggestedEntryPath, suggestedKind, designSystemId?, designSystemName?, outlinePath?, sources? }`. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given.
 
-**Errors:** unknown `skillId` or `designSystemId` (the message lists some valid ids), and `screenRole` missing with `collectionId`.
+**Errors:** unknown `skillId` or `designSystemId` (the message lists some valid ids), `screenRole` missing with `collectionId`, and a source that can't be read (the message names it).
 
 ### register_open_design_artifact
 
@@ -96,8 +118,11 @@ Call after the entry file (and any supporting files) is written. Validates the a
 | `screenRole` | string | no | Same as passed to `prepare_open_design_brief`. |
 | `explorationId` | string | no | The [exploration](#exploring-directions) this artifact belongs to. Registering refreshes its comparison page. |
 | `directionId` | string | no | The direction this sketch is. Leave it out for a built-out or merged version registered against the exploration. |
+| `sources` | string[] | no | The same source paths passed to `prepare_open_design_brief`. Each source's hash is recorded in the manifest. |
 
 **Result:** the written manifest. See [Artifact manifest](artifact-manifest.md). With `explorationId`, the result also reports the comparison page's path and which directions are still missing. If the exploration has no plan, the artifact is still registered and the result carries a warning.
+
+With `sources`, the result also runs a **number check** on HTML entries: it lists numbers in the page's visible text (speaker notes included) that appear in none of the sources, each with surrounding text, up to 50. Integers 0–12 and years 1900–2100 are ignored, and grouping doesn't matter (`1,200` matches `1200`). It's a prompt to verify, never an error. A source that can't be read is reported and left out.
 
 ### get_open_design_artifact
 
@@ -107,7 +132,7 @@ Reads an artifact back.
 |---|---|---|---|
 | `entryPath` | string | yes | Workspace-relative path to the entry file. |
 
-**Result:** `{ manifest, supportingFiles, entryContent, openComments }`. `openComments` holds comments left in the VS Code preview that haven't been resolved; the agent should address them. See [Preview, comment and edit](../guides/preview-comments-edit.md).
+**Result:** `{ manifest, supportingFiles, entryContent, openComments, staleSources? }`. `openComments` holds comments left in the VS Code preview that haven't been resolved; the agent should address them. See [Preview, comment and edit](../guides/preview-comments-edit.md). `staleSources` is present when the manifest records sources: each `{ path, reason }` where the source has `changed` since registration or is `missing`.
 
 ### remix_open_design_example
 

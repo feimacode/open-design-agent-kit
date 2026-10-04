@@ -6,12 +6,13 @@
 import type { Page } from 'puppeteer-core';
 import { exportsForKind } from '../exportFormats';
 import type { SlideImage } from './assemble';
-import { countRealSlides, measureSlide, pinDeckStage, prepareDeckStage, restackActiveSlide, showSlide } from './pageScripts';
+import { countRealSlides, measureSlide, pinDeckStage, prepareDeckStage, readSlideNotes, restackActiveSlide, showSlide } from './pageScripts';
 import {
   DECK_STAGE_SELECTOR,
   DEFAULT_SLIDE_H,
   DEFAULT_SLIDE_W,
   HIDE_CHROME_SELECTOR,
+  NOTES_SELECTOR,
   PRESENTER_CLONE_SELECTOR,
   SLIDE_MAX_PX,
   SLIDE_MIN_PX,
@@ -174,6 +175,8 @@ export async function captureDeckSlides(page: Page, options: CaptureDeckOptions)
   await page.setViewport({ width: stage.w, height: stage.h, deviceScaleFactor: options.scale });
   await page.evaluate(pinDeckStage, stage.w, stage.h, DECK_STAGE_SELECTOR);
 
+  // Notes are read once, before slides are shown and re-stacked; hidden elements still have their text.
+  const notes: string[] = await page.evaluate(readSlideNotes, SLIDE_SELECTOR, PRESENTER_CLONE_SELECTOR, NOTES_SELECTOR).catch(() => []);
   const numbers = options.slides ?? Array.from({ length: options.slideCount }, (_, i) => i + 1);
   const captured: CapturedSlide[] = [];
   let warnedMoveFallback = false;
@@ -198,7 +201,7 @@ export async function captureDeckSlides(page: Page, options: CaptureDeckOptions)
     if (looksBlank(encoded.buffer, stage.w * options.scale, stage.h * options.scale, jpeg)) {
       warnings.push(`Slide ${number} looks blank (a single flat color) — the deck may reveal slides in a way this export doesn't recognize.`);
     }
-    captured.push({ number, buffer: encoded.buffer, jpeg, quality: encoded.quality, overBudget: encoded.overBudget });
+    captured.push({ number, buffer: encoded.buffer, jpeg, quality: encoded.quality, overBudget: encoded.overBudget, notes: notes[index] || undefined });
   }
   return { slides: captured, stage, warnings };
 }

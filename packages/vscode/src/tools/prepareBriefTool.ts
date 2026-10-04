@@ -4,6 +4,7 @@ import {
   composeInstructions,
   findCollectionArtifacts,
   hostOverrideFor,
+  resolveBriefSources,
   resolveActiveDesignSystem,
   selectCraftSections,
   suggestCollectionScreenEntryPath,
@@ -20,6 +21,7 @@ interface PrepareBriefInput {
   collectionName?: string;
   screenRole?: string;
   screenTotal?: number;
+  sources?: string[];
 }
 
 export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefInput> {
@@ -28,7 +30,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<PrepareBriefInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal } = options.input;
+    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, sources: sourcePaths } = options.input;
 
     const skill = await this.contentIndex.getSkill(skillId);
     if (!skill) {
@@ -98,6 +100,16 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       suggestedEntryPath = suggestEntryPath(brief, skill.name);
     }
 
+    const sources = await resolveBriefSources({
+      workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+      outputDir: getOutputDirectory(),
+      sourcePaths,
+      skillId: skill.id,
+      skillMode: skill.mode,
+      suggestedEntryPath,
+    });
+    if (!sources.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(sources.error)]);
+
     const instructions = composeInstructions({
       skillName: skill.name,
       skillBody: skill.body,
@@ -109,6 +121,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       existingAppFrameworks,
       collectionContext,
       hostOverride: hostOverrideFor(skill.id, skill.body),
+      sourceContext: sources.context,
     });
 
     const payload = {
@@ -117,6 +130,8 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       suggestedKind: 'html',
       designSystemId: designSystem ? designSystemId : undefined,
       designSystemName: designSystem?.name,
+      outlinePath: sources.context?.outlinePath,
+      sources: sources.context?.sources.map((s) => ({ path: s.path, markdownPath: s.markdownPath, kind: s.kind })),
     };
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(JSON.stringify(payload, null, 2))]);

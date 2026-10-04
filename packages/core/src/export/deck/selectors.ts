@@ -11,6 +11,8 @@ export const PRESENTER_CLONE_SELECTOR = '.mini-slide, .overview, .notes-overlay,
 // Divergence: + `.nav-hint`, the keyboard-hint bar several vendored
 // html-ppt-zhangzara decks place outside their slides.
 export const HIDE_CHROME_SELECTOR = '.progress-bar, .notes-overlay, aside.notes, .speaker-notes, .deck-nav, .deck-hint, .deck-counter, .nav-hint';
+// Speaker notes carried into PPTX: exactly the presenter-notes elements hidden above.
+export const NOTES_SELECTOR = 'aside.notes, .speaker-notes';
 export const DECK_STAGE_SELECTOR = 'deck-stage, #deck-stage, .deck-stage';
 
 /** Default stage when the authored slide box can't be measured. */

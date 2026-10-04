@@ -54,7 +54,7 @@ describe('deck page scripts', () => {
     const mod = { exports: {} as Record<string, unknown> };
     new Function('module', 'exports', out.outputFiles[0].text)(mod, mod.exports);
     const fns = Object.entries(mod.exports).filter(([, v]) => typeof v === 'function');
-    assert.strictEqual(fns.length, 7);
+    assert.strictEqual(fns.length, 8);
     for (const [name, fn] of fns) assert.deepStrictEqual(freeIdentifiers((fn as () => void).toString()), [], name);
   });
 

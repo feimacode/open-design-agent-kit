@@ -77,6 +77,21 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'read_open_design_source',
+      description:
+        "Converts a workspace document (DOCX, PPTX, XLSX, PDF, Markdown, text or CSV) into Markdown under the output directory's sources/ folder, extracts its embedded images, and returns an outline (headings with line ranges and sizes), never the full text. Read the returned markdownPath yourself, by line range, for the sections you need. Cached by content hash. Use it to look into a source before deciding how to use it; prepare_open_design_brief with `sources` calls it for you. PDFs need `pdftotext` (poppler); without it the result says to read the PDF with your own tools.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Workspace-relative path of the document, e.g. "docs/q3-report.docx" or "CHANGELOG.md".' },
+        },
+        required: ['path'],
+      },
+    },
+    handler: (ctx, args) => tools.readSource(ctx, args as { path: string }),
+  },
+  {
+    tool: {
       name: 'prepare_open_design_brief',
       description:
         "Composes generation instructions for an Open Design artifact by combining the chosen skill's workflow, an optional design system's visual tokens, universal craft rules, and the user's brief. Returns an 'instructions' string you must follow, plus a 'suggestedEntryPath'. Does NOT write any files — after calling it, author the entry file (and any supporting files) yourself with your normal file-editing tools, then call register_open_design_artifact.",
@@ -107,6 +122,13 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'number',
             description: 'Optional: the total number of screens you\'ve planned for this collection, for an accurate "screen N of M" framing.',
           },
+          sources: {
+            type: 'array',
+            items: { type: 'string' },
+            maxItems: 10,
+            description:
+              "Workspace paths of documents to build the design from (1–10): reports, specs, spreadsheets, existing decks, or repository files such as CHANGELOG.md or docs/adr/*.md. When given, the instructions add the extracted material, a storyline-first workflow (write outline.md, get the user's approval, then build) and accuracy rules.",
+          },
         },
         required: ['skillId', 'brief'],
       },
@@ -114,7 +136,16 @@ const TOOL_DEFS: ToolDef[] = [
     handler: (ctx, args) =>
       tools.prepareBrief(
         ctx,
-        args as { skillId: string; designSystemId?: string; brief: string; collectionId?: string; collectionName?: string; screenRole?: string; screenTotal?: number },
+        args as {
+          skillId: string;
+          designSystemId?: string;
+          brief: string;
+          collectionId?: string;
+          collectionName?: string;
+          screenRole?: string;
+          screenTotal?: number;
+          sources?: string[];
+        },
       ),
   },
   {
@@ -233,6 +264,12 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'string',
             description: "The direction's directionId, for an exploration sketch. Leave it out for a built-out or merged version registered against the exploration.",
           },
+          sources: {
+            type: 'array',
+            items: { type: 'string' },
+            maxItems: 10,
+            description: "The same source document paths passed to prepare_open_design_brief. Records each source's hash in the manifest and, for HTML, reports numbers on the page that appear in none of the sources so you can check them.",
+          },
         },
         required: ['entryPath', 'kind', 'title'],
       },
@@ -253,6 +290,7 @@ const TOOL_DEFS: ToolDef[] = [
           screenRole?: string;
           explorationId?: string;
           directionId?: string;
+          sources?: string[];
         },
       ),
   },

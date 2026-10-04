@@ -14,6 +14,7 @@ import { ShareToCommunityTool } from './shareToCommunityTool';
 import { PublishCanvaTemplateTool } from './publishCanvaTemplateTool';
 import { PullFigmaFrameTool } from './pullFigmaFrameTool';
 import { ExportArtifactTool } from './exportArtifactTool';
+import { ReadSourceTool } from './readSourceTool';
 import { PublishArtifactTool } from './publishArtifactTool';
 import { ChooseDirectionTool, CompareExplorationTool, PrepareExplorationTool } from './explorationTools';
 import { LoggingTool } from './loggingTool';
@@ -28,6 +29,7 @@ export function registerTools(
   const registrations: Array<[string, vscode.LanguageModelTool<any>]> = [
     ['list_open_design_skills', new ListSkillsTool(contentIndex)],
     ['list_open_design_design_systems', new ListDesignSystemsTool(contentIndex)],
+    ['read_open_design_source', new ReadSourceTool()],
     ['prepare_open_design_brief', new PrepareBriefTool(contentIndex)],
     ['prepare_open_design_exploration', new PrepareExplorationTool(contentIndex)],
     ['compare_open_design_exploration', new CompareExplorationTool(contentIndex)],

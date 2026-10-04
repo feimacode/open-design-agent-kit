@@ -8,6 +8,7 @@ An **artifact** is a design written into your workspace: an entry file (usually 
 .open-design/                               ← openDesign.outputDirectory / OPEN_DESIGN_OUTPUT_DIR
 ├── config.json                             ← active design system (MCP hosts only)
 ├── design-systems/<slug>/DESIGN.md         ← custom design systems (ids "user:<slug>")
+├── sources/<slug>/                         ← read_open_design_source: source.md, source.json, assets/
 └── pitch/
     ├── pitch.html                          ← entry file, written by the agent
     ├── pitch.html.artifact.json            ← manifest, written by register_open_design_artifact
@@ -46,6 +47,7 @@ Sidecars are named after the entry file (`<entry>.artifact.json`, and so on), so
 | `sourceSkillId` | string | The skill used, e.g. `od:prototype:card-twitter`. Export uses it for sizing and deck detection. |
 | `designSystemId` | string | The design system used. |
 | `collectionId`, `collectionName`, `screenRole`, `screenIndex` | string / number | Collection membership. See [Collections](../guides/generate-a-design.md#collections). |
+| `sources` | `{ path, sha256 }[]` | The documents the design was [built from](../guides/deck-from-a-document.md), with their hashes at registration, so [`get_open_design_artifact`](tools.md#get_open_design_artifact) can report sources that changed since. At most 10. |
 | `explorationId`, `directionId` | string | Exploration membership: a sketch carries both; a built-out or merged version carries only `explorationId`. See [Explore design directions](../guides/explore-directions.md). |
 | `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports` and `metadata.shares` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
 

@@ -172,6 +172,34 @@ describe('mcp-server tools', () => {
     assert.match(result, /Warning: No exploration plan/);
   });
 
+  it('builds from sources: read → prepare with sources → register with a number check → stale detection', async () => {
+    const ctx = await makeContext();
+    await fs.writeFile(path.join(ctx.workspaceRoot, 'CHANGELOG.md'), '# v2.0\n\n- 14 new features\n- 230 bugs fixed\n');
+
+    const read = JSON.parse(await tools.readSource(ctx, { path: 'CHANGELOG.md' }));
+    assert.deepStrictEqual(read.sections.map((s: { heading: string }) => s.heading), ['v2.0']);
+    assert.strictEqual(read.markdownPath, '.open-design/sources/changelog-md/source.md');
+
+    const prepared = JSON.parse(await tools.prepareBrief(ctx, { skillId: 'od:prototype:landing-page', brief: 'Release page', sources: ['CHANGELOG.md'] }));
+    assert.match(prepared.instructions, /## Source material/);
+    assert.match(prepared.instructions, /## Storyline first/);
+    assert.strictEqual(prepared.outlinePath, '.open-design/release-page/outline.md');
+    assert.match(await tools.prepareBrief(ctx, { skillId: 'od:prototype:landing-page', brief: 'x', sources: ['nope.docx'] }), /Couldn't read source "nope\.docx"/);
+
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design', 'release-page'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, prepared.suggestedEntryPath), '<h1>14 features, 230 fixes, 99.9% uptime</h1>');
+    const registered = await tools.registerArtifact(ctx, { entryPath: prepared.suggestedEntryPath, kind: 'html', title: 'Release', sources: ['CHANGELOG.md'] });
+    assert.match(registered, /Sources recorded: CHANGELOG\.md/);
+    assert.match(registered, /- 99\.9% — /);
+    assert.match(registered, /"sha256": "[0-9a-f]{64}"/);
+
+    assert.deepStrictEqual(JSON.parse(await tools.getArtifact(ctx, { entryPath: prepared.suggestedEntryPath })).staleSources, []);
+    await fs.writeFile(path.join(ctx.workspaceRoot, 'CHANGELOG.md'), '# v2.1\n');
+    assert.deepStrictEqual(JSON.parse(await tools.getArtifact(ctx, { entryPath: prepared.suggestedEntryPath })).staleSources, [
+      { path: 'CHANGELOG.md', reason: 'changed' },
+    ]);
+  });
+
   it('getArtifact returns not-found for a missing entry', async () => {
     const ctx = await makeContext();
     const raw = await tools.getArtifact(ctx, { entryPath: 'nope.html' });

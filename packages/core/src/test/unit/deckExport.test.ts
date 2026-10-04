@@ -120,6 +120,29 @@ describe('deck export with a real browser (skipped when none is installed)', fun
     assert.ok(Math.abs(Number(cx) / Number(cy) - 16 / 9) < 0.01, `slide size ${cx}x${cy} is not 16:9`);
   });
 
+  it('carries each slide\'s speaker notes into the PPTX without showing them on the slide', async () => {
+    // A black notes box over the slide's top-left corner: if it leaked into the capture, that pixel would be black.
+    const notes = '<aside class="notes" style="position:absolute;top:0;left:0;width:600px;height:400px;background:#000">Source: Q3 report §2<p>Churn rose in EMEA.</p></aside>';
+    const html = classToggled.replace('<h1>Slide 2</h1>', `${notes}<h1>Slide 2</h1>`);
+    const root = await workspace(html, {});
+    const result = await exportArtifact({ workspaceRoot: root, entryPath, browserPath, format: 'pptx', settleMs: 0, scale: 1 });
+    assert.ok(result.ok, JSON.stringify(result));
+    const zip = await JSZip.loadAsync(await fs.readFile(path.join(root, result.files[0].path)));
+    const notesXml = await Promise.all(
+      Object.keys(zip.files)
+        .filter((n) => /^ppt\/notesSlides\/notesSlide\d+\.xml$/.test(n))
+        .map(async (n) => [n, await zip.file(n)!.async('string')] as const),
+    );
+    const withText = notesXml.filter(([, xml]) => xml.includes('Churn rose in EMEA.'));
+    assert.strictEqual(withText.length, 1, 'exactly one slide carries the notes');
+    assert.ok(withText[0][1].includes('Source: Q3 report §2'));
+    assert.ok(notesXml.every(([, xml]) => xml === withText[0][1] || !/Source: Q3/.test(xml)));
+
+    const png = await exportArtifact({ workspaceRoot: root, entryPath, browserPath, format: 'png', slides: [2], settleMs: 0 });
+    assert.ok(png.ok, JSON.stringify(png));
+    assert.ok(near(await pixel(await fs.readFile(path.join(root, png.files[0].path)), 5, 5), RGB[1]), 'notes must not appear on the slide');
+  });
+
   it('exports each slide with its own content (class-toggled), numbered by slide', async () => {
     const root = await workspace(classToggled, {});
     const result = await exportArtifact({ workspaceRoot: root, entryPath, browserPath, format: 'png', slides: [1, 3], settleMs: 0 });

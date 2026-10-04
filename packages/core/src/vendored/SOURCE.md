@@ -19,6 +19,21 @@ The webview client (`../../webview/`) is **adapted, not ported verbatim**, from 
 - **The "comments → chat" mechanism is not adapted, it's identical in spirit**: upstream never applies a comment through a special engine either — it serializes selected comments into the next chat message as a scoped instruction block, and the agent edits the file normally. `artifactEditorProvider.ts`'s `formatCommentsForChat()` reproduces that exact idea for `workbench.action.chat.open`.
 - **Gallery/Remix** (`src/core/workspace/remixExample.ts`, `remixOrchestrator.ts`) reproduce upstream's actual Remix *effect* (copy an example's rendered HTML + assets into a new file, tell the agent to treat it as an existing file to modify) without any of upstream's project-database/multi-user machinery — confirmed unnecessary by tracing the real implementation (`apps/daemon/src/plugins/duplicate-project.ts`).
 
+## Document extraction, added 2026-10-04 — see `openspec/changes/add-deck-from-source/design.md`
+
+**`documentExtract.ts`** is adapted from `apps/daemon/src/document-preview.ts` at upstream commit `1b47e60bd466` (Apache-2.0). Upstream builds a flat text preview of uploaded Office files and PDFs; this turns a document into structured Markdown, as source material for a deck.
+
+- **Kept from upstream:** JSZip loading, the per-XML-entry size limit (5 MB), rejection of XML with `DOCTYPE`/`ENTITY` declarations, shared-string and workbook/relationship parsing, `numericPathSort`, `decodeXml` (extended with numeric character references) and the `pdftotext -layout` call.
+- **Extended:**
+  - DOCX: block order with tables (`w:tbl` → Markdown table); headings from the paragraph's `w:outlineLvl`, or its style resolved through `word/styles.xml` (style name such as "Heading 2" or a custom "Org Heading 2", else the style's or a `basedOn` ancestor's outline level); list items from `w:numPr` on the paragraph or its style; table-of-contents paragraphs skipped. Runs are concatenated as-is; upstream trimmed and space-joined them, which split words.
+  - PPTX: slide order from `ppt/presentation.xml` `p:sldIdLst` through its relationships (upstream used file-name order), titles from `title`/`ctrTitle` placeholders (else the first text box's first line, up to 100 characters), body paragraphs as list items, `a:tbl` tables, and each slide's notes (`notesSlide` body placeholder) as a `> Notes:` block.
+  - XLSX: one Markdown table per sheet with cells placed by their column reference (upstream dropped empty cells, misaligning columns), capped at 200 rows with a warning.
+  - PDF: one `## Page N` section per form-feed-separated page, a 20 s timeout (upstream 5 s), and a `pdfNote` telling the agent what to do when `pdftotext` is missing or finds no text.
+  - Embedded images from `word/media/`, `ppt/media/`, `xl/media/` (common web types, at most 10 MB each).
+  - Markdown, text and CSV pass-through; legacy `.doc/.ppt/.xls` rejected with a "save as" message.
+  - Limits raised for real documents: 50 MB input (upstream 10 MB) and 200 MB uncompressed (upstream 50 MB).
+- **Dropped:** the HTTP error class and the PDF concurrency limiter (no server here).
+
 ## Design directions, added 2026-10-03 — see `openspec/changes/add-explorations/design.md`
 
 **`designDirections.ts`** is vendored from `apps/daemon/src/prompts/directions.ts` at upstream commit `1b47e60bd466` (Apache-2.0). Upstream distilled the five schools from [`alchaincyf/huashu-design`](https://github.com/alchaincyf/huashu-design) (MIT, © alchaincyf / 花叔); upstream re-expressed them rather than copying, and this file copies upstream's expression. Keep both attributions if you redistribute it.
@@ -32,6 +47,10 @@ This is vendored code, not content: the content drift check does not cover it, s
 ## Design explorations manifest fields, added 2026-10-03
 
 `artifactManifest.ts` gained two more optional fields, `explorationId` and `directionId`, validated exactly like the collection fields below (bounded-length optional strings). The same additive divergence from upstream; an exploration is a set of artifacts sharing an `explorationId`, plus a plan file (`workspace/explorationStore.ts`).
+
+## Source documents manifest field, added 2026-10-04
+
+`artifactManifest.ts` gained an optional `sources` field: at most 10 `{ path, sha256 }` entries (path ≤ 260 characters, sha256 as 64 lowercase hex characters), recording the documents a design was generated from (`workspace/sourceStore.ts`). The same kind of additive divergence as the fields below.
 
 ## Design collections, added 2026-09-23
 

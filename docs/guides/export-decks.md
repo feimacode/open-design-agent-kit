@@ -28,7 +28,7 @@ The agent calls [`export_open_design_artifact`](../reference/tools.md#export_ope
 
 | Format | You get |
 |---|---|
-| `pptx` | `exports/<name>.pptx`: one full-bleed image per slide. It looks exactly like the HTML, but the text isn't editable in PowerPoint. 16:9 decks use PowerPoint's 16:9 layout; other shapes get a matching custom size. |
+| `pptx` | `exports/<name>.pptx`: one full-bleed image per slide. It looks exactly like the HTML, but the text isn't editable in PowerPoint. Each slide's speaker notes (`aside.notes` or `.speaker-notes` in the HTML) become its PowerPoint notes. 16:9 decks use PowerPoint's 16:9 layout; other shapes get a matching custom size. |
 | `pdf` | `exports/<name>.pdf`: one page per slide, in the deck's own shape. |
 | `png` / `jpeg` with `slides` | `exports/<name>-NN.png`: one image per chosen slide, numbered by slide. |
 

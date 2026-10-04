@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { getOutputDirectory, getWorkspaceRoot, registerArtifact } from '../workspace/artifactWriter';
-import { exportsForKind, refreshExplorationCompare } from '@feimacode/open-design-agent-kit-core';
+import { exportsForKind, formatSourceRegistration, prepareSourceRegistration, refreshExplorationCompare } from '@feimacode/open-design-agent-kit-core';
 import { COMPARE_PAGE_NOTE } from './explorationTools';
 
 interface RegisterArtifactInput {
@@ -17,6 +17,7 @@ interface RegisterArtifactInput {
   screenRole?: string;
   explorationId?: string;
   directionId?: string;
+  sources?: string[];
 }
 
 const KIND_TO_RENDERER: Record<string, string> = {
@@ -43,7 +44,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<RegisterArtifactInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, explorationId, directionId } =
+    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, explorationId, directionId, sources } =
       options.input;
 
     const renderer = KIND_TO_RENDERER[kind];
@@ -55,6 +56,9 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
     }
 
     try {
+      const sourceRegistration = sources?.length
+        ? await prepareSourceRegistration({ workspaceRoot: getWorkspaceRoot(), outputDir: getOutputDirectory(), entryPath, sourcePaths: sources })
+        : undefined;
       const manifest = await registerArtifact({
         entryPath,
         artifactManifest: {
@@ -71,8 +75,10 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
           screenRole,
           explorationId,
           directionId,
+          sources: sourceRegistration?.sources.length ? sourceRegistration.sources : undefined,
         },
       });
+      const sourceNote = sourceRegistration ? `\n\n${formatSourceRegistration(sourceRegistration)}` : '';
 
       const isHtml = entryPath.toLowerCase().endsWith('.html');
       if (isHtml) {
@@ -102,7 +108,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `Artifact registered at ${entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}${openNote}${explorationNote}`,
+          `Artifact registered at ${entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}${openNote}${explorationNote}${sourceNote}`,
         ),
       ]);
     } catch (err) {

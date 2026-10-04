@@ -259,3 +259,29 @@ export function showAllSlides(slideSelector: string, cloneSelector: string): num
   }
   return slides.length;
 }
+
+/**
+ * Speaker notes per slide (not from upstream): the text of each slide's
+ * presenter-notes elements — the same `aside.notes` / `.speaker-notes` that
+ * HIDE_CHROME_SELECTOR hides from the capture — one paragraph per line,
+ * capped at 10,000 characters. Read from the DOM even while hidden.
+ */
+export function readSlideNotes(slideSelector: string, cloneSelector: string, notesSelector: string): string[] {
+  const slides = Array.prototype.slice.call(document.querySelectorAll(slideSelector)).filter((el: any) => !el.closest(cloneSelector));
+  return slides.map((slide: any) => {
+    const parts: string[] = [];
+    for (const note of Array.prototype.slice.call(slide.querySelectorAll(notesSelector))) {
+      const clone = note.cloneNode(true);
+      for (const block of Array.prototype.slice.call(clone.querySelectorAll('p, li, div, br, h1, h2, h3, h4, h5, h6'))) {
+        block.after(document.createTextNode('\n'));
+      }
+      const text = String(clone.textContent || '')
+        .split('\n')
+        .map((line: string) => line.replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .join('\n');
+      if (text) parts.push(text);
+    }
+    return parts.join('\n').slice(0, 10000);
+  });
+}

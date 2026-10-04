@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { getArtifact, getWorkspaceRoot } from '../workspace/artifactWriter';
-import { readArtifactComments } from '@feimacode/open-design-agent-kit-core';
+import { getArtifact, getOutputDirectory, getWorkspaceRoot } from '../workspace/artifactWriter';
+import { findStaleSources, readArtifactComments, recordedSources } from '@feimacode/open-design-agent-kit-core';
 
 interface GetArtifactInput {
   entryPath: string;
@@ -19,11 +19,13 @@ export class GetArtifactTool implements vscode.LanguageModelTool<GetArtifactInpu
     }
     const comments = await readArtifactComments(getWorkspaceRoot(), entryPath);
     const openComments = comments.filter((c) => c.status === 'open');
+    const recorded = recordedSources(result.manifest);
     const payload = {
       manifest: result.manifest,
       supportingFiles: result.supportingFiles,
       entryContent: result.entryContent,
       openComments,
+      staleSources: recorded.length > 0 ? await findStaleSources(getWorkspaceRoot(), getOutputDirectory(), recorded) : undefined,
     };
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(JSON.stringify(payload, null, 2))]);
   }
