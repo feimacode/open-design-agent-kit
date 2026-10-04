@@ -28,7 +28,7 @@ Optionally name a design system ("…using our Acme design system") to align the
 VS Code only.
 
 1. **One-time setup:** run **Open Design: Show Figma Import Plugin Folder**. In Figma desktop, choose **Plugins → Development → Import plugin from manifest…** and pick the `manifest.json` it revealed. This installs the bundled "OD Figma Import" plugin.
-2. Open the artifact in the [preview](preview-comments-edit.md) and click **Push to Figma**. The page's layers are captured into `<entry>.od-figma.json`.
+2. Open the artifact in the [preview](preview-comments-edit.md) and choose **Export → Figma** in the toolbar. The page's layers are captured into `<entry>.od-figma.json`.
 3. Choose **Copy JSON**, then in Figma run **OD Figma Import** and paste the JSON. It rebuilds the page as editable frames, text, images, fills, strokes, corner radii and shadows.
 
 You can't drag an `.od-figma.json` straight into Figma. Figma only opens its own file formats, which is why the plugin is needed.

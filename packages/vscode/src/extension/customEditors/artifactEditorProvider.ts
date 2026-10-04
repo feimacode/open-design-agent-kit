@@ -86,7 +86,10 @@ function formatCommentsForChat(comments: ArtifactComment[]): string {
 }
 
 interface CollectionNavInfo {
-  label: string;
+  kind: 'Screen' | 'Direction';
+  index: number;
+  total: number;
+  title: string;
   prevEntryPath?: string;
   nextEntryPath?: string;
 }
@@ -106,7 +109,7 @@ async function resolveCollectionNav(location: { workspaceRoot: string; entryPath
   if (typeof collectionId === 'string' && collectionId) {
     const collectionName = typeof artifact?.manifest?.collectionName === 'string' ? artifact.manifest.collectionName : collectionId;
     const siblings = await findCollectionArtifacts(location.workspaceRoot, getOutputDirectory(), collectionId);
-    return navAmong(siblings.map((s) => s.entryPath), location.entryPath, (i, n) => `Screen ${i} of ${n} — ${collectionName}`);
+    return navAmong(siblings.map((s) => s.entryPath), location.entryPath, 'Screen', collectionName);
   }
 
   const explorationId = artifact?.manifest?.explorationId;
@@ -114,16 +117,19 @@ async function resolveCollectionNav(location: { workspaceRoot: string; entryPath
     const plan = await readExplorationPlan(location.workspaceRoot, getOutputDirectory(), explorationId);
     const sketches = (await findExplorationArtifacts(location.workspaceRoot, getOutputDirectory(), explorationId, plan)).filter((a) => a.directionId);
     const title = plan?.title ?? explorationId;
-    return navAmong(sketches.map((s) => s.entryPath), location.entryPath, (i, n) => `Direction ${i} of ${n} — ${title}`);
+    return navAmong(sketches.map((s) => s.entryPath), location.entryPath, 'Direction', title);
   }
   return undefined;
 }
 
-function navAmong(entryPaths: string[], current: string, label: (index: number, total: number) => string): CollectionNavInfo | undefined {
+function navAmong(entryPaths: string[], current: string, kind: CollectionNavInfo['kind'], title: string): CollectionNavInfo | undefined {
   const index = entryPaths.indexOf(current);
   if (index === -1) return undefined;
   return {
-    label: label(index + 1, entryPaths.length),
+    kind,
+    index: index + 1,
+    total: entryPaths.length,
+    title,
     prevEntryPath: index > 0 ? entryPaths[index - 1] : undefined,
     nextEntryPath: index < entryPaths.length - 1 ? entryPaths[index + 1] : undefined,
   };
@@ -433,14 +439,52 @@ ${OD_TOKENS_CSS}
      A hairline bottom border is kept here since, unlike open-design's own
      multi-panel app shell, this webview has no other visual seam separating
      it from VS Code's chrome above it. */
-  .od-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 14px; min-height: 44px; background: var(--od-bg); border-bottom: 1px solid var(--od-border-soft); }
-  .od-mode-btn { }
-  .od-toolbar-spacer { flex: 1; }
-  .od-collection-nav { display: flex; align-items: center; gap: 6px; margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--od-border-soft); }
-  .od-collection-nav[hidden] { display: none; }
-  .od-collection-nav .od-btn { padding: 0 8px; }
-  .od-collection-nav .od-btn:disabled { opacity: 0.35; cursor: default; }
-  .od-collection-label { font-size: 11px; color: var(--od-text-muted); white-space: nowrap; }
+  /* Grouped left to right: mode (segmented) · sibling pager · contextual
+     primary (send comments) · output actions (promote, export menu, share
+     split). Everything is flex: none except the sibling title, which
+     ellipsizes first; then labels collapse to icons via container queries
+     instead of wrapping. Every collapsed control keeps its
+     title/aria-label. */
+  .od-toolbar {
+    container-type: inline-size;
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px; min-height: 44px;
+    background: var(--od-bg); border-bottom: 1px solid var(--od-border-soft); white-space: nowrap; overflow: hidden;
+  }
+  .od-toolbar [hidden] { display: none !important; }
+  .od-toolbar .od-btn { height: 28px; padding: 0 10px; font-size: 12px; flex: none; }
+  .od-toolbar .od-btn-primary { padding: 0 12px; }
+  .od-toolbar > .od-toolbar-spacer { flex: 1; min-width: 0; }
+  .od-toolbar > * { flex: none; }
+  .od-toolbar-actions { display: flex; align-items: center; gap: 6px; }
+
+  .od-pager {
+    display: flex; align-items: center; gap: 2px;
+    padding-left: 8px; border-left: 1px solid var(--od-border-soft);
+  }
+  .od-pager-pos { font-size: 12px; color: var(--od-text-strong); font-variant-numeric: tabular-nums; padding: 0 2px; }
+  .od-pager-kind { color: var(--od-text-muted); }
+  .od-toolbar > .od-pager-title {
+    flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    font-size: 12px; font-weight: 500; color: var(--od-text-muted);
+  }
+
+  @container (max-width: 880px) {
+    .od-toolbar-actions .od-label, #od-send-comments .od-label { display: none; }
+    .od-toolbar-actions .od-btn:not(.od-split-toggle) { padding: 0 8px; }
+  }
+  @container (max-width: 700px) {
+    .od-seg-btn .od-label { display: none; }
+    .od-seg-btn { padding: 0 8px; }
+  }
+  @container (max-width: 640px) {
+    .od-toolbar > .od-pager-title, .od-pager-kind { display: none; }
+  }
+  @container (max-width: 480px) {
+    .od-toolbar { gap: 4px; padding: 8px; }
+    .od-toolbar-actions { gap: 4px; }
+    .od-seg-btn { padding: 0 6px; }
+    #od-export .od-icon:last-child { display: none; }
+  }
   .od-stage { position: relative; flex: 1; min-height: 0; }
   .od-preview { width: 100%; height: 100%; border: none; background: white; }
   .od-pins { position: fixed; inset: 0; pointer-events: none; }

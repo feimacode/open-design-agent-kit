@@ -57,7 +57,7 @@ Six of the ~280 bundled skills and templates, rendered exactly as-is:
 - **Figma, both directions.** Paste a Figma frame link and `#od-pull-figma-frame` rebuilds it as code. Going the other way, the preview's Figma button exports any artifact as editable Figma layers through the bundled import plugin.
 - **A live artifact preview** that opens automatically for generated HTML, with three modes:
 
-  **Comment**: hover to highlight, then click an element to pin a note. "Send comments to chat" hands the notes you select to Copilot as a scoped edit request. Comments are saved as a plain, git-trackable `<entry>.html.comments.json` sidecar.
+  **Comment**: hover to highlight, then click an element to pin a note. The toolbar's **Send** button hands the notes you select to Copilot as a scoped edit request. Comments are saved as a plain, git-trackable `<entry>.html.comments.json` sidecar.
 
   <img src="https://raw.githubusercontent.com/feimacode/open-design-agent-kit/main/docs/screenshots/vscode/comment-mode.png" alt="Open Design Artifact Preview in Comment mode — a pinned note on the trend chart, and an in-progress comment on the '1,842' KPI with alignment guides" width="100%"/>
 
@@ -67,7 +67,7 @@ Six of the ~280 bundled skills and templates, rendered exactly as-is:
 
   **View**: just the rendered page.
 - **Your own design systems** beyond the bundled 152. Invent one from a brief (`create_open_design_design_system`, optionally seeded from a reference URL), or import an existing one from a file, pasted content, or a GitHub repo with **Open Design: Import Design System**. Import doesn't use a model, and the original source is always kept.
-- **From prototype to production.** When you're happy with an artifact, `port_open_design_artifact_to_app` (or the "Promote to App Code" button in the preview toolbar) ports it into your real app as idiomatic production code, modeled on an existing component you point to or one it finds itself. It runs once rather than syncing, and it leaves routing and navigation for you to wire up.
+- **From prototype to production.** When you're happy with an artifact, `port_open_design_artifact_to_app` (or the "Promote to code" button in the preview toolbar) ports it into your real app as idiomatic production code, modeled on an existing component you point to or one it finds itself. It runs once rather than syncing, and it leaves routing and navigation for you to wire up.
 - **Social posts, ready to upload.** `/open-design-social-post` asks where you're posting (X, Instagram, LinkedIn, Xiaohongshu, Stories/Reels, a YouTube thumbnail or video), picks the right size and skill, and exports PNG/JPEG files into the artifact's `exports/` folder with `export_open_design_artifact` (`#od-export`). Carousels come out as one image per card, and files over the platform's size limit are re-encoded as JPEG. YouTube videos render to MP4 with the HyperFrames CLI.
 - **Decks to PowerPoint and PDF.** Ask Copilot to "export this deck as PowerPoint" (or PDF) and `export_open_design_artifact` writes a `.pptx` with one full-bleed image per slide (pixel-perfect, not editable text) or a one-page-per-slide `.pdf`. Ordinary pages export to a vector PDF with selectable text.
 - **Grounded in your codebase.** When the workspace looks like a React, Vue, Next.js, Nuxt, Svelte, Angular, Astro, or Solid project, the instructions have the model look at a few of your real components first, so prototypes look like they belong in your app.

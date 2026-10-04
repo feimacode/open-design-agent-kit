@@ -18,7 +18,7 @@ When a prototype is right, turn it into real code in your app: idiomatic compone
    - `targetComponentPath`: where the new code goes. A path is suggested if you don't give one.
 3. The agent writes the new component with its own tools. It rebuilds the design in your app's styling system rather than copying the prototype's CSS.
 
-> **In VS Code:** the **Promote to App Code** button in the [preview](preview-comments-edit.md) toolbar prefills this request.
+> **In VS Code:** the **Promote to code** button in the [preview](preview-comments-edit.md) toolbar prefills this request.
 
 ## What you get
 

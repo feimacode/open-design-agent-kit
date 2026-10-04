@@ -2,6 +2,8 @@ import { ensureDataOdId, cssSelectorFor, htmlHintFor } from './dom/elementTarget
 import { applyPatch, serializeDocument, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
 import { computePinPosition, type ArtifactComment } from './dom/commentOverlay';
 import { captureFigmaIr } from './dom/figmaCapture';
+import { icon } from './dom/icons';
+import { attachMenu } from './dom/menuButton';
 
 declare function acquireVsCodeApi(): {
   postMessage(message: unknown): void;
@@ -15,22 +17,28 @@ const vscode = acquireVsCodeApi();
 
 const root = document.getElementById('root')!;
 root.innerHTML = `
-  <div class="od-toolbar">
-    <button data-mode="view" class="od-tab active">View</button>
-    <button data-mode="comment" class="od-tab">Comment</button>
-    <button data-mode="edit" class="od-tab">Edit</button>
-    <span id="od-collection-nav" class="od-collection-nav" hidden>
-      <button id="od-collection-prev" class="od-btn" title="Previous">◀</button>
-      <span id="od-collection-label" class="od-collection-label"></span>
-      <button id="od-collection-next" class="od-btn" title="Next">▶</button>
-    </span>
+  <div class="od-toolbar" role="toolbar" aria-label="Artifact">
+    <div class="od-segmented" role="radiogroup" aria-label="Mode">
+      <button data-mode="view" class="od-seg-btn active" role="radio" aria-checked="true" title="View">${icon('eye')}<span class="od-label">View</span></button>
+      <button data-mode="comment" class="od-seg-btn" role="radio" aria-checked="false" tabindex="-1" title="Comment on elements">${icon('comment')}<span class="od-label">Comment</span></button>
+      <button data-mode="edit" class="od-seg-btn" role="radio" aria-checked="false" tabindex="-1" title="Edit elements">${icon('pencil')}<span class="od-label">Edit</span></button>
+    </div>
+    <div id="od-collection-nav" class="od-pager" hidden>
+      <button id="od-collection-prev" class="od-icon-btn" aria-label="Previous">${icon('chevronLeft')}</button>
+      <span class="od-pager-pos"><span id="od-collection-kind" class="od-pager-kind"></span> <span id="od-collection-index"></span></span>
+      <button id="od-collection-next" class="od-icon-btn" aria-label="Next">${icon('chevronRight')}</button>
+    </div>
+    <span id="od-collection-title" class="od-pager-title" hidden></span>
     <span class="od-toolbar-spacer"></span>
-    <button id="od-promote-to-app" class="od-btn" title="Port this artifact into the app's real code">Promote to App Code</button>
-    <button id="od-push-to-figma" class="od-btn" title="Export this artifact as an editable Figma layer capture">Push to Figma</button>
-    <button id="od-share" class="od-btn" title="Download a standalone HTML file, or publish a link to share">Share</button>
-    <button id="od-share-to-community" class="od-btn" title="Package this artifact as a new community design and open a PR to awesome-open-design">Share to Community</button>
-    <button id="od-publish-to-canva" class="od-btn" title="Export this artifact and prepare it for import into Canva">Publish to Canva</button>
-    <button id="od-send-comments" class="od-btn od-btn-primary" hidden>Send comments to chat</button>
+    <button id="od-send-comments" class="od-btn od-btn-primary" title="Send open comments to chat" hidden>${icon('send')}<span class="od-label">Send</span><span id="od-send-count" class="od-count"></span></button>
+    <div class="od-toolbar-actions">
+      <button id="od-promote-to-app" class="od-btn" title="Promote to App Code: port this artifact into the app's real code">${icon('code')}<span class="od-label">Promote to code</span></button>
+      <button id="od-export" class="od-btn" title="Export to a design tool">${icon('export')}<span class="od-label">Export</span>${icon('chevronDown', 14)}</button>
+      <div class="od-split">
+        <button id="od-share" class="od-btn od-split-main" title="Share: download a standalone HTML file, or publish a link">${icon('share')}<span class="od-label">Share</span></button>
+        <button id="od-share-more" class="od-btn od-split-toggle" title="More ways to share" aria-label="More ways to share">${icon('chevronDown', 14)}</button>
+      </div>
+    </div>
   </div>
   <div class="od-stage">
     <iframe id="od-preview" class="od-preview" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-pointer-lock allow-modals"></iframe>
@@ -43,13 +51,15 @@ const iframe = document.getElementById('od-preview') as HTMLIFrameElement;
 const pinsLayer = document.getElementById('od-pins')!;
 const panel = document.getElementById('od-panel')!;
 const sendCommentsBtn = document.getElementById('od-send-comments') as HTMLButtonElement;
+const sendCommentsCount = document.getElementById('od-send-count')!;
 const promoteToAppBtn = document.getElementById('od-promote-to-app') as HTMLButtonElement;
-const pushToFigmaBtn = document.getElementById('od-push-to-figma') as HTMLButtonElement;
+const exportBtn = document.getElementById('od-export') as HTMLButtonElement;
 const shareBtn = document.getElementById('od-share') as HTMLButtonElement;
-const shareToCommunityBtn = document.getElementById('od-share-to-community') as HTMLButtonElement;
-const publishToCanvaBtn = document.getElementById('od-publish-to-canva') as HTMLButtonElement;
-const collectionNav = document.getElementById('od-collection-nav') as HTMLSpanElement;
-const collectionLabel = document.getElementById('od-collection-label') as HTMLSpanElement;
+const shareMoreBtn = document.getElementById('od-share-more') as HTMLButtonElement;
+const collectionNav = document.getElementById('od-collection-nav') as HTMLDivElement;
+const collectionKind = document.getElementById('od-collection-kind')!;
+const collectionIndex = document.getElementById('od-collection-index')!;
+const collectionTitle = document.getElementById('od-collection-title')!;
 const collectionPrevBtn = document.getElementById('od-collection-prev') as HTMLButtonElement;
 const collectionNextBtn = document.getElementById('od-collection-next') as HTMLButtonElement;
 
@@ -70,8 +80,13 @@ let selectedElement: Element | null = null;
 
 function setMode(next: Mode): void {
   mode = next;
-  document.querySelectorAll('.od-tab').forEach((btn) => btn.classList.toggle('active', (btn as HTMLElement).dataset.mode === next));
-  sendCommentsBtn.hidden = next !== 'comment';
+  modeButtons.forEach((btn) => {
+    const active = btn.dataset.mode === next;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-checked', String(active));
+    btn.tabIndex = active ? 0 : -1;
+  });
+  updateSendComments();
   panel.hidden = true;
   selectedElement = null;
   hoverElement = null;
@@ -79,9 +94,28 @@ function setMode(next: Mode): void {
   renderOverlays();
 }
 
-document.querySelectorAll<HTMLButtonElement>('.od-tab').forEach((btn) => {
+const modeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.od-seg-btn[data-mode]'));
+modeButtons.forEach((btn, i) => {
   btn.addEventListener('click', () => setMode(btn.dataset.mode as Mode));
+  // Radio-group keyboard model: arrows move (and select) within the group.
+  btn.addEventListener('keydown', (event) => {
+    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (!step) return;
+    event.preventDefault();
+    const nextBtn = modeButtons[(i + step + modeButtons.length) % modeButtons.length];
+    setMode(nextBtn.dataset.mode as Mode);
+    nextBtn.focus();
+  });
 });
+
+// Shown only in comment mode, and only enabled while there is something to
+// send; the count makes the pending batch visible without opening pins.
+function updateSendComments(): void {
+  const open = comments.filter((c) => c.status === 'open').length;
+  sendCommentsBtn.hidden = mode !== 'comment';
+  sendCommentsBtn.disabled = open === 0;
+  sendCommentsCount.textContent = open ? String(open) : '';
+}
 
 function setIframeContent(html: string): void {
   iframe.srcdoc = html;
@@ -444,6 +478,7 @@ function commitPatch(patch: ManualEditPatch): void {
 
 function persistComments(): void {
   vscode.postMessage({ type: 'comments-changed', comments });
+  updateSendComments();
 }
 
 // Rect of `el` in the HOST document's coordinate space — the iframe's own
@@ -541,38 +576,53 @@ promoteToAppBtn.addEventListener('click', () => {
   vscode.postMessage({ type: 'promote-to-app-code' });
 });
 
-pushToFigmaBtn.addEventListener('click', () => {
+function pushToFigma(): void {
   const iframeDoc = iframe.contentDocument;
   if (!iframeDoc) return;
   const { capture, truncated } = captureFigmaIr(iframeDoc, { title: iframeDoc.title || 'Artifact' });
   vscode.postMessage({ type: 'figma-capture', capture, truncated });
-});
+}
+
+// New export targets go in this menu rather than as more toolbar buttons.
+attachMenu(exportBtn, [
+  {
+    heading: 'Export to',
+    items: [
+      { id: 'figma', label: 'Figma', description: 'Editable layer capture', icon: 'layers', onSelect: pushToFigma },
+      { id: 'canva', label: 'Canva', description: 'Export and prepare for import', icon: 'image', onSelect: () => vscode.postMessage({ type: 'publish-to-canva' }) },
+    ],
+  },
+]);
 
 shareBtn.addEventListener('click', () => {
   vscode.postMessage({ type: 'share' });
 });
 
-shareToCommunityBtn.addEventListener('click', () => {
-  vscode.postMessage({ type: 'share-to-community' });
-});
-
-publishToCanvaBtn.addEventListener('click', () => {
-  vscode.postMessage({ type: 'publish-to-canva' });
-});
+attachMenu(shareMoreBtn, [
+  {
+    items: [
+      { id: 'share', label: 'Link or file…', description: 'Publish a link or download standalone HTML', icon: 'link', onSelect: () => vscode.postMessage({ type: 'share' }) },
+      { id: 'community', label: 'Share to Community…', description: 'Open a PR to awesome-open-design', icon: 'users', onSelect: () => vscode.postMessage({ type: 'share-to-community' }) },
+    ],
+  },
+]);
 
 interface CollectionNavInfo {
-  label: string;
+  kind: string;
+  index: number;
+  total: number;
+  title: string;
   prevEntryPath?: string;
   nextEntryPath?: string;
 }
 
 function applyCollectionInfo(collection: CollectionNavInfo | undefined): void {
-  if (!collection) {
-    collectionNav.hidden = true;
-    return;
-  }
-  collectionNav.hidden = false;
-  collectionLabel.textContent = collection.label;
+  collectionNav.hidden = collectionTitle.hidden = !collection;
+  if (!collection) return;
+  collectionKind.textContent = collection.kind;
+  collectionIndex.textContent = `${collection.index} / ${collection.total}`;
+  collectionTitle.textContent = collection.title;
+  collectionNav.title = collectionTitle.title = `${collection.kind} ${collection.index} of ${collection.total} — ${collection.title}`;
   collectionPrevBtn.disabled = !collection.prevEntryPath;
   collectionNextBtn.disabled = !collection.nextEntryPath;
 }
@@ -590,6 +640,7 @@ window.addEventListener('message', (event) => {
   switch (message?.type) {
     case 'init':
       comments = message.comments ?? [];
+      updateSendComments();
       applyCollectionInfo(message.collection);
       setIframeContent(message.html);
       break;

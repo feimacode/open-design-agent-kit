@@ -125,6 +125,68 @@ body {
   color: var(--od-text-strong);
 }
 
+.od-btn:disabled, .od-icon-btn:disabled { opacity: .4; cursor: default; pointer-events: none; }
+.od-btn:focus-visible, .od-icon-btn:focus-visible, .od-seg-btn:focus-visible, .od-menu-item:focus-visible {
+  outline: 2px solid var(--od-blue); outline-offset: 1px;
+}
+.od-icon { flex: none; display: block; }
+
+/* Square, borderless button holding a single icon; label lives in
+   aria-label/title. */
+.od-icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0; border: none; border-radius: var(--od-radius-sm);
+  background: transparent; color: var(--od-text-muted); cursor: pointer;
+}
+.od-icon-btn:hover { background: var(--od-bg-subtle); color: var(--od-text-strong); }
+
+/* Segmented control: mutually exclusive options in one track. */
+.od-segmented {
+  display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--od-radius-md);
+  background: color-mix(in srgb, var(--od-text) 6%, transparent);
+}
+.od-seg-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px;
+  border: none; border-radius: calc(var(--od-radius-md) - 2px);
+  background: transparent; color: var(--od-text-muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.od-seg-btn:hover { color: var(--od-text-strong); }
+.od-seg-btn.active { background: var(--od-bg); color: var(--od-text-strong); box-shadow: var(--od-shadow-sm); }
+body.vscode-dark .od-seg-btn.active { background: var(--od-bg-subtle); }
+
+/* Split button: a primary action plus a chevron that opens related
+   actions, joined into one outlined pill. */
+.od-split { display: inline-flex; }
+.od-split .od-split-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.od-split .od-split-toggle { margin-left: -1px; padding: 0 6px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+
+/* Dropdown menu (see src/webview/dom/menuButton.ts). */
+.od-menu {
+  position: fixed; z-index: 1000; min-width: 220px; max-width: 320px; padding: 6px;
+  display: flex; flex-direction: column;
+  border: 1px solid var(--od-border-soft); border-radius: var(--od-radius-md);
+  background: var(--od-bg-panel); box-shadow: var(--od-shadow-md);
+}
+.od-menu-heading { padding: 6px 8px 4px; font-size: 11px; color: var(--od-text-soft); text-transform: uppercase; letter-spacing: .04em; }
+.od-menu-sep { height: 1px; margin: 4px 2px; background: var(--od-border-soft); }
+.od-menu-item {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 7px 8px;
+  border: none; border-radius: var(--od-radius-sm); background: transparent;
+  color: var(--od-text); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.od-menu-item .od-icon { width: 16px; height: 16px; margin-top: 1px; color: var(--od-text-muted); }
+.od-menu-item:hover, .od-menu-item:focus { background: var(--od-bg-subtle); outline: none; }
+.od-menu-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.od-menu-label { color: var(--od-text-strong); }
+.od-menu-desc { font-size: 11px; font-weight: 500; color: var(--od-text-soft); }
+
+.od-count {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: var(--od-radius-pill); background: color-mix(in srgb, var(--od-accent-contrast) 22%, transparent);
+  font-size: 11px;
+}
+.od-count:empty { display: none; }
+
 .od-badge {
   display: inline-flex; align-items: center; height: 18px; padding: 0 8px; border-radius: var(--od-radius-pill);
   background: color-mix(in srgb, var(--od-text) 5%, transparent); color: var(--od-text-muted);

@@ -8,7 +8,7 @@ The rendered page, updating as the file changes.
 
 ## Comment
 
-Hover to highlight an element, then click it to pin a note. To have the agent act on your notes, select them and click **Send comments to chat**. Copilot Chat opens with a prefilled, unsent message describing each note and the element it's on, and the agent edits the file with its normal tools.
+Hover to highlight an element, then click it to pin a note. To have the agent act on your notes, select them and click **Send** in the toolbar (its badge shows how many open notes will go). Copilot Chat opens with a prefilled, unsent message describing each note and the element it's on, and the agent edits the file with its normal tools.
 
 Comments are saved next to the artifact as `<entry>.comments.json`, a plain file you can commit. The agent also sees unresolved comments through [`get_open_design_artifact`](../reference/tools.md#get_open_design_artifact) (`openComments`), and is told to address them before saying it's done.
 
