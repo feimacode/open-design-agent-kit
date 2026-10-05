@@ -49,7 +49,7 @@ Sidecars are named after the entry file (`<entry>.artifact.json`, and so on), so
 | `collectionId`, `collectionName`, `screenRole`, `screenIndex` | string / number | Collection membership. See [Collections](../guides/generate-a-design.md#collections). |
 | `sources` | `{ path, sha256 }[]` | The documents the design was [built from](../guides/deck-from-a-document.md), with their hashes at registration, so [`get_open_design_artifact`](tools.md#get_open_design_artifact) can report sources that changed since. At most 10. |
 | `explorationId`, `directionId` | string | Exploration membership: a sketch carries both; a built-out or merged version carries only `explorationId`. See [Explore design directions](../guides/explore-directions.md). |
-| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format` and `metadata.shares` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
+| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format`, `metadata.fluid` and `metadata.shares` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
 
 ### metadata.exports
 
@@ -69,11 +69,13 @@ For a print PDF the record is the same, with `width` and `height` in CSS pixels 
 
 ### metadata.format
 
-The [canvas format](tools.md#canvas-formats) the design was made for, e.g. `"a3"` or `"story"`, set when it was registered with `format`. Export uses it when no `preset` is given, preflight uses its safe area, bleed and type size, and [`adapt_open_design_artifact`](tools.md#adapt_open_design_artifact) uses it to tell print from screen.
+The [canvas format](tools.md#canvas-formats) the design was made for, e.g. `"a3"` or `"story"`, set when it was registered with `format`. For a fluid design it's the **default shape**, which can be changed (for example with the VS Code preview's **Use as default**) without editing the HTML. Export uses it when no `preset` is given, preflight uses its safe area, bleed and type size, and [`adapt_open_design_artifact`](tools.md#adapt_open_design_artifact) uses it to tell print from screen.
 
 ```json
-"metadata": { "format": "a3" }
+"metadata": { "format": "a3", "fluid": true }
 ```
+
+`metadata.fluid` is `true` when the registered HTML has a fluid card (`[data-od-card data-od-fluid]`). It's informational: export, preflight and adaptation read the attribute in the HTML itself.
 
 ### metadata.shares
 

@@ -1,5 +1,5 @@
 import { ensureDataOdId, cssSelectorFor, htmlHintFor } from './dom/elementTargeting';
-import { applyPatch, serializeDocument, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
+import { applyPatch, serializeDocument, PREVIEW_ONLY_ATTR, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
 import { computePinPosition, type ArtifactComment } from './dom/commentOverlay';
 import { captureFigmaIr } from './dom/figmaCapture';
 import { icon } from './dom/icons';
@@ -29,6 +29,16 @@ root.innerHTML = `
       <button id="od-collection-next" class="od-icon-btn" aria-label="Next">${icon('chevronRight')}</button>
     </div>
     <span id="od-collection-title" class="od-pager-title" hidden></span>
+    <div id="od-shape" class="od-shape" hidden>
+      <select id="od-shape-select" class="od-select od-shape-select" aria-label="Shape" title="Preview this fluid design at another shape (nothing is saved)"></select>
+      <select id="od-zoom-select" class="od-select od-zoom-select" aria-label="Zoom" title="Preview zoom: Fit shows the whole poster; 100% is its size in CSS pixels">
+        <option value="fit">Fit</option><option value="0.25">25%</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option>
+      </select>
+      <button id="od-shape-check" class="od-btn" title="Run the export's preflight checks at this shape">${icon('check')}<span class="od-label">Check</span></button>
+      <button id="od-shape-result" class="od-btn od-shape-result" hidden></button>
+      <button id="od-shape-default" class="od-btn" title="Make this the shape exports use when none is given" hidden><span class="od-label">Use as default</span></button>
+    </div>
+    <span id="od-shape-fixed" class="od-pager-title" title="This design has a fixed size. Ask the agent to adapt it (adapt_open_design_artifact) for other shapes." hidden>Fixed size</span>
     <span class="od-toolbar-spacer"></span>
     <button id="od-send-comments" class="od-btn od-btn-primary" title="Send open comments to chat" hidden>${icon('send')}<span class="od-label">Send</span><span id="od-send-count" class="od-count"></span></button>
     <div class="od-toolbar-actions">
@@ -128,6 +138,7 @@ iframe.addEventListener('load', () => {
   doc.addEventListener('mouseover', onIframeMouseOver, true);
   doc.addEventListener('mouseout', onIframeMouseOut, true);
   updatePickMode();
+  applyShapeOverride();
   renderOverlays();
 });
 
@@ -155,7 +166,8 @@ function updateInspectOverride(): void {
   }
   const styleEl = existing ?? doc.createElement('style');
   styleEl.id = INSPECT_OVERRIDE_STYLE_ID;
-  styleEl.textContent = '* { pointer-events: auto !important; }';
+  styleEl.setAttribute(PREVIEW_ONLY_ATTR, '');
+  styleEl.textContent = '* { pointer-events: auto !important; } body { cursor: pointer !important; }';
   if (!existing) doc.head.appendChild(styleEl);
 }
 
@@ -163,8 +175,6 @@ function updateInspectOverride(): void {
 // cursor:pointer/crosshair on the whole preview body while comment/edit
 // mode is active — visible even before hovering a specific element.
 function updatePickMode(): void {
-  const doc = iframe.contentDocument;
-  if (doc?.body) doc.body.style.cursor = mode === 'view' ? '' : 'pointer';
   updateInspectOverride();
 }
 
@@ -642,6 +652,7 @@ window.addEventListener('message', (event) => {
       comments = message.comments ?? [];
       updateSendComments();
       applyCollectionInfo(message.collection);
+      applyShapeInfo(message.shape);
       setIframeContent(message.html);
       break;
     case 'source-updated':
@@ -654,7 +665,15 @@ window.addEventListener('message', (event) => {
       selectedElement = null;
       panel.hidden = true;
       applyCollectionInfo(message.collection);
+      applyShapeInfo(message.shape);
       setIframeContent(message.html);
+      break;
+    case 'shape-checked':
+      showShapeCheck(message);
+      break;
+    case 'shape-default-updated':
+      if (shapeInfo) shapeInfo.defaultFormat = message.defaultFormat;
+      renderShapeControls();
       break;
     case 'nav-updated':
       // A sibling screen/direction was registered or removed: only the
@@ -663,6 +682,172 @@ window.addEventListener('message', (event) => {
       break;
   }
 });
+
+// ---- Shape switcher (fluid designs only; openspec fluid-poster-shapes D7) ----
+// Choosing a shape only restyles the preview: a preview-only <style> sets the
+// card's --od-w/--od-h and fits it to the panel with `zoom`. It is stripped
+// from anything Edit mode saves (serializeDocument), so nothing is written.
+
+interface ShapeFormat {
+  id: string;
+  label: string;
+  medium: string;
+  width: number;
+  height: number;
+  unit: string;
+}
+interface ShapeInfo {
+  fluid: boolean;
+  defaultFormat?: string;
+  formats: ShapeFormat[];
+}
+interface ShapeCheck {
+  formatId: string;
+  ok: boolean;
+  error?: string;
+  findings?: Array<{ severity: string; check: string; message: string }>;
+}
+
+const SHAPE_STYLE_ID = 'od-shape-override';
+const shapeBox = document.getElementById('od-shape') as HTMLDivElement;
+const shapeSelect = document.getElementById('od-shape-select') as HTMLSelectElement;
+const shapeCheckBtn = document.getElementById('od-shape-check') as HTMLButtonElement;
+const shapeResultBtn = document.getElementById('od-shape-result') as HTMLButtonElement;
+const shapeDefaultBtn = document.getElementById('od-shape-default') as HTMLButtonElement;
+const shapeFixedNote = document.getElementById('od-shape-fixed') as HTMLSpanElement;
+const zoomSelect = document.getElementById('od-zoom-select') as HTMLSelectElement;
+/** 'fit' scales the poster down to the panel; a number is a fixed zoom (1 = CSS pixels). */
+let zoomMode: 'fit' | number = 'fit';
+let shapeInfo: ShapeInfo | undefined;
+/** The shape being previewed; undefined means the design's own (authored or default) shape. */
+let currentShape: string | undefined;
+let lastCheck: ShapeCheck | undefined;
+
+function applyShapeInfo(info: ShapeInfo | undefined): void {
+  const wasFluid = shapeInfo?.fluid;
+  shapeInfo = info;
+  // A file that stops (or starts) being fluid starts over at its own shape.
+  if (!info?.fluid || wasFluid === false) currentShape = undefined;
+  if (info?.fluid && currentShape === undefined) currentShape = info.defaultFormat;
+  lastCheck = undefined;
+  renderShapeControls();
+}
+
+function renderShapeControls(): void {
+  const fluid = !!shapeInfo?.fluid;
+  shapeBox.hidden = !fluid;
+  shapeFixedNote.hidden = !shapeInfo || fluid;
+  if (!fluid || !shapeInfo) return;
+  const def = shapeInfo.defaultFormat;
+  const ordered = [...shapeInfo.formats].sort((a, b) => (a.id === def ? -1 : b.id === def ? 1 : 0));
+  shapeSelect.innerHTML =
+    (def ? '' : '<option value="">As authored</option>') +
+    ordered
+      .map((f) => {
+        // Print labels already carry their size ("A3 (297×420 mm)"); give screen shapes theirs.
+        const size = f.unit === 'px' ? ` — ${f.width}×${f.height}` : '';
+        return `<option value="${escapeHtml(f.id)}">${escapeHtml(f.label)}${size}${f.id === def ? ' (default)' : ''}</option>`;
+      })
+      .join('');
+  shapeSelect.value = currentShape ?? '';
+  shapeDefaultBtn.hidden = !currentShape || currentShape === def;
+  shapeResultBtn.hidden = !lastCheck || lastCheck.formatId !== currentShape;
+  if (lastCheck && !shapeResultBtn.hidden) {
+    const errors = lastCheck.findings?.filter((f) => f.severity === 'error').length ?? 0;
+    const warnings = lastCheck.findings?.filter((f) => f.severity === 'warning').length ?? 0;
+    shapeResultBtn.textContent = !lastCheck.ok ? 'Check failed' : errors + warnings === 0 ? 'No problems' : `${errors} error${errors === 1 ? '' : 's'}, ${warnings} warning${warnings === 1 ? '' : 's'}`;
+    shapeResultBtn.classList.toggle('od-shape-bad', !lastCheck.ok || errors > 0);
+  }
+}
+
+function applyShapeOverride(): void {
+  const doc = iframe.contentDocument;
+  if (!doc?.head) return;
+  doc.getElementById(SHAPE_STYLE_ID)?.remove();
+  if (!shapeInfo?.fluid) return;
+  const shape = shapeInfo.formats.find((f) => f.id === currentShape);
+  const card = doc.querySelector('[data-od-card][data-od-fluid]') as HTMLElement | null;
+  if (!card) return;
+  const styleEl = doc.createElement('style');
+  styleEl.id = SHAPE_STYLE_ID;
+  styleEl.setAttribute(PREVIEW_ONLY_ATTR, '');
+  // Set the size itself too, not just the variables: a card the author sized another way
+  // (e.g. width: 100%) would otherwise ignore them and never change shape.
+  const vars = shape
+    ? `--od-w: ${shape.width}${shape.unit} !important; --od-h: ${shape.height}${shape.unit} !important; --od-bleed: 0mm !important;` +
+      ` width: ${shape.width}${shape.unit} !important; height: ${shape.height}${shape.unit} !important;` +
+      ' max-width: none !important; max-height: none !important; min-width: 0 !important; min-height: 0 !important;'
+    : '';
+  // Show the poster as a page on a neutral canvas, centred with a visible edge, so its
+  // bounds are clear even when its background matches the page's (as in Canva).
+  styleEl.textContent =
+    `html, body { background: #3c3c3c !important; min-height: 100% !important; height: auto !important; }` +
+    ` body { display: flex !important; justify-content: center !important; align-items: flex-start !important; padding: 16px !important; box-sizing: border-box !important; margin: 0 !important; }` +
+    ` [data-od-card][data-od-fluid] { ${vars} flex-shrink: 0 !important; margin: 0 !important; box-shadow: 0 2px 14px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.18) !important; }`;
+  doc.head.appendChild(styleEl);
+  // Fit the card to the panel: measure it unzoomed, then scale down only.
+  const rect = card.getBoundingClientRect();
+  const view = doc.documentElement;
+  const fit = Math.min(1, (view.clientWidth - 32) / rect.width, (view.clientHeight - 32) / rect.height);
+  const zoom = zoomMode === 'fit' ? (fit > 0 ? fit : 1) : zoomMode;
+  if (zoom !== 1) styleEl.textContent += ` [data-od-card][data-od-fluid] { zoom: ${zoom.toFixed(4)}; }`;
+  zoomSelect.options[0].textContent = `Fit (${Math.round((fit > 0 ? fit : 1) * 100)}%)`;
+  zoomSelect.value = zoomMode === 'fit' ? 'fit' : String(zoomMode);
+  renderOverlays();
+}
+
+zoomSelect.addEventListener('change', () => {
+  zoomMode = zoomSelect.value === 'fit' ? 'fit' : Number(zoomSelect.value);
+  applyShapeOverride();
+});
+
+shapeSelect.addEventListener('change', () => {
+  currentShape = shapeSelect.value || undefined;
+  applyShapeOverride();
+  renderShapeControls();
+});
+
+shapeCheckBtn.addEventListener('click', () => {
+  const formatId = currentShape ?? shapeInfo?.defaultFormat;
+  if (!formatId) {
+    shapeResultBtn.hidden = false;
+    shapeResultBtn.textContent = 'Pick a shape to check';
+    return;
+  }
+  shapeCheckBtn.disabled = true;
+  shapeResultBtn.hidden = false;
+  shapeResultBtn.textContent = 'Checking…';
+  vscode.postMessage({ type: 'check-shape', formatId });
+});
+
+shapeDefaultBtn.addEventListener('click', () => {
+  if (currentShape) vscode.postMessage({ type: 'set-default-shape', formatId: currentShape });
+});
+
+shapeResultBtn.addEventListener('click', () => {
+  if (!lastCheck) return;
+  const label = shapeInfo?.formats.find((f) => f.id === lastCheck!.formatId)?.label ?? lastCheck.formatId;
+  const items = lastCheck.ok
+    ? (lastCheck.findings ?? []).map((f) => `<li class="od-shape-finding od-sev-${escapeHtml(f.severity)}"><b>${escapeHtml(f.severity)}</b> [${escapeHtml(f.check)}] ${escapeHtml(f.message)}</li>`).join('') ||
+      '<li>No problems found.</li>'
+    : `<li>${escapeHtml(lastCheck.error ?? 'The check failed.')}</li>`;
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="od-panel-header">
+      <span class="od-panel-header-title">Preflight at ${escapeHtml(label)}</span>
+      <button id="od-shape-close" class="od-panel-close" aria-label="Close">×</button>
+    </div>
+    <div class="od-panel-body"><ul class="od-shape-findings">${items}</ul></div>`;
+  document.getElementById('od-shape-close')!.addEventListener('click', closePanel);
+});
+
+function showShapeCheck(message: ShapeCheck): void {
+  shapeCheckBtn.disabled = false;
+  lastCheck = message;
+  renderShapeControls();
+}
+
+window.addEventListener('resize', () => applyShapeOverride());
 
 vscode.postMessage({ type: 'ready' });
 

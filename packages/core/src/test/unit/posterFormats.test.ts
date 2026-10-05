@@ -6,7 +6,7 @@ import JSZip from 'jszip';
 import { resolveExportSize } from '../../export/exportSize';
 import { composeInstructions } from '../../generation/composeInstructions';
 import { checkDataAgainstFields, loadDataTable, parseCsv, rowFileSuffixes, scanBoundFields } from '../../poster/data';
-import { bleedBox, composeCanvasSection, FORMAT_IDS, FORMATS, getFormat, unknownFormatError } from '../../poster/formats';
+import { bleedBox, composeCanvasSection, composeFluidCanvasSection, FORMAT_IDS, FORMATS, getFormat, isFluidHtml, posterRegistrationMetadata, resolveBriefCanvas, unknownFormatError } from '../../poster/formats';
 
 describe('poster formats', () => {
   it('keeps the social-post sizes and budgets', () => {
@@ -135,5 +135,60 @@ describe('bulk-export data', () => {
     const table = { columns: ['name'], rows: [{ name: 'Ada Lovelace' }, { name: 'Ada  lovelace' }, { name: 'ada-lovelace-2' }, { name: '' }, { name: 'Zoë' }] };
     assert.deepStrictEqual(rowFileSuffixes(table, 'name'), ['ada-lovelace', 'ada-lovelace-2', 'ada-lovelace-2-2', '04', 'zoe']);
     assert.deepStrictEqual(rowFileSuffixes({ columns: [], rows: [{}, {}] }), ['01', '02']);
+  });
+});
+
+describe('fluid briefs', () => {
+  it('defaults print to fluid and screen to fixed, and A3 for fluid without a format', () => {
+    assert.deepStrictEqual(resolveBriefCanvas('a2', undefined), { format: getFormat('a2'), fluid: true });
+    assert.deepStrictEqual(resolveBriefCanvas('x-image', undefined), { format: getFormat('x-image'), fluid: false });
+    assert.deepStrictEqual(resolveBriefCanvas('story', true), { format: getFormat('story'), fluid: true });
+    assert.deepStrictEqual(resolveBriefCanvas('a3', false), { format: getFormat('a3'), fluid: false });
+    assert.deepStrictEqual(resolveBriefCanvas(undefined, true), { format: getFormat('a3'), fluid: true });
+    assert.deepStrictEqual(resolveBriefCanvas(undefined, undefined), { fluid: false });
+    assert.ok('error' in resolveBriefCanvas('a7', true));
+  });
+
+  it('writes the fluid contract with the format as the default shape', () => {
+    const a2 = composeFluidCanvasSection(getFormat('a2')!);
+    for (const needle of ['data-od-fluid', '--od-w: 420mm; --od-h: 594mm', '--od-bleed', 'container-type: size', 'aspect-ratio > 1.2', 'aspect-ratio < 0.6', 'data-od-priority', 'object-position', 'max(14pt, 2.4cqmin)', 'build at the trim size', 'checkOnly: true']) {
+      assert.ok(a2.includes(needle), needle);
+    }
+    assert.ok(!a2.includes('426mm') && !a2.includes('426 mm'), 'no bleed in the card size');
+    const story = composeFluidCanvasSection(getFormat('story')!);
+    assert.ok(story.includes('--od-w: 1080px; --od-h: 1920px'));
+    assert.ok(!story.includes('build at the trim size'));
+    const brief = composeInstructions({ skillName: 's', skillBody: 'b', brief: 'x', suggestedEntryPath: 'a.html', canvasFormat: getFormat('a2'), fluid: true });
+    assert.ok(brief.includes('## Canvas — fluid poster'));
+  });
+
+  it('detects a fluid card in HTML', () => {
+    assert.ok(isFluidHtml('<div class="p" data-od-card data-od-fluid>'));
+    assert.ok(isFluidHtml('<section data-od-fluid="" data-od-card="">'));
+    assert.ok(!isFluidHtml('<div data-od-card>'));
+    assert.ok(!isFluidHtml('<div data-od-card></div><div data-od-fluid></div>'));
+    assert.ok(!isFluidHtml('<div data-od-cardx data-od-fluid>'));
+  });
+
+  it('records format and fluid at registration', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'od-fluid-'));
+    await fs.writeFile(path.join(root, 'a.html'), '<div data-od-card data-od-fluid></div>');
+    await fs.writeFile(path.join(root, 'b.html'), '<div data-od-card></div>');
+    assert.deepStrictEqual(await posterRegistrationMetadata(root, 'a.html', 'a3'), { format: 'a3', fluid: true });
+    assert.deepStrictEqual(await posterRegistrationMetadata(root, 'a.html', undefined), { fluid: true });
+    assert.deepStrictEqual(await posterRegistrationMetadata(root, 'b.html', 'story'), { format: 'story' });
+    assert.strictEqual(await posterRegistrationMetadata(root, 'b.html', undefined), undefined);
+  });
+
+  it('keeps earlier metadata when an artifact is registered again', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'od-rereg-'));
+    await fs.writeFile(path.join(root, 'p.html'), '<div data-od-card data-od-fluid></div>');
+    const earlier = { format: 'poster-18x24', fluid: true, exports: [{ path: 'exports/p.pdf' }], shares: { netlify: { url: 'https://x' } }, remixedFrom: 'od:x' };
+    await fs.writeFile(path.join(root, 'p.html.artifact.json'), JSON.stringify({ kind: 'html', metadata: earlier }));
+    assert.deepStrictEqual(await posterRegistrationMetadata(root, 'p.html', undefined), earlier, 'the default shape chosen in the preview survives');
+    assert.deepStrictEqual((await posterRegistrationMetadata(root, 'p.html', 'a1'))?.format, 'a1', 'a new format replaces it');
+    await fs.writeFile(path.join(root, 'p.html'), '<div data-od-card></div>');
+    const fixed = await posterRegistrationMetadata(root, 'p.html', undefined);
+    assert.deepStrictEqual([fixed?.fluid, fixed?.format, fixed?.shares], [undefined, 'poster-18x24', earlier.shares], 'fluid follows the HTML');
   });
 });

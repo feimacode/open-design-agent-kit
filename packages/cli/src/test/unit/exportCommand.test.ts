@@ -8,7 +8,7 @@ describe('export command', () => {
   it('maps string flags onto export options', () => {
     assert.deepStrictEqual(
       parseExportFlags({ width: '1080', height: '1350', scale: '2', format: 'jpg', quality: '80', maxBytes: '5000000', selector: '[data-od-card]', browser: '/b' }),
-      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined },
+      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined, presets: undefined, shapeSheet: undefined },
     );
     assert.deepStrictEqual(parseExportFlags({}), {
       width: undefined,
@@ -30,6 +30,8 @@ describe('export command', () => {
       sheet: undefined,
       nameField: undefined,
       split: undefined,
+      presets: undefined,
+      shapeSheet: undefined,
     });
   });
 
@@ -52,6 +54,8 @@ describe('export command', () => {
       ['a3', 3.175, true, true, 'people.csv', 'S1', 'name', true],
     );
     assert.throws(() => parseExportFlags({ bleed: 'lots' }), /--bleed must be a number/);
+    const shapes = parseExportFlags({ presets: 'a3, ig-portrait,story', shapeSheet: true });
+    assert.deepStrictEqual([shapes.presets, shapes.shapeSheet], [['a3', 'ig-portrait', 'story'], true]);
   });
 
   it('rejects malformed flags', () => {

@@ -29,6 +29,9 @@ export interface ExportCliOptions {
   sheet?: string;
   nameField?: string;
   split?: boolean;
+  /** Comma-separated format ids. */
+  presets?: string;
+  shapeSheet?: boolean;
 }
 
 export class ExportArgsError extends Error {}
@@ -84,6 +87,8 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     sheet: flags.sheet,
     nameField: flags.nameField,
     split: flags.split,
+    presets: flags.presets === undefined ? undefined : flags.presets.split(',').map((id) => id.trim()).filter(Boolean),
+    shapeSheet: flags.shapeSheet,
   };
 }
 

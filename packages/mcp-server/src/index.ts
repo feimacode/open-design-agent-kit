@@ -134,6 +134,11 @@ const TOOL_DEFS: ToolDef[] = [
             enum: [...FORMAT_IDS],
             description: 'Optional canvas format. Adds a Canvas section with the exact size, units, safe area and, for print, bleed and minimum type size, so any skill can produce a post or poster at that size. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720). Print (trim sizes, authored in mm with bleed): a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36. Pass the same id as format to register_open_design_artifact.',
           },
+          fluid: {
+            type: 'boolean',
+            description:
+              "With format (or alone): build a fluid design that reflows to any canvas shape, sized in container units with layout rules for wide and tall shapes; the shape is then picked at export (preset/presets) or in the preview, without regenerating. Default: true for print formats, false for screen formats (social recipes need exact pixels). fluid: true without format uses A3 as the default shape. Use it for posters.",
+          },
         },
         required: ['skillId', 'brief'],
       },
@@ -151,6 +156,7 @@ const TOOL_DEFS: ToolDef[] = [
           screenTotal?: number;
           sources?: string[];
           format?: string;
+          fluid?: boolean;
         },
       ),
   },
@@ -408,7 +414,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'export_open_design_artifact',
       description:
-        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions. POSTERS AND PREFLIGHT: page exports run preflight checks (text overflow, safe area, print bleed size, minimum type size, contrast, emoji, image resolution for print, QR codes that don't decode, broken assets) and list findings, errors first; findings never block the export. Pass checkOnly: true to check without writing files, and fix every error before the real export. Pass preset with a format id (\"ig-portrait\", \"story\", \"a3\"…) rather than width/height/selector/maxBytes. Pass data with a spreadsheet to export one poster, card or certificate per row.",
+        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions. POSTERS AND PREFLIGHT: page exports run preflight checks (text overflow, safe area, print bleed size, minimum type size, contrast, emoji, image resolution for print, QR codes that don't decode, broken assets) and list findings, errors first; findings never block the export. Pass checkOnly: true to check without writing files, and fix every error before the real export. Pass preset with a format id (\"ig-portrait\", \"story\", \"a3\"…) rather than width/height/selector/maxBytes. Pass data with a spreadsheet to export one poster, card or certificate per row. FLUID POSTERS (cards with data-od-fluid): preset reflows the design to that shape in the rendered page (the file is unchanged); presets exports several shapes at once; shapeSheet shows them all in one image.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -510,6 +516,19 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'boolean',
             description: 'With data and a PDF format: one PDF per row instead of one multi-page PDF.',
           },
+          presets: {
+            type: 'array',
+            items: { type: 'string', enum: [...FORMAT_IDS] },
+            minItems: 1,
+            maxItems: 15,
+            description:
+              "Fluid designs only: export several canvas shapes in one call, each reflowed and preflighted at its own shape and written as <name>-<format>.<ext> (PDF for print shapes, PNG for screen shapes unless format is given). Can't be combined with preset, width or height. With data: one file per row per shape.",
+          },
+          shapeSheet: {
+            type: 'boolean',
+            description:
+              "Fluid designs only: also write exports/<name>-shapes.png, one image showing the design at every shape in presets (default: all catalog formats), each labelled and marked when preflight found errors there. With checkOnly: true it is the only file written. Use it to show the user how a poster looks in every size.",
+          },
         },
         required: ['entryPath'],
       },
@@ -538,6 +557,8 @@ const TOOL_DEFS: ToolDef[] = [
           sheet?: string;
           nameField?: string;
           split?: boolean;
+          presets?: string[];
+          shapeSheet?: boolean;
         },
       ),
   },
@@ -545,7 +566,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'adapt_open_design_artifact',
       description:
-        "Re-composes a finished, registered design for other canvas formats: the same message, copy hierarchy and design system, laid out again for each new size rather than scaled. Use when the user wants a poster or post \"in other sizes\", \"for Instagram and Stories too\", \"as an A3 print as well\", and so on. Returns, per format, instructions (with the master's HTML, that format's canvas rules and re-composition rules), a suggested entry path and the exact arguments to register it with. Writes no design file: write each adaptation yourself, register it with its registerArgs, then preflight and export it with its preset. The master and its adaptations are grouped as one collection (the master is added to a new one if it isn't in one).",
+        "Re-composes a finished, registered design for other canvas formats: the same message, copy hierarchy and design system, laid out again for each new size rather than scaled. Use when the user wants a poster or post \"in other sizes\", \"for Instagram and Stories too\", \"as an A3 print as well\", and so on. Returns, per format, instructions (with the master's HTML, that format's canvas rules and re-composition rules), a suggested entry path and the exact arguments to register it with. Writes no design file: write each adaptation yourself, register it with its registerArgs, then preflight and export it with its preset. The master and its adaptations are grouped as one collection (the master is added to a new one if it isn't in one). FLUID designs (data-od-fluid) already reflow to every shape, so for them it returns mode \"tune\" instead: per shape, instructions to check the master at that shape and fix it in place with @container rules; no new files and no collection.",
       inputSchema: {
         type: 'object',
         properties: {

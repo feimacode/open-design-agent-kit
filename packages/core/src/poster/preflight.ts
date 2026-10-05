@@ -3,7 +3,7 @@
 // block an export; findings come back for the agent to fix and re-check.
 import type { Page } from 'puppeteer-core';
 import { bleedBox, mmToPx, type CanvasFormat } from './formats';
-import { collectPreflight, type PageFinding } from './pageScripts';
+import { applyShape, collectPreflight, measureScalables, type PageFinding, type ShapeCss } from './pageScripts';
 import { measureCardMm } from './printPdf';
 import { decodeQrPng } from './qr';
 
@@ -20,6 +20,8 @@ export interface Finding {
   row?: number;
   /** The row's nameField value, for bulk exports. */
   rowName?: string;
+  /** The canvas format id, for multi-shape exports. */
+  shape?: string;
 }
 
 export interface PreflightOptions {
@@ -29,7 +31,13 @@ export interface PreflightOptions {
   bleed?: number;
   row?: number;
   rowName?: string;
+  /** The card is fluid (data-od-fluid): it was resized to the shape, so size mismatches are export's, not the author's. */
+  fluid?: boolean;
+  /** Tag findings with this shape (multi-shape exports). */
+  shape?: string;
 }
+
+const FIXED_DESIGN_HINT = ' This design is fixed-size; use adapt_open_design_artifact to make other shapes, or build it fluid (data-od-fluid) so export can reflow it.';
 
 /** Screen text under this many px (scaled for canvases wider than 1080px) reads poorly in a feed. */
 const SCREEN_MIN_TYPE_PX = 14;
@@ -55,12 +63,12 @@ export async function runPreflight(page: Page, options: PreflightOptions): Promi
     const actual = await measureCardMm(page, options.cardSelector);
     if (!actual) {
       findings.push({ check: 'bleed-size', severity: 'error', message: `No ${options.cardSelector} element found; a print piece is one card sized ${expected.width}×${expected.height} mm (trim plus bleed).` });
-    } else if (Math.abs(actual.width - expected.width) > 1 || Math.abs(actual.height - expected.height) > 1) {
+    } else if (!options.fluid && (Math.abs(actual.width - expected.width) > 1 || Math.abs(actual.height - expected.height) > 1)) {
       const r = (n: number): number => Math.round(n * 10) / 10;
       findings.push({
         check: 'bleed-size',
         severity: 'error',
-        message: `The card is ${r(actual.width)}×${r(actual.height)} mm but the bleed box is ${expected.width}×${expected.height} mm (trim ${format.width}×${format.height} mm plus ${bleedMm} mm bleed on every side). Resize the card so backgrounds run into the bleed.`,
+        message: `The card is ${r(actual.width)}×${r(actual.height)} mm but the bleed box is ${expected.width}×${expected.height} mm (trim ${format.width}×${format.height} mm plus ${bleedMm} mm bleed on every side). Resize the card so backgrounds run into the bleed.${FIXED_DESIGN_HINT}`,
       });
     }
   }
@@ -73,7 +81,7 @@ export async function runPreflight(page: Page, options: PreflightOptions): Promi
         findings.push({
           check: 'card-size',
           severity: 'error',
-          message: `The card is ${Math.round(b.width)}×${Math.round(b.height)}px but ${format.label} is ${format.width}×${format.height}px. Give it that fixed size (and flex-shrink: 0 inside a flex wrapper).`,
+          message: `The card is ${Math.round(b.width)}×${Math.round(b.height)}px but ${format.label} is ${format.width}×${format.height}px. Give it that fixed size (and flex-shrink: 0 inside a flex wrapper).${options.fluid ? '' : FIXED_DESIGN_HINT}`,
           card: handles.length > 1 ? i + 1 : undefined,
         });
       }
@@ -84,6 +92,7 @@ export async function runPreflight(page: Page, options: PreflightOptions): Promi
   for (const f of findings) {
     if (options.row !== undefined) f.row = options.row;
     if (options.rowName) f.rowName = options.rowName;
+    if (options.shape) f.shape = options.shape;
   }
   return capFindings(findings);
 }
@@ -140,14 +149,55 @@ function capFindings(findings: Finding[]): Finding[] {
   return out;
 }
 
+/** Growth below this when the card grows 1.5× means a size ignored the card. A fixed size grows exactly 1×; a relative size with a max(…) floor still grows somewhat, so it isn't flagged. */
+const MIN_FLUID_GROWTH = 1.05;
+
+/**
+ * fixed-size (fluid-canvas spec): measures text sizes and graphic widths, renders
+ * the card at 1.5× the shape, measures again, restores the shape, and reports
+ * elements that didn't grow with the card.
+ */
+export async function checkFixedSize(page: Page, cardSelector: string, shape: ShapeCss, tag: { shape?: string } = {}): Promise<Finding[]> {
+  const scale = (css: string): string => {
+    const m = /^(-?[\d.]+)([a-z%]*)$/i.exec(css.trim());
+    return m ? `${Number(m[1]) * 1.5}${m[2]}` : css;
+  };
+  const before = await page.evaluate(measureScalables, cardSelector);
+  await page.evaluate(applyShape, cardSelector, { widthCss: scale(shape.widthCss), heightCss: scale(shape.heightCss), bleedCss: shape.bleedCss });
+  const after = await page.evaluate(measureScalables, cardSelector);
+  await page.evaluate(applyShape, cardSelector, shape);
+  const findings: Finding[] = [];
+  if (after.length !== before.length) return findings;
+  for (const [i, b] of before.entries()) {
+    const a = after[i];
+    const growth = b.text ? (b.font > 0 ? a.font / b.font : 1.5) : b.width > 0 ? a.width / b.width : 1.5;
+    if (growth < MIN_FLUID_GROWTH) {
+      findings.push({
+        check: 'fixed-size',
+        severity: 'warning',
+        message: `${b.name} doesn't scale with the poster (its ${b.text ? 'font size' : 'width'} grew ${Math.round(growth * 100) / 100}× when the card grew 1.5×). Size it in cqw/cqh/cqmin so it reflows with every shape.`,
+        selector: b.name,
+        ...(tag.shape ? { shape: tag.shape } : {}),
+      });
+    }
+  }
+  return capFindings(findings);
+}
+
 const SEVERITY_ORDER: Record<FindingSeverity, number> = { error: 0, warning: 1, info: 2 };
 
 export function sortFindings(findings: Finding[]): Finding[] {
-  return [...findings].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || (a.row ?? 0) - (b.row ?? 0) || (a.card ?? 0) - (b.card ?? 0));
+  return [...findings].sort(
+    (a, b) =>
+      SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] ||
+      (a.shape ?? '').localeCompare(b.shape ?? '') ||
+      (a.row ?? 0) - (b.row ?? 0) ||
+      (a.card ?? 0) - (b.card ?? 0),
+  );
 }
 
 export function formatFinding(f: Finding): string {
-  const where = [f.row !== undefined ? `row ${f.row}${f.rowName ? ` (${f.rowName})` : ''}` : '', f.card !== undefined ? `card ${f.card}` : ''].filter(Boolean).join(', ');
+  const where = [f.shape ? `shape ${f.shape}` : '', f.row !== undefined ? `row ${f.row}${f.rowName ? ` (${f.rowName})` : ''}` : '', f.card !== undefined ? `card ${f.card}` : ''].filter(Boolean).join(', ');
   return `- ${f.severity.toUpperCase()} [${f.check}]${where ? ` ${where}:` : ''} ${f.message}`;
 }
 
@@ -159,22 +209,26 @@ export function formatPreflight(findings: Finding[]): string[] {
   const warnings = sorted.filter((f) => f.severity === 'warning').length;
   const head =
     errors + warnings === 0 ? 'Preflight: passed, with notes:' : `Preflight: ${errors} error(s), ${warnings} warning(s) — fix the errors, then re-check with checkOnly: true:`;
-  // The same note on every row of a bulk export is said once, with the rows it applies to.
-  const lines: string[] = [];
+  // The same note on every row of a bulk export, or every shape of a multi-shape one, is said once, listing where it applies.
+  const noteKey = (f: Finding): string | undefined =>
+    f.severity === 'info' && (f.row !== undefined || f.shape !== undefined) ? `${f.check}|${f.card ?? ''}|${f.message}` : undefined;
   const grouped = new Map<string, Finding[]>();
   for (const f of sorted) {
-    const key = f.row !== undefined && f.severity === 'info' ? `${f.check}|${f.card ?? ''}|${f.message}` : undefined;
-    if (!key) continue;
-    grouped.set(key, [...(grouped.get(key) ?? []), f]);
+    const key = noteKey(f);
+    if (key) grouped.set(key, [...(grouped.get(key) ?? []), f]);
   }
+  const lines: string[] = [];
   const emitted = new Set<string>();
   for (const f of sorted) {
-    const key = f.row !== undefined && f.severity === 'info' ? `${f.check}|${f.card ?? ''}|${f.message}` : undefined;
+    const key = noteKey(f);
     const group = key ? grouped.get(key)! : undefined;
     if (!key || !group || group.length === 1) lines.push(formatFinding(f));
     else if (!emitted.has(key)) {
       emitted.add(key);
-      lines.push(`- INFO [${f.check}] rows ${group.map((g) => g.row).join(', ')}${f.card !== undefined ? `, card ${f.card}` : ''}: ${f.message}`);
+      const shapes = [...new Set(group.map((g) => g.shape).filter(Boolean))];
+      const rows = [...new Set(group.map((g) => g.row).filter((r) => r !== undefined))];
+      const where = [shapes.length ? `shapes ${shapes.join(', ')}` : '', rows.length ? `rows ${rows.join(', ')}` : '', f.card !== undefined ? `card ${f.card}` : ''].filter(Boolean).join('; ');
+      lines.push(`- INFO [${f.check}] ${where}: ${f.message}`);
     }
   }
   return [head, ...lines];

@@ -17,6 +17,11 @@ import {
   resolveFigmaCaptureAssets,
   writeArtifactComments,
   writeFigmaCapture,
+  writeArtifactManifest,
+  FORMATS,
+  getFormat,
+  isFluidHtml,
+  sortFindings,
   type ArtifactComment,
   type FigmaCaptureAssetReader,
   type FigmaCaptureDocument,
@@ -102,6 +107,25 @@ interface CollectionNavInfo {
  * collectionScan.ts). A screen or direction can gain new siblings between
  * opens in the same session.
  */
+/** What the preview's Shape switcher needs (fluid-poster-shapes D7): fluidity from the HTML, the default shape, and the catalog. */
+interface ShapeInfo {
+  fluid: boolean;
+  defaultFormat?: string;
+  formats: Array<{ id: string; label: string; medium: string; width: number; height: number; unit: string }>;
+}
+
+async function resolveShapeInfo(html: string, location: { workspaceRoot: string; entryPath: string } | undefined): Promise<ShapeInfo> {
+  const fluid = isFluidHtml(html);
+  let defaultFormat: string | undefined;
+  if (fluid && location) {
+    const artifact = await readArtifact(location).catch(() => null);
+    const metadata = artifact?.manifest?.metadata as Record<string, unknown> | undefined;
+    if (typeof metadata?.format === 'string' && getFormat(metadata.format)) defaultFormat = metadata.format;
+  }
+  const formats = Object.values(FORMATS).map((f) => ({ id: f.id, label: f.label, medium: f.medium, width: f.width, height: f.height, unit: f.unit }));
+  return { fluid, defaultFormat, formats };
+}
+
 async function resolveCollectionNav(location: { workspaceRoot: string; entryPath: string } | undefined): Promise<CollectionNavInfo | undefined> {
   if (!location) return undefined;
   const artifact = await readArtifact({ workspaceRoot: location.workspaceRoot, entryPath: location.entryPath });
@@ -172,13 +196,15 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     const sendInit = async () => {
       const comments = location ? await readArtifactComments(location.workspaceRoot, location.entryPath) : [];
       const collection = await resolveCollectionNav(location);
-      webviewPanel.webview.postMessage({ type: 'init', html: injectScriptNonce(document.getText(), panelNonce), comments, collection });
+      const shape = await resolveShapeInfo(document.getText(), location);
+      webviewPanel.webview.postMessage({ type: 'init', html: injectScriptNonce(document.getText(), panelNonce), comments, collection, shape });
     };
 
     const changeSub = vscode.workspace.onDidChangeTextDocument(async (e) => {
       if (e.document.uri.toString() === document.uri.toString()) {
         const collection = await resolveCollectionNav(location);
-        webviewPanel.webview.postMessage({ type: 'source-updated', html: injectScriptNonce(document.getText(), panelNonce), collection });
+        const shape = await resolveShapeInfo(document.getText(), location);
+        webviewPanel.webview.postMessage({ type: 'source-updated', html: injectScriptNonce(document.getText(), panelNonce), collection, shape });
       }
     });
 
@@ -276,6 +302,36 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
           this.log.info(`ArtifactEditorProvider: pushing ${location.entryPath} to Figma${message.truncated ? ' (capture truncated at the node cap)' : ''}`);
           await this.pushToFigma(location, message.capture as FigmaCaptureDocument);
           break;
+        case 'check-shape': {
+          if (!location || !getFormat(message.formatId)) break;
+          this.log.info(`ArtifactEditorProvider: checking ${location.entryPath} at ${message.formatId}`);
+          const result = await exportArtifact({
+            workspaceRoot: location.workspaceRoot,
+            entryPath: location.entryPath,
+            preset: message.formatId as string,
+            checkOnly: true,
+            browserPath: vscode.workspace.getConfiguration('openDesign').get<string>('export.browserPath', '') || undefined,
+          });
+          const payload =
+            result.ok && !('output' in result)
+              ? { ok: true, findings: sortFindings(result.findings ?? []).map((f) => ({ severity: f.severity, check: f.check, message: f.message })) }
+              : { ok: false, error: formatExportResult(result) };
+          webviewPanel.webview.postMessage({ type: 'shape-checked', formatId: message.formatId, ...payload });
+          break;
+        }
+        case 'set-default-shape': {
+          if (!location || !getFormat(message.formatId)) break;
+          const artifact = await readArtifact(location).catch(() => null);
+          if (!artifact?.manifest) {
+            vscode.window.showWarningMessage('Open Design: register this artifact first (register_open_design_artifact) to give it a default shape.');
+            break;
+          }
+          const metadata = artifact.manifest.metadata && typeof artifact.manifest.metadata === 'object' ? (artifact.manifest.metadata as Record<string, unknown>) : {};
+          await writeArtifactManifest({ ...location, artifactManifest: { ...artifact.manifest, metadata: { ...metadata, format: message.formatId } } });
+          this.log.info(`ArtifactEditorProvider: default shape of ${location.entryPath} is now ${message.formatId}`);
+          webviewPanel.webview.postMessage({ type: 'shape-default-updated', defaultFormat: message.formatId });
+          break;
+        }
         case 'nav-collection': {
           const nav = await resolveCollectionNav(location);
           const target = message.direction === 'prev' ? nav?.prevEntryPath : nav?.nextEntryPath;
@@ -463,6 +519,15 @@ ${OD_TOKENS_CSS}
   }
   .od-pager-pos { font-size: 12px; color: var(--od-text-strong); font-variant-numeric: tabular-nums; padding: 0 2px; }
   .od-pager-kind { color: var(--od-text-muted); }
+  .od-shape { display: flex; align-items: center; gap: 4px; padding-left: 8px; border-left: 1px solid var(--od-border-soft); }
+  .od-shape-select { height: 28px; max-width: 220px; font-size: 12px; }
+  .od-shape-result { font-size: 12px; }
+  .od-zoom-select { height: 28px; width: auto; font-size: 12px; }
+  .od-shape-result.od-shape-bad { color: #d23b3b; }
+  .od-shape-findings { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.45; }
+  .od-shape-finding { margin-bottom: 6px; }
+  .od-sev-error b { color: #d23b3b; }
+  .od-sev-warning b { color: #c27a00; }
   .od-toolbar > .od-pager-title {
     flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
     font-size: 12px; font-weight: 500; color: var(--od-text-muted);
@@ -478,6 +543,7 @@ ${OD_TOKENS_CSS}
   }
   @container (max-width: 640px) {
     .od-toolbar > .od-pager-title, .od-pager-kind { display: none; }
+    .od-shape .od-label { display: none; }
   }
   @container (max-width: 480px) {
     .od-toolbar { gap: 4px; padding: 8px; }

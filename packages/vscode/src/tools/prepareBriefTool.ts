@@ -3,8 +3,7 @@ import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import {
   composeInstructions,
   findCollectionArtifacts,
-  getFormat,
-  unknownFormatError,
+  resolveBriefCanvas,
   hostOverrideFor,
   resolveBriefSources,
   resolveActiveDesignSystem,
@@ -25,6 +24,7 @@ interface PrepareBriefInput {
   screenTotal?: number;
   sources?: string[];
   format?: string;
+  fluid?: boolean;
 }
 
 export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefInput> {
@@ -33,12 +33,11 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<PrepareBriefInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, sources: sourcePaths, format } = options.input;
+    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, sources: sourcePaths, format, fluid } = options.input;
 
-    const canvasFormat = getFormat(format);
-    if (format !== undefined && !canvasFormat) {
-      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(unknownFormatError(format))]);
-    }
+    const canvas = resolveBriefCanvas(format, fluid);
+    if ('error' in canvas) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(canvas.error)]);
+    const canvasFormat = canvas.format;
 
     const skill = await this.contentIndex.getSkill(skillId);
     if (!skill) {
@@ -131,6 +130,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       hostOverride: hostOverrideFor(skill.id, skill.body),
       sourceContext: sources.context,
       canvasFormat,
+      fluid: canvas.fluid,
     });
 
     const payload = {
@@ -138,6 +138,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       suggestedEntryPath,
       suggestedKind: 'html',
       format: canvasFormat?.id,
+      fluid: canvasFormat ? canvas.fluid : undefined,
       designSystemId: designSystem ? designSystemId : undefined,
       designSystemName: designSystem?.name,
       outlinePath: sources.context?.outlinePath,

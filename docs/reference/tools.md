@@ -98,8 +98,9 @@ Composes the instructions for a new design. It combines the skill's workflow, th
 | `screenTotal` | number | no | Planned number of screens, for "screen N of M" framing. |
 | `sources` | string[] (1–10) | no | Workspace paths of documents to [build from](../guides/deck-from-a-document.md). Each is extracted with [`read_open_design_source`](#read_open_design_source), and the instructions add the material, an outline-first workflow (write `outline.md`, get approval, then build) and accuracy rules. |
 | `format` | [format id](#canvas-formats) | no | A canvas format. The instructions gain a **Canvas** section with the exact size, units, safe area and, for print, the bleed and minimum type size, which takes precedence over any size the skill names. See [Posters and print](../guides/posters.md). |
+| `fluid` | boolean | no | Build a **fluid** design that [reflows to any shape](../guides/posters.md#change-the-shape): the format becomes the default shape, and the Canvas section teaches container-unit sizing with wide and tall layout rules. Default: `true` for print formats, `false` for screen formats. `fluid: true` without `format` uses A3. |
 
-**Result:** `{ instructions, suggestedEntryPath, suggestedKind, format?, designSystemId?, designSystemName?, outlinePath?, sources? }`. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given.
+**Result:** `{ instructions, suggestedEntryPath, suggestedKind, format?, fluid?, designSystemId?, designSystemName?, outlinePath?, sources? }`. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given.
 
 **Errors:** unknown `skillId`, `designSystemId` or `format` (the message lists valid ids), `screenRole` missing with `collectionId`, and a source that can't be read (the message names it).
 
@@ -144,7 +145,7 @@ Call after the entry file (and any supporting files) is written. Validates the a
 | `explorationId` | string | no | The [exploration](#exploring-directions) this artifact belongs to. Registering refreshes its comparison page. |
 | `directionId` | string | no | The direction this sketch is. Leave it out for a built-out or merged version registered against the exploration. |
 | `sources` | string[] | no | The same source paths passed to `prepare_open_design_brief`. Each source's hash is recorded in the manifest. |
-| `format` | [format id](#canvas-formats) | no | The canvas format passed to `prepare_open_design_brief`. Recorded as [`metadata.format`](artifact-manifest.md#metadataformat), so export, preflight and adaptation use it. |
+| `format` | [format id](#canvas-formats) | no | The canvas format passed to `prepare_open_design_brief`. Recorded as [`metadata.format`](artifact-manifest.md#metadataformat), so export, preflight and adaptation use it. Registering again keeps the manifest's earlier metadata (this format, export and share records); a new `format` replaces the old one. |
 
 **Result:** the written manifest. See [Artifact manifest](artifact-manifest.md). With `explorationId`, the result also reports the comparison page's path and which directions are still missing. If the exploration has no plan, the artifact is still registered and the result carries a warning.
 
@@ -314,7 +315,7 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `slides` | integer[] | no | Decks only: 1-based slide numbers, e.g. `[1, 3]`. With `png`/`jpeg` you get one image per slide; with `pdf`/`pptx`, only those slides in that order. |
 | `badge` | boolean | no | `standalone`/`site` only: add the closeable "Made with Open Design" footer badge. Default: on for `site`, off for `standalone`. See [the badge](../guides/share-and-publish.md#the-made-with-open-design-badge). |
 | `baseUrl` | string | no | `site` only: the https address the bundle will be served from, so the preview image (`og:image`) gets a full URL. |
-| `preset` | [format id](#canvas-formats) | no | Use a canvas format's settings instead of `width`/`height`/`selector`/`maxBytes`. A screen format captures each `[data-od-card]` at its size within its byte budget. A print format writes a [print-ready PDF](../guides/posters.md#print-ready-pdfs) (the default format becomes `pdf`). Explicit arguments still win. Without `preset`, the format the artifact was registered with is used. |
+| `preset` | [format id](#canvas-formats) | no | Use a canvas format's settings instead of `width`/`height`/`selector`/`maxBytes`. A screen format captures each `[data-od-card]` at its size within its byte budget. A fluid design is reflowed to the preset's shape first, and for print the bleed is added to it. A print format writes a [print-ready PDF](../guides/posters.md#print-ready-pdfs) (the default format becomes `pdf`). Explicit arguments still win. Without `preset`, the format the artifact was registered with is used. |
 | `bleed` | number 0–20 | no | Print PDFs only: bleed in mm on every side. Default: the format's. |
 | `cropMarks` | boolean | no | Print PDFs only: add crop marks at the trim corners, in a 10 mm slug around the page. |
 | `checkOnly` | boolean | no | Load the page and run [preflight](../guides/posters.md#preflight-checks) only. No files are written and the manifest isn't changed. |
@@ -322,6 +323,8 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `sheet` | string | no | With an XLSX `data` file: the sheet to read. Default: the first. |
 | `nameField` | string | no | With `data`: the column that names each row's file (slugified and made unique), e.g. `poster-ada-lovelace.png`. Default: row numbers. |
 | `split` | boolean | no | With `data` and a PDF: one PDF per row instead of one multi-page PDF. |
+| `presets` | [format id](#canvas-formats)[] (1–15) | no | Fluid designs only: several shapes in one export, each reflowed and checked at its own shape, written as `<name>-<format>.<ext>` (PDF for print shapes, PNG for screen shapes unless `format` is given). Not with `preset`, `width` or `height`. With `data`: one file per row per shape, at most 400. |
+| `shapeSheet` | boolean | no | Fluid designs only: also write `exports/<name>-shapes.png`, the design at every shape in `presets` (default: every format), each marked when preflight found errors. With `checkOnly`, it's the only file written. |
 
 **Result (text):** each written file with its pixel size, file size and format; for decks, the slide count and the stage size and scale used; where the size came from; for print PDFs, the trim size, bleed and a note that the PDF is RGB; for page exports, the **preflight** findings, errors first ([the checks](../guides/posters.md#preflight-checks)); and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Posters and print](../guides/posters.md).
 
@@ -363,7 +366,9 @@ Instructions to re-compose a finished design for other canvas formats: the same 
 | `formats` | [format id](#canvas-formats)[] (1–6) | yes | The target formats, each listed once. |
 | `notes` | string | no | What the user said about the versions, passed into each one's instructions. |
 
-**Result:** a short header, then `{ collectionId, adaptations: [{ formatId, formatLabel, suggestedEntryPath, instructions, registerArgs }] }`. Each entry's instructions include the master's HTML, that format's Canvas section and the re-composition rules. Write the file at `suggestedEntryPath` (`<master>-<formatId>.html`, next to the master) and register it with exactly `registerArgs`.
+For a **fluid** master (`data-od-fluid`), which already reflows to every shape, it returns `mode: "tune"` instead: per shape, instructions to check the master at that shape and fix it in place with that shape's `@container` rule, then re-check every shape with a shape sheet. No new file, no collection, no write.
+
+**Result:** a short header, then `{ mode, collectionId?, adaptations: [{ mode, formatId, formatLabel, instructions, suggestedEntryPath?, registerArgs? }] }`. For a fixed master (`mode: "new-file"`), each entry's instructions include the master's HTML, that format's Canvas section and the re-composition rules. Write the file at `suggestedEntryPath` (`<master>-<formatId>.html`, next to the master) and register it with exactly `registerArgs`.
 
 **Errors:** a missing or unregistered master, a renderer other than HTML, and unknown, repeated or too many formats.
 

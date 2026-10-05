@@ -63,3 +63,4 @@ export * from './poster/preflight';
 export * from './poster/printPdf';
 export * from './poster/qr';
 export * from './generation/adaptInstructions';
+export * from './poster/shapeSheet';

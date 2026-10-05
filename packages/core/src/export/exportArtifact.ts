@@ -17,11 +17,12 @@ import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize, type Size
 import { formatPackageResult, isPackageFormat, packageArtifact, type PackageExportResult, type PackageFormat } from './packageArtifact';
 import { startStaticServer, urlForPath } from './staticServer';
 import { checkDataAgainstFields, loadDataTable, rowFileSuffixes, scanBoundFields, type DataTable } from '../poster/data';
-import { bleedBox, getFormat, unknownFormatError, type CanvasFormat } from '../poster/formats';
-import { bindRow } from '../poster/pageScripts';
-import { formatPreflight, runPreflight, type Finding } from '../poster/preflight';
+import { bleedBox, FORMAT_IDS, getFormat, isFluidHtml, unknownFormatError, type CanvasFormat } from '../poster/formats';
+import { applyShape, bindRow, type ShapeCss } from '../poster/pageScripts';
+import { checkFixedSize, formatPreflight, runPreflight, type Finding } from '../poster/preflight';
 import { finishPrintPdf, mergePdfs, preparePrintPage, printBleedPage, RGB_NOTE, type PrintGeometry } from '../poster/printPdf';
 import { qrSvg } from '../poster/qr';
+import { composeShapeSheet } from '../poster/shapeSheet';
 
 export type ImageFormat = 'png' | 'jpeg';
 /** Formats rendered in a headless browser. */
@@ -79,6 +80,22 @@ export interface ExportArtifactOptions {
   nameField?: string;
   /** PDF data exports: one file per row instead of one multi-page PDF. */
   split?: boolean;
+  /** Fluid designs: several canvas shapes in one export, one file each. */
+  presets?: string[];
+  /** Fluid designs: also write exports/<name>-shapes.png showing every shape. */
+  shapeSheet?: boolean;
+}
+
+/** How one shape is exported: its canvas, output format, print geometry, capture settings, and the fluid resize. */
+interface ShapePlan {
+  canvas?: CanvasFormat;
+  source: 'preset' | 'recorded-format';
+  format: CaptureFormat;
+  printPath: boolean;
+  bleed?: number;
+  selector?: string;
+  maxBytes?: number;
+  shape?: ShapeCss;
 }
 
 export interface PrintInfo {
@@ -118,8 +135,12 @@ export type ExportArtifactResult =
       checkOnly?: boolean;
       /** Data rows exported (bulk exports only). */
       rows?: number;
-      /** Print geometry (print-format PDFs only). */
-      print?: PrintInfo;
+      /** Print geometry, one per print-format PDF shape. */
+      prints?: PrintInfo[];
+      /** The shapes exported, for multi-shape exports. */
+      shapes?: string[];
+      /** Workspace-relative path of the shape sheet, when one was written. */
+      shapeSheet?: string;
     }
   | { ok: false; code: ExportErrorCode; error: string };
 
@@ -139,6 +160,9 @@ const FIT_QUALITIES = [90, 80, 70, 60, 50, 40];
 const EXPORTABLE_RENDERERS = new Set(['html', 'deck-html', 'mini-app', 'svg']);
 const CARD_SELECTOR = '[data-od-card]';
 const MAX_BLEED_MM = 20;
+/** Rows × shapes per export. */
+const MAX_OUTPUTS = 400;
+const MAX_PRESETS = 15;
 
 function fail(code: ExportErrorCode, error: string): ExportArtifactResult {
   return { ok: false, code, error };
@@ -176,6 +200,14 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
   if (o.format === 'pptx' && (o.preset !== undefined || o.data !== undefined)) return 'preset and data apply to images and PDFs, not PPTX.';
   if (o.data === undefined && (o.sheet !== undefined || o.nameField !== undefined || o.split !== undefined)) return 'sheet, nameField and split apply only with data.';
   if (o.data !== undefined && o.slides !== undefined) return 'data applies to page exports, not deck slides.';
+  if (o.presets !== undefined) {
+    if (!Array.isArray(o.presets) || o.presets.length < 1 || o.presets.length > MAX_PRESETS) return `presets must list 1–${MAX_PRESETS} format ids.`;
+    for (const id of o.presets) if (!getFormat(id)) return unknownFormatError(id);
+    if (new Set(o.presets).size !== o.presets.length) return 'presets lists a format twice.';
+    if (o.preset !== undefined || o.width !== undefined || o.height !== undefined) return "presets can't be combined with preset, width or height.";
+  }
+  if (isPackageFormat(o.format) && (o.presets !== undefined || o.shapeSheet)) return `presets and shapeSheet apply to image and PDF exports, not "${o.format}".`;
+  if (o.format === 'pptx' && (o.presets !== undefined || o.shapeSheet)) return 'presets and shapeSheet apply to images and PDFs, not PPTX.';
   return undefined;
 }
 
@@ -310,21 +342,48 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
   const kind = typeof manifest.kind === 'string' ? manifest.kind : undefined;
   const title = typeof manifest.title === 'string' ? manifest.title : undefined;
 
-  // Canvas format: an explicit preset, else the format recorded at registration.
+  // Canvas format: an explicit preset, else the format recorded at registration. With `presets`
+  // (fluid designs only), each listed format is its own shape, planned the same way.
+  const fluid = isFluidHtml(artifact.entryContent);
   const presetFormat = getFormat(options.preset);
   const recordedId = manifest.metadata && typeof manifest.metadata === 'object' ? (manifest.metadata as JsonRecord).format : undefined;
   const recordedFormat = typeof recordedId === 'string' ? getFormat(recordedId) : undefined;
-  const canvasFormat = presetFormat ?? recordedFormat;
-  const format: CaptureFormat = options.format ?? (presetFormat?.medium === 'print' ? 'pdf' : 'png');
-  const printPath = canvasFormat?.medium === 'print' && format === 'pdf';
-  if ((options.bleed !== undefined || options.cropMarks !== undefined) && !printPath) {
+  if ((options.presets !== undefined || options.shapeSheet) && !fluid) {
+    return fail(
+      'invalid-args',
+      `presets and shapeSheet need a fluid design (a [data-od-card] with data-od-fluid), which reflows to any shape. ${options.entryPath} is fixed-size: use adapt_open_design_artifact to make other shapes.`,
+    );
+  }
+  const explicitSize = options.width !== undefined && options.height !== undefined;
+  const plan = (canvas: CanvasFormat | undefined, source: 'preset' | 'recorded-format'): ShapePlan => {
+    // A print shape (preset or the recorded default) exports its print PDF unless a format is asked for.
+    const format: CaptureFormat = (options.format as CaptureFormat | undefined) ?? (canvas?.medium === 'print' && !explicitSize ? 'pdf' : 'png');
+    const printPath = canvas?.medium === 'print' && format === 'pdf' && !explicitSize;
+    const bleed = canvas?.medium === 'print' && !explicitSize ? (options.bleed ?? canvas.bleed ?? 0) : undefined;
+    const imageFormat = format === 'png' || format === 'jpeg';
+    // A preset fills in what the agent used to copy from a table; explicit arguments still win. Fluid cards are always captured by their card.
+    const preset = source === 'preset' ? canvas : undefined;
+    const selector = options.selector ?? ((preset || fluid) && imageFormat ? CARD_SELECTOR : undefined);
+    const maxBytes = options.maxBytes ?? (preset && imageFormat ? preset.maxBytes : undefined);
+    // A fluid card is resized to the shape: explicit px, else the format (mm for print, with bleed).
+    let shape: ShapeCss | undefined;
+    if (fluid && explicitSize) shape = { widthCss: `${options.width}px`, heightCss: `${options.height}px`, bleedCss: '0mm' };
+    else if (fluid && canvas) {
+      const unit = canvas.medium === 'print' ? 'mm' : 'px';
+      shape = { widthCss: `${canvas.width}${unit}`, heightCss: `${canvas.height}${unit}`, bleedCss: `${bleed ?? 0}mm` };
+    }
+    return { canvas, source, format, printPath, bleed, selector, maxBytes, shape };
+  };
+  const multiShape = options.presets !== undefined;
+  const plans: ShapePlan[] = multiShape
+    ? options.presets!.map((id) => plan(getFormat(id)!, 'preset'))
+    : [plan(presetFormat ?? recordedFormat, presetFormat ? 'preset' : 'recorded-format')];
+  const first = plans[0];
+  if ((options.bleed !== undefined || options.cropMarks !== undefined) && !plans.some((p) => p.printPath)) {
     return fail('invalid-args', 'bleed and cropMarks apply to PDF exports of print formats (a print preset such as "a3", or an artifact registered with one).');
   }
-  const bleed = printPath ? (options.bleed ?? canvasFormat!.bleed ?? 0) : undefined;
-  const imageFormat = format === 'png' || format === 'jpeg';
-  // A preset fills in what the agent used to copy from a table; explicit arguments still win.
-  const selector = options.selector ?? (presetFormat && imageFormat ? CARD_SELECTOR : undefined);
-  const maxBytes = options.maxBytes ?? (presetFormat && imageFormat ? presetFormat.maxBytes : undefined);
+  const format = first.format;
+  const maxBytes = first.maxBytes;
 
   // Data-bound export: everything about the data is checked before a browser starts.
   let table: DataTable | undefined;
@@ -340,17 +399,29 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     if (!check.ok) return fail('invalid-args', check.error);
     dataWarnings.push(...check.warnings);
     rowSuffixes = rowFileSuffixes(table, options.nameField);
+    const outputs = table.rows.length * plans.length;
+    if (outputs > MAX_OUTPUTS) {
+      return fail('invalid-args', `${table.rows.length} rows × ${plans.length} shapes is ${outputs} outputs, over the limit of ${MAX_OUTPUTS} per export. Split the data or the shapes into several exports.`);
+    }
   }
 
   const aspectHint = sourceSkillId && options.lookupAspectHint ? await options.lookupAspectHint(sourceSkillId) : undefined;
-  const size = resolveExportSize({
-    width: options.width,
-    height: options.height,
-    aspectHint,
-    sourceSkillId,
-    selector,
-    canvas: canvasFormat ? { format: canvasFormat, source: presetFormat ? 'preset' : 'recorded-format', bleed } : undefined,
-  });
+  const sizeFor = (p: ShapePlan) =>
+    resolveExportSize({
+      width: options.width,
+      height: options.height,
+      aspectHint,
+      sourceSkillId,
+      selector: p.selector,
+      canvas: p.canvas ? { format: p.canvas, source: p.source, bleed: p.bleed } : undefined,
+    });
+  // Cards captured by selector get a roomier layout viewport, so a preview wrapper (padding, a centring
+  // flex body) can't squeeze a fixed-size card below its format size.
+  const layoutFor = (p: ShapePlan, s: ReturnType<typeof sizeFor>) =>
+    p.selector && p.canvas?.medium === 'screen' && (s.source === 'preset' || s.source === 'recorded-format')
+      ? { width: Math.max(Math.ceil(s.viewport.width * 1.25), ELEMENT_LAYOUT_VIEWPORT.width), height: Math.max(s.viewport.height, ELEMENT_LAYOUT_VIEWPORT.height) }
+      : s.viewport;
+  const size = sizeFor(first);
   const quality = format === 'jpeg' ? (options.quality ?? 90) : undefined;
 
   const browser = await findBrowser({ explicitPath: options.browserPath });
@@ -376,19 +447,14 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     // Under tsx (dev runs, the MCP server's tests) esbuild's keepNames wraps nested functions in
     // `__name(...)`, which doesn't exist in the page that page.evaluate() serializes them into.
     await page.evaluateOnNewDocument('globalThis.__name = globalThis.__name || ((fn) => fn)');
-    // Cards captured by selector get a roomier layout viewport, so a preview wrapper (padding, a centring
-    // flex body) can't squeeze a fixed-size card below its format size.
-    const layout =
-      selector && canvasFormat?.medium === 'screen' && (size.source === 'preset' || size.source === 'recorded-format')
-        ? { width: Math.max(Math.ceil(size.viewport.width * 1.25), ELEMENT_LAYOUT_VIEWPORT.width), height: Math.max(size.viewport.height, ELEMENT_LAYOUT_VIEWPORT.height) }
-        : size.viewport;
+    const layout = layoutFor(first, size);
     await page.setViewport({ width: layout.width, height: layout.height, deviceScaleFactor: options.scale ?? 1 });
     await loadPage(page, urlForPath(server.baseUrl, relEntry), options.readyTimeoutMs ?? 15000, options.settleMs ?? 500, warnings);
 
     // Non-mutating: page-mode exports must see the original DOM.
     const slideCount = await countSlides(page);
     let mode: ExportMode;
-    if (printPath) {
+    if (first.printPath) {
       mode = 'print-pdf';
     } else {
       const resolution = resolveExportMode({
@@ -406,118 +472,178 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     const slideError = validateSlideNumbers(options.slides, slideCount);
     if (slideError && mode !== 'image' && mode !== 'page-pdf' && mode !== 'print-pdf') return fail('invalid-args', slideError);
     const pageMode = mode === 'image' || mode === 'page-pdf' || mode === 'print-pdf';
-    if (!pageMode && (table || options.checkOnly)) {
-      return fail('invalid-args', `data and checkOnly apply to page exports (images and page PDFs), not decks (${mode}).`);
+    if (!pageMode && (table || options.checkOnly || multiShape || options.shapeSheet)) {
+      return fail('invalid-args', `data, checkOnly, presets and shapeSheet apply to page exports (images and page PDFs), not decks (${mode}).`);
     }
 
     const exportedAt = new Date().toISOString();
     const files: ExportedFile[] = [];
     const findings: Finding[] = [];
+    const prints: PrintInfo[] = [];
+    let shapeSheetPath: string | undefined;
     let scale = options.scale ?? 1;
     let viewport = size.viewport;
     let sizeSource: SizeSource = size.source;
-    let sizeDetail = size.detail;
+    let sizeDetail = fluid && first.shape ? `${size.detail}, reflowed (fluid design)` : size.detail;
+    if (multiShape) sizeDetail = `presets ${options.presets!.join(', ')}, each reflowed (fluid design)`;
 
     const writeOut = async (relOut: string, buffer: Buffer): Promise<void> => {
       const absOut = path.join(options.workspaceRoot, relOut);
       await fs.mkdir(path.dirname(absOut), { recursive: true });
       await fs.writeFile(absOut, buffer);
     };
-    const budgetWarnings = (relOut: string, requested: ExportFormat, got: { format: ImageFormat; quality?: number; overBudget?: boolean; bytes: number }) => {
+    const budgetWarnings = (relOut: string, requested: ExportFormat, budget: number | undefined, got: { format: ImageFormat; quality?: number; overBudget?: boolean; bytes: number }) => {
       if (got.format !== requested) {
-        warnings.push(`${relOut}: the ${requested.toUpperCase()} was over ${maxBytes} bytes, so it was re-encoded as JPEG (quality ${got.quality}).`);
+        warnings.push(`${relOut}: the ${requested.toUpperCase()} was over ${budget} bytes, so it was re-encoded as JPEG (quality ${got.quality}).`);
       }
       if (got.overBudget) {
-        warnings.push(`${relOut}: ${got.bytes} bytes is still over the ${maxBytes}-byte budget at the lowest quality tried (${got.quality ?? 'lossless'}) — simplify the design (fewer gradients/photos) or reduce scale.`);
+        warnings.push(`${relOut}: ${got.bytes} bytes is still over the ${budget}-byte budget at the lowest quality tried (${got.quality ?? 'lossless'}) — simplify the design (fewer gradients/photos) or reduce scale.`);
       }
     };
 
     if (pageMode) {
-      const geometry: PrintGeometry | undefined = printPath ? { trimWidth: canvasFormat!.width, trimHeight: canvasFormat!.height, bleed: bleed! } : undefined;
-      const cardSelector = selector ?? CARD_SELECTOR;
-      const rows: Array<Record<string, string> | undefined> = table ? table.rows : [undefined];
-      const pdfs: Buffer[] = [];
-      // Print isolation first: it strips any preview wrapper, so the card is measured and printed as authored.
-      if (geometry && !(await preparePrintPage(page, cardSelector, geometry))) {
-        return fail('selector-no-match', `No ${cardSelector} element in ${options.entryPath}; a print piece is one card sized to the bleed box.`);
+      // Export passes, then (shape sheet only) render-only passes for the sheet's remaining shapes.
+      type Pass = { plan: ShapePlan; exported: boolean };
+      const passes: Pass[] = plans.map((p) => ({ plan: p, exported: true }));
+      if (options.shapeSheet) {
+        const covered = new Set(plans.map((p) => p.canvas?.id));
+        for (const id of multiShape ? [] : FORMAT_IDS) if (!covered.has(id)) passes.push({ plan: plan(getFormat(id)!, 'preset'), exported: false });
       }
-      for (const [i, row] of rows.entries()) {
-        const rowNo = row ? i + 1 : undefined;
-        const rowName = row && options.nameField ? row[options.nameField] : undefined;
-        if (row) {
-          const qr: Record<string, string> = {};
-          for (const field of scanBoundFields(artifact.entryContent).qrFields) if (row[field]) qr[field] = await qrSvg(row[field]);
-          await page.evaluate(bindRow, row, qr);
-        }
-        findings.push(...(await runPreflight(page, { cardSelector, format: canvasFormat, bleed, row: rowNo, rowName })));
-        if (options.checkOnly) continue;
-        const suffix = row ? rowSuffixes[i] : undefined;
+      const tagShapes = multiShape || !!options.shapeSheet;
+      const thumbnails: Array<{ label: string; png: Buffer; errors: number }> = [];
+      const rows: Array<Record<string, string> | undefined> = table ? table.rows : [undefined];
+      const qrFields = scanBoundFields(artifact.entryContent).qrFields;
+      const bind = async (row: Record<string, string>): Promise<void> => {
+        const qr: Record<string, string> = {};
+        for (const field of qrFields) if (row[field]) qr[field] = await qrSvg(row[field]);
+        await page.evaluate(bindRow, row, qr);
+      };
+      let isolated = false;
 
-        if (mode === 'image') {
-          type Target = { index?: number; capture: (f: ImageFormat, q?: number) => Promise<Buffer>; width: number; height: number };
-          const targets: Target[] = [];
-          if (selector) {
-            let handles;
-            try {
-              handles = await page.$$(selector);
-            } catch (err) {
-              return fail('invalid-args', `Invalid selector "${selector}": ${err instanceof Error ? err.message : String(err)}`);
-            }
-            if (handles.length === 0) return fail('selector-no-match', `Selector "${selector}" matched no elements in ${options.entryPath}.`);
-            for (const [j, handle] of handles.entries()) {
-              const box = await handle.boundingBox();
-              if (!box || box.width < 1 || box.height < 1) {
-                if (i === 0) warnings.push(`Element ${j + 1} matching "${selector}" has no visible box — skipped.`);
-                continue;
+      for (const [passIndex, pass] of passes.entries()) {
+        const p = pass.plan;
+        const shapeId = tagShapes ? p.canvas?.id : undefined;
+        const cardSelector = p.selector ?? CARD_SELECTOR;
+        if (passIndex > 0) {
+          const s = sizeFor(p);
+          const l = layoutFor(p, s);
+          await page.setViewport({ width: l.width, height: l.height, deviceScaleFactor: options.scale ?? 1 });
+        }
+        if (p.shape) await page.evaluate(applyShape, cardSelector, p.shape);
+        const geometry: PrintGeometry | undefined = p.printPath ? { trimWidth: p.canvas!.width, trimHeight: p.canvas!.height, bleed: p.bleed! } : undefined;
+        // Print isolation first: it strips any preview wrapper, so the card is measured and printed as authored.
+        if (geometry && !isolated) {
+          if (!(await preparePrintPage(page, cardSelector, geometry))) {
+            return fail('selector-no-match', `No ${cardSelector} element in ${options.entryPath}; a print piece is one card sized to the bleed box.`);
+          }
+          isolated = true;
+        }
+        const passMode: ExportMode = multiShape || !pass.exported ? (p.printPath ? 'print-pdf' : p.format === 'pdf' ? 'page-pdf' : 'image') : mode;
+        const passRows = pass.exported ? rows : [table ? table.rows[0] : undefined];
+        const pdfs: Buffer[] = [];
+        const passFindingsStart = findings.length;
+
+        for (const [i, row] of passRows.entries()) {
+          const rowNo = row && pass.exported ? i + 1 : undefined;
+          const rowName = row && pass.exported && options.nameField ? row[options.nameField] : undefined;
+          if (row) await bind(row);
+          findings.push(...(await runPreflight(page, { cardSelector, format: p.canvas, bleed: p.bleed, row: rowNo, rowName, fluid, shape: shapeId })));
+          if (fluid && p.shape && i === 0) findings.push(...(await checkFixedSize(page, cardSelector, p.shape, { shape: shapeId })));
+          if (options.shapeSheet && i === 0) {
+            const handle = await page.$(cardSelector);
+            if (handle) thumbnails.push({ label: p.canvas?.label ?? 'Default', png: Buffer.from(await handle.screenshot({ type: 'png' })), errors: 0 });
+          }
+          if (options.checkOnly || !pass.exported) continue;
+          const nameParts = [row ? rowSuffixes[i] : undefined, multiShape ? p.canvas!.id : undefined].filter((x): x is string => !!x);
+          const suffix = nameParts.length > 0 ? nameParts.join('-') : undefined;
+
+          if (passMode === 'image') {
+            type Target = { index?: number; capture: (f: ImageFormat, q?: number) => Promise<Buffer>; width: number; height: number };
+            const targets: Target[] = [];
+            if (p.selector) {
+              let handles;
+              try {
+                handles = await page.$$(p.selector);
+              } catch (err) {
+                return fail('invalid-args', `Invalid selector "${p.selector}": ${err instanceof Error ? err.message : String(err)}`);
               }
+              if (handles.length === 0) return fail('selector-no-match', `Selector "${p.selector}" matched no elements in ${options.entryPath}.`);
+              for (const [j, handle] of handles.entries()) {
+                const box = await handle.boundingBox();
+                if (!box || box.width < 1 || box.height < 1) {
+                  if (i === 0) warnings.push(`Element ${j + 1} matching "${p.selector}" has no visible box — skipped.`);
+                  continue;
+                }
+                targets.push({
+                  index: j + 1,
+                  width: Math.round(box.width * scale),
+                  height: Math.round(box.height * scale),
+                  capture: async (f, q) => Buffer.from(await handle.screenshot({ type: f, quality: q })),
+                });
+              }
+              if (targets.length === 0) return fail('selector-no-match', `No element matching "${p.selector}" has a visible box.`);
+            } else {
+              const s = sizeFor(p);
               targets.push({
-                index: j + 1,
-                width: Math.round(box.width * scale),
-                height: Math.round(box.height * scale),
-                capture: async (f, q) => Buffer.from(await handle.screenshot({ type: f, quality: q })),
+                width: s.viewport.width * scale,
+                height: s.viewport.height * scale,
+                capture: async (f, q) => Buffer.from(await page.screenshot({ type: f, quality: q })),
               });
             }
-            if (targets.length === 0) return fail('selector-no-match', `No element matching "${selector}" has a visible box.`);
+            const imageFormat = p.format as ImageFormat;
+            const passQuality = imageFormat === 'jpeg' ? (options.quality ?? 90) : undefined;
+            for (const target of targets) {
+              const result = await captureWithinBudget(target.capture, imageFormat, passQuality, p.maxBytes);
+              // Numbered only when there's more than one image; a single card keeps the plain name.
+              const index = targets.length > 1 ? target.index : undefined;
+              const relOut = suffix === undefined ? exportFilePath(relEntry, index, result.format) : exportFilePathWithSuffix(relEntry, suffix, index, result.format);
+              await writeOut(relOut, result.buffer);
+              budgetWarnings(relOut, p.format, p.maxBytes, { ...result, bytes: result.buffer.length });
+              files.push({ path: relOut, width: target.width, height: target.height, bytes: result.buffer.length, format: result.format, quality: result.quality });
+            }
+          } else if (passMode === 'print-pdf') {
+            pdfs.push(await printBleedPage(page, geometry!));
           } else {
-            targets.push({
-              width: size.viewport.width * scale,
-              height: size.viewport.height * scale,
-              capture: async (f, q) => Buffer.from(await page.screenshot({ type: f, quality: q })),
-            });
+            pdfs.push(await capturePagePdf(page, { width: options.width, height: options.height }));
           }
-          for (const target of targets) {
-            const result = await captureWithinBudget(target.capture, format as ImageFormat, quality, maxBytes);
-            // Numbered only when there's more than one image; a single card keeps the plain name.
-            const index = targets.length > 1 ? target.index : undefined;
-            const relOut = suffix === undefined ? exportFilePath(relEntry, index, result.format) : exportFilePathWithSuffix(relEntry, suffix, index, result.format);
-            await writeOut(relOut, result.buffer);
-            budgetWarnings(relOut, format, { ...result, bytes: result.buffer.length });
-            files.push({ path: relOut, width: target.width, height: target.height, bytes: result.buffer.length, format: result.format, quality: result.quality });
+        }
+        if (options.shapeSheet) {
+          const last = thumbnails[thumbnails.length - 1];
+          if (last) last.errors = findings.slice(passFindingsStart).filter((f) => f.severity === 'error').length;
+        }
+
+        if (passMode !== 'image' && pass.exported && !options.checkOnly) {
+          const finish = (pdf: Buffer): Promise<Buffer> => (geometry ? finishPrintPdf(pdf, geometry, { cropMarks: options.cropMarks, title }) : Promise.resolve(pdf));
+          const shapePart = multiShape ? p.canvas!.id : undefined;
+          const outputs: Array<{ relOut: string; pdf: Buffer }> = [];
+          if (table && options.split) {
+            for (const [i, pdf] of pdfs.entries()) {
+              outputs.push({ relOut: exportFilePathWithSuffix(relEntry, [rowSuffixes[i], shapePart].filter(Boolean).join('-'), undefined, 'pdf'), pdf: await finish(pdf) });
+            }
+          } else {
+            const merged = await finish(pdfs.length === 1 ? pdfs[0] : await mergePdfs(pdfs, title));
+            outputs.push({ relOut: shapePart ? exportFilePathWithSuffix(relEntry, shapePart, undefined, 'pdf') : exportFilePath(relEntry, undefined, 'pdf'), pdf: merged });
           }
-        } else if (mode === 'print-pdf') {
-          pdfs.push(await printBleedPage(page, geometry!));
-        } else {
-          pdfs.push(await capturePagePdf(page, { width: options.width, height: options.height }));
+          const s = sizeFor(p);
+          for (const { relOut, pdf } of outputs) {
+            await writeOut(relOut, pdf);
+            files.push({ path: relOut, width: s.viewport.width, height: s.viewport.height, bytes: pdf.length, format: 'pdf' });
+            if (p.maxBytes !== undefined && pdf.length > p.maxBytes) warnings.push(`${relOut}: ${pdf.length} bytes is over maxBytes (${p.maxBytes}); PDFs aren't re-encoded.`);
+          }
+          if (passMode === 'page-pdf' && !multiShape) {
+            sizeSource = 'page-print';
+            sizeDetail = options.width !== undefined ? `print pages of ${options.width}×${options.height}px (unless the page's CSS @page size overrides)` : "the page's CSS @page size, else A4";
+          }
+        }
+        if (p.printPath && pass.exported && !options.checkOnly) {
+          const info = geometryInfo(p.canvas, p.bleed, options.cropMarks);
+          if (info) prints.push(info);
         }
       }
 
-      if (mode !== 'image' && !options.checkOnly) {
-        const finish = (pdf: Buffer): Promise<Buffer> => (geometry ? finishPrintPdf(pdf, geometry, { cropMarks: options.cropMarks, title }) : Promise.resolve(pdf));
-        const outputs: Array<{ relOut: string; pdf: Buffer }> = [];
-        if (table && options.split) {
-          for (const [i, pdf] of pdfs.entries()) outputs.push({ relOut: exportFilePathWithSuffix(relEntry, rowSuffixes[i], undefined, 'pdf'), pdf: await finish(pdf) });
-        } else {
-          outputs.push({ relOut: exportFilePath(relEntry, undefined, 'pdf'), pdf: await finish(pdfs.length === 1 ? pdfs[0] : await mergePdfs(pdfs, title)) });
-        }
-        for (const { relOut, pdf } of outputs) {
-          await writeOut(relOut, pdf);
-          files.push({ path: relOut, width: viewport.width, height: viewport.height, bytes: pdf.length, format: 'pdf' });
-          if (maxBytes !== undefined && pdf.length > maxBytes) warnings.push(`${relOut}: ${pdf.length} bytes is over maxBytes (${maxBytes}); PDFs aren't re-encoded.`);
-        }
-        if (mode === 'page-pdf') {
-          sizeSource = 'page-print';
-          sizeDetail = options.width !== undefined ? `print pages of ${options.width}×${options.height}px (unless the page's CSS @page size overrides)` : "the page's CSS @page size, else A4";
-        }
+      if (options.shapeSheet && thumbnails.length > 0) {
+        shapeSheetPath = exportFilePathWithSuffix(relEntry, 'shapes', undefined, 'png');
+        await writeOut(shapeSheetPath, await composeShapeSheet(instance, thumbnails, title));
       }
       // Failed loads are reported as findings too, so the agent sees them with everything else to fix.
       for (const w of warnings) if (w.startsWith('Failed to load: ')) findings.push({ check: 'broken-asset', severity: 'warning', message: w.slice('Failed to load: '.length) });
@@ -562,7 +688,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
           // Always numbered by the slide's own number, even for a single slide.
           const relOut = exportFilePath(relEntry, slide.number, got.format);
           await writeOut(relOut, slide.buffer);
-          budgetWarnings(relOut, format, got);
+          budgetWarnings(relOut, format, maxBytes, got);
           files.push({ path: relOut, width: pxW, height: pxH, bytes: got.bytes, format: got.format, quality: got.quality });
         }
       }
@@ -600,7 +726,9 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       findings: pageMode ? findings : undefined,
       checkOnly: options.checkOnly || undefined,
       rows: table ? table.rows.length : undefined,
-      print: geometryInfo(printPath ? canvasFormat : undefined, bleed, options.cropMarks),
+      prints: prints.length > 0 ? prints : undefined,
+      shapes: multiShape ? options.presets : undefined,
+      shapeSheet: shapeSheetPath,
     };
   } catch (err) {
     return fail('capture-failed', `Export failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
@@ -621,8 +749,9 @@ function geometryInfo(format: CanvasFormat | undefined, bleed: number | undefine
 export function formatExportResult(result: AnyExportResult): string {
   if (!result.ok) return `Export failed (${result.code}): ${result.error}`;
   if ('output' in result) return formatPackageResult(result);
+  const checked = [result.rows !== undefined ? `${result.rows} data row(s)` : 'the page', result.shapes ? `at ${result.shapes.length} shapes` : result.shapeSheet ? 'at every shape' : ''].filter(Boolean).join(' ');
   const lines = result.checkOnly
-    ? [`Checked ${result.rows !== undefined ? `${result.rows} data row(s)` : 'the page'} (checkOnly: no files written).`]
+    ? [`Checked ${checked} (checkOnly: ${result.shapeSheet ? 'only the shape sheet was written' : 'no files written'}).`]
     : [
         `Exported ${result.files.length} file(s)${result.rows !== undefined ? ` from ${result.rows} data row(s)` : ''}:`,
         ...result.files.map(
@@ -630,12 +759,15 @@ export function formatExportResult(result: AnyExportResult): string {
         ),
       ];
   if (result.slideCount !== undefined) lines.push(`Deck: ${result.slideCount} slide(s) found.`);
-  if (result.print) {
-    const p = result.print;
-    lines.push(
-      `Print: ${p.formatId}, trim ${p.trim.width}×${p.trim.height} mm, ${p.bleed} mm bleed (page ${p.bleedBox.width}×${p.bleedBox.height} mm${p.cropMarks ? ' plus a crop-mark slug' : ''}). TrimBox and BleedBox are set.`,
-      RGB_NOTE,
-    );
+  if (result.shapeSheet) lines.push(`Shape sheet: ${result.shapeSheet} — the design at every shape; a red dot marks shapes with preflight errors.`);
+  if (result.prints) {
+    for (const p of result.prints) {
+      lines.push(
+        `Print: ${p.formatId}, trim ${p.trim.width}×${p.trim.height} mm, ${p.bleed} mm bleed (page ${p.bleedBox.width}×${p.bleedBox.height} mm${p.cropMarks ? ' plus a crop-mark slug' : ''}). TrimBox and BleedBox are set.`,
+      );
+    }
+    lines.push(RGB_NOTE);
+    if (result.shapes) lines.push(`Size: ${result.sizeDetail}.`);
   } else {
     lines.push(
       result.mode === 'page-pdf'

@@ -73,8 +73,9 @@ describe('adapt_open_design_artifact', () => {
   it('returns one recomposition per format and puts the master in a new collection', async () => {
     const root = await workspace({ kind: 'html', renderer: 'html', exports: ['html'], title: 'Launch', sourceSkillId: 'od:prototype:poster-hero', metadata: { format: 'a3' } });
     const result = await adaptArtifact({ workspaceRoot: root, outputDir: '.open-design', entryPath: ENTRY, formats: ['ig-portrait', 'story', 'a2'], notes: 'Keep the orange.' });
-    assert.ok(result.ok, JSON.stringify(result));
+    assert.ok(result.ok && result.mode === 'new-file', JSON.stringify(result));
     assert.strictEqual(result.collectionId, 'launch-formats');
+    assert.ok(result.adaptations.every((a) => a.mode === 'new-file'));
     assert.deepStrictEqual(
       result.adaptations.map((a) => a.suggestedEntryPath),
       ['.open-design/launch/launch-ig-portrait.html', '.open-design/launch/launch-story.html', '.open-design/launch/launch-a2.html'],
@@ -100,7 +101,7 @@ describe('adapt_open_design_artifact', () => {
 
     // Register the adaptations as instructed: the collection scan sees master + three.
     for (const a of result.adaptations) {
-      await fs.writeFile(path.join(root, a.suggestedEntryPath), '<!doctype html>');
+      await fs.writeFile(path.join(root, a.suggestedEntryPath!), '<!doctype html>');
       const { entryPath, format, ...rest } = a.registerArgs as Record<string, unknown> & { entryPath: string; format: string };
       await writeArtifactManifest({ workspaceRoot: root, entryPath, artifactManifest: { ...rest, renderer: 'html', exports: ['html'], metadata: { format } } });
     }
@@ -113,9 +114,25 @@ describe('adapt_open_design_artifact', () => {
     const root = await workspace({ kind: 'html', renderer: 'html', exports: ['html'], title: 'Launch', collectionId: 'campaign', collectionName: 'Campaign', screenRole: 'hero' });
     const before = await fs.readFile(path.join(root, `${ENTRY}.artifact.json`), 'utf8');
     const result = await adaptArtifact({ workspaceRoot: root, outputDir: '.open-design', entryPath: ENTRY, formats: ['x-image'] });
-    assert.ok(result.ok && !result.assignedCollection);
-    assert.strictEqual(result.adaptations[0].registerArgs.collectionId, 'campaign');
+    assert.ok(result.ok && result.mode === 'new-file' && !result.assignedCollection);
+    assert.strictEqual(result.adaptations[0].registerArgs!.collectionId, 'campaign');
     assert.strictEqual(await fs.readFile(path.join(root, `${ENTRY}.artifact.json`), 'utf8'), before);
+  });
+
+  it('returns in-place tuning for a fluid master and leaves its manifest alone', async () => {
+    const root = await workspace();
+    await fs.writeFile(path.join(root, ENTRY), '<!doctype html><div data-od-card data-od-fluid><h1 data-od-field="name">Hi</h1></div>');
+    const before = await fs.readFile(path.join(root, `${ENTRY}.artifact.json`), 'utf8');
+    const result = await adaptArtifact({ workspaceRoot: root, outputDir: '.open-design', entryPath: ENTRY, formats: ['story', 'x-image'], notes: 'Bigger headline on Stories.' });
+    assert.ok(result.ok && result.mode === 'tune', JSON.stringify(result));
+    const [story, x] = result.adaptations;
+    assert.deepStrictEqual([story.mode, story.suggestedEntryPath, story.registerArgs], ['tune', undefined, undefined]);
+    for (const needle of ["Don't create a new file", '"preset": "story", "checkOnly": true', '@container (aspect-ratio < 0.6)', 'tall band', 'Bigger headline on Stories.', '"shapeSheet": true, "checkOnly": true', 'data-od-field="name"']) {
+      assert.ok(story.instructions.includes(needle), needle);
+    }
+    assert.ok(x.instructions.includes('@container (aspect-ratio > 1.2)') && x.instructions.includes('`yt-thumbnail`'));
+    assert.strictEqual(await fs.readFile(path.join(root, `${ENTRY}.artifact.json`), 'utf8'), before);
+    assert.match(formatAdaptResult(result), /no new files/);
   });
 
   it('rejects unregistered masters, unknown, duplicate or too many formats', async () => {
@@ -169,8 +186,8 @@ function freeIdentifiers(source: string): string[] {
 describe('poster page scripts', () => {
   const fns = Object.entries(posterPageScripts).filter(([, v]) => typeof v === 'function') as unknown as Array<[string, () => void]>;
 
-  it('exports the three page scripts', () => {
-    assert.deepStrictEqual(fns.map(([n]) => n).sort(), ['bindRow', 'collectPreflight', 'isolateCardForPrint']);
+  it('exports the five page scripts', () => {
+    assert.deepStrictEqual(fns.map(([n]) => n).sort(), ['applyShape', 'bindRow', 'collectPreflight', 'isolateCardForPrint', 'measureScalables']);
   });
 
   for (const [name, fn] of fns) {
@@ -206,7 +223,7 @@ describe('poster page scripts', () => {
     const mod = { exports: {} as Record<string, unknown> };
     new Function('module', 'exports', out.outputFiles[0].text)(mod, mod.exports);
     const minified = Object.entries(mod.exports).filter(([, v]) => typeof v === 'function');
-    assert.strictEqual(minified.length, 3);
+    assert.strictEqual(minified.length, 5);
     for (const [name, fn] of minified) assert.deepStrictEqual(freeIdentifiers((fn as () => void).toString()), [], name);
   });
 });

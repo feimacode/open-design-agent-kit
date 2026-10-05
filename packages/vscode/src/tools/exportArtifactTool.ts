@@ -23,6 +23,8 @@ interface ExportArtifactInput {
   sheet?: string;
   nameField?: string;
   split?: boolean;
+  presets?: string[];
+  shapeSheet?: boolean;
 }
 
 export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifactInput> {
@@ -31,7 +33,8 @@ export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifa
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<ExportArtifactInput>,
   ): Promise<vscode.PreparedToolInvocation> {
-    const { entryPath, format, preset, checkOnly } = options.input;
+    const { entryPath, format, preset, presets, checkOnly } = options.input;
+    if (presets) return { invocationMessage: `${checkOnly ? 'Checking' : 'Exporting'} ${entryPath} at ${presets.join(', ')}` };
     if (checkOnly) return { invocationMessage: `Checking ${entryPath}${preset ? ` as ${preset}` : ''}` };
     return { invocationMessage: `Exporting ${entryPath} to ${preset ?? (format ?? 'png').toUpperCase()}` };
   }

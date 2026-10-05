@@ -2,7 +2,7 @@
 // open-design's composeSystemPrompt(). See ../vendored/SOURCE.md for why.
 import type { CraftSection, SkillMode } from '../content/contentIndex';
 import type { PlannedDirection } from './explorationPlan';
-import { composeCanvasSection, type CanvasFormat } from '../poster/formats';
+import { composeCanvasSection, composeFluidCanvasSection, type CanvasFormat } from '../poster/formats';
 import { composeSourceMaterialSection, composeSourceWorkflowSection, type SourceContext } from './sourceInstructions';
 
 /**
@@ -140,6 +140,8 @@ export interface ComposeInstructionsInput {
   sourceContext?: SourceContext;
   /** Set when the brief targets a named canvas format — see ../poster/formats.ts. */
   canvasFormat?: CanvasFormat;
+  /** With canvasFormat: the fluid (reflowing) contract instead of the fixed one — see ../poster/formats.ts. */
+  fluid?: boolean;
 }
 
 export function composeInstructions(input: ComposeInstructionsInput): string {
@@ -168,7 +170,8 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
   }
 
   if (input.canvasFormat) {
-    parts.push(`\n\n${composeCanvasSection(input.canvasFormat)}\n\nThis canvas takes precedence over any size the skill text above names.`);
+    const canvas = input.fluid ? composeFluidCanvasSection(input.canvasFormat) : composeCanvasSection(input.canvasFormat);
+    parts.push(`\n\n${canvas}\n\nThis canvas takes precedence over any size or fixed layout the skill text above names.`);
   }
 
   if (input.craftSections && input.craftSections.length > 0) {

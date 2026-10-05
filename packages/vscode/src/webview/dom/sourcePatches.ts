@@ -76,7 +76,12 @@ export function applyPatch(doc: Document, patch: ManualEditPatch): boolean {
   }
 }
 
+/** Marks preview-only nodes (pick-mode overrides, the Shape switcher's style) that must never reach the saved source. */
+export const PREVIEW_ONLY_ATTR = 'data-od-preview-only';
+
 export function serializeDocument(doc: Document): string {
   const doctype = doc.doctype ? `<!DOCTYPE ${doc.doctype.name}>\n` : '<!doctype html>\n';
-  return doctype + doc.documentElement.outerHTML;
+  const clone = doc.documentElement.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll(`[${PREVIEW_ONLY_ATTR}]`).forEach((el) => el.remove());
+  return doctype + clone.outerHTML;
 }

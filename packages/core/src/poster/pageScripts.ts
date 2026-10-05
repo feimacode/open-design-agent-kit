@@ -368,3 +368,70 @@ export function isolateCardForPrint(cardSelector: string, pageWidthMm: number, p
   document.head.appendChild(style);
   return true;
 }
+
+export interface ShapeCss {
+  widthCss: string;
+  heightCss: string;
+  bleedCss: string;
+}
+
+/**
+ * Fluid designs: sets `--od-w`/`--od-h`/`--od-bleed` on every fluid card (or,
+ * with no shape, changes nothing) and waits for layout. Returns whether the
+ * first card is fluid and its box in CSS px.
+ */
+export async function applyShape(cardSelector: string, shape: ShapeCss | null): Promise<{ fluid: boolean; width: number; height: number }> {
+  const cards = Array.prototype.slice.call(document.querySelectorAll(cardSelector));
+  const fluidCards = cards.filter((c: any) => c.hasAttribute('data-od-fluid'));
+  if (shape) {
+    fluidCards.forEach((c: any) => {
+      c.style.setProperty('--od-w', shape.widthCss);
+      c.style.setProperty('--od-h', shape.heightCss);
+      c.style.setProperty('--od-bleed', shape.bleedCss);
+      // Size the card from the variables ourselves: a card the author sized some other way
+      // (width: 100%, a fixed size) would otherwise ignore them and never change shape.
+      c.style.setProperty('width', 'calc(' + shape.widthCss + ' + 2 * ' + shape.bleedCss + ')', 'important');
+      c.style.setProperty('height', 'calc(' + shape.heightCss + ' + 2 * ' + shape.bleedCss + ')', 'important');
+      ['max-width', 'max-height', 'min-width', 'min-height'].forEach((p) => c.style.setProperty(p, 'none', 'important'));
+      c.style.setProperty('min-width', '0', 'important');
+      c.style.setProperty('min-height', '0', 'important');
+      c.style.setProperty('flex-shrink', '0', 'important');
+    });
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+  }
+  const first = cards[0];
+  const r = first ? first.getBoundingClientRect() : { width: 0, height: 0 };
+  return { fluid: fluidCards.length > 0 && fluidCards[0] === first, width: r.width, height: r.height };
+}
+
+/**
+ * For the fixed-size check: font size and box width of every text-bearing
+ * element, `img` and `svg` in the first card, in document order, each with a
+ * short description.
+ */
+export function measureScalables(cardSelector: string): Array<{ name: string; font: number; width: number; text: boolean }> {
+  const card = document.querySelector(cardSelector);
+  if (!card) return [];
+  const out: Array<{ name: string; font: number; width: number; text: boolean }> = [];
+  const describe = (el: any): string => {
+    let s = String(el.tagName || '').toLowerCase();
+    if (el.id) s += '#' + el.id;
+    else if (el.classList && el.classList.length > 0) s += '.' + el.classList[0];
+    const text = String(el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text) s += ' "' + (text.length > 40 ? text.slice(0, 39) + '…' : text) + '"';
+    return s;
+  };
+  Array.prototype.slice.call(card.querySelectorAll('*')).forEach((el: any) => {
+    const tag = String(el.tagName).toLowerCase();
+    if (tag === 'script' || tag === 'style' || el.closest('svg') !== null && tag !== 'svg') return;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none') return;
+    const ownText = Array.prototype.some.call(el.childNodes, (n: any) => n.nodeType === 3 && String(n.nodeValue || '').trim() !== '');
+    const graphic = tag === 'img' || tag === 'svg';
+    if (!ownText && !graphic) return;
+    const r = el.getBoundingClientRect();
+    if (r.width < 1) return;
+    out.push({ name: describe(el), font: parseFloat(cs.fontSize) || 0, width: r.width, text: ownText });
+  });
+  return out;
+}

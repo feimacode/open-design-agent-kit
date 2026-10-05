@@ -43,6 +43,8 @@ import {
   writeArtifactManifest,
   getFormat,
   unknownFormatError,
+  resolveBriefCanvas,
+  posterRegistrationMetadata,
   adaptArtifact,
   formatAdaptResult,
   createArtifactQrCode,
@@ -174,10 +176,12 @@ export async function prepareBrief(
     screenTotal?: number;
     sources?: string[];
     format?: string;
+    fluid?: boolean;
   },
 ): Promise<string> {
-  const canvasFormat = getFormat(input.format);
-  if (input.format !== undefined && !canvasFormat) return unknownFormatError(input.format);
+  const canvas = resolveBriefCanvas(input.format, input.fluid);
+  if ('error' in canvas) return canvas.error;
+  const canvasFormat = canvas.format;
   const skill = await ctx.contentIndex.getSkill(input.skillId);
   if (!skill) {
     const available = (await ctx.contentIndex.listSkills()).map((s) => s.id).slice(0, 20);
@@ -237,6 +241,7 @@ export async function prepareBrief(
     hostOverride: hostOverrideFor(skill.id, skill.body),
     sourceContext: sources.context,
     canvasFormat,
+    fluid: canvas.fluid,
   });
 
   const payload = {
@@ -244,6 +249,7 @@ export async function prepareBrief(
     suggestedEntryPath,
     suggestedKind: 'html',
     format: canvasFormat?.id,
+    fluid: canvasFormat ? canvas.fluid : undefined,
     designSystemId: designSystem ? designSystemId : undefined,
     designSystemName: designSystem?.name,
     outlinePath: sources.context?.outlinePath,
@@ -300,7 +306,7 @@ export async function registerArtifact(
         explorationId: input.explorationId,
         directionId: input.directionId,
         sources: sourceRegistration?.sources.length ? sourceRegistration.sources : undefined,
-        metadata: input.format ? { format: input.format } : undefined,
+        metadata: await posterRegistrationMetadata(ctx.workspaceRoot, input.entryPath, input.format),
       },
     });
     const sourceNote = sourceRegistration ? `\n\n${formatSourceRegistration(sourceRegistration)}` : '';
@@ -486,6 +492,8 @@ export async function exportArtifact(
     sheet?: string;
     nameField?: string;
     split?: boolean;
+    presets?: string[];
+    shapeSheet?: boolean;
   },
 ): Promise<string> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself;

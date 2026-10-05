@@ -63,6 +63,8 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--sheet <name>` | XLSX data: the sheet to read. Default: the first. |
 | `--name-field <column>` | The data column that names each row's file. Default: row numbers. |
 | `--split` | PDF data exports: one PDF per row instead of one multi-page PDF. |
+| `--presets <list>` | Fluid designs: several shapes in one export, comma-separated, e.g. `a3,ig-portrait,story`. |
+| `--shape-sheet` | Fluid designs: also write `<name>-shapes.png`, the design at every shape (all formats unless `--presets`). |
 | `--badge`, `--no-badge` | `standalone`/`site` only: add or leave out the "Made with Open Design" footer badge. Default: on for `site`, off for `standalone`, unless [`OPEN_DESIGN_SHARE_BADGE`](settings-and-env.md#open_design_share_badge) says otherwise. |
 | `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |
 | `--workspace <dir>` | Workspace root. Default: the nearest folder above the entry file that contains `.open-design/`, else the current directory. |

@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { getOutputDirectory, getWorkspaceRoot, registerArtifact } from '../workspace/artifactWriter';
-import { exportsForKind, getFormat, unknownFormatError, formatSourceRegistration, prepareSourceRegistration, refreshExplorationCompare } from '@feimacode/open-design-agent-kit-core';
+import { exportsForKind, getFormat, posterRegistrationMetadata, unknownFormatError, formatSourceRegistration, prepareSourceRegistration, refreshExplorationCompare } from '@feimacode/open-design-agent-kit-core';
 import { COMPARE_PAGE_NOTE } from './explorationTools';
 
 interface RegisterArtifactInput {
@@ -81,7 +81,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
           explorationId,
           directionId,
           sources: sourceRegistration?.sources.length ? sourceRegistration.sources : undefined,
-          metadata: format ? { format } : undefined,
+          metadata: await posterRegistrationMetadata(getWorkspaceRoot(), entryPath, format),
         },
       });
       const sourceNote = sourceRegistration ? `\n\n${formatSourceRegistration(sourceRegistration)}` : '';
