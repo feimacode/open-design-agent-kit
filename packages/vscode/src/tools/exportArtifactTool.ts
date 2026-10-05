@@ -15,6 +15,14 @@ interface ExportArtifactInput {
   slides?: number[];
   badge?: boolean;
   baseUrl?: string;
+  preset?: string;
+  bleed?: number;
+  cropMarks?: boolean;
+  checkOnly?: boolean;
+  data?: string;
+  sheet?: string;
+  nameField?: string;
+  split?: boolean;
 }
 
 export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifactInput> {
@@ -23,7 +31,9 @@ export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifa
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<ExportArtifactInput>,
   ): Promise<vscode.PreparedToolInvocation> {
-    return { invocationMessage: `Exporting ${options.input.entryPath} to ${(options.input.format ?? 'png').toUpperCase()}` };
+    const { entryPath, format, preset, checkOnly } = options.input;
+    if (checkOnly) return { invocationMessage: `Checking ${entryPath}${preset ? ` as ${preset}` : ''}` };
+    return { invocationMessage: `Exporting ${entryPath} to ${preset ?? (format ?? 'png').toUpperCase()}` };
   }
 
   async invoke(

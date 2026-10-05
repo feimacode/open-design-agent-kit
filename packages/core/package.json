@@ -10,15 +10,22 @@
     "@babel/parser": "^7.29.9",
     "cheerio": "^1.2.0",
     "gray-matter": "^4.0.3",
+    "jsqr": "^1.4.0",
     "jszip": "^3.10.1",
     "pdf-lib": "^1.17.1",
+    "pngjs": "^5.0.0",
     "postcss": "^8.5.28",
     "pptxgenjs": "^4.0.1",
-    "puppeteer-core": "^24.43.1"
+    "puppeteer-core": "^24.43.1",
+    "qrcode": "^1.5.4"
   },
   "scripts": {
     "typecheck": "tsc -p . --noEmit",
     "lint": "eslint src --ext ts",
     "test:unit": "rm -rf out && tsc -p . --outDir out --noEmit false && mocha 'out/test/unit/**/*.test.js' --timeout 5000"
+  },
+  "devDependencies": {
+    "@types/pngjs": "^6.0.5",
+    "@types/qrcode": "^1.5.6"
   }
 }

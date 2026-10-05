@@ -356,6 +356,27 @@ async function extractXlsx(zip: JSZip, warnings: string[]): Promise<string> {
   return sections.join('\n\n');
 }
 
+/**
+ * Not upstream: one sheet's cell values as rows (first sheet unless `sheet`
+ * names one), for data-bound export. Same limits and XML checks as extraction.
+ */
+export async function readSpreadsheetRows(buffer: Buffer, sheet?: string): Promise<{ sheet: string; sheets: string[]; rows: string[][] }> {
+  if (buffer.length > MAX_INPUT_BYTES) throw new DocumentExtractError(`The spreadsheet is larger than ${MAX_INPUT_BYTES / 1024 / 1024} MB.`);
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(buffer);
+  } catch {
+    throw new DocumentExtractError("The file isn't a valid XLSX file (it couldn't be opened as a zip archive).");
+  }
+  assertZipSize(zip);
+  const sheets = await readWorkbook(zip);
+  if (sheets.length === 0) throw new DocumentExtractError('The workbook has no sheets.');
+  const chosen = sheet === undefined ? sheets[0] : sheets.find((s) => s.name === sheet);
+  if (!chosen) throw new DocumentExtractError(`No sheet named "${sheet}". Sheets: ${sheets.map((s) => s.name).join(', ')}.`);
+  const xml = await readZipText(zip, chosen.path).catch(() => '');
+  return { sheet: chosen.name, sheets: sheets.map((s) => s.name), rows: worksheetRows(xml, await readSharedStrings(zip)) };
+}
+
 async function readSharedStrings(zip: JSZip): Promise<string[]> {
   const xml = await readZipText(zip, 'xl/sharedStrings.xml').catch(() => '');
   if (!xml) return [];

@@ -55,6 +55,14 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--max-bytes <n>` | Per-file byte budget. Oversized images are re-encoded as JPEG; documents only get a warning. |
 | `--deck` | Treat the artifact as a slide deck. Decks registered as kind `deck`, or made from an `od:deck:*` skill, are detected without it. |
 | `--slides <list>` | Decks only: 1-based slide numbers, e.g. `1,3`. |
+| `--preset <format>` | A [canvas format](tools.md#canvas-formats): screen formats set the size, card selector and byte budget; print formats make a [print-ready PDF](../guides/posters.md#print-ready-pdfs). |
+| `--bleed <mm>` | Print PDFs: bleed in mm on every side. Default: the format's. |
+| `--crop-marks` | Print PDFs: add crop marks in a slug around the page. |
+| `--check` | Run [preflight](../guides/posters.md#preflight-checks) only; write no files. |
+| `--data <file>` | A CSV, XLSX or JSON-array file (relative to the current directory): [one output per row](../guides/posters.md#one-per-row-from-a-spreadsheet). |
+| `--sheet <name>` | XLSX data: the sheet to read. Default: the first. |
+| `--name-field <column>` | The data column that names each row's file. Default: row numbers. |
+| `--split` | PDF data exports: one PDF per row instead of one multi-page PDF. |
 | `--badge`, `--no-badge` | `standalone`/`site` only: add or leave out the "Made with Open Design" footer badge. Default: on for `site`, off for `standalone`, unless [`OPEN_DESIGN_SHARE_BADGE`](settings-and-env.md#open_design_share_badge) says otherwise. |
 | `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |
 | `--workspace <dir>` | Workspace root. Default: the nearest folder above the entry file that contains `.open-design/`, else the current directory. |
@@ -73,6 +81,10 @@ npx @feimacode/open-design-agent-kit export .open-design/tips/tips.html --select
 # A deck as PowerPoint, and slides 1 and 3 as PNG
 npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format pptx
 npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format png --slides 1,3
+
+# An A3 poster for the printer, with crop marks; then one name card per row of a spreadsheet
+npx @feimacode/open-design-agent-kit export .open-design/hack-night/hack-night.html --preset a3 --crop-marks
+npx @feimacode/open-design-agent-kit export .open-design/badge/badge.html --preset a4 --data attendees.csv --name-field name
 
 # One HTML file to email, and a folder to upload to any static host
 npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format standalone

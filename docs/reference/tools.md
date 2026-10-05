@@ -24,7 +24,9 @@ Two rules apply to every tool:
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
 | [`pull_open_design_figma_frame`](#pull_open_design_figma_frame) | `#od-pull-figma-frame` | yes | Instructions to rebuild a Figma frame as code |
-| [`export_open_design_artifact`](#export_open_design_artifact) | `#od-export` | yes | Export to PNG, JPEG, PDF, PowerPoint, standalone HTML or a site folder |
+| [`export_open_design_artifact`](#export_open_design_artifact) | `#od-export` | yes | Export to PNG, JPEG, PDF, PowerPoint, standalone HTML or a site folder; check a design; one file per data row |
+| [`adapt_open_design_artifact`](#adapt_open_design_artifact) | `#od-adapt` | yes | Instructions to re-compose a design for other sizes |
+| [`create_open_design_qr_code`](#create_open_design_qr_code) | `#od-qr-code` | yes | Make a real QR code for a design |
 | [`publish_open_design_artifact`](#publish_open_design_artifact) | `#od-publish` | yes | Package for hosting and get instructions to publish a link |
 
 ## Catalog
@@ -95,10 +97,33 @@ Composes the instructions for a new design. It combines the skill's workflow, th
 | `screenRole` | string | no | This screen's role, e.g. `splash`, `checkout`. Required with `collectionId`. |
 | `screenTotal` | number | no | Planned number of screens, for "screen N of M" framing. |
 | `sources` | string[] (1–10) | no | Workspace paths of documents to [build from](../guides/deck-from-a-document.md). Each is extracted with [`read_open_design_source`](#read_open_design_source), and the instructions add the material, an outline-first workflow (write `outline.md`, get approval, then build) and accuracy rules. |
+| `format` | [format id](#canvas-formats) | no | A canvas format. The instructions gain a **Canvas** section with the exact size, units, safe area and, for print, the bleed and minimum type size, which takes precedence over any size the skill names. See [Posters and print](../guides/posters.md). |
 
-**Result:** `{ instructions, suggestedEntryPath, suggestedKind, designSystemId?, designSystemName?, outlinePath?, sources? }`. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given.
+**Result:** `{ instructions, suggestedEntryPath, suggestedKind, format?, designSystemId?, designSystemName?, outlinePath?, sources? }`. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given.
 
-**Errors:** unknown `skillId` or `designSystemId` (the message lists some valid ids), `screenRole` missing with `collectionId`, and a source that can't be read (the message names it).
+**Errors:** unknown `skillId`, `designSystemId` or `format` (the message lists valid ids), `screenRole` missing with `collectionId`, and a source that can't be read (the message names it).
+
+#### Canvas formats
+
+| Id | Medium | Size | Safe area | Bleed | Min. type | Byte budget |
+|---|---|---|---|---|---|---|
+| `x-image` | screen | 1600×900 px | 48 px | | | 5 MB |
+| `ig-square` | screen | 1080×1080 px per card | 48 px | | | 8 MB |
+| `ig-portrait` | screen | 1080×1350 px | 48 px | | | 8 MB |
+| `story` | screen | 1080×1920 px | 48 px | | | 8 MB |
+| `xhs-card` | screen | 1080×1440 px per card | 48 px | | | |
+| `yt-thumbnail` | screen | 1280×720 px | 48 px | | | 2 MB |
+| `a4` | print | 210×297 mm | 5 mm | 3 mm | 9 pt | |
+| `a3` | print | 297×420 mm | 5 mm | 3 mm | 10 pt | |
+| `a2` | print | 420×594 mm | 10 mm | 3 mm | 14 pt | |
+| `a1` | print | 594×841 mm | 10 mm | 3 mm | 18 pt | |
+| `a0` | print | 841×1189 mm | 15 mm | 3 mm | 24 pt | |
+| `letter` | print | 8.5×11 in | 5 mm | 0.125 in | 9 pt | |
+| `tabloid` | print | 11×17 in | 5 mm | 0.125 in | 10 pt | |
+| `poster-18x24` | print | 18×24 in | 10 mm | 0.125 in | 14 pt | |
+| `poster-24x36` | print | 24×36 in | 12 mm | 0.125 in | 18 pt | |
+
+Print sizes are trim sizes. The design's `[data-od-card]` is authored at the trim size plus the bleed on every side (A3: 303×426 mm), and the safe area is measured inside the trim.
 
 ### register_open_design_artifact
 
@@ -119,6 +144,7 @@ Call after the entry file (and any supporting files) is written. Validates the a
 | `explorationId` | string | no | The [exploration](#exploring-directions) this artifact belongs to. Registering refreshes its comparison page. |
 | `directionId` | string | no | The direction this sketch is. Leave it out for a built-out or merged version registered against the exploration. |
 | `sources` | string[] | no | The same source paths passed to `prepare_open_design_brief`. Each source's hash is recorded in the manifest. |
+| `format` | [format id](#canvas-formats) | no | The canvas format passed to `prepare_open_design_brief`. Recorded as [`metadata.format`](artifact-manifest.md#metadataformat), so export, preflight and adaptation use it. |
 
 **Result:** the written manifest. See [Artifact manifest](artifact-manifest.md). With `explorationId`, the result also reports the comparison page's path and which directions are still missing. If the exploration has no plan, the artifact is still registered and the result carries a warning.
 
@@ -288,8 +314,16 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `slides` | integer[] | no | Decks only: 1-based slide numbers, e.g. `[1, 3]`. With `png`/`jpeg` you get one image per slide; with `pdf`/`pptx`, only those slides in that order. |
 | `badge` | boolean | no | `standalone`/`site` only: add the closeable "Made with Open Design" footer badge. Default: on for `site`, off for `standalone`. See [the badge](../guides/share-and-publish.md#the-made-with-open-design-badge). |
 | `baseUrl` | string | no | `site` only: the https address the bundle will be served from, so the preview image (`og:image`) gets a full URL. |
+| `preset` | [format id](#canvas-formats) | no | Use a canvas format's settings instead of `width`/`height`/`selector`/`maxBytes`. A screen format captures each `[data-od-card]` at its size within its byte budget. A print format writes a [print-ready PDF](../guides/posters.md#print-ready-pdfs) (the default format becomes `pdf`). Explicit arguments still win. Without `preset`, the format the artifact was registered with is used. |
+| `bleed` | number 0–20 | no | Print PDFs only: bleed in mm on every side. Default: the format's. |
+| `cropMarks` | boolean | no | Print PDFs only: add crop marks at the trim corners, in a 10 mm slug around the page. |
+| `checkOnly` | boolean | no | Load the page and run [preflight](../guides/posters.md#preflight-checks) only. No files are written and the manifest isn't changed. |
+| `data` | string | no | A workspace-relative CSV, XLSX or JSON-array file for [one output per row](../guides/posters.md#one-per-row-from-a-spreadsheet). At most 200 rows. Every `data-od-field` and `data-od-qr-field` in the page must have a column. Not for decks. |
+| `sheet` | string | no | With an XLSX `data` file: the sheet to read. Default: the first. |
+| `nameField` | string | no | With `data`: the column that names each row's file (slugified and made unique), e.g. `poster-ada-lovelace.png`. Default: row numbers. |
+| `split` | boolean | no | With `data` and a PDF: one PDF per row instead of one multi-page PDF. |
 
-**Result (text):** each written file with its pixel size, file size and format; for decks, the slide count and the stage size and scale used; where the size came from; and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md) and [Export decks and PDFs](../guides/export-decks.md).
+**Result (text):** each written file with its pixel size, file size and format; for decks, the slide count and the stage size and scale used; where the size came from; for print PDFs, the trim size, bleed and a note that the PDF is RGB; for page exports, the **preflight** findings, errors first ([the checks](../guides/posters.md#preflight-checks)); and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Posters and print](../guides/posters.md).
 
 **Errors**, each prefixed `Export failed (<code>)`:
 
@@ -314,6 +348,38 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 ```json
 { "entryPath": ".open-design/pitch/pitch.html", "format": "pptx" }
 ```
+
+```json
+{ "entryPath": ".open-design/hack-night/hack-night.html", "preset": "a3", "cropMarks": true }
+```
+
+### adapt_open_design_artifact
+
+Instructions to re-compose a finished design for other canvas formats: the same message, copy hierarchy and design system, laid out again for each size instead of scaled. **It writes no design file.** If the master isn't in a [collection](../guides/generate-a-design.md#collections), it is added to a new one (`<name>-formats`, role `master`); that manifest change is the only write.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | yes | The registered master design. HTML only. |
+| `formats` | [format id](#canvas-formats)[] (1–6) | yes | The target formats, each listed once. |
+| `notes` | string | no | What the user said about the versions, passed into each one's instructions. |
+
+**Result:** a short header, then `{ collectionId, adaptations: [{ formatId, formatLabel, suggestedEntryPath, instructions, registerArgs }] }`. Each entry's instructions include the master's HTML, that format's Canvas section and the re-composition rules. Write the file at `suggestedEntryPath` (`<master>-<formatId>.html`, next to the master) and register it with exactly `registerArgs`.
+
+**Errors:** a missing or unregistered master, a renderer other than HTML, and unknown, repeated or too many formats.
+
+### create_open_design_qr_code
+
+Generates a QR code offline as SVG, writes it to `<artifact-dir>/assets/<name>.svg`, lists it in the manifest's `supportingFiles`, and returns inline markup to paste into the design. The markup carries `data-od-qr="<text>"`, so [preflight](../guides/posters.md#preflight-checks) decodes the rendered code and checks it. A QR code is generated data, not design, which is why this tool writes a file.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | yes | The registered artifact the code belongs to. |
+| `text` | string | yes | What to encode, usually a full https URL. Up to 2000 characters. |
+| `name` | string | no | File name under `assets/`. Default `qr`. Reusing a name replaces the file. |
+| `errorCorrection` | `L` · `M` · `Q` · `H` | no | Default `M`. Use `H` when a logo will cover part of the code. |
+| `margin` | integer 0–16 | no | Quiet zone in modules. Default 4, the standard. |
+
+**Errors:** a missing or unregistered artifact, empty or overlong text, and an out-of-range `margin`.
 
 ## Sharing
 

@@ -19,22 +19,22 @@ If you don't say which platform, the agent asks before doing anything.
 
 | Format | Canvas | Recipe (skillId) | Export |
 |---|---|---|---|
-| X single image | 1600×900 | `od:prototype:card-twitter` | PNG, under 5 MB |
+| X single image | 1600×900 | `od:prototype:card-twitter` | PNG, under 5 MB (preset `x-image`) |
 | X post mock (for a video overlay or quote) | card | `od:prototype:social-x-post-card` | PNG, under 5 MB |
-| Square carousel (Instagram / LinkedIn) | 1080×1080 per card | `od:prototype:social-carousel` | one PNG per card, under 8 MB each |
-| Instagram portrait | 1080×1350 | `od:prototype:poster-hero` | PNG, under 8 MB |
-| Story / Reels / TikTok cover | 1080×1920 | `od:prototype:poster-hero` | PNG, under 8 MB |
-| Xiaohongshu cards | 1080×1440 per card | `od:prototype:card-xiaohongshu` | one PNG per card |
-| YouTube thumbnail | 1280×720 | `od:prototype:social-youtube-thumbnail` | PNG or JPEG, under 2 MB |
+| Square carousel (Instagram / LinkedIn) | 1080×1080 per card | `od:prototype:social-carousel` | one PNG per card, under 8 MB each (preset `ig-square`) |
+| Instagram portrait | 1080×1350 | `od:prototype:poster-hero` | PNG, under 8 MB (preset `ig-portrait`) |
+| Story / Reels / TikTok cover | 1080×1920 | `od:prototype:poster-hero` | PNG, under 8 MB (preset `story`) |
+| Xiaohongshu cards | 1080×1440 per card | `od:prototype:card-xiaohongshu` | one PNG per card (preset `xhs-card`) |
+| YouTube thumbnail | 1280×720 | `od:prototype:social-youtube-thumbnail` | PNG or JPEG, under 2 MB (preset `yt-thumbnail`) |
 | YouTube video | 1920×1080 MP4 | `od:video:hyperframes` | [MP4 via HyperFrames](youtube-video.md) |
 
 For several platforms, the agent makes one artifact per format.
 
 ## How it works
 
-1. **Generate:** the agent prepares a brief with the recipe for your platform and writes the HTML. Each card is a fixed-size element at exactly the canvas size, marked with a `data-od-card` attribute, with copy taken from your brief.
-2. **Register:** the artifact is registered with `sourceSkillId` set, so export knows the canvas size.
-3. **Export:** [`export_open_design_artifact`](../reference/tools.md#export_open_design_artifact) with `selector: "[data-od-card]"` and the platform's `maxBytes`. Carousels come out as `<name>-01.png`, `<name>-02.png`…; a single card keeps the plain `<name>.png`. A file over the limit is re-encoded as JPEG. See [Export images](export-images.md).
+1. **Generate:** the agent prepares a brief with the recipe and the [canvas format](../reference/tools.md#canvas-formats) for your platform, and writes the HTML. Each card is a fixed-size element at exactly the canvas size, marked with a `data-od-card` attribute, with copy taken from your brief.
+2. **Register:** the artifact is registered with `sourceSkillId` and `format` set, so export knows the canvas size.
+3. **Export:** [`export_open_design_artifact`](../reference/tools.md#export_open_design_artifact) with the format as `preset`, which means `selector: "[data-od-card]"` and the platform's `maxBytes`. The export's [preflight checks](posters.md#preflight-checks) flag text that's cut off, too small or too close to the edge, and the agent fixes errors and exports again. Carousels come out as `<name>-01.png`, `<name>-02.png`…; a single card keeps the plain `<name>.png`. A file over the limit is re-encoded as JPEG. See [Export images](export-images.md).
 4. **Report:** the agent lists each file's path, pixel size and file size, plus the caption and hashtags if it wrote any. It never posts anything itself.
 
 ## Tips
@@ -59,4 +59,4 @@ For several platforms, the agent makes one artifact per format.
 
 ## Related
 
-[Export images](export-images.md) · [YouTube videos](youtube-video.md) · [Social media pipeline](../automation/social-pipeline.md)
+[Posters and print](posters.md) · [Export images](export-images.md) · [YouTube videos](youtube-video.md) · [Social media pipeline](../automation/social-pipeline.md)

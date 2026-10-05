@@ -18,7 +18,7 @@ import {
   ListToolsRequestSchema,
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import { ContentIndex, FORMAT_IDS } from '@feimacode/open-design-agent-kit-core';
 import { getAssetsRoot, getFigmaToken, getOutputDirectory, getWorkspaceRoot } from './env';
 import { createFileActiveDesignSystemStore } from './store';
 import * as tools from './tools';
@@ -129,6 +129,11 @@ const TOOL_DEFS: ToolDef[] = [
             description:
               "Workspace paths of documents to build the design from (1–10): reports, specs, spreadsheets, existing decks, or repository files such as CHANGELOG.md or docs/adr/*.md. When given, the instructions add the extracted material, a storyline-first workflow (write outline.md, get the user's approval, then build) and accuracy rules.",
           },
+          format: {
+            type: 'string',
+            enum: [...FORMAT_IDS],
+            description: 'Optional canvas format. Adds a Canvas section with the exact size, units, safe area and, for print, bleed and minimum type size, so any skill can produce a post or poster at that size. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720). Print (trim sizes, authored in mm with bleed): a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36. Pass the same id as format to register_open_design_artifact.',
+          },
         },
         required: ['skillId', 'brief'],
       },
@@ -145,6 +150,7 @@ const TOOL_DEFS: ToolDef[] = [
           screenRole?: string;
           screenTotal?: number;
           sources?: string[];
+          format?: string;
         },
       ),
   },
@@ -270,6 +276,11 @@ const TOOL_DEFS: ToolDef[] = [
             maxItems: 10,
             description: "The same source document paths passed to prepare_open_design_brief. Records each source's hash in the manifest and, for HTML, reports numbers on the page that appear in none of the sources so you can check them.",
           },
+          format: {
+            type: 'string',
+            enum: [...FORMAT_IDS],
+            description: "The canvas format passed to prepare_open_design_brief (or the adaptation's registerArgs), if any. Recorded in the manifest's metadata.format so export, preflight and adaptation use it without repeating it.",
+          },
         },
         required: ['entryPath', 'kind', 'title'],
       },
@@ -291,6 +302,7 @@ const TOOL_DEFS: ToolDef[] = [
           explorationId?: string;
           directionId?: string;
           sources?: string[];
+          format?: string;
         },
       ),
   },
@@ -396,7 +408,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'export_open_design_artifact',
       description:
-        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions.",
+        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions. POSTERS AND PREFLIGHT: page exports run preflight checks (text overflow, safe area, print bleed size, minimum type size, contrast, emoji, image resolution for print, QR codes that don't decode, broken assets) and list findings, errors first; findings never block the export. Pass checkOnly: true to check without writing files, and fix every error before the real export. Pass preset with a format id (\"ig-portrait\", \"story\", \"a3\"…) rather than width/height/selector/maxBytes. Pass data with a spreadsheet to export one poster, card or certificate per row.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -463,6 +475,41 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'string',
             description: "site only: the https address the bundle will be served from, so the link-preview image (og:image) can be an absolute URL.",
           },
+          preset: {
+            type: 'string',
+            enum: [...FORMAT_IDS],
+            description: "A canvas format id instead of hand-copied sizes. Screen formats (x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720)) fill in width/height, selector \"[data-od-card]\" and the platform's byte budget. Print formats (a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36) produce a print-ready PDF the size of the bleed box, with TrimBox and BleedBox set. Explicit arguments still win. Without preset, the format the artifact was registered with is used.",
+          },
+          bleed: {
+            type: 'number',
+            minimum: 0,
+            maximum: 20,
+            description: "Print PDFs only: bleed in mm on every side. Default: the format's (3 mm for ISO sizes, 3.175 mm for US sizes). The card must be authored at trim size plus this bleed.",
+          },
+          cropMarks: {
+            type: 'boolean',
+            description: 'Print PDFs only: add crop marks at the trim corners in a 10 mm slug around the page.',
+          },
+          checkOnly: {
+            type: 'boolean',
+            description: 'Run the page load and preflight checks only, writing no files and leaving the manifest alone. Use it to check and fix a design before exporting.',
+          },
+          data: {
+            type: 'string',
+            description: "Workspace-relative CSV, XLSX or JSON-array file. For each row, [data-od-field=\"<column>\"] elements are filled (text, or src on img, href on a) and [data-od-qr-field=\"<column>\"] gets a QR code, in the rendered page only (the file isn't changed). Images: one file per row; PDFs: one multi-page file (or split). At most 200 rows; every field must have a column.",
+          },
+          sheet: {
+            type: 'string',
+            description: 'XLSX data only: the sheet to read (default: the first).',
+          },
+          nameField: {
+            type: 'string',
+            description: "With data: the column whose value names each row's file (slugified, made unique), e.g. \"name\" gives poster-ada-lovelace.png. Default: row numbers.",
+          },
+          split: {
+            type: 'boolean',
+            description: 'With data and a PDF format: one PDF per row instead of one multi-page PDF.',
+          },
         },
         required: ['entryPath'],
       },
@@ -483,8 +530,86 @@ const TOOL_DEFS: ToolDef[] = [
           slides?: number[];
           badge?: boolean;
           baseUrl?: string;
+          preset?: string;
+          bleed?: number;
+          cropMarks?: boolean;
+          checkOnly?: boolean;
+          data?: string;
+          sheet?: string;
+          nameField?: string;
+          split?: boolean;
         },
       ),
+  },
+  {
+    tool: {
+      name: 'adapt_open_design_artifact',
+      description:
+        "Re-composes a finished, registered design for other canvas formats: the same message, copy hierarchy and design system, laid out again for each new size rather than scaled. Use when the user wants a poster or post \"in other sizes\", \"for Instagram and Stories too\", \"as an A3 print as well\", and so on. Returns, per format, instructions (with the master's HTML, that format's canvas rules and re-composition rules), a suggested entry path and the exact arguments to register it with. Writes no design file: write each adaptation yourself, register it with its registerArgs, then preflight and export it with its preset. The master and its adaptations are grouped as one collection (the master is added to a new one if it isn't in one).",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: {
+            type: 'string',
+            description: "Workspace-relative path to the registered master design's entry file.",
+          },
+          formats: {
+            type: 'array',
+            items: {
+              type: 'string',
+              enum: [...FORMAT_IDS],
+            },
+            minItems: 1,
+            maxItems: 6,
+            description: '1–6 target canvas formats. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720). Print: a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36.',
+          },
+          notes: {
+            type: 'string',
+            description: 'Optional: what the user said about the adaptations (e.g. "keep the photo on the story").',
+          },
+        },
+        required: ['entryPath', 'formats'],
+      },
+    },
+    handler: (ctx, args) => tools.adaptArtifactTool(ctx, args as { entryPath: string; formats: string[]; notes?: string }),
+  },
+  {
+    tool: {
+      name: 'create_open_design_qr_code',
+      description:
+        "Generates a real, scannable QR code offline as SVG and saves it in a registered artifact's assets/ folder (listed in its manifest's supportingFiles), returning inline SVG markup to paste into the design. Use whenever a design needs a QR code (event sign-up, menu, ticket, download link); never draw a fake or placeholder one. The markup carries data-od-qr, so export preflight decodes the rendered code and checks it. For one code per row of a spreadsheet, mark the slot with data-od-qr-field=\"<column>\" and export with data instead.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: {
+            type: 'string',
+            description: 'Workspace-relative path to the registered artifact the code belongs to.',
+          },
+          text: {
+            type: 'string',
+            description: 'What the code encodes, usually a full https URL.',
+          },
+          name: {
+            type: 'string',
+            description: 'File name for the SVG under assets/ (default "qr"), e.g. "signup-qr".',
+          },
+          errorCorrection: {
+            type: 'string',
+            enum: ['L', 'M', 'Q', 'H'],
+            description: 'Error correction level. Default M; use H when a logo will be placed over the code.',
+          },
+          margin: {
+            type: 'integer',
+            minimum: 0,
+            maximum: 16,
+            description: "Quiet zone in modules (default 4, the standard; don't go below 2).",
+          },
+        },
+        required: ['entryPath', 'text'],
+      },
+    },
+    handler: (ctx, args) =>
+      tools.createQrCode(ctx, args as { entryPath: string; text: string; name?: string; errorCorrection?: 'L' | 'M' | 'Q' | 'H'; margin?: number }),
   },
   {
     tool: {

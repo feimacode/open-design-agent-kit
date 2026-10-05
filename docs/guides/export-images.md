@@ -28,9 +28,10 @@ The agent calls [`export_open_design_artifact`](../reference/tools.md#export_ope
 The output size is decided in this order, and the result says which rule applied:
 
 1. **Explicit** `width` and `height` (CSS pixels).
-2. **The recipe's size:** the `aspect_hint` of the artifact's source skill, e.g. `card-twitter` gives 1600×900.
-3. **Each selected element's own box**, when a `selector` is given.
-4. **1080×1080** otherwise.
+2. **The canvas format:** `preset`, or the format the artifact was registered with ([Canvas formats](../reference/tools.md#canvas-formats)). A preset also sets `selector: "[data-od-card]"` and the platform's `maxBytes`.
+3. **The recipe's size:** the `aspect_hint` of the artifact's source skill, e.g. `card-twitter` gives 1600×900.
+4. **Each selected element's own box**, when a `selector` is given.
+5. **1080×1080** otherwise.
 
 `scale` (1–3) multiplies the pixels without changing the layout: `scale: 2` on a 1280×720 design gives 2560×1440.
 
@@ -48,7 +49,8 @@ Pass `maxBytes` (X: 5000000, YouTube thumbnail: 2000000, Instagram: 8000000). An
 2. The page loads in a fresh temporary browser profile.
 3. The exporter waits for network requests to finish (up to 15 s), web fonts to load, and a short settle for entrance animations.
 4. Failed requests (a 404 image, for example) come back as warnings.
-5. Files go to `<artifact-dir>/exports/`, and each export is recorded in the manifest's [`metadata.exports`](../reference/artifact-manifest.md#metadataexports).
+5. [Preflight checks](posters.md#preflight-checks) look for text that's cut off or outside the safe area, small type, low contrast and broken QR codes, and are listed in the result. They never block the export.
+6. Files go to `<artifact-dir>/exports/`, and each export is recorded in the manifest's [`metadata.exports`](../reference/artifact-manifest.md#metadataexports).
 
 ## Troubleshooting
 
@@ -60,4 +62,4 @@ Pass `maxBytes` (X: 5000000, YouTube thumbnail: 2000000, Instagram: 8000000). An
 
 ## Related
 
-[Social media posts](social-posts.md) · [Export decks and PDFs](export-decks.md)
+[Social media posts](social-posts.md) · [Posters and print](posters.md) · [Export decks and PDFs](export-decks.md)

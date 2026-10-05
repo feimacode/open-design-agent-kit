@@ -49,7 +49,7 @@ Sidecars are named after the entry file (`<entry>.artifact.json`, and so on), so
 | `collectionId`, `collectionName`, `screenRole`, `screenIndex` | string / number | Collection membership. See [Collections](../guides/generate-a-design.md#collections). |
 | `sources` | `{ path, sha256 }[]` | The documents the design was [built from](../guides/deck-from-a-document.md), with their hashes at registration, so [`get_open_design_artifact`](tools.md#get_open_design_artifact) can report sources that changed since. At most 10. |
 | `explorationId`, `directionId` | string | Exploration membership: a sketch carries both; a built-out or merged version carries only `explorationId`. See [Explore design directions](../guides/explore-directions.md). |
-| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports` and `metadata.shares` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
+| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format` and `metadata.shares` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
 
 ### metadata.exports
 
@@ -64,6 +64,16 @@ Every export records what it wrote, one entry per file. Re-exporting the same pa
 ```
 
 `width` and `height` are output pixels (the slide stage times the scale, for decks). The packaging formats record `{ path, format, bytes, exportedAt }` instead, where `path` is the `.html` file (`standalone`) or the bundle folder (`site`).
+
+For a print PDF the record is the same, with `width` and `height` in CSS pixels of the bleed box. A [bulk export](../guides/posters.md#one-per-row-from-a-spreadsheet) records one entry per file it wrote. A `checkOnly` run records nothing.
+
+### metadata.format
+
+The [canvas format](tools.md#canvas-formats) the design was made for, e.g. `"a3"` or `"story"`, set when it was registered with `format`. Export uses it when no `preset` is given, preflight uses its safe area, bleed and type size, and [`adapt_open_design_artifact`](tools.md#adapt_open_design_artifact) uses it to tell print from screen.
+
+```json
+"metadata": { "format": "a3" }
+```
 
 ### metadata.shares
 

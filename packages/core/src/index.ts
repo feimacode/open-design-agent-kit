@@ -56,3 +56,10 @@ export * from './export/exportSize';
 export * from './export/packageArtifact';
 export * from './export/shareDecorations';
 export * from './export/siteBundle';
+
+export * from './poster/formats';
+export * from './poster/data';
+export * from './poster/preflight';
+export * from './poster/printPdf';
+export * from './poster/qr';
+export * from './generation/adaptInstructions';

@@ -15,20 +15,22 @@ If the brief names a platform or format, use it. Otherwise ask the user to pick 
 
 | Format | Canvas | skillId | Export |
 |---|---|---|---|
-| X single image | 1600×900 | `od:prototype:card-twitter` | `selector: "[data-od-card]"`, `maxBytes: 5000000` |
+| X single image | 1600×900 | `od:prototype:card-twitter` | `preset: "x-image"` |
 | X post mock (for a video overlay or quote) | card element | `od:prototype:social-x-post-card` | `selector: "[data-od-card]"`, `maxBytes: 5000000` |
-| Square carousel (Instagram / LinkedIn) | 1080×1080 per card | `od:prototype:social-carousel` | `selector: "[data-od-card]"`, `maxBytes: 8000000` |
-| Instagram portrait | 1080×1350 | `od:prototype:poster-hero` | `width: 1080, height: 1350`, `selector: "[data-od-card]"`, `maxBytes: 8000000` |
-| Story / Reels / TikTok cover | 1080×1920 | `od:prototype:poster-hero` | `width: 1080, height: 1920`, `selector: "[data-od-card]"`, `maxBytes: 8000000` |
-| Xiaohongshu cards | 1080×1440 per card | `od:prototype:card-xiaohongshu` | `selector: "[data-od-card]"` |
-| YouTube thumbnail | 1280×720 | `od:prototype:social-youtube-thumbnail` | `width: 1280, height: 720`, `selector: "[data-od-card]"`, `maxBytes: 2000000` |
+| Square carousel (Instagram / LinkedIn) | 1080×1080 per card | `od:prototype:social-carousel` | `preset: "ig-square"` |
+| Instagram portrait | 1080×1350 | `od:prototype:poster-hero` | `preset: "ig-portrait"` |
+| Story / Reels / TikTok cover | 1080×1920 | `od:prototype:poster-hero` | `preset: "story"` |
+| Xiaohongshu cards | 1080×1440 per card | `od:prototype:card-xiaohongshu` | `preset: "xhs-card"` |
+| YouTube thumbnail | 1280×720 | `od:prototype:social-youtube-thumbnail` | `preset: "yt-thumbnail"` |
 | YouTube video | 1920×1080 MP4 | `od:video:hyperframes` | MP4 via the HyperFrames CLI (see step 4) |
+
+A preset fills in the canvas size, `selector: "[data-od-card]"` and the platform's upload limit (X 5 MB, Instagram 8 MB, YouTube thumbnail 2 MB).
 
 For several platforms at once, run steps 2–4 once per format and keep each one as its own artifact.
 
 ## 2. Generate
 
-Call `prepare_open_design_brief` with the row's `skillId` and the brief. Call `list_open_design_design_systems` first only if the user names a brand or visual direction. In the brief you pass, say the exact canvas size from the table.
+Call `prepare_open_design_brief` with the row's `skillId`, the brief, and `format` set to the row's preset id (leave it out for the X post mock and YouTube video). Call `list_open_design_design_systems` first only if the user names a brand or visual direction. For the X post mock, say in the brief that it is one card element.
 
 Author the files yourself with your own file-editing tools, following the returned instructions, and add these rules for social posts:
 
@@ -39,11 +41,11 @@ Author the files yourself with your own file-editing tools, following the return
 
 ## 3. Register
 
-Call `register_open_design_artifact` with the entry path, kind `html`, a title, and `sourceSkillId` set to the row's `skillId`, so the export can find the right size.
+Call `register_open_design_artifact` with the entry path, kind `html`, a title, `sourceSkillId` set to the row's `skillId`, and the same `format` you passed to the brief, so the export can find the right size.
 
 ## 4. Export
 
-- **Image formats**: call `export_open_design_artifact` with the entry path and the row's export arguments. If it returns warnings (failed fonts or images, over budget), fix the artifact and export again.
+- **Image formats**: call `export_open_design_artifact` with the entry path and the row's export arguments. If its preflight reports errors (text cut off, a card that isn't the canvas size) or it returns warnings (failed fonts or images, over budget), fix the artifact and export again. To check without writing files, add `checkOnly: true`.
 - **YouTube video**: follow the brief's "Host override" section. Render with `npx hyperframes render … --output <artifact-dir>/exports/<name>.mp4`, and check `ffmpeg -version` first.
 
 ## 5. Report

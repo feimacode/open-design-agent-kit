@@ -1,13 +1,15 @@
-// Export sizing rules (openspec social-post-export, "Export Size Resolution"):
-// explicit size → the source skill's aspect_hint → per-element boxes when a
-// selector is given → 1080×1080.
+// Export sizing rules (openspec social-post-export, "Export Size Resolution";
+// poster-format-pipeline added the canvas-format step): explicit size → the
+// `preset` (or the manifest's recorded format) → the source skill's
+// aspect_hint → per-element boxes when a selector is given → 1080×1080.
+import { bleedBox, mmToPx, type CanvasFormat } from '../poster/formats';
 
 export interface Size {
   width: number;
   height: number;
 }
 
-export type SizeSource = 'explicit' | 'skill-aspect-hint' | 'element' | 'default' | 'deck-stage' | 'page-print';
+export type SizeSource = 'explicit' | 'preset' | 'recorded-format' | 'skill-aspect-hint' | 'element' | 'default' | 'deck-stage' | 'page-print';
 
 export interface ResolvedExportSize {
   /** Browser viewport (CSS pixels) the page is laid out in. */
@@ -47,9 +49,24 @@ export function resolveExportSize(input: {
   aspectHint?: string;
   sourceSkillId?: string;
   selector?: string;
+  /** A canvas format from `preset`, or else the manifest's `metadata.format`. */
+  canvas?: { format: CanvasFormat; source: 'preset' | 'recorded-format'; bleed?: number };
 }): ResolvedExportSize {
   if (input.width !== undefined && input.height !== undefined) {
     return { viewport: { width: input.width, height: input.height }, source: 'explicit', detail: `explicit ${input.width}×${input.height}` };
+  }
+  if (input.canvas) {
+    const { format, source } = input.canvas;
+    const label = source === 'preset' ? `preset "${format.id}"` : `the artifact's recorded format "${format.id}"`;
+    if (format.medium === 'screen') {
+      return { viewport: { width: format.width, height: format.height }, source, detail: `${label} (${format.width}×${format.height})` };
+    }
+    const box = bleedBox(format, input.canvas.bleed);
+    return {
+      viewport: { width: Math.ceil(mmToPx(box.width)), height: Math.ceil(mmToPx(box.height)) },
+      source,
+      detail: `${label} (${box.width}×${box.height} mm with bleed)`,
+    };
   }
   const hinted = parseAspectHint(input.aspectHint);
   if (hinted) {

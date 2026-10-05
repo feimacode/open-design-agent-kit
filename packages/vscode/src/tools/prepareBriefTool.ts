@@ -3,6 +3,8 @@ import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import {
   composeInstructions,
   findCollectionArtifacts,
+  getFormat,
+  unknownFormatError,
   hostOverrideFor,
   resolveBriefSources,
   resolveActiveDesignSystem,
@@ -22,6 +24,7 @@ interface PrepareBriefInput {
   screenRole?: string;
   screenTotal?: number;
   sources?: string[];
+  format?: string;
 }
 
 export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefInput> {
@@ -30,7 +33,12 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<PrepareBriefInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, sources: sourcePaths } = options.input;
+    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, sources: sourcePaths, format } = options.input;
+
+    const canvasFormat = getFormat(format);
+    if (format !== undefined && !canvasFormat) {
+      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(unknownFormatError(format))]);
+    }
 
     const skill = await this.contentIndex.getSkill(skillId);
     if (!skill) {
@@ -122,12 +130,14 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       collectionContext,
       hostOverride: hostOverrideFor(skill.id, skill.body),
       sourceContext: sources.context,
+      canvasFormat,
     });
 
     const payload = {
       instructions,
       suggestedEntryPath,
       suggestedKind: 'html',
+      format: canvasFormat?.id,
       designSystemId: designSystem ? designSystemId : undefined,
       designSystemName: designSystem?.name,
       outlinePath: sources.context?.outlinePath,

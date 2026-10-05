@@ -41,6 +41,12 @@ import {
   summarizeFigmaNode,
   suggestTargetComponentPath,
   writeArtifactManifest,
+  getFormat,
+  unknownFormatError,
+  adaptArtifact,
+  formatAdaptResult,
+  createArtifactQrCode,
+  formatQrCodeResult,
   FigmaApiError,
   type ActiveDesignSystemStore,
   type ContentIndex,
@@ -167,8 +173,11 @@ export async function prepareBrief(
     screenRole?: string;
     screenTotal?: number;
     sources?: string[];
+    format?: string;
   },
 ): Promise<string> {
+  const canvasFormat = getFormat(input.format);
+  if (input.format !== undefined && !canvasFormat) return unknownFormatError(input.format);
   const skill = await ctx.contentIndex.getSkill(input.skillId);
   if (!skill) {
     const available = (await ctx.contentIndex.listSkills()).map((s) => s.id).slice(0, 20);
@@ -227,12 +236,14 @@ export async function prepareBrief(
     collectionContext,
     hostOverride: hostOverrideFor(skill.id, skill.body),
     sourceContext: sources.context,
+    canvasFormat,
   });
 
   const payload = {
     instructions,
     suggestedEntryPath,
     suggestedKind: 'html',
+    format: canvasFormat?.id,
     designSystemId: designSystem ? designSystemId : undefined,
     designSystemName: designSystem?.name,
     outlinePath: sources.context?.outlinePath,
@@ -257,8 +268,10 @@ export async function registerArtifact(
     explorationId?: string;
     directionId?: string;
     sources?: string[];
+    format?: string;
   },
 ): Promise<string> {
+  if (input.format !== undefined && !getFormat(input.format)) return unknownFormatError(input.format);
   const renderer = KIND_TO_RENDERER[input.kind];
   const exportsList = exportsForKind(input.kind);
   if (!renderer || !exportsList) {
@@ -287,6 +300,7 @@ export async function registerArtifact(
         explorationId: input.explorationId,
         directionId: input.directionId,
         sources: sourceRegistration?.sources.length ? sourceRegistration.sources : undefined,
+        metadata: input.format ? { format: input.format } : undefined,
       },
     });
     const sourceNote = sourceRegistration ? `\n\n${formatSourceRegistration(sourceRegistration)}` : '';
@@ -464,6 +478,14 @@ export async function exportArtifact(
     slides?: number[];
     badge?: boolean;
     baseUrl?: string;
+    preset?: string;
+    bleed?: number;
+    cropMarks?: boolean;
+    checkOnly?: boolean;
+    data?: string;
+    sheet?: string;
+    nameField?: string;
+    split?: boolean;
   },
 ): Promise<string> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself;
@@ -474,6 +496,19 @@ export async function exportArtifact(
     lookupAspectHint: async (id) => (await ctx.contentIndex.getSkill(id))?.aspectHint,
   });
   return formatExportResult(result);
+}
+
+/** adapt_open_design_artifact: per-format re-composition instructions; writes only the master's collection membership. */
+export async function adaptArtifactTool(ctx: ToolContext, input: { entryPath: string; formats: string[]; notes?: string }): Promise<string> {
+  return formatAdaptResult(await adaptArtifact({ ...input, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir }));
+}
+
+/** create_open_design_qr_code: writes assets/<name>.svg next to the artifact and returns inline markup. */
+export async function createQrCode(
+  ctx: ToolContext,
+  input: { entryPath: string; text: string; name?: string; errorCorrection?: 'L' | 'M' | 'Q' | 'H'; margin?: number },
+): Promise<string> {
+  return formatQrCodeResult(await createArtifactQrCode({ ...input, workspaceRoot: ctx.workspaceRoot }));
 }
 
 /** publish_open_design_artifact: builds the site bundle and returns publish instructions, or records a deploy. Never deploys. */

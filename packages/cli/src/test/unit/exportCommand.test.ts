@@ -8,7 +8,7 @@ describe('export command', () => {
   it('maps string flags onto export options', () => {
     assert.deepStrictEqual(
       parseExportFlags({ width: '1080', height: '1350', scale: '2', format: 'jpg', quality: '80', maxBytes: '5000000', selector: '[data-od-card]', browser: '/b' }),
-      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined },
+      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined },
     );
     assert.deepStrictEqual(parseExportFlags({}), {
       width: undefined,
@@ -22,6 +22,14 @@ describe('export command', () => {
       deck: undefined,
       slides: undefined,
       badge: undefined,
+      preset: undefined,
+      bleed: undefined,
+      cropMarks: undefined,
+      checkOnly: undefined,
+      data: undefined,
+      sheet: undefined,
+      nameField: undefined,
+      split: undefined,
     });
   });
 
@@ -35,6 +43,15 @@ describe('export command', () => {
     assert.deepStrictEqual([parsed.format, parsed.deck, parsed.slides], ['pptx', true, [1, 3]]);
     assert.strictEqual(parseExportFlags({ format: 'PDF' }).format, 'pdf');
     assert.throws(() => parseExportFlags({ slides: '1,x' }), /--slides must be/);
+  });
+
+  it('parses poster flags', () => {
+    const parsed = parseExportFlags({ preset: 'a3', bleed: '3.175', cropMarks: true, check: true, data: 'people.csv', sheet: 'S1', nameField: 'name', split: true });
+    assert.deepStrictEqual(
+      [parsed.preset, parsed.bleed, parsed.cropMarks, parsed.checkOnly, parsed.data, parsed.sheet, parsed.nameField, parsed.split],
+      ['a3', 3.175, true, true, 'people.csv', 'S1', 'name', true],
+    );
+    assert.throws(() => parseExportFlags({ bleed: 'lots' }), /--bleed must be a number/);
   });
 
   it('rejects malformed flags', () => {

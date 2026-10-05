@@ -18,6 +18,7 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [Figma](figma.md)
 - [Promote to app code](promote-to-app-code.md)
 - [Social media posts](social-posts.md)
+- [Posters and print](posters.md)
 - [YouTube videos](youtube-video.md)
 - [Export images](export-images.md)
 - [Export decks and PDFs](export-decks.md)

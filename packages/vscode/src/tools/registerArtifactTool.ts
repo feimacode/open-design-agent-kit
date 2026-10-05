@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { getOutputDirectory, getWorkspaceRoot, registerArtifact } from '../workspace/artifactWriter';
-import { exportsForKind, formatSourceRegistration, prepareSourceRegistration, refreshExplorationCompare } from '@feimacode/open-design-agent-kit-core';
+import { exportsForKind, getFormat, unknownFormatError, formatSourceRegistration, prepareSourceRegistration, refreshExplorationCompare } from '@feimacode/open-design-agent-kit-core';
 import { COMPARE_PAGE_NOTE } from './explorationTools';
 
 interface RegisterArtifactInput {
@@ -18,6 +18,7 @@ interface RegisterArtifactInput {
   explorationId?: string;
   directionId?: string;
   sources?: string[];
+  format?: string;
 }
 
 const KIND_TO_RENDERER: Record<string, string> = {
@@ -44,8 +45,12 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<RegisterArtifactInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, explorationId, directionId, sources } =
+    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, explorationId, directionId, sources, format } =
       options.input;
+
+    if (format !== undefined && !getFormat(format)) {
+      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(unknownFormatError(format))]);
+    }
 
     const renderer = KIND_TO_RENDERER[kind];
     const exportsList = exportsForKind(kind);
@@ -76,6 +81,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
           explorationId,
           directionId,
           sources: sourceRegistration?.sources.length ? sourceRegistration.sources : undefined,
+          metadata: format ? { format } : undefined,
         },
       });
       const sourceNote = sourceRegistration ? `\n\n${formatSourceRegistration(sourceRegistration)}` : '';

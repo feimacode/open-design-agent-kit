@@ -28,7 +28,9 @@ export type ExportMode =
   | 'deck-images'
   | 'deck-pdf'
   | 'deck-pptx'
-  | 'page-pdf';
+  | 'page-pdf'
+  /** A print-format poster: one bleed-box page per card (or per data row), with trim/bleed boxes. */
+  | 'print-pdf';
 
 export type ModeResolution = { ok: true; mode: ExportMode } | { ok: false; code: 'no-slides' | 'not-a-deck' | 'unsupported-format'; error: string };
 

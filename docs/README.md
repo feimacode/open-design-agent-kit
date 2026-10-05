@@ -31,6 +31,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [Figma](guides/figma.md): frame to code, and artifact to Figma layers
 - [Promote to app code](guides/promote-to-app-code.md): turn a prototype into real components
 - [Social media posts](guides/social-posts.md): X, Instagram, LinkedIn, Xiaohongshu, Stories, YouTube thumbnails
+- [Posters and print](guides/posters.md): print-ready PDFs with bleed, preflight checks, real QR codes, other sizes, and one per spreadsheet row
 - [YouTube videos](guides/youtube-video.md): HyperFrames compositions rendered to MP4
 - [Export images](guides/export-images.md): PNG and JPEG, sizes, cards, file-size budgets
 - [Export decks and PDFs](guides/export-decks.md): PowerPoint, deck PDF, page PDF

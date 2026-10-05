@@ -33,6 +33,7 @@ The webview client (`../../webview/`) is **adapted, not ported verbatim**, from 
   - Markdown, text and CSV pass-through; legacy `.doc/.ppt/.xls` rejected with a "save as" message.
   - Limits raised for real documents: 50 MB input (upstream 10 MB) and 200 MB uncompressed (upstream 50 MB).
 - **Dropped:** the HTTP error class and the PDF concurrency limiter (no server here).
+- **Added 2026-10-04** (`openspec/changes/poster-format-pipeline`): `readSpreadsheetRows()`, which returns one sheet's rows for data-bound export, reusing the workbook, shared-string and worksheet parsing above.
 
 ## Design directions, added 2026-10-03 — see `openspec/changes/add-explorations/design.md`
 

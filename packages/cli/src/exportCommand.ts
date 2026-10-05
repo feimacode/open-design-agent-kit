@@ -20,6 +20,15 @@ export interface ExportCliOptions {
   slides?: string;
   /** --badge / --no-badge (standalone and site only); undefined keeps the format default. */
   badge?: boolean;
+  preset?: string;
+  bleed?: string;
+  cropMarks?: boolean;
+  check?: boolean;
+  /** Relative to the current directory, like the entry path. */
+  data?: string;
+  sheet?: string;
+  nameField?: string;
+  split?: boolean;
 }
 
 export class ExportArgsError extends Error {}
@@ -67,6 +76,14 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     deck: flags.deck,
     slides,
     badge: flags.badge,
+    preset: flags.preset,
+    bleed: parseNumberFlag('bleed', flags.bleed),
+    cropMarks: flags.cropMarks,
+    checkOnly: flags.check,
+    data: flags.data,
+    sheet: flags.sheet,
+    nameField: flags.nameField,
+    split: flags.split,
   };
 }
 
@@ -98,6 +115,7 @@ export async function runExport(entryArg: string, flags: ExportCliOptions, cwd =
   const options = parseExportFlags(flags);
   const workspaceRoot = await resolveWorkspaceRoot(entryArg, flags.workspace, cwd);
   const entryPath = path.relative(workspaceRoot, path.resolve(cwd, entryArg));
+  if (options.data !== undefined) options.data = path.relative(workspaceRoot, path.resolve(cwd, options.data));
   const contentIndex = new ContentIndex(getContentAssetsRoot());
 
   const result = await exportArtifact({

@@ -2,6 +2,7 @@
 // open-design's composeSystemPrompt(). See ../vendored/SOURCE.md for why.
 import type { CraftSection, SkillMode } from '../content/contentIndex';
 import type { PlannedDirection } from './explorationPlan';
+import { composeCanvasSection, type CanvasFormat } from '../poster/formats';
 import { composeSourceMaterialSection, composeSourceWorkflowSection, type SourceContext } from './sourceInstructions';
 
 /**
@@ -137,6 +138,8 @@ export interface ComposeInstructionsInput {
   omitOutput?: boolean;
   /** Set when generating from source documents — see sourceInstructions.ts. */
   sourceContext?: SourceContext;
+  /** Set when the brief targets a named canvas format — see ../poster/formats.ts. */
+  canvasFormat?: CanvasFormat;
 }
 
 export function composeInstructions(input: ComposeInstructionsInput): string {
@@ -162,6 +165,10 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
 
   if (input.hostOverride) {
     parts.push(`\n\n## Host override — takes precedence over the skill text above\n\n${input.hostOverride.trim()}`);
+  }
+
+  if (input.canvasFormat) {
+    parts.push(`\n\n${composeCanvasSection(input.canvasFormat)}\n\nThis canvas takes precedence over any size the skill text above names.`);
   }
 
   if (input.craftSections && input.craftSections.length > 0) {
@@ -204,7 +211,7 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
   );
 
   parts.push(
-    `\n\n## Output\n\nAuthor the artifact's entry file at \`${input.suggestedEntryPath}\` (adjust the filename to follow the semantic-naming guidance above, or the skill's own fixed-name convention, but keep it under the same directory). Write any supporting files (stylesheets, scripts, imported assets) as siblings under that directory. After writing all files, call register_open_design_artifact with the entry path, a kind, a title, and the supporting file paths (relative to the entry file's own directory) so it is recognized as an Open Design artifact.`,
+    `\n\n## Output\n\nAuthor the artifact's entry file at \`${input.suggestedEntryPath}\` (adjust the filename to follow the semantic-naming guidance above, or the skill's own fixed-name convention, but keep it under the same directory). Write any supporting files (stylesheets, scripts, imported assets) as siblings under that directory. After writing all files, call register_open_design_artifact with the entry path, a kind, a title, and the supporting file paths (relative to the entry file's own directory)${input.canvasFormat ? `, and \`format: "${input.canvasFormat.id}"\`` : ''} so it is recognized as an Open Design artifact.`,
   );
 
   return parts.join('');
