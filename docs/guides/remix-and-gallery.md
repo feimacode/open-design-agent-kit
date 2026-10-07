@@ -16,7 +16,7 @@ Three ways into the same examples:
 
 | Where | How | Clicking an example… |
 |---|---|---|
-| **Open Design: Open Gallery Grid** | Searchable card grid with live thumbnails and category filters | remixes it |
+| **Open Design: Open Gallery Grid** | **New design** tiles for starting from a kind of thing (wireframe, poster, diagram…), then a searchable card grid with live thumbnails and category filters | a tile prefills `/open-design-new` in chat; a card's Remix remixes it |
 | **Gallery view** (Open Design activity-bar icon) | Tree grouped by category | prefills Copilot Chat with the example's brief (not sent). Inline icons preview or remix directly |
 | **Open Design: Browse Gallery** | Keyboard quick-pick | remixes it |
 

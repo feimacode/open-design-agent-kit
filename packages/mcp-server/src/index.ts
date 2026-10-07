@@ -18,7 +18,7 @@ import {
   ListToolsRequestSchema,
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ContentIndex, FORMAT_IDS } from '@feimacode/open-design-agent-kit-core';
+import { ContentIndex, FORMAT_IDS, type ListSkillsInput } from '@feimacode/open-design-agent-kit-core';
 import { getAssetsRoot, getFigmaToken, getOutputDirectory, getWorkspaceRoot } from './env';
 import { createFileActiveDesignSystemStore } from './store';
 import * as tools from './tools';
@@ -34,7 +34,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'list_open_design_skills',
       description:
-        "Lists available Open Design skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts bundled with this server. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Each result's 'source' field is 'skill', 'design-template', or 'example'. Some results include an 'examplePrompt' — prefer it (or lightly adapt it) over inventing your own brief when it closely fits. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief for those. Optionally filter by a free-text query, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this server's own runtime and is reachable exclusively through this tool).",
+        "Lists available Open Design skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts bundled with this server. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Each result's 'source' field is 'skill', 'design-template', or 'example'. Some results include an 'examplePrompt' — prefer it (or lightly adapt it) over inventing your own brief when it closely fits. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief for those. Optionally filter by a free-text query, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. SURFACES: when the user names a kind of thing to make — a prototype or landing page, mobile app, slides, document, wireframe, animation, résumé, research synthesis, data report, poster or flier, social post, diagram — call this tool with surface set to that surface's id first (call with surface \"list\" to see the ids) and pick from its entries; if the surface names a prompt, follow that flow. STUBS: an entry with stub: true only advertises an upstream skill and has no instructions here — never pick one; choose a non-stub entry instead. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this server's own runtime and is reachable exclusively through this tool).",
       inputSchema: {
         type: 'object',
         properties: {
@@ -49,6 +49,11 @@ const TOOL_DEFS: ToolDef[] = [
             enum: ['skill', 'design-template', 'example'],
             description: 'Optional exact source filter.',
           },
+          surface: {
+            type: 'string',
+            description:
+              "A kind of thing to make — returns that surface's entries in curated order (the recipe first, then its remixable example; never catalog stubs), plus the surface's own prompt and clarifying questions. Pass \"list\" to get the surfaces themselves (id, label, description, entryCount). Ignores the other filters.",
+          },
           remixableOnly: {
             type: 'boolean',
             description: 'Optional: when true, only return entries with a non-empty exampleArtifactPath (i.e. an actual rendered starting artifact to remix).',
@@ -57,7 +62,7 @@ const TOOL_DEFS: ToolDef[] = [
       },
     },
     handler: (ctx, args) =>
-      tools.listSkills(ctx, args as { query?: string; mode?: string; source?: string; remixableOnly?: boolean }).then((r) => JSON.stringify(r, null, 2)),
+      tools.listSkills(ctx, args as ListSkillsInput).then((r) => JSON.stringify(r, null, 2)),
   },
   {
     tool: {

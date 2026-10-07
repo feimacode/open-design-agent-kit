@@ -25,6 +25,8 @@ import {
   formatAddDiagramRuntimeResult,
   exportArtifact as exportArtifactCore,
   formatCheckResult,
+  listSkillsPayload,
+  type ListSkillsInput,
   type CheckViewport,
   publishArtifact as publishArtifactCore,
   exportsForKind,
@@ -97,22 +99,8 @@ const KIND_TO_RENDERER: Record<string, string> = {
   'design-system': 'design-system',
 };
 
-export async function listSkills(
-  ctx: ToolContext,
-  input: { query?: string; mode?: string; source?: string; remixableOnly?: boolean },
-): Promise<unknown> {
-  const skills = await ctx.contentIndex.listSkills(input.query, input.mode, input.source, input.remixableOnly);
-  return skills.map((s) => ({
-    id: s.id,
-    name: s.name,
-    description: s.description,
-    triggers: s.triggers,
-    category: s.category,
-    mode: s.mode,
-    source: s.source,
-    examplePrompt: s.examplePrompt,
-    exampleArtifactPath: s.exampleArtifactPath,
-  }));
+export async function listSkills(ctx: ToolContext, input: ListSkillsInput): Promise<unknown> {
+  return listSkillsPayload(ctx.contentIndex, input);
 }
 
 export interface RemixablePrompt {

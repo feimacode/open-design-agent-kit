@@ -33,7 +33,7 @@ Or be explicit:
 
 - `/od-deck-guizang-ppt A 10-slide pitch deck for…` runs a [curated recipe](../reference/prompts-and-commands.md#curated-entries).
 - `/open-design-social-post An X post announcing our v2 launch` designs a post and exports the PNG.
-- **Open Design: Open Gallery Grid** lets you pick a real example to remix instead of starting blank.
+- **Open Design: Open Gallery Grid** starts with **New design** tiles: pick what you want to make (a wireframe, a poster, a diagram…) and chat opens with `/open-design-new` ready to send. Below them, pick a real example to remix instead of starting blank.
 - "Use the Starbucks design system, then build me a landing page" sets the active design system and uses it from then on.
 
 ## Where things are

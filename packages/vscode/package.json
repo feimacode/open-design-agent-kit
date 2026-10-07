@@ -64,7 +64,7 @@
       {
         "name": "list_open_design_skills",
         "displayName": "List Open Design Skills",
-        "modelDescription": "Lists available Open Design skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', 'example', or 'community' (all interchangeable as skillId) — 'community' entries are fetched at runtime from a separate, unreviewed community repo (awesome-open-design) and should be flagged to the user as such if it matters to their request. Some results include an 'examplePrompt' — a curated, ready-to-use brief — which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
+        "modelDescription": "Lists available Open Design skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', 'example', or 'community' (all interchangeable as skillId) — 'community' entries are fetched at runtime from a separate, unreviewed community repo (awesome-open-design) and should be flagged to the user as such if it matters to their request. Some results include an 'examplePrompt' — a curated, ready-to-use brief — which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with a non-empty 'exampleArtifactPath' has an actual rendered starting artifact — prefer remix_open_design_example over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. SURFACES: when the user names a kind of thing to make — a prototype or landing page, mobile app, slides, document, wireframe, animation, résumé, research synthesis, data report, poster or flier, social post, diagram — call this tool with surface set to that surface's id first (call with surface \"list\" to see the ids) and pick from its entries; if the surface names a prompt, follow that flow. STUBS: an entry with stub: true only advertises an upstream skill and has no instructions here — never pick one; choose a non-stub entry instead. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
         "userDescription": "Browse Open Design's bundled design skills",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-skills",
@@ -104,6 +104,10 @@
             "remixableOnly": {
               "type": "boolean",
               "description": "Optional: when true, only return entries with a non-empty exampleArtifactPath (i.e. an actual rendered starting artifact to remix)."
+            },
+            "surface": {
+              "type": "string",
+              "description": "A kind of thing to make — returns that surface's entries in curated order (the recipe first, then its remixable example; never catalog stubs), plus the surface's own prompt and clarifying questions. Pass \"list\" to get the surfaces themselves (id, label, description, entryCount). Ignores the other filters."
             }
           }
         }
@@ -1127,6 +1131,9 @@
       },
       {
         "path": "./prompts/local/open-design-explore.prompt.md"
+      },
+      {
+        "path": "./prompts/local/open-design-new.prompt.md"
       },
       {
         "path": "./prompts/local/open-design-poster.prompt.md"

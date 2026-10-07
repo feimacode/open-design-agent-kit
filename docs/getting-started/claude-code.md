@@ -44,7 +44,9 @@ You get the [tools](../reference/tools.md) without the skills. Claude can still 
 
 > Make me a one-page landing page for a coffee subscription, warm and editorial.
 
-Claude loads the `open-design` skill, browses the catalog, prepares a brief, writes the HTML with its own tools and registers it under `.open-design/<name>/`. Open the HTML in a browser to see it. Claude Code has no preview editor; the [VS Code extension](vscode.md) adds one.
+Claude loads the `open-design` skill, browses the catalog, prepares a brief, writes the HTML with its own tools and registers it under `.open-design/<name>/`.
+
+Not sure what to ask for? Run `/open-design:open-design-new` (or `/open-design-new` after `init`) to see what Open Design can make: wireframes, slides, posters, diagrams and more. Open the HTML in a browser to see it. Claude Code has no preview editor; the [VS Code extension](vscode.md) adds one.
 
 The server writes to the project Claude Code was started in. To point it somewhere else, set [`OPEN_DESIGN_WORKSPACE_ROOT`](../reference/settings-and-env.md#open_design_workspace_root).
 

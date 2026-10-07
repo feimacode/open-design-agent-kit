@@ -43,12 +43,43 @@ Lists the skill catalog: skills (task recipes), design templates (rendering styl
 | `mode` | `prototype` · `deck` · `design-system` · `image` · `video` · `template` · `utility` · `audio` · `other` | no | Exact mode filter. |
 | `source` | `skill` · `design-template` · `example` · `community` | no | Exact source filter. `community` entries come from the unreviewed [awesome-open-design](https://github.com/feimacode/awesome-open-design) catalog (VS Code only). |
 | `remixableOnly` | boolean | no | Only entries with a rendered example to remix. |
+| `surface` | string | no | A [surface](#surfaces) id: returns that surface's entries instead. `"list"` returns the surfaces themselves. Ignores the other filters. |
 
 **Result:** a list of `{ id, name, description, triggers, category, mode, source, examplePrompt?, exampleArtifactPath? }`.
 
 - `id` is namespaced `od:<mode>:<name>`, e.g. `od:deck:guizang-ppt`. When an example shares a name with a skill, the example gets a suffix: `od:deck:deck-guizang-editorial:example`.
 - `examplePrompt` is a ready-made brief. Prefer it when it fits the request.
 - A non-empty `exampleArtifactPath` means the entry can be remixed.
+- `stub: true` marks a catalog stub: an entry that only advertises an upstream skill and has no instructions of its own. The agent never picks one.
+
+#### Surfaces
+
+A surface is a kind of thing to make, such as a wireframe, a poster or a diagram. Each one maps to curated entries in the catalog, and catalog stubs never appear. The ready surfaces are:
+
+| Id | Label | Flow |
+|---|---|---|
+| `prototype` | Prototype | |
+| `mobile` | Mobile app | |
+| `slides` | Slides | |
+| `document` | Document | |
+| `wireframe` | Wireframe | |
+| `animation` | Animation | |
+| `resume` | Résumé | |
+| `research` | Research | |
+| `data-report` | Data report | |
+| `poster` | Poster / flier | [poster flow](../guides/posters.md) |
+| `social` | Social post | [social-post flow](../guides/social-posts.md) |
+| `diagram` | Diagram | [diagrams](../guides/diagrams.md) |
+
+HTML email, Color + type and 3D object are planned and don't appear yet.
+
+**`surface: "list"`** returns `{ surfaces: [{ id, label, description, entryCount, prompt? }] }`.
+
+**`surface: "<id>"`** returns:
+- `surface`: `{ id, label, description, prompt?, questions }`.
+- `entries`: the catalog entries in curated order. Each id lists its recipe first, then its remixable example when there is one.
+
+An unknown id returns `{ error }`, listing the valid ones.
 
 Mode `design-system` means "a skill that helps author a design-system deliverable". It's unrelated to `designSystemId`.
 

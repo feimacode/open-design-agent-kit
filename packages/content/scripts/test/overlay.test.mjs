@@ -237,3 +237,15 @@ test('overlay examples are copied and marked, and colliding with an upstream exa
   await writeSkill(upstream, 'examples', 'resume-modern');
   await assert.rejects(applyLocalOverlay(upstream, clash), /resume-modern \(upstream example\)/);
 });
+
+test('surfaces.json is copied to the assets root, and removed when local/ has none', async () => {
+  const local = await tmp();
+  const target = await tmp();
+  await fs.writeFile(path.join(local, 'surfaces.json'), '{"surfaces":[]}');
+  await applyLocalOverlay(target, local);
+  assert.equal(await fs.readFile(path.join(target, 'surfaces.json'), 'utf8'), '{"surfaces":[]}');
+  assert.ok((await listOverlayFiles(local)).includes('surfaces.json'));
+  await fs.rm(path.join(local, 'surfaces.json'));
+  await applyLocalOverlay(target, local);
+  await assert.rejects(fs.access(path.join(target, 'surfaces.json')));
+});

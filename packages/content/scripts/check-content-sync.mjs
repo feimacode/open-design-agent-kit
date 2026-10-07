@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_OPEN_DESIGN_REF } from './sync-open-design-content.mjs';
 import { LOCAL_ROOT, findRedundantOverrides, listOverlayFiles } from './apply-local-overlay.mjs';
+import { checkSurfaces } from './surfaces.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const assetsRoot = path.join(__dirname, '..', 'assets', 'open-design');
@@ -78,8 +79,18 @@ async function checkDesignSystemTokens(manifest) {
   }
 }
 
+// Surfaces must point at real, non-stub entries and existing prompts (openspec add-surface-picker).
+async function checkSurfaceCatalog() {
+  const problems = await checkSurfaces(assetsRoot);
+  if (problems.length > 0) {
+    console.error(`Surface catalog problems (packages/content/local/surfaces.json):\n- ${problems.join('\n- ')}`);
+    process.exit(1);
+  }
+}
+
 async function main() {
   await checkLocalOverlay();
+  await checkSurfaceCatalog();
   await checkRedundantOverrides();
 
   let manifest;

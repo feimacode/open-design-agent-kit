@@ -36,5 +36,5 @@ VS Code SHALL show a "New design" grid of ready surfaces at the top of the Galle
 - **THEN** chat SHALL open with `/open-design-new wireframe` ready to send
 
 #### Scenario: Claude Code without an argument
-- **WHEN** the user runs `/open-design:new` with no argument
+- **WHEN** the user runs `/open-design:open-design-new` (Claude Code plugin) with no argument
 - **THEN** the agent SHALL list the ready surfaces and ask which one

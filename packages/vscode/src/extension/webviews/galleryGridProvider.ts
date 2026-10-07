@@ -79,6 +79,11 @@ export class GalleryGridProvider {
         case 'open-chat':
           await chatWithExample(this.contentIndex, message.id as string, this.log);
           break;
+        case 'open-surface':
+          // Same click-to-chat posture as examples: a prefilled, editable message; nothing runs until sent.
+          this.log.info(`GalleryGridProvider: starting /open-design-new ${message.id}`);
+          await vscode.commands.executeCommand('workbench.action.chat.open', { query: `/open-design-new ${message.id as string} `, isPartialQuery: true });
+          break;
       }
     });
 
@@ -92,7 +97,8 @@ export class GalleryGridProvider {
     const examples = (await this.contentIndex.listSkills())
       .filter((s) => s.exampleArtifactPath)
       .map((s) => ({ id: s.id, name: s.name, description: s.description, category: s.category, mode: s.mode, source: s.source }));
-    this.panel.webview.postMessage({ type: 'update', examples });
+    const surfaces = (await this.contentIndex.listSurfaces()).map((s) => ({ id: s.id, label: s.label, description: s.description }));
+    this.panel.webview.postMessage({ type: 'update', examples, surfaces });
   }
 
   // Thumbnails are requested one card at a time as they scroll into view
@@ -148,6 +154,19 @@ ${OD_TOKENS_CSS}
   #root { display: flex; flex-direction: column; height: 100vh; }
   .og-toolbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 8px; padding: 8px 14px; min-height: 44px; background: var(--od-bg); border-bottom: 1px solid var(--od-border-soft); }
   .og-search { flex: 1; }
+  .og-new { padding: 14px 14px 4px; }
+  .og-new[hidden] { display: none; }
+  .og-section-title { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--od-text-muted); margin: 0 0 10px; }
+  .og-surfaces { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+  .og-surface {
+    display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer; padding: 9px 12px;
+    background: var(--od-bg-panel); color: inherit; font: inherit;
+    border: 1px solid color-mix(in srgb, var(--od-text) 8%, transparent); border-radius: var(--od-radius-lg, 10px);
+    transition: border-color 100ms, transform 100ms;
+  }
+  .og-surface:hover, .og-surface:focus-visible { border-color: var(--od-brand); transform: translateY(-1px); outline: none; }
+  .og-surface-label { font-weight: 600; font-size: 13px; color: var(--od-text-strong); }
+  .og-surface-desc { font-size: 11.5px; line-height: 1.35; color: var(--od-text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .og-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px 0; }
   .og-chip { border: none; cursor: pointer; }
 

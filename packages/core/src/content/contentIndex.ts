@@ -77,6 +77,8 @@ export interface SkillSummary {
   featured: boolean;
   /** Vendored-relative path to a rendered example.html, when this entry is remixable. */
   exampleArtifactPath?: string;
+  /** A catalog stub: its SKILL.md only advertises an upstream skill and the entry ships nothing else. */
+  stub?: boolean;
 }
 
 export interface SkillDetail extends SkillSummary {
@@ -124,6 +126,58 @@ interface LoadedContent {
   skills: Map<string, SkillDetail>;
   designSystems: Map<string, DesignSystemDetail>;
   craft: CraftSection[];
+  surfaces: Surface[];
+}
+
+/** A kind of thing to make (openspec add-surface-picker): the extension-owned surfaces.json at the assets root. */
+export interface Surface {
+  id: string;
+  label: string;
+  description: string;
+  icon?: string;
+  status: 'ready' | 'planned';
+  /** A host prompt that owns this surface's flow, e.g. "open-design-poster". */
+  prompt?: string;
+  /** Catalog directory ids; each expands to every non-stub entry with that id. */
+  entries: string[];
+  questions: string[];
+}
+
+/** Mirrors packages/content/scripts/surfaces.mjs (the build guard): keep the two in step. */
+const STUB_MARKER = 'This catalogue entry advertises';
+const STUB_IGNORED_FILES = new Set(['SKILL.md', '.od-local-overlay']);
+
+async function isStubDir(dir: string, body: string): Promise<boolean> {
+  if (!body.includes(STUB_MARKER)) return false;
+  const others = (await fs.readdir(dir)).filter((n) => !STUB_IGNORED_FILES.has(n));
+  return others.length === 0;
+}
+
+async function loadSurfaces(assetsRoot: string): Promise<Surface[]> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await fs.readFile(path.join(assetsRoot, 'surfaces.json'), 'utf8'));
+  } catch {
+    return [];
+  }
+  const list = raw && typeof raw === 'object' && Array.isArray((raw as { surfaces?: unknown }).surfaces) ? ((raw as { surfaces: unknown[] }).surfaces) : [];
+  const out: Surface[] = [];
+  for (const item of list) {
+    if (!item || typeof item !== 'object') continue;
+    const s = item as Record<string, unknown>;
+    if (typeof s.id !== 'string' || typeof s.label !== 'string' || typeof s.description !== 'string') continue;
+    out.push({
+      id: s.id,
+      label: s.label,
+      description: s.description,
+      icon: typeof s.icon === 'string' ? s.icon : undefined,
+      status: s.status === 'ready' ? 'ready' : 'planned',
+      prompt: typeof s.prompt === 'string' ? s.prompt : undefined,
+      entries: normalizeStringArray(s.entries),
+      questions: normalizeStringArray(s.questions),
+    });
+  }
+  return out;
 }
 
 async function pathExists(p: string): Promise<boolean> {
@@ -186,6 +240,7 @@ async function loadSkillLikeDir(assetsRoot: string, subdir: string, source: Skil
       featured: isFeatured(data as Record<string, unknown>, od),
       body: content.trim(),
       aspectHint: typeof data.aspect_hint === 'string' ? data.aspect_hint : undefined,
+      stub: (await isStubDir(path.join(dir, entry.name), content)) || undefined,
     });
   }
   return result;
@@ -461,10 +516,12 @@ export class ContentIndex {
         loadExamples(this.assetsRoot),
         loadDesignSystems(this.assetsRoot),
         loadCraft(this.assetsRoot),
-      ]).then(([skills, templates, examples, designSystems, craft]) => ({
+        loadSurfaces(this.assetsRoot),
+      ]).then(([skills, templates, examples, designSystems, craft, surfaces]) => ({
         skills: mergeSkillPools(skills, templates, examples),
         designSystems,
         craft,
+        surfaces,
       }));
     }
     return this.loaded;
@@ -508,10 +565,58 @@ export class ContentIndex {
         examplePrompt: skill.examplePrompt,
         featured: skill.featured,
         exampleArtifactPath: skill.exampleArtifactPath,
+        stub: skill.stub,
       });
     }
     results.sort((a, b) => a.mode.localeCompare(b.mode) || a.name.localeCompare(b.name));
     return results;
+  }
+
+  /** Ready surfaces, in catalog order, each with how many entries it resolves to. */
+  async listSurfaces(): Promise<Array<Surface & { entryCount: number }>> {
+    const { surfaces } = await this.ensureLoaded();
+    const out: Array<Surface & { entryCount: number }> = [];
+    for (const s of surfaces) if (s.status === 'ready') out.push({ ...s, entryCount: (await this.surfaceEntries(s.id))?.length ?? 0 });
+    return out;
+  }
+
+  /** A ready surface by id, or undefined. */
+  async getSurface(id: string): Promise<Surface | undefined> {
+    const { surfaces } = await this.ensureLoaded();
+    return surfaces.find((s) => s.id === id.trim() && s.status === 'ready');
+  }
+
+  /**
+   * A ready surface's entries in catalog order: each directory id expands to
+   * every non-stub skill, design template and example with that id, in that
+   * order (the recipe first, then its remixable example). Undefined for an
+   * unknown or planned surface.
+   */
+  async surfaceEntries(id: string): Promise<SkillSummary[] | undefined> {
+    const surface = await this.getSurface(id);
+    if (!surface) return undefined;
+    const skills = await this.loadedSkills();
+    const out: SkillSummary[] = [];
+    for (const dirId of surface.entries) {
+      const matches = [...skills.entries()]
+        .filter(([, s]) => s.id === dirId && !s.stub)
+        .sort(([, a], [, b]) => SKILL_SOURCES.indexOf(a.source) - SKILL_SOURCES.indexOf(b.source));
+      for (const [publicId, skill] of matches) {
+        out.push({
+          id: publicId,
+          name: skill.name,
+          description: skill.description,
+          triggers: skill.triggers,
+          category: skill.category,
+          mode: skill.mode,
+          source: skill.source,
+          examplePrompt: skill.examplePrompt,
+          featured: skill.featured,
+          exampleArtifactPath: skill.exampleArtifactPath,
+        });
+      }
+    }
+    return out;
   }
 
   async getSkill(id: string): Promise<SkillDetail | undefined> {

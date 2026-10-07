@@ -4,6 +4,7 @@
 // has no other consumers to protect a narrower surface against yet.
 
 export * from './content/contentIndex';
+export * from './content/listSkillsPayload';
 export * from './content/exampleHtml';
 export * from './content/localPrompts';
 

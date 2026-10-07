@@ -4,11 +4,11 @@ People arrive with a *kind of thing* in mind — "a diagram", "an HTML email", "
 
 ## What Changes
 
-- An extension-owned **surface catalog**, `packages/content/local/surfaces.json`: each surface has an id, label, one-line description, codicon, an ordered list of real entry ids (skills, templates, examples), optionally a host prompt that owns the flow (e.g. `poster`), and one or two clarifying questions. Initial surfaces: Prototype, Mobile app, Slides, Document, Wireframe, Animation, Résumé, Research, Data report, Poster / flier, Social post, HTML email, Diagram, Color + type, 3D object. Surfaces whose content isn't built yet (Diagram, Color + type, 3D object) ship marked `status: "planned"` and are hidden until their change lands.
+- An extension-owned **surface catalog**, `packages/content/local/surfaces.json`: each surface has an id, label, one-line description, codicon, an ordered list of real entry ids (skills, templates, examples), optionally a host prompt that owns the flow (e.g. `poster`), and one or two clarifying questions. Initial surfaces: Prototype, Mobile app, Slides, Document, Wireframe, Animation, Résumé, Research, Data report, Poster / flier, Social post, HTML email, Diagram, Color + type, 3D object. Diagram ships ready (add-codebase-diagrams landed). Surfaces whose content isn't built or isn't trustworthy yet ship `status: "planned"` and stay hidden until their change lands: Color + type, 3D object, and HTML email (the only email template isn't inbox-safe).
 - A **build-time guard** in the content sync checks: every surface entry exists, isn't a catalog stub, and every referenced prompt exists. Fails the build otherwise.
 - `list_open_design_skills` gains an optional `surface` argument returning that surface's entries in curated order; with `surface: "list"` it returns the surface catalog itself. Same on VS Code and MCP.
 - **VS Code:** the Gallery opens on a "New design" grid of surfaces (above the existing example grid). Clicking one opens chat with `/open-design-new <surface>` prefilled. New prompt file `/open-design-new`.
-- **Claude Code / Codex:** a generated `open-design-new` skill (`/open-design:new`) listing surfaces and routing to them.
+- **Claude Code / Codex:** a generated `open-design-new` skill (`/open-design:open-design-new` with the plugin, `/open-design-new` after `init`) plus the matching MCP prompt, listing surfaces and routing to them.
 - Instructions: when a request names a surface, call `list_open_design_skills` with `surface` first; never pick a catalog-stub entry (results already exclude them for surfaces).
 - Catalog stubs are flagged `stub: true` in every `list_open_design_skills` result so the agent can tell them apart in free queries too.
 

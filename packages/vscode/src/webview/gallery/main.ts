@@ -18,6 +18,12 @@ declare function acquireVsCodeApi(): {
   postMessage(message: unknown): void;
 };
 
+interface GallerySurface {
+  id: string;
+  label: string;
+  description: string;
+}
+
 interface GalleryExample {
   id: string;
   name: string;
@@ -48,15 +54,22 @@ root.innerHTML = `
   <div class="og-toolbar">
     <input id="og-search" class="og-search od-input" type="text" placeholder="Search examples…" autocomplete="off" spellcheck="false" />
   </div>
+  <section id="og-new" class="og-new" hidden>
+    <h2 class="og-section-title">New design</h2>
+    <div id="og-surfaces" class="og-surfaces"></div>
+  </section>
   <div id="og-chips" class="og-chips"></div>
   <div id="og-grid" class="og-grid"></div>
 `;
 
 const searchInput = document.getElementById('og-search') as HTMLInputElement;
 const chipsEl = document.getElementById('og-chips')!;
+const newEl = document.getElementById('og-new')!;
+const surfacesEl = document.getElementById('og-surfaces')!;
 const gridEl = document.getElementById('og-grid')!;
 
 let examples: GalleryExample[] = [];
+let surfaces: GallerySurface[] = [];
 let query = '';
 let activeCategory: string | undefined;
 
@@ -94,7 +107,23 @@ function renderThumbnail(thumbEl: HTMLElement, html: string, source?: string): v
   iframe.style.transform = `scale(${scale})`;
 }
 
+// "What do you want to make?" (openspec add-surface-picker): one tile per ready surface; a click opens
+// chat with /open-design-new <surface> prefilled. Hidden while searching, so results stay in view.
+function renderSurfaces(): void {
+  newEl.hidden = surfaces.length === 0 || query.trim() !== '';
+  surfacesEl.innerHTML = '';
+  for (const surface of surfaces) {
+    const tile = document.createElement('button');
+    tile.className = 'og-surface';
+    tile.title = `${surface.description} Click to start one in chat.`;
+    tile.innerHTML = `<span class="og-surface-label">${escapeHtml(surface.label)}</span><span class="og-surface-desc">${escapeHtml(surface.description)}</span>`;
+    tile.addEventListener('click', () => vscode.postMessage({ type: 'open-surface', id: surface.id }));
+    surfacesEl.appendChild(tile);
+  }
+}
+
 function render(): void {
+  renderSurfaces();
   const categories = [...new Set(examples.map((e) => e.category ?? 'Uncategorized'))].sort((a, b) => a.localeCompare(b));
 
   chipsEl.innerHTML = '';
@@ -196,6 +225,7 @@ window.addEventListener('message', (event) => {
   const message = event.data;
   if (message?.type === 'update') {
     examples = message.examples ?? [];
+    surfaces = message.surfaces ?? [];
     render();
   } else if (message?.type === 'preview') {
     const html = (message.html as string) ?? '';

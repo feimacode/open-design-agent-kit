@@ -15,7 +15,7 @@
   "localOverlay": {
     "skills": 2,
     "examples": 1,
-    "prompts": 5,
+    "prompts": 6,
     "designSystemOverrides": 8,
     "designSystemPackages": 16
   }
