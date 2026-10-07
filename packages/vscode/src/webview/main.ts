@@ -602,7 +602,26 @@ attachMenu(exportBtn, [
       { id: 'canva', label: 'Canva', description: 'Export and prepare for import', icon: 'image', onSelect: () => vscode.postMessage({ type: 'publish-to-canva' }) },
     ],
   },
+  {
+    heading: 'Copy for',
+    items: [
+      { id: 'copy-email', label: 'Email', description: 'Inbox-safe HTML email', icon: 'mail', onSelect: () => vscode.postMessage({ type: 'copy-for', target: 'email' }) },
+      { id: 'copy-wechat', label: 'WeChat', description: 'Official Account editor', icon: 'clipboard', onSelect: () => vscode.postMessage({ type: 'copy-for', target: 'wechat' }) },
+      { id: 'copy-notion', label: 'Notion', description: 'Paste as Notion blocks', icon: 'clipboard', onSelect: () => vscode.postMessage({ type: 'copy-for', target: 'notion' }) },
+      { id: 'copy-newsletter', label: 'Newsletter', description: 'Substack, Mailchimp and similar editors', icon: 'clipboard', onSelect: () => vscode.postMessage({ type: 'copy-for', target: 'newsletter' }) },
+    ],
+  },
 ]);
+
+// "Copy for…" (openspec add-email-and-paste-export): the host exports, then hands the HTML back here to
+// put on the clipboard as rich HTML (vscode.env.clipboard is text-only). The host falls back to opening
+// the exported file in a browser when this write is refused.
+async function copyRich(html: string, text: string): Promise<void> {
+  const ClipboardItemCtor = (window as unknown as { ClipboardItem?: new (items: Record<string, Blob>) => unknown }).ClipboardItem;
+  if (!ClipboardItemCtor || !navigator.clipboard || typeof navigator.clipboard.write !== 'function') throw new Error('Rich clipboard is not available here.');
+  const item = new ClipboardItemCtor({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) });
+  await navigator.clipboard.write([item as ClipboardItem]);
+}
 
 shareBtn.addEventListener('click', () => {
   vscode.postMessage({ type: 'share' });
@@ -648,6 +667,11 @@ collectionNextBtn.addEventListener('click', () => {
 window.addEventListener('message', (event) => {
   const message = event.data;
   switch (message?.type) {
+    case 'copy-payload':
+      copyRich(String(message.html ?? ''), String(message.text ?? ''))
+        .then(() => vscode.postMessage({ type: 'copy-result', ok: true, target: message.target, file: message.file }))
+        .catch((err: unknown) => vscode.postMessage({ type: 'copy-result', ok: false, target: message.target, file: message.file, error: err instanceof Error ? err.message : String(err) }));
+      break;
     case 'init':
       comments = message.comments ?? [];
       updateSendComments();

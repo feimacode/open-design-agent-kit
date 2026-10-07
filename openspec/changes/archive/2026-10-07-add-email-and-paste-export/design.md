@@ -18,8 +18,8 @@ html-anything's `export/wechat.ts` and `notion.ts` use juice and DOMParser in th
 In the page, each element's style is compared against a baseline: the same tag in a blank iframe. Only the properties that differ are written, from a whitelist of email- and paste-safe properties (box model, typography, color, background-color, border, text-align, vertical-align, width/height on tables and images). Pseudo-elements are dropped, and the check warns when they carried content.
 *Alternative:* juice on `<style>` text. It's simpler, but misses runtime CSS and inherits cascade bugs.
 
-### D2. Email is a format, plus a kind
-`format: "email"` works on any html artifact, with the email checks telling the agent what to fix. The `email-campaign` skill registers kind `email`, which makes `email` its default export and runs the email checks in `check_open_design_artifact` automatically.
+### D2. Email is a format; an email artifact is marked in its markup
+`format: "email"` works on any html artifact, with the email checks telling the agent what to fix. The `email-campaign` skill marks its email column with `data-od-email`; the visual check runs the email rules on any page with that root, and email export uses it as the content instead of wrapping the page again. *Not* a new manifest kind: the manifest validator is vendored from upstream and only knows upstream's kinds and export values, and diverging from it isn't worth a marker attribute's job.
 
 ### D3. Layout safety is checked, not converted
 Automatically turning flex or grid into tables produces fragile output. The checks name the offending elements, and the agent rewrites them using the skill's table patterns.

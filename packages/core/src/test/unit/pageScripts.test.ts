@@ -4,6 +4,7 @@ import * as esbuild from 'esbuild';
 import * as ts from 'typescript';
 import * as pageScripts from '../../export/deck/pageScripts';
 import * as diagramPageScripts from '../../export/diagramPageScripts';
+import * as inlinePageScripts from '../../export/inlinePageScripts';
 
 // Browser/JS globals a page script may reference; anything else free in a
 // function's source would be a closure over module scope, which breaks once
@@ -74,6 +75,25 @@ describe('diagram page scripts', () => {
 
   it('stays self-contained after esbuild minification (as in the VS Code bundle)', () => {
     const entry = path.resolve(__dirname, '..', '..', '..', 'src', 'export', 'diagramPageScripts.ts');
+    const out = esbuild.buildSync({ entryPoints: [entry], bundle: true, minify: true, format: 'cjs', platform: 'node', write: false });
+    const mod = { exports: {} as Record<string, unknown> };
+    new Function('module', 'exports', out.outputFiles[0].text)(mod, mod.exports);
+    const fns = Object.entries(mod.exports).filter(([, v]) => typeof v === 'function');
+    assert.strictEqual(fns.length, 2);
+    for (const [name, fn] of fns) assert.deepStrictEqual(freeIdentifiers((fn as () => void).toString()), [], name);
+  });
+});
+
+describe('email and paste page scripts', () => {
+  for (const [name, fn] of Object.entries(inlinePageScripts)) {
+    if (typeof fn !== 'function') continue;
+    it(`${name} is self-contained once serialized`, () => {
+      assert.deepStrictEqual(freeIdentifiers(fn.toString()), []);
+    });
+  }
+
+  it('stays self-contained after esbuild minification (as in the VS Code bundle)', () => {
+    const entry = path.resolve(__dirname, '..', '..', '..', 'src', 'export', 'inlinePageScripts.ts');
     const out = esbuild.buildSync({ entryPoints: [entry], bundle: true, minify: true, format: 'cjs', platform: 'node', write: false });
     const mod = { exports: {} as Record<string, unknown> };
     new Function('module', 'exports', out.outputFiles[0].text)(mod, mod.exports);

@@ -1,0 +1,12 @@
+{
+  "name": "example-email-campaign",
+  "title": "Product launch email",
+  "description": "An inbox-safe product launch email.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "A launch email for our new reporting dashboard: one headline, three short benefits, one button to try it, and a footer with unsubscribe and view-in-browser links."
+      }
+    }
+  }
+}

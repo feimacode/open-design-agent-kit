@@ -33,7 +33,7 @@
 
 ## Impact
 
-- `packages/core`: `export/inlineStyles.ts` (page script plus a defaults baseline), `export/emailExport.ts`, email checks, an `email` artifact kind in `EXPORTS_BY_KIND` (an html kind with the `email` and `paste` formats).
+- `packages/core`: `export/inlineStyles.ts` (page script plus a defaults baseline), `export/emailExport.ts`, email checks, email artifacts recognised by a `[data-od-email]` column root (no new manifest kind; the validator is vendored).
 - `packages/content/local/skills/email-campaign/`; the HTML-email surface.
 - `packages/vscode`: preview toolbar menu, webview clipboard. `packages/mcp-server`, CLI (`--format email|paste --target`): schemas.
 - No new npm dependencies.

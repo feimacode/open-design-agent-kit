@@ -68,6 +68,15 @@ function createFigmaAssetReader(workspaceRoot: string, entryPath: string): Figma
 
 export const ARTIFACT_EDITOR_VIEW_TYPE = 'openDesign.artifactEditor';
 
+type CopyTarget = 'email' | 'wechat' | 'notion' | 'newsletter';
+const COPY_LABELS: Record<CopyTarget, string> = { email: 'email', wechat: 'WeChat', notion: 'Notion', newsletter: 'newsletter' };
+const COPY_DESTINATIONS: Record<CopyTarget, string> = {
+  email: "your email tool's HTML editor (send yourself a test first)",
+  wechat: 'the WeChat Official Account editor',
+  notion: 'a Notion page',
+  newsletter: 'your newsletter editor',
+};
+
 function nonce(): string {
   let text = '';
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -262,6 +271,16 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
             isPartialQuery: true,
           });
           break;
+        case 'copy-for':
+          if (!location) {
+            vscode.window.showWarningMessage('Open Design: this artifact must be inside an open workspace folder to copy it.');
+            break;
+          }
+          await this.copyFor(location, message.target as CopyTarget, webviewPanel.webview);
+          break;
+        case 'copy-result':
+          await this.copyResult(message as { ok: boolean; target: CopyTarget; file: string; error?: string });
+          break;
         case 'share':
           if (!location) {
             vscode.window.showWarningMessage('Open Design: this artifact must be inside an open workspace folder to share it.');
@@ -364,6 +383,44 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
   // The Share button: a native quick pick. Download runs here (no chat, no
   // browser needed); publishing only ever opens a chat prefill — the button
   // itself never deploys anything.
+  // "Copy for…" (openspec add-email-and-paste-export): export as an email or a paste fragment, then let the
+  // webview put it on the clipboard as rich HTML; copyResult() falls back to the browser if it can't.
+  private async copyFor(location: { workspaceRoot: string; entryPath: string }, target: CopyTarget, webview: vscode.Webview): Promise<void> {
+    const artifact = await readArtifact(location).catch(() => null);
+    if (!artifact?.manifest) {
+      vscode.window.showWarningMessage('Open Design: register this artifact first (register_open_design_artifact) to copy it.');
+      return;
+    }
+    const browserPath = vscode.workspace.getConfiguration('openDesign').get<string>('export.browserPath', '') || undefined;
+    const result = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: `Open Design: preparing ${COPY_LABELS[target]} HTML…` },
+      () => exportArtifact({ ...location, browserPath, ...(target === 'email' ? { format: 'email' as const } : { format: 'paste' as const, target }) }),
+    );
+    if (!result.ok || !('inline' in result)) {
+      vscode.window.showErrorMessage(`Open Design: couldn't prepare the copy. ${formatExportResult(result)}`);
+      return;
+    }
+    const errors = result.findings.filter((f) => f.severity === 'error').length;
+    if (errors > 0) this.log.warn(`ArtifactEditorProvider: ${target} copy has ${errors} preflight error(s): ${formatExportResult(result)}`);
+    const file = result.files[0].path;
+    const html = await fs.readFile(path.join(location.workspaceRoot, file), 'utf8');
+    const text =
+      target === 'email' && result.files[1]
+        ? await fs.readFile(path.join(location.workspaceRoot, result.files[1].path), 'utf8')
+        : html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    webview.postMessage({ type: 'copy-payload', target, file: path.join(location.workspaceRoot, file), html, text });
+  }
+
+  private async copyResult(message: { ok: boolean; target: CopyTarget; file: string; error?: string }): Promise<void> {
+    if (message.ok) {
+      vscode.window.showInformationMessage(`Open Design: copied for ${COPY_LABELS[message.target]}. Paste it into ${COPY_DESTINATIONS[message.target]}.`);
+      return;
+    }
+    this.log.info(`ArtifactEditorProvider: rich clipboard unavailable (${message.error}); opening ${message.file} in the browser`);
+    await vscode.env.openExternal(vscode.Uri.file(message.file));
+    vscode.window.showInformationMessage(`Open Design: opened the ${COPY_LABELS[message.target]} version in your browser. Select all, copy, and paste it into ${COPY_DESTINATIONS[message.target]}.`);
+  }
+
   private async share(location: { workspaceRoot: string; entryPath: string }): Promise<void> {
     const artifact = await readArtifact(location).catch(() => null);
     if (!artifact?.manifest) {

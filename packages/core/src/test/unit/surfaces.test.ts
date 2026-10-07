@@ -22,7 +22,8 @@ describe('surfaces and stubs (shipped catalog)', () => {
     const surfaces = await index.listSurfaces();
     const ids = surfaces.map((s) => s.id);
     assert.ok(ids.includes('diagram') && ids.includes('poster') && ids.includes('wireframe'));
-    for (const planned of ['email', 'color-type', '3d']) assert.ok(!ids.includes(planned), planned);
+    for (const planned of ['color-type', '3d']) assert.ok(!ids.includes(planned), planned);
+    assert.ok(ids.includes('email'));
     assert.ok(surfaces.every((s) => s.entryCount > 0));
   });
 
@@ -33,7 +34,8 @@ describe('surfaces and stubs (shipped catalog)', () => {
       ['od:prototype:diagram:example', 'example'],
     ]);
     for (const s of await index.listSurfaces()) assert.ok((await index.surfaceEntries(s.id))!.every((e) => !e.stub));
-    assert.strictEqual(await index.surfaceEntries('email'), undefined);
+    assert.strictEqual(await index.surfaceEntries('3d'), undefined);
+    assert.deepStrictEqual((await index.surfaceEntries('email'))!.map((e) => e.id), ['od:prototype:email-campaign', 'od:prototype:email-campaign:example']);
   });
 
   it('builds the tool payload for "list", a surface, an unknown surface and a free query', async () => {

@@ -13,6 +13,7 @@ import { findBrowser } from './browserDiscovery';
 import { assemblePdf, assemblePptx } from './deck/assemble';
 import { captureDeckSlides, capturePagePdf, countSlides, resolveExportMode, validateSlideNumbers, type ExportMode } from './deck/captureDeck';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize, type SizeSource } from './exportSize';
+import { exportInline, formatInlineExportResult, type InlineExportResult, type PasteTarget } from './inlineExport';
 import { formatPackageResult, isPackageFormat, packageArtifact, type PackageExportResult, type PackageFormat } from './packageArtifact';
 import { checkDataAgainstFields, loadDataTable, rowFileSuffixes, scanBoundFields, type DataTable } from '../poster/data';
 import { bleedBox, FORMAT_IDS, getFormat, isFluidHtml, unknownFormatError, type CanvasFormat } from '../poster/formats';
@@ -25,9 +26,15 @@ import { composeShapeSheet } from '../poster/shapeSheet';
 export type ImageFormat = 'png' | 'jpeg';
 /** Formats rendered in a headless browser. */
 export type CaptureFormat = ImageFormat | 'pdf' | 'pptx';
-/** Every format: captures, plus the browserless `standalone`/`site` packaging formats. */
-export type ExportFormat = CaptureFormat | PackageFormat;
-const EXPORT_FORMATS: readonly ExportFormat[] = ['png', 'jpeg', 'pdf', 'pptx', 'standalone', 'site'];
+/** Inlined-style HTML for inboxes (`email`) and for pasting into editors (`paste`). */
+export type InlineFormat = 'email' | 'paste';
+/** Every format: captures, the browserless `standalone`/`site` packaging formats, and the inlined `email`/`paste`. */
+export type ExportFormat = CaptureFormat | PackageFormat | InlineFormat;
+const EXPORT_FORMATS: readonly ExportFormat[] = ['png', 'jpeg', 'pdf', 'pptx', 'standalone', 'site', 'email', 'paste'];
+
+function isInlineFormat(format: string | undefined): format is InlineFormat {
+  return format === 'email' || format === 'paste';
+}
 
 export interface ExportArtifactOptions {
   workspaceRoot: string;
@@ -82,6 +89,8 @@ export interface ExportArtifactOptions {
   presets?: string[];
   /** Fluid designs: also write exports/<name>-shapes.png showing every shape. */
   shapeSheet?: boolean;
+  /** paste: where it will be pasted. */
+  target?: PasteTarget;
 }
 
 /** How one shape is exported: its canvas, output format, print geometry, capture settings, and the fluid resize. */
@@ -187,8 +196,14 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
   if (isPackageFormat(o.format) && (o.selector !== undefined || o.slides !== undefined || o.maxBytes !== undefined)) {
     return `selector, slides and maxBytes apply to image, PDF and PPTX exports, not "${o.format}".`;
   }
+  if (isInlineFormat(o.format)) {
+    const other = (['width', 'height', 'scale', 'quality', 'selector', 'maxBytes', 'deck', 'slides', 'badge', 'preset', 'bleed', 'cropMarks', 'checkOnly', 'data', 'presets', 'shapeSheet'] as const).filter((k) => o[k] !== undefined);
+    if (other.length > 0) return `${other.join(', ')} ${other.length === 1 ? "doesn't" : "don't"} apply to the "${o.format}" format (it takes target and baseUrl).`;
+    return undefined;
+  }
+  if (o.target !== undefined) return 'target applies to the "paste" format only.';
   if (!isPackageFormat(o.format) && (o.badge !== undefined || o.baseUrl !== undefined)) {
-    return 'badge and baseUrl apply to the "standalone" and "site" formats only.';
+    return 'badge applies to the "standalone" and "site" formats, and baseUrl to "site", "email" and "paste".';
   }
   if (o.preset !== undefined && !getFormat(o.preset)) return unknownFormatError(o.preset);
   if (o.bleed !== undefined && !(typeof o.bleed === 'number' && o.bleed >= 0 && o.bleed <= MAX_BLEED_MM)) return `bleed must be between 0 and ${MAX_BLEED_MM} (mm).`;
@@ -297,7 +312,7 @@ export async function loadPage(page: Page, url: string, readyTimeoutMs: number, 
 }
 
 /** A capture result, or a packaging result for the `standalone`/`site` formats. */
-export type AnyExportResult = ExportArtifactResult | PackageExportResult;
+export type AnyExportResult = ExportArtifactResult | PackageExportResult | InlineExportResult;
 
 export function exportArtifact(options: ExportArtifactOptions & { format: PackageFormat }): Promise<PackageExportResult>;
 export function exportArtifact(options: ExportArtifactOptions & { format?: CaptureFormat }): Promise<ExportArtifactResult>;
@@ -305,6 +320,18 @@ export function exportArtifact(options: ExportArtifactOptions): Promise<AnyExpor
 export async function exportArtifact(options: ExportArtifactOptions): Promise<AnyExportResult> {
   const invalid = validateOptions(options);
   if (invalid) return fail('invalid-args', invalid);
+  if (isInlineFormat(options.format)) {
+    return exportInline({
+      workspaceRoot: options.workspaceRoot,
+      entryPath: options.entryPath,
+      format: options.format,
+      target: options.target,
+      baseUrl: options.baseUrl,
+      browserPath: options.browserPath,
+      readyTimeoutMs: options.readyTimeoutMs,
+      settleMs: options.settleMs,
+    });
+  }
 
   let artifact;
   try {
@@ -731,6 +758,7 @@ function geometryInfo(format: CanvasFormat | undefined, bleed: number | undefine
 export function formatExportResult(result: AnyExportResult): string {
   if (!result.ok) return `Export failed (${result.code}): ${result.error}`;
   if ('output' in result) return formatPackageResult(result);
+  if ('inline' in result) return formatInlineExportResult(result);
   const checked = [result.rows !== undefined ? `${result.rows} data row(s)` : 'the page', result.shapes ? `at ${result.shapes.length} shapes` : result.shapeSheet ? 'at every shape' : ''].filter(Boolean).join(' ');
   const lines = result.checkOnly
     ? [`Checked ${checked} (checkOnly: ${result.shapeSheet ? 'only the shape sheet was written' : 'no files written'}).`]

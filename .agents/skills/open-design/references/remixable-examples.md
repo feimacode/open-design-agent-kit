@@ -1,6 +1,6 @@
 # Remixable Open Design examples
 
-168 vendored examples have an actual rendered starting artifact you can copy into the workspace and modify, via `remix_open_design_example` with the `id` shown below as `skillId`, instead of generating from scratch with `prepare_open_design_brief`.
+169 vendored examples have an actual rendered starting artifact you can copy into the workspace and modify, via `remix_open_design_example` with the `id` shown below as `skillId`, instead of generating from scratch with `prepare_open_design_brief`.
 
 ## prototype
 
@@ -42,6 +42,7 @@
 - **od:prototype:diagram:example** — Package architecture diagram: Architecture diagram of a monorepo's packages: shared foundations, the hosts built on them, runtime dependencies versus build-time copies, with each node linked to its package.json.
 - **od:prototype:pm-spec:example** — pm-spec: Product spec / PRD as a single page — problem, success metrics, scope, user stories, design notes, rollout plan, open questions. Use when the brief mentions "PRD", "spec", "product spec", "feature brief", or "需求文档".
 - **od:prototype:pricing-page:example** — pricing-page: A standalone pricing page — header, plan tiers, feature comparison table, and an FAQ. Use when the brief asks for "pricing", "plans", "subscription tiers", or a "compare plans" page.
+- **od:prototype:email-campaign:example** — Product launch email: A product launch email that renders in Gmail, Outlook and Apple Mail: table layout, three benefit rows, a bulletproof button and a compliant footer.
 - **od:prototype:social-reddit-card:example** — Reddit Post Card: Realistic Reddit post card with vote rail and comment count, suited to video overlays or story sharing.
 - **od:prototype:saas-landing:example** — saas-landing: Single-page SaaS landing with hero, features, social proof, pricing, and CTA. Respects the active DESIGN.md color/typography/layout tokens. Trigger keywords: "saas landing", "marketing page", "product landing".
 - **od:prototype:social-carousel:example** — social-carousel: A three-card social-media carousel laid out as 1080×1080 squares — three cinematic, on-brand panels with display headlines that connect across the series ("onwards." → "to the next one." → "looking ahead."). Each card has a brand mark, a number / total, a caption, and a "loop" affordance. Use when the brief asks for a "carousel post", "social carousel", "Instagram carousel", "LinkedIn series", "X thread cards", or "三连发".

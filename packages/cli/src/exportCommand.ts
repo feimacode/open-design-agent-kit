@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { ContentIndex, exportArtifact, formatExportResult, type ExportArtifactOptions, type ExportFormat } from '@feimacode/open-design-agent-kit-core';
+import { ContentIndex, exportArtifact, formatExportResult, PASTE_TARGETS, type ExportArtifactOptions, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
 import { TROUBLESHOOTING_URL } from './docsLinks';
 import { getContentAssetsRoot } from './env';
 
@@ -32,6 +32,10 @@ export interface ExportCliOptions {
   /** Comma-separated format ids. */
   presets?: string;
   shapeSheet?: boolean;
+  /** paste: wechat, notion, newsletter or generic. */
+  target?: string;
+  /** site, email, paste: where the files will be hosted. */
+  baseUrl?: string;
 }
 
 export class ExportArgsError extends Error {}
@@ -50,14 +54,20 @@ function parseNumberFlag(name: string, value: string | undefined): number | unde
   return n;
 }
 
+function parseTarget(value: string | undefined): PasteTarget | undefined {
+  if (value === undefined) return undefined;
+  if (!(PASTE_TARGETS as readonly string[]).includes(value)) throw new ExportArgsError(`--target must be ${PASTE_TARGETS.join(', ')} (got "${value}").`);
+  return value as PasteTarget;
+}
+
 /** Maps CLI string flags onto exportArtifact options (range checks happen in core). */
 export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOptions, 'workspaceRoot' | 'entryPath'> {
   let format: ExportFormat | undefined;
   if (flags.format !== undefined) {
     const f = flags.format.toLowerCase();
-    if (f === 'png' || f === 'pdf' || f === 'pptx' || f === 'standalone' || f === 'site') format = f;
+    if (f === 'png' || f === 'pdf' || f === 'pptx' || f === 'standalone' || f === 'site' || f === 'email' || f === 'paste') format = f;
     else if (f === 'jpeg' || f === 'jpg') format = 'jpeg';
-    else throw new ExportArgsError(`--format must be png, jpeg, pdf, pptx, standalone or site (got "${flags.format}").`);
+    else throw new ExportArgsError(`--format must be png, jpeg, pdf, pptx, standalone, site, email or paste (got "${flags.format}").`);
   }
   let slides: number[] | undefined;
   if (flags.slides !== undefined) {
@@ -89,6 +99,8 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     split: flags.split,
     presets: flags.presets === undefined ? undefined : flags.presets.split(',').map((id) => id.trim()).filter(Boolean),
     shapeSheet: flags.shapeSheet,
+    target: parseTarget(flags.target),
+    baseUrl: flags.baseUrl,
   };
 }
 

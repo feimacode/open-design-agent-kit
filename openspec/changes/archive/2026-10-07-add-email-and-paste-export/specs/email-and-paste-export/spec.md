@@ -15,14 +15,14 @@ The system SHALL inline the browser's computed styles onto elements for `email` 
 - **THEN** the written HTML SHALL reference `https://cdn.example.com/launch/assets/hero.png`
 
 ### Requirement: Email Preflight
-Email exports, and visual checks of `email` artifacts, SHALL report: `email-layout` (flex, grid or absolute positioning used for layout), `email-unsupported-css` (transform, unresolved CSS variables, gradient backgrounds without a solid fallback, fixed positioning), `email-svg` (inline SVG or SVG images), `email-local-image` (relative image sources without `baseUrl`), `email-missing-alt`, `email-width` (content wider than 640 px) and `email-clip` (HTML over 102 KB). Findings SHALL name the elements and SHALL NOT block the export.
+Email exports, and visual checks of email artifacts (pages with a `[data-od-email]` column root, where local images are reported as `info` until export), SHALL report: `email-layout` (flex, grid or absolute positioning used for layout), `email-unsupported-css` (transform, unresolved CSS variables, gradient backgrounds without a solid fallback, fixed positioning), `email-svg` (inline SVG or SVG images), `email-local-image` (relative image sources without `baseUrl`), `email-missing-alt`, `email-width` (content wider than 640 px) and `email-clip` (HTML over 102 KB). Findings SHALL name the elements and SHALL NOT block the export.
 
 #### Scenario: The current email-marketing example
 - **WHEN** the vendored `email-marketing` example is exported with `format: "email"`
 - **THEN** findings SHALL include `email-layout` and `email-svg`, and the files SHALL still be written
 
 ### Requirement: Inbox-Safe Email Skill
-The catalog SHALL include a local `email-campaign` skill that produces table-based layouts, a bulletproof button, Outlook conditional comments, a font stack with web-safe fallbacks, a solid fallback for every gradient, a preheader and a footer with unsubscribe and view-in-browser links, and registers kind `email`. A fresh `email-campaign` artifact SHALL produce no email preflight errors.
+The catalog SHALL include a local `email-campaign` skill that produces table-based layouts, a bulletproof button, Outlook conditional comments, a font stack with web-safe fallbacks, a solid fallback for every gradient, a preheader and a footer with unsubscribe and view-in-browser links, and marks its email column with `data-od-email`. A fresh `email-campaign` artifact SHALL produce no email preflight errors.
 
 #### Scenario: Generated newsletter
 - **WHEN** the agent builds a newsletter with `email-campaign` and checks it

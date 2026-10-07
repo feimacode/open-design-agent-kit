@@ -13,6 +13,8 @@ import { openArtifactPage, type ArtifactPageSession } from './artifactPage';
 import { findBrowser } from './browserDiscovery';
 import { captureDeckSlides, countSlides, validateSlideNumbers } from './deck/captureDeck';
 import { collectDiagramFindings, waitForDiagrams } from './diagramPageScripts';
+import { EMAIL_MAX_WIDTH } from './inlineExport';
+import { collectEmailFindings } from './inlinePageScripts';
 import { findStaleSources, recordedSources } from '../generation/sourceNumberCheck';
 import { indexCheckSlides, markCheckSlide } from './deck/pageScripts';
 import { PRESENTER_CLONE_SELECTOR, SLIDE_SELECTOR } from './deck/selectors';
@@ -254,7 +256,13 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
       const aspectHint = sourceSkillId && options.lookupAspectHint ? await options.lookupAspectHint(sourceSkillId) : undefined;
       return done('cards', await checkCards(instance, page, artifact.entryContent, manifest, aspectHint, sourceSkillId, maxImages));
     }
-    return done('page', await checkPage(instance, page, viewports, maxImages, isDiagram));
+    const result = await checkPage(instance, page, viewports, maxImages, isDiagram);
+    if (/\bdata-od-email\b/.test(artifact.entryContent)) {
+      // Email artifacts (a [data-od-email] column root): the email rules too, measured at a wide client width (local images are a note here; export enforces baseUrl).
+      await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 1 });
+      result.findings.push(...((await page.evaluate(collectEmailFindings, { maxWidth: EMAIL_MAX_WIDTH, hasBaseUrl: false, checkOnly: true })) as Finding[]));
+    }
+    return done('page', result);
   } catch (err) {
     return fail('capture-failed', `Check failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
   } finally {

@@ -419,7 +419,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'export_open_design_artifact',
       description:
-        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions. POSTERS AND PREFLIGHT: page exports run preflight checks (text overflow, safe area, print bleed size, minimum type size, contrast, emoji, image resolution for print, QR codes that don't decode, broken assets) and list findings, errors first; findings never block the export. Pass checkOnly: true to check without writing files, and fix every error before the real export. Pass preset with a format id (\"ig-portrait\", \"story\", \"a3\"…) rather than width/height/selector/maxBytes. Pass data with a spreadsheet to export one poster, card or certificate per row. FLUID POSTERS (cards with data-od-fluid): preset reflows the design to that shape in the rendered page (the file is unchanged); presets exports several shapes at once; shapeSheet shows them all in one image.",
+        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions. POSTERS AND PREFLIGHT: page exports run preflight checks (text overflow, safe area, print bleed size, minimum type size, contrast, emoji, image resolution for print, QR codes that don't decode, broken assets) and list findings, errors first; findings never block the export. Pass checkOnly: true to check without writing files, and fix every error before the real export. Pass preset with a format id (\"ig-portrait\", \"story\", \"a3\"…) rather than width/height/selector/maxBytes. Pass data with a spreadsheet to export one poster, card or certificate per row. FLUID POSTERS (cards with data-od-fluid): preset reflows the design to that shape in the rendered page (the file is unchanged); presets exports several shapes at once; shapeSheet shows them all in one image. EMAIL AND PASTE: format \"email\" writes an inbox-safe email (and checks for what breaks in Gmail and Outlook: flex/grid layout, SVG, transforms, local images, missing alt, width over 640px, size over 102 KB); format \"paste\" with target wechat|notion|newsletter|generic writes an inlined fragment. Both compute styles in the browser, so Tailwind or any runtime CSS is inlined. To use the result, the user opens the file in a browser, selects all, copies and pastes.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -429,9 +429,9 @@ const TOOL_DEFS: ToolDef[] = [
           },
           format: {
             type: 'string',
-            enum: ['png', 'jpeg', 'pdf', 'pptx', 'standalone', 'site'],
+            enum: ['png', 'jpeg', 'pdf', 'pptx', 'standalone', 'site', 'email', 'paste'],
             description:
-              'Output format. png/jpeg: images; pdf: deck slides or a printed page; pptx: decks only; standalone: one self-contained .html with local CSS, scripts, images and fonts inlined (to attach or send); site: a deploy-ready folder (exports/site/) with index.html and its files (to publish — prefer publish_open_design_artifact, which builds it for you). standalone/site need no browser. Default png.',
+              'Output format. png/jpeg: images; pdf: deck slides or a printed page; pptx: decks only; standalone: one self-contained .html with local CSS, scripts, images and fonts inlined (to attach or send); site: a deploy-ready folder (exports/site/) with index.html and its files (to publish — prefer publish_open_design_artifact, which builds it for you). standalone/site need no browser. Default png. email: an inbox-ready HTML email (exports/<name>.email.html, styles inlined, 600px column, preheader, dark-mode meta) plus a plain-text exports/<name>.email.txt, with email preflight; pass baseUrl once the artifact\'s assets are hosted so image URLs become absolute. paste: an inlined HTML fragment to paste into another editor (exports/<name>.<target>.html); needs target.',
           },
           quality: {
             type: 'integer',
@@ -482,9 +482,15 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'boolean',
             description: 'standalone/site only: add a small, closeable "Made with Open Design" footer badge. Default: on for site, off for standalone (OPEN_DESIGN_SHARE_BADGE overrides the default).',
           },
+          target: {
+            type: 'string',
+            enum: ['wechat', 'notion', 'newsletter', 'generic'],
+            description:
+              "format \"paste\" only: where it will be pasted. wechat: top-level blocks become <section>s for the WeChat Official Account editor. notion: layout wrappers flattened and code-block languages kept, as Notion turns pasted HTML into blocks. newsletter: email rules and checks applied to the fragment. generic: any rich-text editor.",
+          },
           baseUrl: {
             type: 'string',
-            description: "site only: the https address the bundle will be served from, so the link-preview image (og:image) can be an absolute URL.",
+            description: "site: the https address the bundle will be served from, so the link-preview image (og:image) can be an absolute URL. email and paste: where the artifact's files are hosted; relative image and link URLs are rewritten against it.",
           },
           preset: {
             type: 'string',
@@ -543,7 +549,8 @@ const TOOL_DEFS: ToolDef[] = [
         ctx,
         args as {
           entryPath: string;
-          format?: 'png' | 'jpeg' | 'pdf' | 'pptx' | 'standalone' | 'site';
+          format?: 'png' | 'jpeg' | 'pdf' | 'pptx' | 'standalone' | 'site' | 'email' | 'paste';
+          target?: 'wechat' | 'notion' | 'newsletter' | 'generic';
           quality?: number;
           width?: number;
           height?: number;

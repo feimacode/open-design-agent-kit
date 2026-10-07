@@ -53,6 +53,7 @@ export * from './workspace/sourceStore';
 export * from './export/browserDiscovery';
 export * from './export/exportArtifact';
 export * from './export/checkArtifact';
+export * from './export/inlineExport';
 export * from './generation/diagramRuntime';
 export * from './export/exportFormats';
 export * from './export/exportSize';

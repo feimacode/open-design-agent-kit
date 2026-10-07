@@ -7,8 +7,20 @@
       "description": "A web page or app screen: landing page, pricing, waitlist, dashboard.",
       "icon": "browser",
       "status": "ready",
-      "entries": ["web-prototype", "saas-landing", "pricing-page", "waitlist-page", "dashboard", "web-prototype-taste-editorial", "web-prototype-taste-soft", "web-prototype-taste-brutalist"],
-      "questions": ["What is the page for, and who is it for?", "Any brand or visual style to follow?"]
+      "entries": [
+        "web-prototype",
+        "saas-landing",
+        "pricing-page",
+        "waitlist-page",
+        "dashboard",
+        "web-prototype-taste-editorial",
+        "web-prototype-taste-soft",
+        "web-prototype-taste-brutalist"
+      ],
+      "questions": [
+        "What is the page for, and who is it for?",
+        "Any brand or visual style to follow?"
+      ]
     },
     {
       "id": "mobile",
@@ -16,8 +28,14 @@
       "description": "Phone screens in device frames: an app's main screens or its onboarding.",
       "icon": "device-mobile",
       "status": "ready",
-      "entries": ["mobile-app", "mobile-onboarding", "gamified-app"],
-      "questions": ["What does the app do, and which screens matter most?"]
+      "entries": [
+        "mobile-app",
+        "mobile-onboarding",
+        "gamified-app"
+      ],
+      "questions": [
+        "What does the app do, and which screens matter most?"
+      ]
     },
     {
       "id": "slides",
@@ -25,8 +43,19 @@
       "description": "A presentation deck, from a brief or from a document you already have.",
       "icon": "preview",
       "status": "ready",
-      "entries": ["deck-swiss-international", "deck-guizang-editorial", "simple-deck", "html-ppt-pitch-deck", "html-ppt-product-launch", "html-ppt-weekly-report", "html-ppt-tech-sharing"],
-      "questions": ["What's the talk about, and for which audience?", "Is there a document or data to build it from?"]
+      "entries": [
+        "deck-swiss-international",
+        "deck-guizang-editorial",
+        "simple-deck",
+        "html-ppt-pitch-deck",
+        "html-ppt-product-launch",
+        "html-ppt-weekly-report",
+        "html-ppt-tech-sharing"
+      ],
+      "questions": [
+        "What's the talk about, and for which audience?",
+        "Is there a document or data to build it from?"
+      ]
     },
     {
       "id": "document",
@@ -34,8 +63,20 @@
       "description": "A designed document to read in a browser: spec, runbook, report, article, release notes.",
       "icon": "file-text",
       "status": "ready",
-      "entries": ["doc-kami-parchment", "docs-page", "pm-spec", "eng-runbook", "release-notes-one-pager", "weekly-update", "meeting-notes", "blog-post", "article-magazine"],
-      "questions": ["What kind of document, and is there source material to start from?"]
+      "entries": [
+        "doc-kami-parchment",
+        "docs-page",
+        "pm-spec",
+        "eng-runbook",
+        "release-notes-one-pager",
+        "weekly-update",
+        "meeting-notes",
+        "blog-post",
+        "article-magazine"
+      ],
+      "questions": [
+        "What kind of document, and is there source material to start from?"
+      ]
     },
     {
       "id": "wireframe",
@@ -43,8 +84,15 @@
       "description": "Low-fidelity layouts to agree on structure before visual design.",
       "icon": "layout",
       "status": "ready",
-      "entries": ["wireframe-sketch", "wireframe-annotated", "wireframe-greybox", "wireframe-mobile-flow"],
-      "questions": ["Which screens or flow, and hand-drawn or grey-box?"]
+      "entries": [
+        "wireframe-sketch",
+        "wireframe-annotated",
+        "wireframe-greybox",
+        "wireframe-mobile-flow"
+      ],
+      "questions": [
+        "Which screens or flow, and hand-drawn or grey-box?"
+      ]
     },
     {
       "id": "animation",
@@ -52,8 +100,19 @@
       "description": "Motion frames and short animated pieces: title cards, logo reveals, animated charts.",
       "icon": "play-circle",
       "status": "ready",
-      "entries": ["motion-frames", "video-hyperframes", "frame-logo-outro", "frame-liquid-bg-hero", "frame-glitch-title", "frame-data-chart-nyt", "sprite-animation", "vfx-text-cursor"],
-      "questions": ["What should it show, and how long should it run?"]
+      "entries": [
+        "motion-frames",
+        "video-hyperframes",
+        "frame-logo-outro",
+        "frame-liquid-bg-hero",
+        "frame-glitch-title",
+        "frame-data-chart-nyt",
+        "sprite-animation",
+        "vfx-text-cursor"
+      ],
+      "questions": [
+        "What should it show, and how long should it run?"
+      ]
     },
     {
       "id": "resume",
@@ -61,8 +120,12 @@
       "description": "A one-page résumé, ready to print or export as PDF.",
       "icon": "person",
       "status": "ready",
-      "entries": ["resume-modern"],
-      "questions": ["Paste or point to your experience, and the role you're applying for."]
+      "entries": [
+        "resume-modern"
+      ],
+      "questions": [
+        "Paste or point to your experience, and the role you're applying for."
+      ]
     },
     {
       "id": "research",
@@ -70,8 +133,13 @@
       "description": "Turn interviews, notes or posts into an evidence-backed synthesis board.",
       "icon": "search",
       "status": "ready",
-      "entries": ["research-decision-room", "x-research"],
-      "questions": ["Where are the notes, transcripts or data, and what decision should this inform?"]
+      "entries": [
+        "research-decision-room",
+        "x-research"
+      ],
+      "questions": [
+        "Where are the notes, transcripts or data, and what decision should this inform?"
+      ]
     },
     {
       "id": "data-report",
@@ -79,8 +147,14 @@
       "description": "Charts and KPIs from a CSV or spreadsheet: reports, dashboards, finance summaries.",
       "icon": "graph",
       "status": "ready",
-      "entries": ["data-report", "dashboard", "finance-report"],
-      "questions": ["Which data file, and what question should the report answer?"]
+      "entries": [
+        "data-report",
+        "dashboard",
+        "finance-report"
+      ],
+      "questions": [
+        "Which data file, and what question should the report answer?"
+      ]
     },
     {
       "id": "poster",
@@ -89,8 +163,14 @@
       "icon": "file-media",
       "status": "ready",
       "prompt": "open-design-poster",
-      "entries": ["poster-hero", "magazine-poster", "image-poster"],
-      "questions": ["What is it for, and is it for print (which size) or screens?"]
+      "entries": [
+        "poster-hero",
+        "magazine-poster",
+        "image-poster"
+      ],
+      "questions": [
+        "What is it for, and is it for print (which size) or screens?"
+      ]
     },
     {
       "id": "social",
@@ -99,17 +179,29 @@
       "icon": "comment-discussion",
       "status": "ready",
       "prompt": "open-design-social-post",
-      "entries": ["card-twitter", "social-carousel", "card-xiaohongshu", "social-x-post-card", "social-youtube-thumbnail"],
-      "questions": ["What's the post about, and which platform is it for?"]
+      "entries": [
+        "card-twitter",
+        "social-carousel",
+        "card-xiaohongshu",
+        "social-x-post-card",
+        "social-youtube-thumbnail"
+      ],
+      "questions": [
+        "What's the post about, and which platform is it for?"
+      ]
     },
     {
       "id": "email",
       "label": "HTML email",
       "description": "A newsletter or launch email that renders in Gmail, Outlook and Apple Mail.",
       "icon": "mail",
-      "status": "planned",
-      "entries": [],
-      "questions": ["What's the email announcing, and to whom?"]
+      "status": "ready",
+      "entries": [
+        "email-campaign"
+      ],
+      "questions": [
+        "What's the email announcing, and to whom?"
+      ]
     },
     {
       "id": "diagram",
@@ -117,8 +209,12 @@
       "description": "Architecture, flow, schema, state or sequence diagrams drawn from your code.",
       "icon": "type-hierarchy",
       "status": "ready",
-      "entries": ["diagram"],
-      "questions": ["What should the diagram explain, and which part of the code is it about?"]
+      "entries": [
+        "diagram"
+      ],
+      "questions": [
+        "What should the diagram explain, and which part of the code is it about?"
+      ]
     },
     {
       "id": "color-type",
@@ -127,7 +223,9 @@
       "icon": "symbol-color",
       "status": "planned",
       "entries": [],
-      "questions": ["What's the brand, and how should it feel?"]
+      "questions": [
+        "What's the brand, and how should it feel?"
+      ]
     },
     {
       "id": "3d",
@@ -136,7 +234,9 @@
       "icon": "package",
       "status": "planned",
       "entries": [],
-      "questions": ["What object, and do you have a .glb model of it?"]
+      "questions": [
+        "What object, and do you have a .glb model of it?"
+      ]
     }
   ]
 }

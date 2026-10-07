@@ -27,6 +27,7 @@ import {
   formatCheckResult,
   listSkillsPayload,
   type ListSkillsInput,
+  type PasteTarget,
   type CheckViewport,
   publishArtifact as publishArtifactCore,
   exportsForKind,
@@ -487,6 +488,7 @@ export async function exportArtifact(
     split?: boolean;
     presets?: string[];
     shapeSheet?: boolean;
+    target?: PasteTarget;
   },
 ): Promise<string> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself;

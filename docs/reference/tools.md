@@ -69,9 +69,10 @@ A surface is a kind of thing to make, such as a wireframe, a poster or a diagram
 | `data-report` | Data report | |
 | `poster` | Poster / flier | [poster flow](../guides/posters.md) |
 | `social` | Social post | [social-post flow](../guides/social-posts.md) |
+| `email` | HTML email | [HTML email](../guides/html-email.md) |
 | `diagram` | Diagram | [diagrams](../guides/diagrams.md) |
 
-HTML email, Color + type and 3D object are planned and don't appear yet.
+Color + type and 3D object are planned and don't appear yet.
 
 **`surface: "list"`** returns `{ surfaces: [{ id, label, description, entryCount, prompt? }] }`.
 
@@ -394,7 +395,7 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `entryPath` | string | yes | The registered artifact's entry file. |
-| `format` | `png` · `jpeg` · `pdf` · `pptx` · `standalone` · `site` | no | Default `png`. `pdf` works for decks (one page per slide) and pages (printed, vector). `pptx` is for decks only. `standalone` writes one self-contained `exports/<name>.html`. `site` writes a deploy-ready `exports/site/` folder. See [Share and publish](../guides/share-and-publish.md). |
+| `format` | `png` · `jpeg` · `pdf` · `pptx` · `standalone` · `site` · `email` · `paste` | no | Default `png`. `pdf` works for decks (one page per slide) and pages (printed, vector). `pptx` is for decks only. `standalone` writes one self-contained `exports/<name>.html`. `site` writes a deploy-ready `exports/site/` folder. See [Share and publish](../guides/share-and-publish.md). `email` writes an inbox-ready `exports/<name>.email.html` and `.email.txt` ([HTML email](../guides/html-email.md)). `paste` writes `exports/<name>.<target>.html` for pasting into another editor. |
 | `quality` | integer 1–100 | no | JPEG quality. Default 90. |
 | `width`, `height` | integer 16–8192 | no | CSS pixels, given together. They override the skill's size for images, the measured slide size for decks, or the page size for page PDFs. |
 | `scale` | number 1–3 | no | Device scale factor. Default 2 for deck `pptx`/`pdf`, 1 otherwise. |
@@ -403,7 +404,8 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `deck` | boolean | no | Force deck (`true`) or page (`false`) handling. Detected automatically when omitted. |
 | `slides` | integer[] | no | Decks only: 1-based slide numbers, e.g. `[1, 3]`. With `png`/`jpeg` you get one image per slide; with `pdf`/`pptx`, only those slides in that order. |
 | `badge` | boolean | no | `standalone`/`site` only: add the closeable "Made with Open Design" footer badge. Default: on for `site`, off for `standalone`. See [the badge](../guides/share-and-publish.md#the-made-with-open-design-badge). |
-| `baseUrl` | string | no | `site` only: the https address the bundle will be served from, so the preview image (`og:image`) gets a full URL. |
+| `baseUrl` | string | no | `site`: the https address the bundle will be served from, so the preview image (`og:image`) gets a full URL. `email` and `paste`: where the artifact's files are hosted; relative image and link URLs are rewritten against it. |
+| `target` | `wechat` · `notion` · `newsletter` · `generic` | with `paste` | Where the HTML will be pasted. See [Paste into WeChat, Notion and newsletters](../guides/paste-html.md). |
 | `preset` | [format id](#canvas-formats) | no | Use a canvas format's settings instead of `width`/`height`/`selector`/`maxBytes`. A screen format captures each `[data-od-card]` at its size within its byte budget. A fluid design is reflowed to the preset's shape first, and for print the bleed is added to it. A print format writes a [print-ready PDF](../guides/posters.md#print-ready-pdfs) (the default format becomes `pdf`). Explicit arguments still win. Without `preset`, the format the artifact was registered with is used. |
 | `bleed` | number 0–20 | no | Print PDFs only: bleed in mm on every side. Default: the format's. |
 | `cropMarks` | boolean | no | Print PDFs only: add crop marks at the trim corners, in a 10 mm slug around the page. |

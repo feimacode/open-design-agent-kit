@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { exportArtifact, formatExportResult, type ContentIndex, type ExportFormat } from '@feimacode/open-design-agent-kit-core';
+import { exportArtifact, formatExportResult, type ContentIndex, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
 import { getWorkspaceRoot } from '../workspace/artifactWriter';
 
 interface ExportArtifactInput {
@@ -25,6 +25,7 @@ interface ExportArtifactInput {
   split?: boolean;
   presets?: string[];
   shapeSheet?: boolean;
+  target?: PasteTarget;
 }
 
 export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifactInput> {

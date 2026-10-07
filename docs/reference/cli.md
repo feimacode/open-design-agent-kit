@@ -46,7 +46,7 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 
 | Option | Meaning |
 |---|---|
-| `--format <png\|jpeg\|pdf\|pptx\|standalone\|site>` | Output format. Default `png`. `pptx` is for decks; `pdf` works for decks and pages. `standalone` is one self-contained `.html`; `site` is a deploy-ready folder. `jpg` is accepted for `jpeg`. |
+| `--format <png\|jpeg\|pdf\|pptx\|standalone\|site\|email\|paste>` | Output format. Default `png`. `pptx` is for decks; `pdf` works for decks and pages. `standalone` is one self-contained `.html`; `site` is a deploy-ready folder; `email` is an [inbox-ready HTML email](../guides/html-email.md); `paste` is HTML to [paste into another editor](../guides/paste-html.md) (with `--target`). `jpg` is accepted for `jpeg`. |
 | `--width <px>` | Width in CSS pixels, given with `--height`. Overrides the source skill's size, the measured slide size, or the page-PDF size. |
 | `--height <px>` | Height in CSS pixels, given with `--width`. |
 | `--scale <n>` | Device scale factor, 1–3. Default 2 for deck `pdf`/`pptx`, else 1. |
@@ -65,6 +65,8 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--split` | PDF data exports: one PDF per row instead of one multi-page PDF. |
 | `--presets <list>` | Fluid designs: several shapes in one export, comma-separated, e.g. `a3,ig-portrait,story`. |
 | `--shape-sheet` | Fluid designs: also write `<name>-shapes.png`, the design at every shape (all formats unless `--presets`). |
+| `--target <wechat\|notion\|newsletter\|generic>` | `--format paste` only: where it will be pasted. See [Paste into WeChat, Notion and newsletters](../guides/paste-html.md). |
+| `--base-url <https-url>` | `site`, `email` and `paste`: where the files will be hosted, so image and link URLs become absolute. |
 | `--badge`, `--no-badge` | `standalone`/`site` only: add or leave out the "Made with Open Design" footer badge. Default: on for `site`, off for `standalone`, unless [`OPEN_DESIGN_SHARE_BADGE`](settings-and-env.md#open_design_share_badge) says otherwise. |
 | `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |
 | `--workspace <dir>` | Workspace root. Default: the nearest folder above the entry file that contains `.open-design/`, else the current directory. |

@@ -8,7 +8,7 @@ describe('export command', () => {
   it('maps string flags onto export options', () => {
     assert.deepStrictEqual(
       parseExportFlags({ width: '1080', height: '1350', scale: '2', format: 'jpg', quality: '80', maxBytes: '5000000', selector: '[data-od-card]', browser: '/b' }),
-      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined, presets: undefined, shapeSheet: undefined },
+      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined, presets: undefined, shapeSheet: undefined, target: undefined, baseUrl: undefined },
     );
     assert.deepStrictEqual(parseExportFlags({}), {
       width: undefined,
@@ -32,6 +32,8 @@ describe('export command', () => {
       split: undefined,
       presets: undefined,
       shapeSheet: undefined,
+      target: undefined,
+      baseUrl: undefined,
     });
   });
 
@@ -58,9 +60,19 @@ describe('export command', () => {
     assert.deepStrictEqual([shapes.presets, shapes.shapeSheet], [['a3', 'ig-portrait', 'story'], true]);
   });
 
+  it('parses email and paste flags', () => {
+    const email = parseExportFlags({ format: 'email', baseUrl: 'https://cdn.example.com/launch/' });
+    assert.strictEqual(email.format, 'email');
+    assert.strictEqual(email.baseUrl, 'https://cdn.example.com/launch/');
+    const paste = parseExportFlags({ format: 'paste', target: 'wechat' });
+    assert.strictEqual(paste.format, 'paste');
+    assert.strictEqual(paste.target, 'wechat');
+    assert.throws(() => parseExportFlags({ format: 'paste', target: 'slack' }), /--target must be wechat, notion, newsletter, generic/);
+  });
+
   it('rejects malformed flags', () => {
     assert.throws(() => parseExportFlags({ width: '10.5' }), ExportArgsError);
-    assert.throws(() => parseExportFlags({ format: 'gif' }), /--format must be png, jpeg, pdf, pptx, standalone or site/);
+    assert.throws(() => parseExportFlags({ format: 'gif' }), /--format must be png, jpeg, pdf, pptx, standalone, site, email or paste/);
     assert.throws(() => parseExportFlags({ scale: 'big' }), /--scale must be a number/);
   });
 
