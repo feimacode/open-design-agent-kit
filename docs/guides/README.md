@@ -11,6 +11,7 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [Generate a design](generate-a-design.md)
 - [Explore design directions](explore-directions.md)
 - [Turn a document into a deck](deck-from-a-document.md)
+- [Diagrams of your code](diagrams.md)
 - [Design systems](design-systems.md)
 - [Remix and the gallery](remix-and-gallery.md)
 - [Community designs](community-designs.md)

@@ -44,7 +44,7 @@ Call `register_open_design_artifact` with the entry path, kind `html`, a title, 
 
 ## 4. Export
 
-- **Image formats**: call `export_open_design_artifact` with the entry path and the row's export arguments. If its preflight reports errors (text cut off, a card that isn't the canvas size) or it returns warnings (failed fonts or images, over budget), fix the artifact and export again. To check without writing files, add `checkOnly: true`.
+- **Image formats**: call `export_open_design_artifact` with the entry path and the row's export arguments. If its preflight reports errors (text cut off, a card that isn't the canvas size) or it returns warnings (failed fonts or images, over budget), fix the artifact and export again. Before exporting, call `check_open_design_artifact` to see the post as an image with its preflight findings, without writing files; fix every error first.
 - **YouTube video**: follow the brief's "Host override" section. Render with `npx hyperframes render … --output <artifact-dir>/exports/<name>.mp4`, and check `ffmpeg -version` first.
 
 ## 5. Report

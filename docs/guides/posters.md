@@ -32,7 +32,7 @@ Every id, with its safe area, bleed and minimum type size, is in [Canvas formats
 1. **Generate.** The agent passes a default shape as `format`, with `fluid: true`, to [`prepare_open_design_brief`](../reference/tools.md#prepare_open_design_brief). Its instructions get a **Canvas** section: one `[data-od-card data-od-fluid]` element whose size is two CSS variables, everything inside sized relative to the poster, and layout rules for wide and tall shapes. The poster [reflows to any shape](#change-the-shape).
 2. **QR code.** If the poster needs one, [`create_open_design_qr_code`](../reference/tools.md#create_open_design_qr_code) generates a real one, offline, into the artifact's `assets/` folder.
 3. **Register** with the same `format`. It's recorded in the manifest as the default shape, [`metadata.format`](../reference/artifact-manifest.md#metadataformat).
-4. **Check.** [`export_open_design_artifact`](../reference/tools.md#export_open_design_artifact) with `checkOnly: true` runs the [preflight checks](#preflight-checks) without writing anything, and the agent fixes every error.
+4. **Check.** [`check_open_design_artifact`](../reference/tools.md#check_open_design_artifact) runs the [preflight checks](#preflight-checks) without writing anything and shows the agent the poster as an image; the agent fixes every error. (`export_open_design_artifact` with `checkOnly: true` does the same check for spreadsheet rows and shape sheets.)
 5. **Export** with `preset` set to the size you want, or `presets` for several.
 
 ## Print-ready PDFs

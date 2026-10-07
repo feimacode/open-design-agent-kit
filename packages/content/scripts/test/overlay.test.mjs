@@ -32,7 +32,7 @@ test('overlay skills and prompts are copied and marked, and re-applying is idemp
   await writeSkill(target, 'skills', 'upstream-skill');
   await fs.writeFile(path.join(target, 'MANIFEST.json'), '{"sourceRef":"x"}');
 
-  const expectedCounts = { skills: 1, prompts: 1, designSystemOverrides: 0, designSystemPackages: 0 };
+  const expectedCounts = { skills: 1, examples: 0, prompts: 1, designSystemOverrides: 0, designSystemPackages: 0 };
   assert.deepEqual(await applyLocalOverlay(target, local), expectedCounts);
   assert.deepEqual(await applyLocalOverlay(target, local), expectedCounts);
 
@@ -130,7 +130,7 @@ test('a new design system with no upstream counterpart is copied and marked', as
   await writeNewDesignSystemPackage(local, 'riso');
 
   const counts = await applyLocalOverlay(target, local);
-  assert.deepEqual(counts, { skills: 0, prompts: 0, designSystemOverrides: 0, designSystemPackages: 1 });
+  assert.deepEqual(counts, { skills: 0, examples: 0, prompts: 0, designSystemOverrides: 0, designSystemPackages: 1 });
 
   const dir = path.join(target, 'design-systems', 'riso');
   assert.match(await fs.readFile(path.join(dir, 'DESIGN.md'), 'utf8'), /# riso/);
@@ -148,7 +148,7 @@ test('re-applying a new design system package is idempotent', async () => {
   const target = await tmp();
   await writeNewDesignSystemPackage(local, 'riso');
   await applyLocalOverlay(target, local);
-  assert.deepEqual(await applyLocalOverlay(target, local), { skills: 0, prompts: 0, designSystemOverrides: 0, designSystemPackages: 1 });
+  assert.deepEqual(await applyLocalOverlay(target, local), { skills: 0, examples: 0, prompts: 0, designSystemOverrides: 0, designSystemPackages: 1 });
 });
 
 test('a new design system package colliding with an existing upstream id fails', async () => {
@@ -218,4 +218,22 @@ test('findRedundantOverrides skips new design-system packages (no override file 
   const target = await tmp();
   await writeNewDesignSystemPackage(local, 'riso');
   assert.deepEqual(await findRedundantOverrides(target, local), []);
+});
+
+test('overlay examples are copied and marked, and colliding with an upstream example fails', async () => {
+  const local = await tmp();
+  const target = await tmp();
+  await writeSkill(local, 'skills', 'diagram');
+  await writeSkill(local, 'examples', 'diagram');
+  await fs.writeFile(path.join(local, 'examples', 'diagram', 'example.html'), '<p>d</p>');
+  assert.equal((await applyLocalOverlay(target, local)).examples, 1);
+  assert.equal(await fs.readFile(path.join(target, 'examples', 'diagram', 'example.html'), 'utf8'), '<p>d</p>');
+  await fs.access(path.join(target, 'examples', 'diagram', OVERLAY_MARKER));
+  assert.ok((await listOverlayFiles(local)).includes(path.join('examples', 'diagram', 'example.html')));
+
+  const clash = await tmp();
+  await writeSkill(clash, 'examples', 'resume-modern');
+  const upstream = await tmp();
+  await writeSkill(upstream, 'examples', 'resume-modern');
+  await assert.rejects(applyLocalOverlay(upstream, clash), /resume-modern \(upstream example\)/);
 });

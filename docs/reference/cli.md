@@ -1,6 +1,6 @@
 # CLI
 
-`@feimacode/open-design-agent-kit` is a small command-line tool with three commands: set up a project for Claude Code and/or Codex, export artifacts, and render HyperFrames videos. Run it with `npx`; there's nothing to install:
+`@feimacode/open-design-agent-kit` is a small command-line tool with four commands: set up a project for Claude Code and/or Codex, export artifacts, check how artifacts render, and render HyperFrames videos. Run it with `npx`; there's nothing to install:
 
 ```bash
 npx @feimacode/open-design-agent-kit <command> [options]
@@ -97,6 +97,34 @@ npx @feimacode/open-design-agent-kit export .open-design/report/report.html --fo
 ```
 
 See [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Share and publish](../guides/share-and-publish.md).
+
+### check
+
+Renders a registered artifact with an installed Chrome, Edge or Chromium and prints its [preflight](../guides/posters.md#preflight-checks) findings: a page at desktop and mobile widths, a card design at its format size, a deck slide by slide. It writes nothing unless you ask for the screenshots. It calls the same code as the [`check_open_design_artifact`](tools.md#check_open_design_artifact) tool.
+
+```bash
+npx @feimacode/open-design-agent-kit check <entryPath> [options]
+```
+
+| Option | Meaning |
+|---|---|
+| `--viewport <name:WxH>` | Pages: a viewport to check instead of desktop `1440x900` and mobile `390x844`, e.g. `tablet:768x1024`. Repeat for several (at most 4). |
+| `--slides <list>` | Decks only: 1-based slide numbers, e.g. `1,3`. |
+| `--screenshots <dir>` | Write the screenshots as JPEG files named after their labels (`desktop.jpg`, `mobile.jpg`, `slides-1-12.jpg`) to this folder. Without it, no screenshots are rendered. |
+| `--max-images <n>` | With `--screenshots`: how many, 0–6. Default 3. |
+| `--fail-on <error\|warning>` | Exit `1` when a finding at or above this severity exists, to gate CI. |
+| `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |
+| `--workspace <dir>` | Workspace root. Default: the nearest folder above the entry file that contains `.open-design/`, else the current directory. |
+
+Output: the findings on **stdout**, then each written screenshot's absolute path. Exit code `0` when the check ran (findings don't fail it unless `--fail-on` says so), `1` when it couldn't run (no browser, not registered…; the error is printed to stderr).
+
+```bash
+# Fail a CI job when a page scrolls sideways on phones or has clipped text
+npx @feimacode/open-design-agent-kit check .open-design/landing/landing.html --fail-on error
+
+# Save what the agent sees
+npx @feimacode/open-design-agent-kit check .open-design/pitch/pitch.html --screenshots ./check-shots
+```
 
 ### render-video
 

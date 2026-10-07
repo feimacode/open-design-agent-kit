@@ -22,6 +22,10 @@ export interface Finding {
   rowName?: string;
   /** The canvas format id, for multi-shape exports. */
   shape?: string;
+  /** The viewport name, for visual checks of pages (e.g. "mobile"). */
+  viewport?: string;
+  /** 1-based slide number, for visual checks of decks. */
+  slide?: number;
 }
 
 export interface PreflightOptions {
@@ -35,6 +39,10 @@ export interface PreflightOptions {
   fluid?: boolean;
   /** Tag findings with this shape (multi-shape exports). */
   shape?: string;
+  /** Tag findings with this viewport name (visual checks). */
+  viewport?: string;
+  /** Tag findings with this slide number (visual checks of decks). */
+  slide?: number;
 }
 
 const FIXED_DESIGN_HINT = ' This design is fixed-size; use adapt_open_design_artifact to make other shapes, or build it fluid (data-od-fluid) so export can reflow it.';
@@ -93,6 +101,8 @@ export async function runPreflight(page: Page, options: PreflightOptions): Promi
     if (options.row !== undefined) f.row = options.row;
     if (options.rowName) f.rowName = options.rowName;
     if (options.shape) f.shape = options.shape;
+    if (options.viewport) f.viewport = options.viewport;
+    if (options.slide !== undefined) f.slide = options.slide;
   }
   return capFindings(findings);
 }
@@ -132,7 +142,7 @@ function capFindings(findings: Finding[]): Finding[] {
   const out: Finding[] = [];
   const dropped = new Map<string, Finding & { extra: number }>();
   for (const f of findings) {
-    const key = `${f.check}|${f.severity}|${f.card ?? ''}|${f.row ?? ''}`;
+    const key = `${f.check}|${f.severity}|${f.card ?? ''}|${f.row ?? ''}|${f.viewport ?? ''}|${f.slide ?? ''}`;
     const n = (counts.get(key) ?? 0) + 1;
     counts.set(key, n);
     if (n <= MAX_PER_CHECK) out.push(f);
@@ -192,26 +202,28 @@ export function sortFindings(findings: Finding[]): Finding[] {
       SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] ||
       (a.shape ?? '').localeCompare(b.shape ?? '') ||
       (a.row ?? 0) - (b.row ?? 0) ||
-      (a.card ?? 0) - (b.card ?? 0),
+      (a.card ?? 0) - (b.card ?? 0) ||
+      (a.viewport ?? '').localeCompare(b.viewport ?? '') ||
+      (a.slide ?? 0) - (b.slide ?? 0),
   );
 }
 
 export function formatFinding(f: Finding): string {
-  const where = [f.shape ? `shape ${f.shape}` : '', f.row !== undefined ? `row ${f.row}${f.rowName ? ` (${f.rowName})` : ''}` : '', f.card !== undefined ? `card ${f.card}` : ''].filter(Boolean).join(', ');
+  const where = [f.viewport ? f.viewport : '', f.slide !== undefined ? `slide ${f.slide}` : '', f.shape ? `shape ${f.shape}` : '', f.row !== undefined ? `row ${f.row}${f.rowName ? ` (${f.rowName})` : ''}` : '', f.card !== undefined ? `card ${f.card}` : ''].filter(Boolean).join(', ');
   return `- ${f.severity.toUpperCase()} [${f.check}]${where ? ` ${where}:` : ''} ${f.message}`;
 }
 
 /** The preflight section of a formatted export result. */
-export function formatPreflight(findings: Finding[]): string[] {
+export function formatPreflight(findings: Finding[], recheck = 're-check with checkOnly: true'): string[] {
   if (findings.length === 0) return ['Preflight: passed (no problems found).'];
   const sorted = sortFindings(findings);
   const errors = sorted.filter((f) => f.severity === 'error').length;
   const warnings = sorted.filter((f) => f.severity === 'warning').length;
   const head =
-    errors + warnings === 0 ? 'Preflight: passed, with notes:' : `Preflight: ${errors} error(s), ${warnings} warning(s) — fix the errors, then re-check with checkOnly: true:`;
+    errors + warnings === 0 ? 'Preflight: passed, with notes:' : `Preflight: ${errors} error(s), ${warnings} warning(s) — fix the errors, then ${recheck}:`;
   // The same note on every row of a bulk export, or every shape of a multi-shape one, is said once, listing where it applies.
   const noteKey = (f: Finding): string | undefined =>
-    f.severity === 'info' && (f.row !== undefined || f.shape !== undefined) ? `${f.check}|${f.card ?? ''}|${f.message}` : undefined;
+    f.severity === 'info' && (f.row !== undefined || f.shape !== undefined || f.viewport !== undefined || f.slide !== undefined) ? `${f.check}|${f.card ?? ''}|${f.message}` : undefined;
   const grouped = new Map<string, Finding[]>();
   for (const f of sorted) {
     const key = noteKey(f);
@@ -227,7 +239,17 @@ export function formatPreflight(findings: Finding[]): string[] {
       emitted.add(key);
       const shapes = [...new Set(group.map((g) => g.shape).filter(Boolean))];
       const rows = [...new Set(group.map((g) => g.row).filter((r) => r !== undefined))];
-      const where = [shapes.length ? `shapes ${shapes.join(', ')}` : '', rows.length ? `rows ${rows.join(', ')}` : '', f.card !== undefined ? `card ${f.card}` : ''].filter(Boolean).join('; ');
+      const viewports = [...new Set(group.map((g) => g.viewport).filter(Boolean))];
+      const slides = [...new Set(group.map((g) => g.slide).filter((n) => n !== undefined))];
+      const where = [
+        viewports.length ? viewports.join(', ') : '',
+        slides.length ? `slides ${slides.join(', ')}` : '',
+        shapes.length ? `shapes ${shapes.join(', ')}` : '',
+        rows.length ? `rows ${rows.join(', ')}` : '',
+        f.card !== undefined ? `card ${f.card}` : '',
+      ]
+        .filter(Boolean)
+        .join('; ');
       lines.push(`- INFO [${f.check}] ${where}: ${f.message}`);
     }
   }

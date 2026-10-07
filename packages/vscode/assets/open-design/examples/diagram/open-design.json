@@ -1,0 +1,12 @@
+{
+  "name": "example-diagram",
+  "title": "Package architecture diagram",
+  "description": "Architecture diagram of a monorepo's packages, drawn from their package.json files.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Diagram how this repo's packages depend on each other: read each package.json and the build scripts, group the shared packages and the hosts, and draw build-time copies dashed."
+      }
+    }
+  }
+}

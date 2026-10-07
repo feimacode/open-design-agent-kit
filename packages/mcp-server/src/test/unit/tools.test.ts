@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import { ContentIndex, findBrowser } from '@feimacode/open-design-agent-kit-core';
 import * as tools from '../../tools';
 import type { ToolContext } from '../../tools';
 import { createFileActiveDesignSystemStore } from '../../store';
@@ -368,5 +368,40 @@ describe('mcp-server publishing', () => {
     assert.match(recorded, /^Recorded:/);
     const manifest = JSON.parse(await fs.readFile(path.join(ctx.workspaceRoot, `${entryPath}.artifact.json`), 'utf8'));
     assert.strictEqual(manifest.metadata.shares[0].url, 'https://x.netlify.app');
+  });
+});
+
+describe('mcp-server image content', () => {
+  it('maps a plain string to a single text item, as every other tool returns', () => {
+    assert.deepStrictEqual(tools.toCallToolContent('done'), [{ type: 'text', text: 'done' }]);
+  });
+
+  it('puts the text first, then one base64 image item per image', () => {
+    const content = tools.toCallToolContent({ text: 'findings', images: [{ data: Buffer.from([0xff, 0xd8, 0xff]), mime: 'image/jpeg' }] });
+    assert.deepStrictEqual(content, [
+      { type: 'text', text: 'findings' },
+      { type: 'image', data: Buffer.from([0xff, 0xd8, 0xff]).toString('base64'), mimeType: 'image/jpeg' },
+    ]);
+  });
+});
+
+describe('check_open_design_artifact (real browser; skipped when none is installed)', function () {
+  this.timeout(120000);
+  before(async function () {
+    if (!(await findBrowser()).ok) this.skip();
+  });
+
+  it('returns findings as text and screenshots as JPEG images, writing nothing', async () => {
+    const ctx = await makeContext();
+    const entryPath = '.open-design/landing/landing.html';
+    await fs.mkdir(path.join(ctx.workspaceRoot, '.open-design', 'landing'), { recursive: true });
+    await fs.writeFile(path.join(ctx.workspaceRoot, entryPath), '<!doctype html><body style="margin:0"><h1>Hi</h1><table style="width:900px"><tr><td>x</td></tr></table></body>');
+    await tools.registerArtifact(ctx, { entryPath, kind: 'html', title: 'Landing' });
+    const out = await tools.checkArtifact(ctx, { entryPath });
+    assert.match(out.text, /ERROR \[horizontal-scroll\] mobile:/);
+    const content = tools.toCallToolContent(out);
+    assert.strictEqual(content[0].type, 'text');
+    assert.deepStrictEqual(content.slice(1).map((c) => (c.type === 'image' ? c.mimeType : c.type)), ['image/jpeg', 'image/jpeg']);
+    assert.ok(!(await fs.readdir(path.join(ctx.workspaceRoot, '.open-design', 'landing'))).includes('exports'));
   });
 });

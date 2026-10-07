@@ -66,6 +66,7 @@ export async function listOverlayFiles(localRoot = LOCAL_ROOT) {
     }
   }
   for (const id of await listDirs(path.join(localRoot, 'skills'))) await walk(path.join('skills', id));
+  for (const id of await listDirs(path.join(localRoot, 'examples'))) await walk(path.join('examples', id));
   for (const name of await listFiles(path.join(localRoot, 'prompts'))) files.push(path.join('prompts', name));
   for (const id of await listDirs(path.join(localRoot, 'design-systems'))) {
     const names = new Set(await listFiles(path.join(localRoot, 'design-systems', id)));
@@ -123,9 +124,15 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
       collisions.push(`${id} (upstream skill)`);
     }
   }
+  // Examples pair with a skill of the same id (as upstream's do), so they only collide with upstream examples.
+  const exampleIds = await listDirs(path.join(localRoot, 'examples'));
+  for (const id of exampleIds) {
+    const dst = path.join(targetRoot, 'examples', id);
+    if ((await pathExists(dst)) && !(await pathExists(path.join(dst, OVERLAY_MARKER)))) collisions.push(`${id} (upstream example)`);
+  }
   if (collisions.length > 0) {
     throw new Error(
-      `Local overlay id collision: ${collisions.join(', ')}. Rename the overlay entry under packages/content/local/skills/ — overlay entries never shadow upstream ones.`,
+      `Local overlay id collision: ${collisions.join(', ')}. Rename the overlay entry under packages/content/local/skills/ or local/examples/ — overlay entries never shadow upstream ones.`,
     );
   }
 
@@ -168,6 +175,13 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
     await fs.writeFile(path.join(dst, OVERLAY_MARKER), 'Copied from packages/content/local/ by apply-local-overlay.mjs. Do not edit here.\n');
   }
 
+  for (const id of exampleIds) {
+    const dst = path.join(targetRoot, 'examples', id);
+    await fs.rm(dst, { recursive: true, force: true });
+    await fs.cp(path.join(localRoot, 'examples', id), dst, { recursive: true });
+    await fs.writeFile(path.join(dst, OVERLAY_MARKER), 'Copied from packages/content/local/ by apply-local-overlay.mjs. Do not edit here.\n');
+  }
+
   // prompts/ has no upstream counterpart: wholly overlay-owned, so replaced outright.
   const promptsDst = path.join(targetRoot, 'prompts');
   await fs.rm(promptsDst, { recursive: true, force: true });
@@ -206,6 +220,7 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
 
   const counts = {
     skills: skillIds.length,
+    examples: exampleIds.length,
     prompts: promptNames.length,
     designSystemOverrides: overrideIds.length,
     designSystemPackages: newPackageIds.length,
@@ -224,9 +239,9 @@ const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(proces
 if (isMainModule) {
   const targetRoot = path.join(packageRoot, 'assets', 'open-design');
   applyLocalOverlay(targetRoot)
-    .then(({ skills, prompts, designSystemOverrides, designSystemPackages }) =>
+    .then(({ skills, examples, prompts, designSystemOverrides, designSystemPackages }) =>
       console.log(
-        `Applied local overlay: ${skills} skills, ${prompts} prompts, ${designSystemOverrides} design-system token overrides, ${designSystemPackages} new design-system packages.`,
+        `Applied local overlay: ${skills} skills, ${examples} examples, ${prompts} prompts, ${designSystemOverrides} design-system token overrides, ${designSystemPackages} new design-system packages.`,
       ),
     )
     .catch((err) => {

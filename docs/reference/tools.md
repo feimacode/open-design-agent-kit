@@ -24,7 +24,9 @@ Two rules apply to every tool:
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
 | [`pull_open_design_figma_frame`](#pull_open_design_figma_frame) | `#od-pull-figma-frame` | yes | Instructions to rebuild a Figma frame as code |
+| [`check_open_design_artifact`](#check_open_design_artifact) | `#od-check` | yes | Render a design and see it: screenshots plus preflight findings, at desktop and mobile, per card or per slide |
 | [`export_open_design_artifact`](#export_open_design_artifact) | `#od-export` | yes | Export to PNG, JPEG, PDF, PowerPoint, standalone HTML or a site folder; check a design; one file per data row |
+| [`add_open_design_diagram_runtime`](#add_open_design_diagram_runtime) | `#od-diagram-runtime` | yes | Add or update the layout runtime in a diagram |
 | [`adapt_open_design_artifact`](#adapt_open_design_artifact) | `#od-adapt` | yes | Instructions to re-compose a design for other sizes |
 | [`create_open_design_qr_code`](#create_open_design_qr_code) | `#od-qr-code` | yes | Make a real QR code for a design |
 | [`publish_open_design_artifact`](#publish_open_design_artifact) | `#od-publish` | yes | Package for hosting and get instructions to publish a link |
@@ -171,6 +173,28 @@ Copies a real example into the workspace (with its assets), registers it, and re
 
 **Result:** `{ entryPath, instructions, manifest }`. Remixed artifacts are registered as kind `html` with `sourceSkillId` set, which is enough for [deck export](../guides/export-decks.md#how-decks-are-detected) to recognize remixed decks.
 
+### add_open_design_diagram_runtime
+
+Inserts the diagram layout runtime into a diagram's HTML entry file, or updates it in place: one `<script data-od-runtime="diagram">` block before `</body>`. Everything else in the file is left unchanged, and running it again on a current file changes nothing. It works before or after registration. See [Diagrams of your code](../guides/diagrams.md).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | yes | The diagram's HTML entry file. |
+
+**Result (text):** whether the runtime was added, updated or already current, plus the markup it lays out:
+
+- **Flow diagrams:** a `[data-od-diagram]` container with `data-direction` `right` or `down`. Nodes carry `data-od-node`, `data-rank`, `data-lane`, and optionally `data-group` and `data-od-source`. Links are hidden `data-od-link` elements and groups are hidden `data-od-group` elements.
+- **Sequence diagrams:** `data-od-diagram="sequence"`, with `data-od-participant` elements and hidden `data-od-message` elements.
+- **Styling:** the CSS custom properties that style connectors and groups.
+
+**Errors:** the file doesn't exist, isn't HTML, or is outside the workspace.
+
+**Example (MCP arguments):**
+
+```json
+{ "entryPath": ".open-design/package-architecture/package-architecture.html" }
+```
+
 ## Exploring directions
 
 An exploration generates 2–4 deliberately different sketches for one brief, puts them side by side, and builds out the one the user picks. See [Explore design directions](../guides/explore-directions.md).
@@ -297,6 +321,40 @@ Fetches a Figma frame's structure (and a rendered image, best effort) through th
 **Result:** `{ instructions, suggestedEntryPath }`. See [Figma](../guides/figma.md).
 
 ## Export
+
+### check_open_design_artifact
+
+Renders a registered artifact in a headless browser (an installed Chrome, Edge or Chromium, never downloaded) and returns what it looks like: **screenshots attached as images** plus [preflight](../guides/posters.md#preflight-checks) findings. It writes no files and doesn't change the manifest. The agent calls it after creating or substantially editing a design, before saying it's done: it fixes every error, looks at the screenshots for what checks can't measure (balance, hierarchy, crowded or empty areas), and re-checks, for at most two rounds.
+
+What it renders depends on the artifact:
+
+- **A page** (no `[data-od-card]`): at each viewport, by default desktop 1440×900 and mobile 390×844. Findings are tagged with the viewport they appear at. It adds a `horizontal-scroll` check: a page wider than its viewport is an error at phone widths (up to 480 px) and a warning above, naming the element that sticks out. Content in an `overflow-x: auto` container (a carousel) and fixed off-canvas elements don't count.
+- **A card design** (posters, social posts): each card at the format it was registered with, like export. Several cards come back as one contact sheet.
+- **A diagram** (an `[data-od-diagram]` page): at desktop width only, plus the diagram checks `node-overlap`, `edge-through-node`, `group-overlap` and `diagram-error`; see [Diagrams of your code](../guides/diagrams.md).
+- **A deck**: preflight on every slide (findings tagged with the slide number) and one contact sheet of up to 12 slides, each marked when it has errors.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | yes | The registered artifact's entry file. |
+| `viewports` | `{ name, width, height }`[] (1–4) | no | Pages only: the viewports to check instead of desktop and mobile. Ignored (with a warning) for card designs. |
+| `slides` | integer[] | no | Decks only: 1-based slide numbers to check. Default: every slide; the contact sheet shows the first 12 of them. |
+| `maxImages` | integer 0–6 | no | How many screenshots to attach. Default 3. `0` returns findings only. |
+
+Screenshots are JPEG, at most 1568 px on the long edge. A page's first screen at each viewport comes first; further screens down a tall page fill the remaining images, and the result lists what was left out.
+
+**Result:** text with the findings (errors first), the attached screenshots' labels and sizes, what wasn't attached, and any warnings; then the screenshots. In VS Code they're image parts of the tool result; over MCP they're `image` content items after the text. A client that ignores images still gets every finding in the text.
+
+When the artifact was registered with `sources` and any of them changed since, the findings include `stale-sources` (info).
+
+**Errors**, each prefixed `Check failed (<code>)`: `invalid-args`, `not-found`, `not-registered`, `unsupported-kind`, `no-browser` and `capture-failed`, with the same meanings as [export's](#export_open_design_artifact). On `no-browser`, the agent skips checking and tells you once.
+
+For checks of spreadsheet rows (`data`) or of every shape of a fluid poster (`shapeSheet`), use `export_open_design_artifact` with `checkOnly: true`.
+
+**Example (MCP arguments):**
+
+```json
+{ "entryPath": ".open-design/coffee-landing/coffee-landing.html", "viewports": [{ "name": "tablet", "width": 768, "height": 1024 }] }
+```
 
 ### export_open_design_artifact
 

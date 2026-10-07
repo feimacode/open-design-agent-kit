@@ -435,3 +435,53 @@ export function measureScalables(cardSelector: string): Array<{ name: string; fo
   });
   return out;
 }
+
+/**
+ * horizontal-scroll (artifact-visual-check): a page wider than the viewport
+ * scrolls sideways, which on a phone usually means a fixed-width element.
+ * Names the element reaching furthest right, skipping content inside a
+ * horizontally clipping or scrolling container (an intentional carousel) and
+ * fixed-position elements (an off-canvas drawer), which don't widen the page.
+ */
+export function collectHorizontalScroll(maxErrorWidth: number): PageFinding[] {
+  const vw = window.innerWidth;
+  const root = document.scrollingElement || document.documentElement;
+  const pageWidth = root.scrollWidth;
+  if (pageWidth <= vw + 1) return [];
+  const describe = (el: any): string => {
+    let s = String(el.tagName || '').toLowerCase();
+    if (el.id) s += '#' + el.id;
+    else if (el.classList && el.classList.length > 0) s += '.' + el.classList[0];
+    const text = String(el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text) s += ' "' + (text.length > 40 ? text.slice(0, 39) + '…' : text) + '"';
+    return s;
+  };
+  let worst: any = null;
+  let worstRight = vw + 1;
+  Array.prototype.slice.call(document.body ? document.body.querySelectorAll('*') : []).forEach((el: any) => {
+    const tag = String(el.tagName).toLowerCase();
+    if (tag === 'script' || tag === 'style' || tag === 'noscript' || tag === 'template') return;
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return;
+    const right = r.right + (window.scrollX || 0);
+    if (right <= worstRight) return;
+    for (let a = el; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+      const cs = getComputedStyle(a);
+      if (cs.position === 'fixed') return;
+      if (a !== el && cs.overflowX !== 'visible') return;
+    }
+    worst = el;
+    worstRight = right;
+  });
+  const fix = 'Constrain it (max-width: 100%, min-width: 0 on flex/grid children, flex-wrap) or put it in an overflow-x: auto container.';
+  return [
+    {
+      check: 'horizontal-scroll',
+      severity: vw <= maxErrorWidth ? 'error' : 'warning',
+      message:
+        'The page is ' + Math.round(pageWidth) + 'px wide in a ' + vw + 'px viewport, so it scrolls sideways' +
+        (worst ? '; ' + describe(worst) + ' reaches ' + Math.round(worstRight) + 'px. ' + fix : '.'),
+      selector: worst ? describe(worst) : undefined,
+    },
+  ];
+}

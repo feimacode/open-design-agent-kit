@@ -13,8 +13,10 @@ import { PortToAppCodeTool } from './portToAppCodeTool';
 import { ShareToCommunityTool } from './shareToCommunityTool';
 import { PublishCanvaTemplateTool } from './publishCanvaTemplateTool';
 import { PullFigmaFrameTool } from './pullFigmaFrameTool';
+import { CheckArtifactTool } from './checkArtifactTool';
 import { ExportArtifactTool } from './exportArtifactTool';
 import { AdaptArtifactTool } from './adaptArtifactTool';
+import { AddDiagramRuntimeTool } from './addDiagramRuntimeTool';
 import { CreateQrCodeTool } from './createQrCodeTool';
 import { ReadSourceTool } from './readSourceTool';
 import { PublishArtifactTool } from './publishArtifactTool';
@@ -46,8 +48,10 @@ export function registerTools(
     ['publish_open_design_artifact_to_canva', new PublishCanvaTemplateTool()],
     ['pull_open_design_figma_frame', new PullFigmaFrameTool(context)],
     ['export_open_design_artifact', new ExportArtifactTool(contentIndex)],
+    ['check_open_design_artifact', new CheckArtifactTool(contentIndex)],
     ['adapt_open_design_artifact', new AdaptArtifactTool()],
     ['create_open_design_qr_code', new CreateQrCodeTool()],
+    ['add_open_design_diagram_runtime', new AddDiagramRuntimeTool()],
     ['publish_open_design_artifact', new PublishArtifactTool()],
   ];
 

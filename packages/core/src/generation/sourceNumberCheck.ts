@@ -5,6 +5,7 @@
 
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { sourceKindFor } from '../vendored/documentExtract';
 import { readSource, readSourceMarkdown, resolveSourcePath, sha256Of } from '../workspace/sourceStore';
 
 const MAX_UNMATCHED = 50;
@@ -106,9 +107,13 @@ export interface SourceRegistration {
   warnings: string[];
 }
 
+const MAX_DOCUMENT_SOURCES = 10;
+const MAX_FILE_SOURCES = 50;
+
 /**
  * Everything registration needs for `sources`: each source's hash for the
- * manifest (extracting it if it wasn't read yet) and, for an HTML entry, the
+ * manifest (extracting documents if they weren't read yet; other files are
+ * only hashed) and, for an HTML entry, the
  * number check against the extracted text. Unreadable sources are reported
  * as warnings and left out; never throws.
  */
@@ -121,17 +126,33 @@ export async function prepareSourceRegistration(options: {
   const warnings: string[] = [];
   const sources: RecordedSource[] = [];
   const texts: string[] = [];
-  for (const sourcePath of options.sourcePaths.slice(0, 10)) {
-    const result = await readSource(options.workspaceRoot, options.outputDir, sourcePath);
-    if (!result.ok) {
-      warnings.push(`Source not recorded: ${result.error}`);
-      continue;
+  // Documents are extracted (and feed the number check); any other workspace file, such as the code a
+  // diagram was drawn from, is recorded by hash only, so drift can still be detected.
+  let documents = 0;
+  let files = 0;
+  for (const sourcePath of options.sourcePaths) {
+    if (!('error' in sourceKindFor(sourcePath))) {
+      if (++documents > MAX_DOCUMENT_SOURCES) continue;
+      const result = await readSource(options.workspaceRoot, options.outputDir, sourcePath);
+      if (!result.ok) {
+        warnings.push(`Source not recorded: ${result.error}`);
+        continue;
+      }
+      sources.push({ path: result.record.path, sha256: result.record.sha256 });
+      const text = await readSourceMarkdown(options.workspaceRoot, result.record);
+      if (text) texts.push(text);
+    } else {
+      if (++files > MAX_FILE_SOURCES) continue;
+      const resolved = await resolveSourcePath(options.workspaceRoot, options.outputDir, sourcePath);
+      if ('error' in resolved) {
+        warnings.push(`Source not recorded: ${resolved.error}`);
+        continue;
+      }
+      sources.push({ path: resolved.rel, sha256: await sha256Of(resolved.abs) });
     }
-    sources.push({ path: result.record.path, sha256: result.record.sha256 });
-    const text = await readSourceMarkdown(options.workspaceRoot, result.record);
-    if (text) texts.push(text);
   }
-  if (options.sourcePaths.length > 10) warnings.push(`Only the first 10 sources were recorded (${options.sourcePaths.length} given).`);
+  if (documents > MAX_DOCUMENT_SOURCES) warnings.push(`Only the first ${MAX_DOCUMENT_SOURCES} documents were recorded (${documents} given).`);
+  if (files > MAX_FILE_SOURCES) warnings.push(`Only the first ${MAX_FILE_SOURCES} other files were recorded (${files} given).`);
 
   let numberCheck: NumberCheckResult | undefined;
   if (/\.html?$/i.test(options.entryPath) && texts.length > 0) {

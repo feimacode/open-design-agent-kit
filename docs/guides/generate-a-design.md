@@ -29,6 +29,7 @@ Open Design is set up for your host: [VS Code](../getting-started/vscode.md), [C
 
 4. **The agent writes the files** with its own file tools, under `.open-design/<name>/`.
 5. **The agent registers the artifact** with [`register_open_design_artifact`](../reference/tools.md#register_open_design_artifact), which writes the `<entry>.artifact.json` manifest.
+6. **The agent looks at it.** [`check_open_design_artifact`](../reference/tools.md#check_open_design_artifact) renders the design (desktop and mobile for a page, slide by slide for a deck) and hands the agent screenshots plus the [preflight](posters.md#preflight-checks) findings. It fixes errors such as clipped text or a page that scrolls sideways on phones, and anything that looks off, for up to two rounds, then tells you about anything left. It needs an installed Chrome, Edge or Chromium; without one the agent skips this step and says so.
 
 To skip the choosing, run a [curated recipe](../reference/prompts-and-commands.md#curated-entries) directly (e.g. `/od-deck-guizang-ppt …`), or [remix a real example](remix-and-gallery.md).
 

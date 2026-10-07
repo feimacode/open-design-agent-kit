@@ -20,7 +20,12 @@ import {
   composePullFigmaInstructions,
   copyExampleArtifact,
   detectExistingApp,
+  addDiagramRuntime as addDiagramRuntimeCore,
+  checkArtifact as checkArtifactCore,
+  formatAddDiagramRuntimeResult,
   exportArtifact as exportArtifactCore,
+  formatCheckResult,
+  type CheckViewport,
   publishArtifact as publishArtifactCore,
   exportsForKind,
   formatExportResult,
@@ -504,6 +509,38 @@ export async function exportArtifact(
     lookupAspectHint: async (id) => (await ctx.contentIndex.getSkill(id))?.aspectHint,
   });
   return formatExportResult(result);
+}
+
+/** A tool result with images: the text always carries the complete result, so clients that ignore images lose nothing. */
+export interface ToolOutput {
+  text: string;
+  images?: Array<{ data: Buffer; mime: string }>;
+}
+
+/** MCP `content` for a handler's result: one text item, then one image item per image. */
+export function toCallToolContent(out: string | ToolOutput): Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }> {
+  if (typeof out === 'string') return [{ type: 'text', text: out }];
+  return [{ type: 'text', text: out.text }, ...(out.images ?? []).map((i) => ({ type: 'image' as const, data: i.data.toString('base64'), mimeType: i.mime }))];
+}
+
+/** add_open_design_diagram_runtime: inserts or updates the inline diagram runtime in the entry file. */
+export async function addDiagramRuntime(ctx: ToolContext, input: { entryPath: string }): Promise<string> {
+  return formatAddDiagramRuntimeResult(await addDiagramRuntimeCore({ ...input, workspaceRoot: ctx.workspaceRoot }));
+}
+
+/** check_open_design_artifact: renders the artifact and returns findings plus screenshots; writes nothing. */
+export async function checkArtifact(
+  ctx: ToolContext,
+  input: { entryPath: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number },
+): Promise<ToolOutput> {
+  // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
+  const result = await checkArtifactCore({
+    ...input,
+    workspaceRoot: ctx.workspaceRoot,
+    outputDir: ctx.outputDir,
+    lookupAspectHint: async (id) => (await ctx.contentIndex.getSkill(id))?.aspectHint,
+  });
+  return { text: formatCheckResult(result), images: result.ok ? result.images : [] };
 }
 
 /** adapt_open_design_artifact: per-format re-composition instructions; writes only the master's collection membership. */

@@ -4,18 +4,16 @@
 // deck-pptx-pdf-export). Host-agnostic: the VS Code tool, the MCP tool, and the
 // CLI all call exportArtifact().
 import { promises as fs } from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import type { Browser, Page } from 'puppeteer-core';
+import type { Page } from 'puppeteer-core';
 import { readArtifact, writeArtifactManifest } from '../vendored/artifactCreate';
 import type { JsonRecord } from '../vendored/artifactManifest';
+import { openArtifactPage, type ArtifactPageSession } from './artifactPage';
 import { findBrowser } from './browserDiscovery';
 import { assemblePdf, assemblePptx } from './deck/assemble';
 import { captureDeckSlides, capturePagePdf, countSlides, resolveExportMode, validateSlideNumbers, type ExportMode } from './deck/captureDeck';
-import { injectDeckStageFallback } from './deck/deckStageFallback';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize, type SizeSource } from './exportSize';
 import { formatPackageResult, isPackageFormat, packageArtifact, type PackageExportResult, type PackageFormat } from './packageArtifact';
-import { startStaticServer, urlForPath } from './staticServer';
 import { checkDataAgainstFields, loadDataTable, rowFileSuffixes, scanBoundFields, type DataTable } from '../poster/data';
 import { bleedBox, FORMAT_IDS, getFormat, isFluidHtml, unknownFormatError, type CanvasFormat } from '../poster/formats';
 import { applyShape, bindRow, type ShapeCss } from '../poster/pageScripts';
@@ -157,7 +155,7 @@ export type ExportErrorCode =
   | 'capture-failed';
 
 const FIT_QUALITIES = [90, 80, 70, 60, 50, 40];
-const EXPORTABLE_RENDERERS = new Set(['html', 'deck-html', 'mini-app', 'svg']);
+const EXPORTABLE_RENDERERS = new Set(['html', 'deck-html', 'mini-app', 'svg', 'diagram']);
 const CARD_SELECTOR = '[data-od-card]';
 const MAX_BLEED_MM = 20;
 /** Rows × shapes per export. */
@@ -334,7 +332,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
   }
   const renderer = typeof artifact.manifest.renderer === 'string' ? artifact.manifest.renderer : 'html';
   if (!EXPORTABLE_RENDERERS.has(renderer)) {
-    return fail('unsupported-kind', `Artifacts rendered as "${renderer}" can't be exported to an image — only HTML-based artifacts (html, deck-html, mini-app, svg).`);
+    return fail('unsupported-kind', `Artifacts rendered as "${renderer}" can't be exported to an image — only HTML-based artifacts (html, deck-html, mini-app, svg, diagram).`);
   }
 
   const manifest = artifact.manifest;
@@ -429,27 +427,13 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
 
   const warnings: string[] = [...dataWarnings];
   const relEntry = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath));
-  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-export-profile-'));
-  // The <deck-stage> fallback is injected into the served entry only (never the file on disk).
-  const server = await startStaticServer(options.workspaceRoot, { entryPath: relEntry, transformEntry: injectDeckStageFallback });
-  let instance: Browser | undefined;
+  let session: ArtifactPageSession | undefined;
   try {
-    const { default: puppeteer } = await import('puppeteer-core');
-    instance = await puppeteer.launch({
-      executablePath: browser.executablePath,
-      headless: true,
-      userDataDir: profileDir,
-      // A hung page (endless script, stalled frame) fails the export in a minute instead of blocking it.
-      protocolTimeout: 60_000,
-      args: ['--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb'],
-    });
-    const page = await instance.newPage();
-    // Under tsx (dev runs, the MCP server's tests) esbuild's keepNames wraps nested functions in
-    // `__name(...)`, which doesn't exist in the page that page.evaluate() serializes them into.
-    await page.evaluateOnNewDocument('globalThis.__name = globalThis.__name || ((fn) => fn)');
+    session = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry, executablePath: browser.executablePath });
+    const { browser: instance, page } = session;
     const layout = layoutFor(first, size);
     await page.setViewport({ width: layout.width, height: layout.height, deviceScaleFactor: options.scale ?? 1 });
-    await loadPage(page, urlForPath(server.baseUrl, relEntry), options.readyTimeoutMs ?? 15000, options.settleMs ?? 500, warnings);
+    await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 500, warnings);
 
     // Non-mutating: page-mode exports must see the original DOM.
     const slideCount = await countSlides(page);
@@ -733,9 +717,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
   } catch (err) {
     return fail('capture-failed', `Export failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
-    await instance?.close().catch(() => undefined);
-    await server.close();
-    await fs.rm(profileDir, { recursive: true, force: true }).catch(() => undefined);
+    await session?.close();
   }
 }
 

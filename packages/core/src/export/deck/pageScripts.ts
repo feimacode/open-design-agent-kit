@@ -285,3 +285,27 @@ export function readSlideNotes(slideSelector: string, cloneSelector: string, not
     return parts.join('\n').slice(0, 10000);
   });
 }
+
+/**
+ * Visual check: numbers every real slide (presenter clones excluded, as in
+ * countRealSlides) with `data-od-check-index`, once, before capture — capture
+ * may re-parent an off-stage slide, which changes document order.
+ */
+export function indexCheckSlides(slideSelector: string, cloneSelector: string): number {
+  const slides = Array.prototype.slice.call(document.querySelectorAll(slideSelector)).filter((el: any) => !el.closest(cloneSelector));
+  slides.forEach((el: any, k: number) => el.setAttribute('data-od-check-index', String(k)));
+  return slides.length;
+}
+
+/**
+ * Visual check: marks the slide numbered `index` by indexCheckSlides with
+ * `data-od-check-slide` and clears the mark from the rest, so preflight can
+ * treat the shown slide as its card. Returns whether a slide was marked.
+ */
+export function markCheckSlide(index: number): boolean {
+  document.querySelectorAll('[data-od-check-slide]').forEach((el: any) => el.removeAttribute('data-od-check-slide'));
+  const slide = document.querySelector('[data-od-check-index="' + index + '"]');
+  if (!slide) return false;
+  slide.setAttribute('data-od-check-slide', '');
+  return true;
+}

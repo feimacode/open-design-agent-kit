@@ -6,6 +6,7 @@ import { ALL_TOOL_IDS, buildToolChoices, InvalidToolsArgError, parseToolsArg, ty
 import { getClaudeSkillsAssetRoot, getCodexSkillsAssetRoot } from './env';
 import { mergeClaudeMcpConfig, writeClaudeSkills } from './claudeSetup';
 import { CODEX_CONFIG_SNIPPET, ensureCodexMcpConfig, writeCodexSkills } from './codexSetup';
+import { runCheck, type CheckCliOptions } from './checkCommand';
 import { runExport, runRenderVideo, type ExportCliOptions } from './exportCommand';
 import { cliHelpEpilogue } from './docsLinks';
 
@@ -104,6 +105,25 @@ program
   .action(async (entryPath: string, options: ExportCliOptions) => {
     try {
       process.exitCode = await runExport(entryPath, options);
+    } catch (err) {
+      console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command('check <entryPath>')
+  .description('Render a registered Open Design artifact (needs an installed Chrome, Edge, or Chromium) and print its preflight findings: pages at desktop and mobile widths, card designs at their format size, decks slide by slide. Writes nothing unless --screenshots is given')
+  .option('--viewport <name:WxH>', 'Pages: a viewport to check instead of desktop 1440x900 and mobile 390x844; repeat for several', (value: string, previous: string[] = []) => [...previous, value])
+  .option('--slides <list>', 'Decks: comma-separated 1-based slide numbers to check, e.g. 1,3')
+  .option('--max-images <n>', 'Screenshots to write with --screenshots, 0-6 (default 3)')
+  .option('--screenshots <dir>', 'Write the screenshots (JPEG) to this directory')
+  .option('--fail-on <error|warning>', 'Exit 1 when a finding at or above this severity exists (for CI)')
+  .option('--browser <path>', 'Browser executable (default: OPEN_DESIGN_BROWSER_PATH, then auto-detect)')
+  .option('--workspace <dir>', 'Workspace root (default: nearest ancestor containing .open-design/)')
+  .action(async (entryPath: string, options: CheckCliOptions) => {
+    try {
+      process.exitCode = await runCheck(entryPath, options);
     } catch (err) {
       console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
       process.exitCode = 1;

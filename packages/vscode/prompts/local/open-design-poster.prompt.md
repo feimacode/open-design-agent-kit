@@ -56,7 +56,7 @@ Call `register_open_design_artifact` with the entry path, kind `html`, a title, 
 
 ## 5. Check and fix
 
-Call `export_open_design_artifact` with the entry path and `checkOnly: true`. Fix every **error** in its preflight findings (text cut off, overlapping or in the bleed, a QR code that doesn't decode), and fix warnings where you reasonably can (sizes that don't scale with the poster, small type, low contrast, low-resolution images). Check again until there are no errors.
+Call `check_open_design_artifact` with the entry path. It returns the poster as an image plus preflight findings. Fix every **error** in its findings (text cut off, overlapping or in the bleed, a QR code that doesn't decode), and fix warnings where you reasonably can (sizes that don't scale with the poster, small type, low contrast, low-resolution images). Look at the image too: the headline should dominate and nothing important should be cramped or cut. Check again until there are no errors (at most two fix rounds; tell the user about anything left).
 
 ## 6. Other shapes
 

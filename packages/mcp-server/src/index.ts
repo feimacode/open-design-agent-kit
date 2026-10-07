@@ -26,7 +26,7 @@ import type { ToolContext } from './tools';
 
 interface ToolDef {
   tool: Tool;
-  handler: (ctx: ToolContext, args: Record<string, unknown>) => Promise<string>;
+  handler: (ctx: ToolContext, args: Record<string, unknown>) => Promise<string | tools.ToolOutput>;
 }
 
 const TOOL_DEFS: ToolDef[] = [
@@ -564,6 +564,66 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'add_open_design_diagram_runtime',
+      description:
+        "Adds the diagram runtime to a diagram's HTML entry file, or updates it in place: one inline <script data-od-runtime=\"diagram\"> block, placed before </body>, that lays the diagram out in the browser. It places nodes on a grid by rank and lane, draws right-angle connectors through the gaps between them with arrowheads and labels, boxes groups, and lays out sequence diagrams. The same file then renders identically in the preview, in export, in check_open_design_artifact and in any browser. Call it after writing the diagram markup (the diagram skill's workflow says when); it works before or after register_open_design_artifact and changes nothing else in the file. Never write, copy or edit the runtime yourself. The result restates the markup contract: a container with data-od-diagram (data-direction right|down, or =\"sequence\"); nodes with data-od-node, data-rank, data-lane, optional data-group and data-od-source; hidden <i data-od-link data-from data-to data-label> links; hidden <i data-od-group data-label> groups; for sequences, data-od-participant elements and hidden <i data-od-message data-from data-to data-label data-kind=\"return\"> messages.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: {
+            type: 'string',
+            description: "Workspace-relative path to the diagram's HTML entry file.",
+          },
+        },
+        required: ['entryPath'],
+      },
+    },
+    handler: (ctx, args) => tools.addDiagramRuntime(ctx, args as { entryPath: string }),
+  },
+  {
+    tool: {
+      name: 'check_open_design_artifact',
+      description:
+        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and returns what it looks like: screenshots attached as images, plus preflight findings (overflow and clipped text, contrast, text overlap, safe area, broken images/fonts, emoji, QR codes, and horizontal-scroll for pages that scroll sideways). Writes no files and leaves the manifest alone. Call it after creating or substantially editing an artifact and registering it, before telling the user it's done: fix every ERROR, look at the screenshots for what the checks can't measure (balance, hierarchy, crowded or empty areas, text over busy imagery), then re-check — at most two fix rounds; tell the user about anything left. What it renders: a page without a [data-od-card] at each viewport (default desktop 1440×900 and mobile 390×844, findings tagged by viewport); a card design (poster, social post) at its registered format size; a deck slide by slide (findings tagged by slide, one contact sheet of up to 12 slides — pass slides to see others). Screenshots are JPEG with a long edge of at most 1568 px; maxImages (default 3, max 6) bounds how many are attached, and 0 returns findings only. Returns a 'no-browser' error when no browser is installed: then skip the check and tell the user once that visual checking needs Chrome, Edge or Chromium. For bulk data rows or shape sheets, use export_open_design_artifact with checkOnly instead.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: {
+            type: 'string',
+            description: "Workspace-relative path to the registered artifact's entry file.",
+          },
+          viewports: {
+            type: 'array',
+            description: 'Pages without a card only: 1–4 viewports to check instead of the default desktop 1440×900 and mobile 390×844.',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'Label used in findings and screenshots, e.g. "tablet".' },
+                width: { type: 'integer', minimum: 16, maximum: 8192 },
+                height: { type: 'integer', minimum: 16, maximum: 8192 },
+              },
+              required: ['name', 'width', 'height'],
+            },
+          },
+          slides: {
+            type: 'array',
+            description: 'Decks only: 1-based slide numbers to check (default every slide; the contact sheet shows the first 12 of them).',
+            items: { type: 'integer', minimum: 1 },
+          },
+          maxImages: {
+            type: 'integer',
+            minimum: 0,
+            maximum: 6,
+            description: 'How many screenshots to attach (default 3). 0 returns findings only.',
+          },
+        },
+        required: ['entryPath'],
+      },
+    },
+    handler: (ctx, args) => tools.checkArtifact(ctx, args as unknown as Parameters<typeof tools.checkArtifact>[1]),
+  },
+  {
+    tool: {
       name: 'adapt_open_design_artifact',
       description:
         "Re-composes a finished, registered design for other canvas formats: the same message, copy hierarchy and design system, laid out again for each new size rather than scaled. Use when the user wants a poster or post \"in other sizes\", \"for Instagram and Stories too\", \"as an A3 print as well\", and so on. Returns, per format, instructions (with the master's HTML, that format's canvas rules and re-composition rules), a suggested entry path and the exact arguments to register it with. Writes no design file: write each adaptation yourself, register it with its registerArgs, then preflight and export it with its preset. The master and its adaptations are grouped as one collection (the master is added to a new one if it isn't in one). FLUID designs (data-od-fluid) already reflow to every shape, so for them it returns mode \"tune\" instead: per shape, instructions to check the master at that shape and fix it in place with @container rules; no new files and no collection.",
@@ -703,8 +763,7 @@ async function main(): Promise<void> {
       return { content: [{ type: 'text' as const, text: `Unknown tool: ${request.params.name}` }], isError: true };
     }
     try {
-      const text = await def.handler(ctx, (request.params.arguments as Record<string, unknown>) ?? {});
-      return { content: [{ type: 'text' as const, text }] };
+      return { content: tools.toCallToolContent(await def.handler(ctx, (request.params.arguments as Record<string, unknown>) ?? {})) };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return { content: [{ type: 'text' as const, text: `Tool "${request.params.name}" failed: ${message}` }], isError: true };
