@@ -1,0 +1,12 @@
+{
+  "name": "example-style-tile",
+  "title": "Style tile: Harbor",
+  "description": "A style tile for a calm fintech brand.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Make a style tile for a calm, trustworthy fintech brand: palette with contrast ratios, a serif and sans type pairing, core components, and radius and spacing samples."
+      }
+    }
+  }
+}

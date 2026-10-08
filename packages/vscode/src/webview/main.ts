@@ -198,8 +198,38 @@ function onIframeMouseOut(): void {
   renderOverlays();
 }
 
+// The preview can't navigate to a local file, and its <base> (see
+// injectPreviewBase) points at the design's folder, so a plain
+// `href="#pricing"` would resolve to that folder too. Scroll to an in-page
+// target, as a browser does for a file opened directly, and ask the extension
+// to open a link to a neighbouring file (e.g. a comparison page's
+// "Open full size") in its own tab.
+function followInPageLink(event: MouseEvent): void {
+  const link = (event.target as Element | null)?.closest?.('a[href]');
+  if (!link || event.defaultPrevented) return;
+  const href = (link.getAttribute('href') ?? '').trim();
+  if (!href.startsWith('#')) {
+    if (!href || href.startsWith('/') || /^[a-z][a-z0-9+.-]*:/i.test(href)) return;
+    event.preventDefault();
+    vscode.postMessage({ type: 'open-local-link', href });
+    return;
+  }
+  const doc = iframe.contentDocument;
+  if (!doc) return;
+  event.preventDefault();
+  const id = decodeURIComponent(href.slice(1));
+  if (!id) {
+    doc.defaultView?.scrollTo({ top: 0 });
+    return;
+  }
+  (doc.getElementById(id) ?? doc.getElementsByName(id)[0])?.scrollIntoView();
+}
+
 function onIframeClick(event: MouseEvent): void {
-  if (mode === 'view') return;
+  if (mode === 'view') {
+    followInPageLink(event);
+    return;
+  }
   event.preventDefault();
   event.stopPropagation();
   const target = event.target as Element | null;

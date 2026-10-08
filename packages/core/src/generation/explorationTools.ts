@@ -4,6 +4,7 @@
 // adapt arguments and wrap the returned text. See
 // openspec/changes/add-explorations/design.md.
 
+import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { ContentIndex, DesignSystemDetail } from '../content/contentIndex';
 import { resolveActiveDesignSystem, type ActiveDesignSystemStore } from '../workspace/activeDesignSystemStore';
@@ -22,6 +23,7 @@ import {
   type ExplorationPlan,
 } from '../workspace/explorationStore';
 import { composeExplorationDirectionInstructions, composeInstructions, selectCraftSections } from './composeInstructions';
+import { composeTileModeSection, extractRootTokens, isStyleTileSkill, missingTileTokens, tokensCssFromTile } from './styleTiles';
 import { composeCustomDesignSystemInstructions } from './customDesignSystemInstructions';
 import { resolveExplorationDirections, slugifyExplorationPart, type CustomDirectionInput } from './explorationPlan';
 import { hostOverrideFor } from './hostOverrides';
@@ -79,6 +81,7 @@ export async function prepareExploration(ctx: ExplorationToolContext, input: Pre
     customDirections: input.customDirections,
     hasActiveDesignSystem: Boolean(designSystem),
     skillMode: skill.mode,
+    tileMode: isStyleTileSkill(skill.id),
   });
   if (!resolved.ok) return resolved.error;
 
@@ -101,6 +104,14 @@ export async function prepareExploration(ctx: ExplorationToolContext, input: Pre
     hostOverride: hostOverrideFor(skill.id, skill.body),
     omitOutput: true,
   });
+  const tileSection = isStyleTileSkill(skill.id)
+    ? composeTileModeSection({
+        count: resolved.directions.length,
+        axis: resolved.axis,
+        activeName: appliedDesignSystem?.name,
+        activeTokensCss: appliedDesignSystem?.tokensCss ? [appliedDesignSystem.tokensCss, appliedDesignSystem.tokensOverrideCss].filter(Boolean).join('\n') : undefined,
+      })
+    : undefined;
 
   const plan: ExplorationPlan = {
     version: 1,
@@ -133,7 +144,7 @@ export async function prepareExploration(ctx: ExplorationToolContext, input: Pre
       `Generate ${directions.length} directions. For each one, follow sharedInstructions followed by that direction's instructions: write its file at its suggestedEntryPath, then register it with this explorationId and its directionId. ` +
       'If you can delegate to sub-agents, generate the directions in parallel and pass each one sharedInstructions plus its own instructions. ' +
       'When all are registered, call compare_open_design_exploration (contactSheet: true), check the directions really differ, then show the user and ask which one to take forward.',
-    sharedInstructions,
+    sharedInstructions: tileSection ? `${sharedInstructions}\n\n${tileSection}` : sharedInstructions,
     directions: directions.map((d, i) => ({
       directionId: d.id,
       label: d.label,
@@ -274,6 +285,23 @@ export async function chooseDirection(ctx: ExplorationToolContext, input: Choose
       .filter(Boolean)
       .join('\n\n');
     instructions = composeCustomDesignSystemInstructions({ name, brief, suggestedEntryPath, id: designSystemIdOut });
+    if (isStyleTileSkill(plan.skillId)) {
+      // A style tile already declares the token contract: hand its values over verbatim instead of asking the model to re-derive them.
+      let html = '';
+      try {
+        html = await fs.readFile(path.join(ctx.workspaceRoot, sketch.entryPath), 'utf8');
+      } catch {
+        // Unreadable sketch: fall back to the generic instructions above.
+      }
+      const tokens = extractRootTokens(html);
+      if (tokens.size > 0) {
+        const missing = missingTileTokens(tokens);
+        const tokensPath = path.posix.join(path.posix.dirname(suggestedEntryPath), 'tokens.css');
+        instructions += `\n\n## Tokens from the chosen tile (use these exactly)\n\nThe tile declares its design tokens on \`:root\`. Write this as \`${tokensPath}\` **verbatim**: don't adjust, round or rename any value. Write DESIGN.md's prose to describe these tokens, not new ones.\n\n\`\`\`css\n${tokensCssFromTile(tokens)}\`\`\`${
+          missing.length > 0 ? `\n\nThe tile doesn't declare these required tokens, so choose values for them that fit the ones above, and say so in DESIGN.md: ${missing.map((m) => `\`${m}\``).join(', ')}.` : ''
+        }`;
+      }
+    }
   } else {
     const skill = await ctx.contentIndex.getSkill(plan.skillId);
     if (!skill) return `The exploration's skill "${plan.skillId}" is no longer available.`;

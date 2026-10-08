@@ -22,7 +22,8 @@ describe('surfaces and stubs (shipped catalog)', () => {
     const surfaces = await index.listSurfaces();
     const ids = surfaces.map((s) => s.id);
     assert.ok(ids.includes('diagram') && ids.includes('poster') && ids.includes('wireframe'));
-    for (const planned of ['color-type', '3d']) assert.ok(!ids.includes(planned), planned);
+    for (const planned of ['3d']) assert.ok(!ids.includes(planned), planned);
+    assert.ok(ids.includes('color-type'));
     assert.ok(ids.includes('email'));
     assert.ok(surfaces.every((s) => s.entryCount > 0));
   });

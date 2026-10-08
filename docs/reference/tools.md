@@ -248,7 +248,7 @@ Use it instead of `prepare_open_design_brief` when the user asks for options to 
 |---|---|---|---|
 | `skillId` | string | yes | A full `od:<mode>:<name>` id from `list_open_design_skills`. |
 | `brief` | string | yes | The request, in the user's words. |
-| `count` | integer 2–4 | no | Number of directions. Default 3. |
+| `count` | integer 2–6 | no | Number of directions: 2–4, default 3; with the `style-tile` skill 2–6, default 4 (the visual library has five, so six tiles need `customDirections`). |
 | `axis` | `visual` · `structure` · `custom` | no | What the directions differ in. Default: `structure` when a design system is active, otherwise `visual`. `visual` with an active design system sets it aside for this exploration. |
 | `directionIds` | string[] | no | Specific directions, in order, from the axis's library (see below). Sets the count. |
 | `customDirections` | `{ label, brief }[]` | no | 2–4 directions for a user-named axis. Implies `axis: "custom"`. |

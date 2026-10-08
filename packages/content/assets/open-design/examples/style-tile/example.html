@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Style tile — Harbor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Manrope:wght@400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f4ef;
+  --surface: #ffffff;
+  --fg: #17202a;
+  --muted: #5b6573;
+  --border: #dcd6cb;
+  --accent: #1f5f8b;
+  --accent-on: #ffffff;
+  --accent-hover: #184d71;
+  --success: #2f7d4f;
+  --warn: #9a5b08;
+  --danger: #b3261e;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 19px;
+  --text-xl: 23px;
+  --text-2xl: 29px;
+  --text-3xl: 38px;
+  --text-4xl: 52px;
+  --leading-body: 1.6;
+  --leading-tight: 1.08;
+  --tracking-display: -0.02em;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --elev-raised: 0 1px 2px rgba(23, 32, 42, 0.06), 0 6px 18px rgba(23, 32, 42, 0.08);
+  --container-max: 1200px;
+  --container-gutter-phone: 20px;
+  --container-gutter-tablet: 32px;
+  --container-gutter-desktop: 48px;
+  --section-y-phone: 32px;
+  --section-y-tablet: 44px;
+  --section-y-desktop: 56px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: var(--text-base)/var(--leading-body) var(--font-body); }
+.tile { max-width: var(--container-max); margin: 0 auto; padding: var(--section-y-desktop) var(--container-gutter-desktop); display: grid; grid-template-columns: 1.05fr 1fr; gap: 32px 40px; }
+header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+.name { font: 650 var(--text-3xl)/var(--leading-tight) var(--font-display); letter-spacing: var(--tracking-display); margin: 0; }
+.mood { color: var(--muted); font-size: var(--text-lg); margin: 0; }
+.label { font: 700 var(--text-xs)/1.4 var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+section { min-width: 0; }
+.swatches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.swatch { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--surface); }
+.chip { height: 64px; border-bottom: 1px solid var(--border); }
+.swatch p { margin: 0; padding: 8px 10px; font-size: var(--text-xs); line-height: 1.45; color: var(--fg); }
+.swatch code { font: var(--text-xs) var(--font-mono); color: var(--muted); }
+.specimen { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+.display { font: 500 var(--text-4xl)/var(--leading-tight) var(--font-display); letter-spacing: var(--tracking-display); margin: 0 0 12px; }
+.body-sample { color: var(--fg); margin: 0 0 18px; max-width: 46ch; }
+.families { color: var(--muted); font-size: var(--text-sm); margin: 0 0 16px; }
+.scale { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.scale li { display: flex; align-items: baseline; gap: 14px; line-height: 1.2; }
+.scale span:first-child { flex: 0 0 64px; font: var(--text-xs) var(--font-mono); color: var(--muted); }
+.components { display: grid; gap: 16px; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn { font: 700 var(--text-sm)/1 var(--font-body); padding: 12px 18px; border-radius: var(--radius-md); border: 1px solid transparent; }
+.btn-primary { background: var(--accent); color: var(--accent-on); }
+.btn-secondary { background: var(--surface); color: var(--fg); border-color: var(--border); }
+.field { display: grid; gap: 6px; max-width: 320px; }
+.field span { font-size: var(--text-sm); font-weight: 500; }
+.field input { font: var(--text-base) var(--font-body); padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--fg); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--elev-raised); padding: 18px 20px; max-width: 360px; }
+.card h3 { font: 650 var(--text-xl)/1.2 var(--font-display); margin: 0 0 6px; }
+.card p { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.tag { display: inline-block; font: 700 var(--text-xs)/1 var(--font-body); padding: 6px 10px; border-radius: var(--radius-pill); background: var(--bg); color: var(--accent); border: 1px solid var(--border); }
+.shapes { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.shape { width: 56px; height: 56px; background: var(--surface); border: 1px solid var(--border); display: grid; place-items: end center; padding-bottom: 4px; font: var(--text-xs) var(--font-mono); color: var(--muted); }
+@media (max-width: 860px) {
+  .tile { grid-template-columns: 1fr; padding: var(--section-y-tablet) var(--container-gutter-tablet); }
+}
+@media (max-width: 520px) {
+  .tile { padding: var(--section-y-phone) var(--container-gutter-phone); }
+  .swatches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .display { font-size: var(--text-3xl); }
+}
+</style>
+</head>
+<body>
+<main class="tile" data-od-style-tile>
+  <header>
+    <h1 class="name">Harbor</h1>
+    <p class="mood">Calm, precise, quietly confident.</p>
+  </header>
+
+  <section>
+    <p class="label">Palette</p>
+    <div class="swatches">
+      <div class="swatch"><div class="chip" style="background: var(--bg)"></div><p><strong>bg</strong> <code>#f6f4ef</code><br>fg on bg 14.97:1</p></div>
+      <div class="swatch"><div class="chip" style="background: var(--surface)"></div><p><strong>surface</strong> <code>#ffffff</code><br>fg on surface 16.45:1</p></div>
+      <div class="swatch"><div class="chip" style="background: var(--fg)"></div><p><strong>fg</strong> <code>#17202a</code><br>text</p></div>
+      <div class="swatch"><div class="chip" style="background: var(--muted)"></div><p><strong>muted</strong> <code>#5b6573</code><br>on bg 5.38:1</p></div>
+      <div class="swatch"><div class="chip" style="background: var(--border)"></div><p><strong>border</strong> <code>#dcd6cb</code><br>hairlines</p></div>
+      <div class="swatch"><div class="chip" style="background: var(--accent)"></div><p><strong>accent</strong> <code>#1f5f8b</code><br>white on accent 6.84:1</p></div>
+    </div>
+  </section>
+
+  <section class="specimen">
+    <p class="label">Type</p>
+    <p class="display">Money, made calm.</p>
+    <p class="body-sample">Ledgers that reconcile themselves, alerts that only arrive when they matter, and reports your board reads in two minutes.</p>
+    <p class="families">Display: Fraunces 500 · Body: Manrope 400/700</p>
+    <ul class="scale">
+      <li><span>4xl 52</span><span style="font: 500 var(--text-4xl)/1 var(--font-display)">Aa</span></li>
+      <li><span>3xl 38</span><span style="font: 500 var(--text-3xl)/1 var(--font-display)">Aa</span></li>
+      <li><span>2xl 29</span><span style="font: 650 var(--text-2xl)/1 var(--font-display)">Aa</span></li>
+      <li><span>xl 23</span><span style="font-size: var(--text-xl)">Aa</span></li>
+      <li><span>lg 19</span><span style="font-size: var(--text-lg)">Aa</span></li>
+      <li><span>base 16</span><span style="font-size: var(--text-base)">Aa</span></li>
+      <li><span>sm 14</span><span style="font-size: var(--text-sm)">Aa</span></li>
+      <li><span>xs 12</span><span style="font-size: var(--text-xs)">Aa</span></li>
+    </ul>
+  </section>
+
+  <section class="components">
+    <p class="label">Components</p>
+    <div class="row"><span class="btn btn-primary">Open account</span><span class="btn btn-secondary">See pricing</span><span class="tag">New</span></div>
+    <label class="field"><span>Work email</span><input value="maya@harbor.example" readonly></label>
+    <div class="card"><h3>Reconciled</h3><p>2,184 transactions matched this week. Nothing needs you.</p></div>
+  </section>
+
+  <section>
+    <p class="label">Shape and space</p>
+    <div class="shapes">
+      <div class="shape" style="border-radius: var(--radius-sm)">sm</div>
+      <div class="shape" style="border-radius: var(--radius-md)">md</div>
+      <div class="shape" style="border-radius: var(--radius-lg)">lg</div>
+      <div class="shape" style="border-radius: var(--radius-pill)">pill</div>
+      <div class="shape" style="border-radius: var(--radius-md); box-shadow: var(--elev-raised)">raised</div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -5,6 +5,7 @@
 import type { SkillMode } from '../content/contentIndex';
 import { DESIGN_DIRECTIONS, findDesignDirection, renderDirectionSpec, type DesignDirection } from '../vendored/designDirections';
 import { DECK_STRUCTURES, PAGE_STRUCTURES, renderStructuralDirectionSpec, type StructuralDirection } from './structuralDirections';
+import { TILE_DEFAULT_DIRECTIONS, TILE_MAX_DIRECTIONS } from './styleTiles';
 
 export type ExplorationAxis = 'visual' | 'structure' | 'custom';
 export const EXPLORATION_AXES: readonly ExplorationAxis[] = ['visual', 'structure', 'custom'];
@@ -50,6 +51,8 @@ export interface ResolveExplorationInput {
   customDirections?: CustomDirectionInput[];
   hasActiveDesignSystem: boolean;
   skillMode: SkillMode;
+  /** Style tiles (openspec add-style-tiles): 2–6 directions, 4 by default. */
+  tileMode?: boolean;
 }
 
 export type ResolveExplorationResult =
@@ -78,14 +81,15 @@ function fromStructure(d: StructuralDirection): PlannedDirection {
   return { id: d.id, label: d.label, axis: 'structure', summary: d.summary, spec: renderStructuralDirectionSpec(d) };
 }
 
-function countError(n: number): string | undefined {
-  if (!Number.isInteger(n) || n < MIN_DIRECTIONS || n > MAX_DIRECTIONS) {
-    return `An exploration needs ${MIN_DIRECTIONS}–${MAX_DIRECTIONS} directions (got ${n}).`;
+function countError(n: number, max = MAX_DIRECTIONS): string | undefined {
+  if (!Number.isInteger(n) || n < MIN_DIRECTIONS || n > max) {
+    return `An exploration needs ${MIN_DIRECTIONS}–${max} directions (got ${n}).`;
   }
   return undefined;
 }
 
 export function resolveExplorationDirections(input: ResolveExplorationInput): ResolveExplorationResult {
+  const max = input.tileMode ? TILE_MAX_DIRECTIONS : MAX_DIRECTIONS;
   if (input.axis !== undefined && !EXPLORATION_AXES.includes(input.axis as ExplorationAxis)) {
     return { ok: false, error: `Unknown axis "${input.axis}". Allowed: ${EXPLORATION_AXES.join(', ')}.` };
   }
@@ -95,19 +99,22 @@ export function resolveExplorationDirections(input: ResolveExplorationInput): Re
 
   const axis: ExplorationAxis =
     (input.axis as ExplorationAxis | undefined) ??
-    (input.customDirections?.length ? 'custom' : input.directionIds?.length ? 'visual' : input.hasActiveDesignSystem ? 'structure' : 'visual');
+    (input.customDirections?.length ? 'custom' : input.directionIds?.length || input.tileMode ? 'visual' : input.hasActiveDesignSystem ? 'structure' : 'visual');
+  if (input.tileMode && axis === 'structure') {
+    return { ok: false, error: 'Style tiles vary color and type, not layout: use axis "visual", or "custom" to evolve the active design system.' };
+  }
 
   if (input.count !== undefined) {
-    const err = countError(input.count);
+    const err = countError(input.count, max);
     if (err) return { ok: false, error: err };
   }
 
   if (axis === 'custom') {
     const custom = input.customDirections ?? [];
     if (custom.length === 0) {
-      return { ok: false, error: 'axis "custom" needs customDirections: 2–4 entries of { label, brief }.' };
+      return { ok: false, error: `axis "custom" needs customDirections: ${MIN_DIRECTIONS}–${max} entries of { label, brief }.` };
     }
-    const err = countError(custom.length);
+    const err = countError(custom.length, max);
     if (err) return { ok: false, error: err };
     if (input.count !== undefined && input.count !== custom.length) {
       return { ok: false, error: `count (${input.count}) doesn't match the ${custom.length} customDirections given.` };
@@ -150,14 +157,18 @@ export function resolveExplorationDirections(input: ResolveExplorationInput): Re
       return { ok: false, error: `Unknown ${axis} direction id(s): ${unknown.join(', ')}. Valid ids: ${validIds.join(', ')}.` };
     }
     if (new Set(ids).size !== ids.length) return { ok: false, error: 'directionIds must not repeat.' };
-    const err = countError(ids.length);
+    const err = countError(ids.length, max);
     if (err) return { ok: false, error: err };
     if (input.count !== undefined && input.count !== ids.length) {
       return { ok: false, error: `count (${input.count}) doesn't match the ${ids.length} directionIds given.` };
     }
     chosen = ids;
   } else {
-    chosen = validIds.slice(0, input.count ?? DEFAULT_DIRECTION_COUNT);
+    const wanted = input.count ?? (input.tileMode ? TILE_DEFAULT_DIRECTIONS : DEFAULT_DIRECTION_COUNT);
+    if (wanted > validIds.length) {
+      return { ok: false, error: `The ${axis} library has ${validIds.length} directions, so it can't make ${wanted}. Pass customDirections (axis "custom") for more.` };
+    }
+    chosen = validIds.slice(0, wanted);
   }
 
   const directions = chosen.map((id) => library.find((l) => l.id === id)!.toPlanned());

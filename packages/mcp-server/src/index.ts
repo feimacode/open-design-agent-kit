@@ -169,13 +169,13 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'prepare_open_design_exploration',
       description:
-        "Use INSTEAD of prepare_open_design_brief when the user explicitly asks for options, directions, alternatives or several versions of a design. Assigns 2–4 deliberately different directions (visual styles when no design system is active, layout/narrative structures when one is, or labels you pass for a named axis), writes the exploration's plan, and returns sharedInstructions plus one short instructions block, entry path and directionId per direction. Directions are quick sketches; only the one the user picks is built out. Writes no design files: write each direction yourself (follow sharedInstructions + that direction's instructions), register it with explorationId and directionId, then call compare_open_design_exploration.",
+        "Use INSTEAD of prepare_open_design_brief when the user explicitly asks for options, directions, alternatives or several versions of a design. Assigns 2–4 deliberately different directions (visual styles when no design system is active, layout/narrative structures when one is, or labels you pass for a named axis), writes the exploration's plan, and returns sharedInstructions plus one short instructions block, entry path and directionId per direction. Directions are quick sketches; only the one the user picks is built out. Writes no design files: write each direction yourself (follow sharedInstructions + that direction's instructions), register it with explorationId and directionId, then call compare_open_design_exploration. STYLE TILES: with skillId od:design-system:style-tile the directions are compact color + type tiles (default 4, visual axis even with an active design system; axis \"custom\" with an active system evolves it). Choosing one with next \"save-design-system\" copies the tile's tokens verbatim.",
       inputSchema: {
         type: 'object',
         properties: {
           skillId: { type: 'string', description: "A skill id from list_open_design_skills, in its full 'od:<mode>:<name>' form." },
           brief: { type: 'string', description: "The user's design brief / request, in their own words." },
-          count: { type: 'integer', minimum: 2, maximum: 4, description: 'How many directions (2–4). Default 3.' },
+          count: { type: 'integer', minimum: 2, maximum: 6, description: 'How many directions: 2–4, default 3; for the style-tile skill 2–6, default 4.' },
           axis: {
             type: 'string',
             enum: ['visual', 'structure', 'custom'],
@@ -195,7 +195,7 @@ const TOOL_DEFS: ToolDef[] = [
               properties: { label: { type: 'string' }, brief: { type: 'string', description: 'What makes this direction different.' } },
               required: ['label', 'brief'],
             },
-            description: 'For a user-named axis (e.g. "three hero concepts"): 2–4 directions, each a distinct label and a one-paragraph brief.',
+            description: 'For a user-named axis (e.g. "three hero concepts"): 2–4 directions (style tiles: up to 6), each a distinct label and a one-paragraph brief.',
           },
           designSystemId: {
             type: 'string',

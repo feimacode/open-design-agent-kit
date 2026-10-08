@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { injectScriptNonce, loadExampleHtml } from '../../content/exampleHtml';
+import { inlineLocalFrames, injectPreviewBase, injectScriptNonce, loadExampleHtml, localRelativePath } from '../../content/exampleHtml';
 
 async function makeExample(files: Record<string, string>): Promise<{ assetsRoot: string; entryPath: string }> {
   const assetsRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'od-ext-examplehtml-'));
@@ -92,5 +92,59 @@ describe('injectScriptNonce', () => {
   it('handles multiple script tags in one document', () => {
     const result = injectScriptNonce('<script>a();</script><p>x</p><script>b();</script>', 'n1');
     assert.strictEqual(result, '<script nonce="n1">a();</script><p>x</p><script nonce="n1">b();</script>');
+  });
+});
+
+describe('injectPreviewBase', () => {
+  const BASE = 'https://file+.vscode-resource.vscode-cdn.net/ws/.open-design/x/';
+  it('puts a preview-only base first in <head>', () => {
+    assert.strictEqual(
+      injectPreviewBase('<!doctype html><html><head lang="en"><title>t</title></head><body><iframe src="a.html"></iframe></body></html>', BASE),
+      `<!doctype html><html><head lang="en"><base href="${BASE}" data-od-preview-only><title>t</title></head><body><iframe src="a.html"></iframe></body></html>`,
+    );
+  });
+  it('adds a head when the document has none, and handles bare fragments', () => {
+    assert.strictEqual(injectPreviewBase('<html><body>x</body></html>', BASE), `<html><head><base href="${BASE}" data-od-preview-only></head><body>x</body></html>`);
+    assert.strictEqual(injectPreviewBase('<!DOCTYPE html><p>x</p>', BASE), `<!DOCTYPE html><base href="${BASE}" data-od-preview-only><p>x</p>`);
+    assert.strictEqual(injectPreviewBase('<p>x</p>', BASE), `<base href="${BASE}" data-od-preview-only><p>x</p>`);
+  });
+  it("keeps a document's own base, and does not mistake <header> for <head>", () => {
+    const own = '<html><head><base href="https://example.com/"></head></html>';
+    assert.strictEqual(injectPreviewBase(own, BASE), own);
+    assert.strictEqual(injectPreviewBase('<html><header>h</header></html>', BASE), `<html><head><base href="${BASE}" data-od-preview-only></head><header>h</header></html>`);
+  });
+});
+
+describe('inlineLocalFrames', () => {
+  const files: Record<string, string> = {
+    'a.html': '<p>A & "B"</p>',
+    'sub/b.html': '<iframe src="c.html"></iframe>',
+    'sub/c.html': '<p>C</p>',
+  };
+  const read = async (rel: string) => {
+    const norm = rel.replace(/^\.\//, '');
+    return norm in files ? { html: files[norm], resolvedPath: `/ws/${norm}` } : undefined;
+  };
+  const prep = (html: string, p: string) => `[${p}]${html}`;
+
+  it('fills local frames with their file as escaped srcdoc, keeping src, and skips the rest', async () => {
+    const html = '<iframe src="a.html" title="t"></iframe><iframe src="https://x.test/a.html"></iframe><iframe src="missing.html"></iframe><iframe src="a.html" srcdoc="own"></iframe>';
+    const out = await inlineLocalFrames(html, read, prep);
+    assert.strictEqual(
+      out,
+      '<iframe src="a.html" title="t" srcdoc="[/ws/a.html]<p>A &amp; &quot;B&quot;</p>" data-od-preview-srcdoc></iframe><iframe src="https://x.test/a.html"></iframe><iframe src="missing.html"></iframe><iframe src="a.html" srcdoc="own"></iframe>',
+    );
+  });
+
+  it('resolves nested frames against the framing file, up to the depth limit', async () => {
+    const out = await inlineLocalFrames('<iframe src="sub/b.html"></iframe>', read, prep);
+    assert.match(out, /srcdoc="\[\/ws\/sub\/b\.html\]<iframe src=&quot;c\.html&quot; srcdoc=&quot;\[\/ws\/sub\/c\.html\]<p>C<\/p>&quot; data-od-preview-srcdoc><\/iframe>"/);
+    const shallow = await inlineLocalFrames('<iframe src="sub/b.html"></iframe>', read, prep, 1);
+    assert.ok(!/c\.html&quot; srcdoc/.test(shallow));
+  });
+
+  it('only treats plain relative paths as local', () => {
+    assert.strictEqual(localRelativePath('dir/x%20y.html?v=1#top'), 'dir/x y.html');
+    for (const ref of ['#a', '/abs.html', 'https://x', 'data:text/html,x', 'mailto:a@b', '']) assert.strictEqual(localRelativePath(ref), undefined, ref);
   });
 });

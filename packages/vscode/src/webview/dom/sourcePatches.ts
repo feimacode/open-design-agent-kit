@@ -78,10 +78,17 @@ export function applyPatch(doc: Document, patch: ManualEditPatch): boolean {
 
 /** Marks preview-only nodes (pick-mode overrides, the Shape switcher's style) that must never reach the saved source. */
 export const PREVIEW_ONLY_ATTR = 'data-od-preview-only';
+/** Mirrors core's PREVIEW_SRCDOC_ATTR (the webview bundle doesn't import core). */
+export const PREVIEW_SRCDOC_ATTR = 'data-od-preview-srcdoc';
 
 export function serializeDocument(doc: Document): string {
   const doctype = doc.doctype ? `<!DOCTYPE ${doc.doctype.name}>\n` : '<!doctype html>\n';
   const clone = doc.documentElement.cloneNode(true) as HTMLElement;
   clone.querySelectorAll(`[${PREVIEW_ONLY_ATTR}]`).forEach((el) => el.remove());
+  // Frames the preview filled from their local src (see inlineLocalFrames).
+  clone.querySelectorAll(`[${PREVIEW_SRCDOC_ATTR}]`).forEach((el) => {
+    el.removeAttribute('srcdoc');
+    el.removeAttribute(PREVIEW_SRCDOC_ATTR);
+  });
   return doctype + clone.outerHTML;
 }

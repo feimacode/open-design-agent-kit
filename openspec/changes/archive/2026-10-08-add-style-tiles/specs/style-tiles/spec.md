@@ -5,17 +5,17 @@ The catalog SHALL include a local `style-tile` skill (`od:design-system:style-ti
 
 #### Scenario: Tile declares the contract
 - **WHEN** a style tile is generated
-- **THEN** its `:root` SHALL declare `--bg`, `--surface`, `--fg`, `--muted`, `--border`, `--accent`, `--accent-on` and every other required token of the contract
+- **THEN** its `:root` SHALL declare `--bg`, `--surface`, `--fg`, `--muted`, `--border`, `--accent`, `--font-display`, `--font-body` and every other required (A1 identity and structure) token of the contract
 
 ### Requirement: Token Completeness Check
 `check_open_design_artifact` on an artifact made from the style-tile skill SHALL report `token-missing` as an error for each required contract token not declared on `:root`.
 
-#### Scenario: Missing accent-on
-- **WHEN** a tile omits `--accent-on`
-- **THEN** the check SHALL report `token-missing` naming `--accent-on`
+#### Scenario: Missing display font
+- **WHEN** a tile omits `--font-display`
+- **THEN** the check SHALL report `token-missing` naming `--font-display`
 
 ### Requirement: Tile-Mode Explorations
-`prepare_open_design_exploration` with the style-tile skill SHALL default to the `visual` axis and 4 directions, SHALL accept 2–6 directions, SHALL require each direction to differ from the others in at least two of accent hue family, neutral temperature, display face classification and radius scale, and the contact sheet SHALL show the tiles side by side.
+`prepare_open_design_exploration` with the style-tile skill SHALL default to the `visual` axis and 4 directions, SHALL accept 2–6 directions (the visual library has five, so six needs custom directions), SHALL require each direction to differ from the others in at least two of accent hue family, neutral temperature, display face classification and radius scale, and the contact sheet SHALL show the tiles side by side.
 
 #### Scenario: Four pairings
 - **WHEN** the user asks "show me some color and type options for a fintech brand"

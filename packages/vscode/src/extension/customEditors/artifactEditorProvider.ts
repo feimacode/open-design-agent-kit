@@ -11,6 +11,9 @@ import {
   readShareRecords,
   findExplorationArtifacts,
   readExplorationPlan,
+  inlineLocalFrames,
+  injectPreviewBase,
+  localRelativePath,
   injectScriptNonce,
   readArtifact,
   readArtifactComments,
@@ -188,9 +191,12 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     _token: vscode.CancellationToken,
   ): Promise<void> {
     this.log.info(`ArtifactEditorProvider: opened ${document.uri.fsPath}`);
+    const documentDir = vscode.Uri.joinPath(document.uri, '..');
     webviewPanel.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.context.extensionUri],
+      // The document's folder and the workspace folders let the preview load
+      // the files a design links to relatively (see previewHtml below).
+      localResourceRoots: [this.context.extensionUri, documentDir, ...(vscode.workspace.workspaceFolders ?? []).map((f) => f.uri)],
     };
     // One instance of this provider serves every open artifact editor (see
     // supportsMultipleEditorsPerDocument above), so the nonce must be local
@@ -201,19 +207,42 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
     webviewPanel.webview.html = this.buildHtml(webviewPanel.webview, panelNonce);
 
     const location = resolveEntryPath(document);
+    // The preview renders through `srcdoc`, which has no URL of its own, so
+    // relative links (a comparison page's `<iframe src="direction.html">`,
+    // images, stylesheets) resolve against a preview-only <base> pointing at
+    // the document's folder. The WYSIWYG save strips it (data-od-preview-only).
+    // A webview can't navigate a frame to a local file, though, so frames of
+    // neighbouring designs get their content inlined as srcdoc (each with its
+    // own base and nonce).
+    const prepareHtml = (html: string, dir: vscode.Uri) =>
+      injectScriptNonce(injectPreviewBase(html, `${webviewPanel.webview.asWebviewUri(dir).toString().replace(/\/$/, '')}/`), panelNonce);
+    const readFramed = async (rel: string) => {
+      if (!/\.html?$/i.test(rel)) return undefined;
+      const uri = vscode.Uri.joinPath(documentDir, rel);
+      try {
+        return { html: new TextDecoder().decode(await vscode.workspace.fs.readFile(uri)), resolvedPath: uri.toString() };
+      } catch {
+        return undefined;
+      }
+    };
+    const previewHtml = async () =>
+      prepareHtml(
+        await inlineLocalFrames(document.getText(), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
+        documentDir,
+      );
 
     const sendInit = async () => {
       const comments = location ? await readArtifactComments(location.workspaceRoot, location.entryPath) : [];
       const collection = await resolveCollectionNav(location);
       const shape = await resolveShapeInfo(document.getText(), location);
-      webviewPanel.webview.postMessage({ type: 'init', html: injectScriptNonce(document.getText(), panelNonce), comments, collection, shape });
+      webviewPanel.webview.postMessage({ type: 'init', html: await previewHtml(), comments, collection, shape });
     };
 
     const changeSub = vscode.workspace.onDidChangeTextDocument(async (e) => {
       if (e.document.uri.toString() === document.uri.toString()) {
         const collection = await resolveCollectionNav(location);
         const shape = await resolveShapeInfo(document.getText(), location);
-        webviewPanel.webview.postMessage({ type: 'source-updated', html: injectScriptNonce(document.getText(), panelNonce), collection, shape });
+        webviewPanel.webview.postMessage({ type: 'source-updated', html: await previewHtml(), collection, shape });
       }
     });
 
@@ -242,6 +271,23 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         case 'ready':
           await sendInit();
           break;
+        case 'open-local-link': {
+          // A link to a neighbouring file (e.g. "Open full size" on a
+          // comparison page): the webview can't navigate to it, so open it
+          // in its own editor — designs in this preview, anything else as usual.
+          const rel = localRelativePath(String(message.href ?? ''));
+          if (!rel) break;
+          const target = vscode.Uri.joinPath(documentDir, rel);
+          try {
+            await vscode.workspace.fs.stat(target);
+          } catch {
+            vscode.window.showWarningMessage(`Open Design: ${rel} doesn't exist next to this design.`);
+            break;
+          }
+          if (/\.html?$/i.test(rel)) await vscode.commands.executeCommand('vscode.openWith', target, ARTIFACT_EDITOR_VIEW_TYPE);
+          else await vscode.commands.executeCommand('vscode.open', target);
+          break;
+        }
         case 'apply-patch':
           this.log.info(`ArtifactEditorProvider: applying WYSIWYG patch to ${document.uri.fsPath}`);
           await this.applyPatch(document, message.newSource as string);

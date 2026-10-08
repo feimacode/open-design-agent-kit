@@ -13,8 +13,8 @@
     "examplesSkippedForSize": 2
   },
   "localOverlay": {
-    "skills": 13,
-    "examples": 21,
+    "skills": 14,
+    "examples": 22,
     "prompts": 8,
     "designSystemOverrides": 8,
     "designSystemPackages": 16

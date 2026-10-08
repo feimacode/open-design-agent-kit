@@ -8,6 +8,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Browser } from 'puppeteer-core';
 import { findBrowser } from '../export/browserDiscovery';
+import { isStyleTileSkill } from '../generation/styleTiles';
 import { loadPage } from '../export/exportArtifact';
 import { startStaticServer, urlForPath } from '../export/staticServer';
 import {
@@ -39,7 +40,9 @@ export function renderExplorationCompareHtml(plan: ExplorationPlan, artifacts: E
   const dir = explorationPaths(outputDir, plan.explorationId).dir;
   const byDirection = directionArtifactMap(artifacts);
   const total = plan.directions.length;
-  const cols = total <= 3 ? total : 2;
+  // Style tiles are compact boards: up to four side by side, in taller frames.
+  const tiles = isStyleTileSkill(plan.skillId);
+  const cols = tiles ? (total <= 4 ? total : 3) : total <= 3 ? total : 2;
   const chosenId = plan.chosen?.directionId;
 
   const cards = plan.directions
@@ -109,7 +112,7 @@ h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
 .index { flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--fg); color: var(--surface); font-weight: 600; font-size: 13px; }
 .badge { font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
 .chosen-badge { color: var(--chosen); border-color: var(--chosen); font-weight: 600; }
-.frame { position: relative; aspect-ratio: 16 / 10; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+.frame { position: relative; aspect-ratio: ${tiles ? '3 / 4' : '16 / 10'}; overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
 /* One-third scale: each preview gets a desktop-width virtual viewport (~1400px for a 470px card). */
 .frame iframe { position: absolute; top: 0; left: 0; width: 300%; height: 300%; border: 0; transform: scale(0.3333); transform-origin: 0 0; }
 .placeholder { display: grid; place-content: center; gap: 6px; text-align: center; color: var(--muted); background: repeating-linear-gradient(45deg, transparent 0 10px, var(--border) 10px 11px); }

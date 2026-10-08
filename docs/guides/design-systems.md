@@ -134,6 +134,26 @@ The agent calls [`create_open_design_design_system`](../reference/tools.md#creat
 
 > **In VS Code:** `/open-design-custom-design-system` starts this explicitly.
 
+### Pick one from style tiles
+
+Not sure what the brand should look like? Ask for options:
+
+> Show me four color and type pairings for a calm, trustworthy fintech brand.
+
+The agent runs a [design exploration](explore-directions.md) with the **style-tile** skill. Each direction is one compact tile instead of a page:
+- palette swatches with their roles, hex values and real contrast ratios;
+- a type specimen with the full scale;
+- a few components (buttons, an input, a card, a tag);
+- radius and elevation samples.
+
+The tiles are made to differ in at least two of: accent hue, neutral temperature, display typeface and roundness, so you're comparing real alternatives. They sit side by side on the comparison page.
+
+Every tile declares the design-token contract on `:root` (`check_open_design_artifact` reports any missing token as `token-missing`). So when you pick one ("use the second one as our design system"), its values are copied **exactly** into the new system's `tokens.css`; nothing is re-interpreted. The new system becomes active, and later designs use it.
+
+To **evolve** the active design system instead ("the same, but warmer"), ask for variations of it. The agent uses custom directions that start from your current tokens, and each tile marks what changed.
+
+> **In VS Code:** pick **Color + type** in the Gallery's **New design** tiles.
+
 ### Import one you already have (VS Code)
 
 **Open Design: Import Design System** (also in the Browse list) asks for a name, a source and an optional category. The source can be:

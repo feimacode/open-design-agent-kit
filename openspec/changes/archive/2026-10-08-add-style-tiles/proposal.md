@@ -9,7 +9,7 @@
   - a type specimen: the display and body faces, the scale from h1 down to caption, and a paragraph in context;
   - core components (a primary and a secondary button, an input, a card, a tag);
   - a short mood line and a radius/spacing/shadow sample.
-- **The tile's `:root` must declare the design-token contract variables** (`--bg`, `--surface`, `--fg`, `--muted`, `--border`, `--accent`, `--accent-on` and the rest of the required identity tokens, plus font and radius tokens), so saving it is lossless.
+- **The tile's `:root` must declare the design-token contract variables** (the required identity and structure tokens of the vendored token schema: `--bg`, `--surface`, `--fg`, `--muted`, `--border`, `--accent`, the font, type-scale, leading, spacing and container tokens), so saving it is lossless.
 - **`prepare_open_design_exploration` with the style-tile skill** produces tiles instead of page sketches:
   - the default axis is `visual`;
   - the default count is 4 (2–6 allowed for this skill, versus 2–4 for others);

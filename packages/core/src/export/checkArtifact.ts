@@ -11,6 +11,7 @@ import { readArtifact } from '../vendored/artifactCreate';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { openArtifactPage, type ArtifactPageSession } from './artifactPage';
 import { VIRTUAL_CLOCK_SCRIPT } from './motion/virtualClock';
+import { extractRootTokens, isStyleTileSkill, missingTileTokens } from '../generation/styleTiles';
 import { findBrowser } from './browserDiscovery';
 import { captureDeckSlides, countSlides, validateSlideNumbers } from './deck/captureDeck';
 import { collectDiagramFindings, waitForDiagrams } from './diagramPageScripts';
@@ -210,6 +211,16 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
   const viewports = options.viewports ?? [...(isDiagram ? DIAGRAM_VIEWPORTS : DEFAULT_CHECK_VIEWPORTS)];
   const recorded = recordedSources(manifest);
   const stale = recorded.length > 0 ? await findStaleSources(options.workspaceRoot, options.outputDir ?? '.open-design', recorded) : [];
+  // Style tiles must declare the design-token contract, so a chosen tile saves as a design system with no loss.
+  const tileFindings: Finding[] =
+    isStyleTileSkill(sourceSkillId) || /\bdata-od-style-tile\b/.test(artifact.entryContent)
+      ? missingTileTokens(extractRootTokens(artifact.entryContent)).map((name) => ({
+          check: 'token-missing',
+          severity: 'error' as const,
+          message: `The tile's :root doesn't declare ${name}, which the design-token contract requires. Add it, and style the tile through it.`,
+          selector: name,
+        }))
+      : [];
   const staleFindings: Finding[] =
     stale.length > 0
       ? [
@@ -246,7 +257,7 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
       viewports: mode === 'page' ? viewports : undefined,
       ok: true,
       mode,
-      findings: [...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
+      findings: [...tileFindings, ...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
       images,
       omitted: [...out.omitted, ...dropped],
       slideCount: mode === 'deck' ? slideCount : undefined,

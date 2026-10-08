@@ -1,6 +1,6 @@
 # Remixable Open Design examples
 
-188 vendored examples have an actual rendered starting artifact you can copy into the workspace and modify, via `remix_open_design_example` with the `id` shown below as `skillId`, instead of generating from scratch with `prepare_open_design_brief`.
+189 vendored examples have an actual rendered starting artifact you can copy into the workspace and modify, via `remix_open_design_example` with the `id` shown below as `skillId`, instead of generating from scratch with `prepare_open_design_brief`.
 
 ## prototype
 
@@ -176,6 +176,10 @@
 - **od:deck:ib-pitch-book:example** — Write an Investor Pitch Book like a Growth-Equity Analyst: OpenDesign's investor pitch book: market map, moat, unit economics, and the ask — analyst-grade and diligence-ready. Built as a decision-grade fundraising pitch deck for growth-equity investors.
 - **od:deck:simple-deck:example** — Write an Operating Review like a Disciplined COO: OpenDesign's operating review: growth, burn, and the concrete path to sustainability without losing the open ethos. Built as a decision-grade corporate strategy deck for leadership team.
 - **od:deck:html-ppt-zhangzara-grove:example** — Write an Urban Green-Space Policy Brief like a City Sustainability Director: A municipal urban-tree-canopy policy proposal — the public need, the evidence, the options, and the funding decision. Built as a decision-grade policy briefing deck for city council, agency reviewers.
+
+## design-system
+
+- **od:design-system:style-tile:example** — Style tile: Harbor: A style tile for a calm fintech brand: cool neutrals, a deep harbor-blue accent, a serif display face with a geometric sans, soft radii.
 
 ## image
 

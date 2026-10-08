@@ -112,3 +112,89 @@ export async function loadExampleHtml(assetsRoot: string, exampleArtifactPath: s
 export function injectScriptNonce(html: string, nonceValue: string): string {
   return html.replace(/<script(?![^>]*\bnonce=)/gi, `<script nonce="${nonceValue}"`);
 }
+
+/**
+ * Adds a `<base href>` so a document rendered from `srcdoc` (which has no URL
+ * of its own) resolves relative frames, images, scripts and stylesheets
+ * against `baseHref` — e.g. an exploration comparison page's
+ * `<iframe src="direction.html">` thumbnails. The tag carries
+ * `data-od-preview-only`, so the preview strips it before saving edits back.
+ * A document that already declares its own `<base>` is left alone.
+ */
+export function injectPreviewBase(html: string, baseHref: string): string {
+  if (/<base[\s>]/i.test(html)) return html;
+  const tag = `<base href="${baseHref.replace(/"/g, '&quot;')}" data-od-preview-only>`;
+  const head = /<head(\s[^>]*)?>/i.exec(html);
+  if (head) return html.slice(0, head.index + head[0].length) + tag + html.slice(head.index + head[0].length);
+  const htmlOpen = /<html(\s[^>]*)?>/i.exec(html);
+  if (htmlOpen) return html.slice(0, htmlOpen.index + htmlOpen[0].length) + `<head>${tag}</head>` + html.slice(htmlOpen.index + htmlOpen[0].length);
+  const doctype = /^\s*<!doctype[^>]*>/i.exec(html);
+  if (doctype) return doctype[0] + tag + html.slice(doctype[0].length);
+  return tag + html;
+}
+
+/** Marks an `<iframe>` whose `srcdoc` the preview filled in from its local `src`; the WYSIWYG save removes both. */
+export const PREVIEW_SRCDOC_ATTR = 'data-od-preview-srcdoc';
+
+/**
+ * A relative `href`/`src` that points at a file next to the document (not a
+ * URL with a scheme, a protocol-relative or root path, or a same-page `#hash`),
+ * without its query and hash; undefined otherwise.
+ */
+export function localRelativePath(ref: string): string | undefined {
+  const value = ref.trim();
+  if (!value || value.startsWith('#') || value.startsWith('/') || /^[a-z][a-z0-9+.-]*:/i.test(value)) return undefined;
+  const pathPart = value.split(/[?#]/)[0];
+  if (!pathPart) return undefined;
+  try {
+    return decodeURIComponent(pathPart);
+  } catch {
+    return pathPart;
+  }
+}
+
+/**
+ * A webview can't navigate a frame to a local file, so a page that frames its
+ * neighbours (an exploration comparison page's thumbnails) shows blank frames.
+ * This fills each `<iframe src="local.html">` with that file's content as
+ * `srcdoc` (which takes precedence over `src`, left in place), recursively up
+ * to `depth` levels; `prepare` gets each framed document and the path it was
+ * read from, to add its own base and script nonce. Frames whose file can't be
+ * read are left as they are.
+ */
+export async function inlineLocalFrames(
+  html: string,
+  readLocal: (relativePath: string) => Promise<{ html: string; resolvedPath: string } | undefined>,
+  prepare: (html: string, resolvedPath: string) => string,
+  depth = 2,
+): Promise<string> {
+  if (depth <= 0) return html;
+  const tags = [...html.matchAll(/<iframe\b[^>]*>/gi)];
+  let out = '';
+  let last = 0;
+  for (const match of tags) {
+    const tag = match[0];
+    const src = /\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
+    const ref = src ? (src[1] ?? src[2] ?? src[3] ?? '').replace(/&amp;/g, '&').replace(/&quot;/g, '"') : '';
+    const rel = /\ssrcdoc\s*=/i.test(tag) ? undefined : localRelativePath(ref);
+    const file = rel ? await readLocal(rel) : undefined;
+    if (!file) continue;
+    const inner = await inlineLocalFrames(
+      file.html,
+      (child) => readLocal(joinRelative(rel!, child)),
+      prepare,
+      depth - 1,
+    );
+    const srcdoc = prepare(inner, file.resolvedPath).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    const end = tag.endsWith('/>') ? tag.length - 2 : tag.length - 1;
+    out += html.slice(last, match.index) + `${tag.slice(0, end)} srcdoc="${srcdoc}" ${PREVIEW_SRCDOC_ATTR}${tag.slice(end)}`;
+    last = match.index + tag.length;
+  }
+  return out + html.slice(last);
+}
+
+/** `child` (relative to the file at `parent`) as a path relative to `parent`'s own base. */
+function joinRelative(parent: string, child: string): string {
+  const dir = parent.includes('/') ? parent.slice(0, parent.lastIndexOf('/') + 1) : '';
+  return dir + child;
+}

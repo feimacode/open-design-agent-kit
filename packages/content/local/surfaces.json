@@ -248,8 +248,10 @@
       "label": "Color + type",
       "description": "Compare color and type pairings side by side, then keep one as your design system.",
       "icon": "symbol-color",
-      "status": "planned",
-      "entries": [],
+      "status": "ready",
+      "entries": [
+        "style-tile"
+      ],
       "questions": [
         "What's the brand, and how should it feel?"
       ]
