@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Northwind mark — 3D logo</title>
+<style>
+:root {
+  --bg: #101318;
+  --surface: #1a1f27;
+  --fg: #f3efe6;
+  --muted: #9aa3b0;
+  --accent: #d9a441;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --text-sm: 14px;
+  --text-2xl: 28px;
+}
+html, body { margin: 0; height: 100%; background: radial-gradient(120% 90% at 50% 35%, var(--surface), var(--bg)); color: var(--fg); font-family: var(--font-body); overflow: hidden; }
+html.od-transparent, html.od-transparent body { background: transparent; }
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+.wordmark { position: fixed; left: 0; right: 0; bottom: 48px; text-align: center; pointer-events: none; }
+.wordmark h1 { margin: 0; font: 600 var(--text-2xl)/1 var(--font-display); letter-spacing: 0.32em; text-transform: uppercase; }
+.wordmark p { margin: 10px 0 0; color: var(--muted); font-size: var(--text-sm); letter-spacing: 0.04em; }
+html.od-transparent .wordmark { display: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="stage" data-od-webgl aria-label="The Northwind mark in brushed gold, turning slowly"></canvas>
+<div class="wordmark">
+  <h1>Northwind</h1>
+  <p>Logistics, quietly handled.</p>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+
+const TRANSPARENT = false;
+const ROTATION_SECONDS = 10;
+const AUTHORED_ANGLE = 0.38;
+
+// The logo, as the brand's SVG. Paste the real mark's <svg> here (filled paths; strokes are ignored).
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path d="M50 4 L92 50 L50 96 L8 50 Z M50 22 L26 50 L50 78 L74 50 Z"/>
+  <path d="M50 32 L64 50 L50 68 L36 50 Z"/>
+</svg>`;
+const DEPTH = 10;          // extrusion depth, in SVG units
+const BEVEL = 2.2;         // bevel size, in SVG units
+
+const token = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+const palette = { bg: new THREE.Color(token('--bg', '#101318')), accent: new THREE.Color(token('--accent', '#d9a441')), fg: new THREE.Color(token('--fg', '#f3efe6')) };
+if (TRANSPARENT) document.documentElement.classList.add('od-transparent');
+
+const canvas = document.getElementById('stage');
+// alpha: true here so the page's CSS gradient shows through; a transparent export works as-is.
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.setClearColor(0x000000, 0);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.02).texture;
+const rim = new THREE.DirectionalLight(0xffffff, 2.2);
+rim.position.set(-4, 3, -3);
+scene.add(rim);
+const key = new THREE.DirectionalLight(0xffffff, 1.2);
+key.position.set(3, 4, 5);
+scene.add(key);
+
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+camera.position.set(0, 0.35, 6);
+
+// ── The object: the SVG mark, extruded and bevelled ────────────
+const svg = new SVGLoader().parse(LOGO_SVG);
+const shapes = svg.paths.flatMap((p) => SVGLoader.createShapes(p));
+const geometry = new THREE.ExtrudeGeometry(shapes, { depth: DEPTH, bevelEnabled: true, bevelThickness: BEVEL, bevelSize: BEVEL, bevelSegments: 6, curveSegments: 24 });
+geometry.center();
+// SVG's y axis points down; flip it so the mark reads the right way up.
+geometry.scale(1, -1, 1);
+geometry.computeVertexNormals();
+const size = new THREE.Box3().setFromBufferAttribute(geometry.attributes.position).getSize(new THREE.Vector3());
+const fit = 1.85 / Math.max(size.x, size.y);
+const mark = new THREE.Mesh(
+  geometry,
+  new THREE.MeshPhysicalMaterial({ color: palette.accent, metalness: 1, roughness: 0.28, clearcoat: 0.4, clearcoatRoughness: 0.2 }),
+);
+mark.scale.setScalar(fit);
+const product = new THREE.Group();
+product.add(mark);
+product.position.y = 0.25;
+scene.add(product);
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 0.2, 0);
+camera.lookAt(controls.target);
+controls.enableDamping = true;
+controls.enablePan = false;
+
+function resize() {
+  const w = canvas.clientWidth || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.position.setLength(camera.aspect < 1 ? 6 / camera.aspect ** 0.7 : 6);
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+const start = performance.now();
+window.odScene = { rotate: true, rotationSeconds: ROTATION_SECONDS, ready: undefined };
+function pose(now) {
+  const turn = window.odScene.rotate ? (((now - start) / 1000) / ROTATION_SECONDS) * Math.PI * 2 : 0;
+  product.rotation.y = AUTHORED_ANGLE + turn;
+  product.rotation.x = -0.12;
+}
+window.odScene.ready = (async () => {
+  pose(performance.now());
+  renderer.render(scene, camera);
+})();
+renderer.setAnimationLoop((now) => {
+  pose(now);
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

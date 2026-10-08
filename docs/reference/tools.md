@@ -388,6 +388,8 @@ Screenshots are JPEG, at most 1568 px on the long edge. A page's first screen at
 
 When the artifact was registered with `sources` and any of them changed since, the findings include `stale-sources` (info).
 
+For a 3D scene (a canvas marked `data-od-webgl`, or a three.js import), the check renders with software WebGL, waits for the scene's `window.odScene.ready`, and reports `webgl`: an error when the canvas has no WebGL context, a warning when it's one flat color. Export reports the same finding. See [3D objects](../guides/3d-objects.md).
+
 **Errors**, each prefixed `Check failed (<code>)`: `invalid-args`, `not-found`, `not-registered`, `unsupported-kind`, `no-browser` and `capture-failed`, with the same meanings as [export's](#export_open_design_artifact). On `no-browser`, the agent skips checking and tells you once.
 
 For checks of spreadsheet rows (`data`) or of every shape of a fluid poster (`shapeSheet`), use `export_open_design_artifact` with `checkOnly: true`.
@@ -429,6 +431,7 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `fps` | integer 1–60 | no | `mp4`/`webm`/`gif` only: frames per second. Default 30 (15 for GIF). See [Export animations](../guides/export-animations.md). |
 | `duration` | number 0.5–60 | no | `mp4`/`webm`/`gif` only: length in seconds. Default: the sum of the frames' `data-duration`, else the longest CSS or Web animation, else 6. |
 | `loop` | boolean | no | `gif` only: loop forever. Default true. |
+| `transparent` | boolean | no | `png` only: capture without the page background, so whatever the design doesn't paint is transparent (cut-outs such as a [3D product shot](../guides/3d-objects.md)). The page, and a 3D scene's renderer, must have a transparent background; a warning says when every pixel came out opaque. Not re-encoded to fit `maxBytes`. |
 | `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. See [Run a campaign](../guides/campaigns.md). |
 
 **Result (text):** each written file with its pixel size, file size and format; for decks, the slide count and the stage size and scale used; where the size came from; for print PDFs, the trim size, bleed and a note that the PDF is RGB; for page exports, the **preflight** findings, errors first ([the checks](../guides/posters.md#preflight-checks)); and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Posters and print](../guides/posters.md).

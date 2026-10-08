@@ -4,6 +4,7 @@ import { computePinPosition, type ArtifactComment } from './dom/commentOverlay';
 import { captureFigmaIr } from './dom/figmaCapture';
 import { icon } from './dom/icons';
 import { attachMenu } from './dom/menuButton';
+import { createTweaksPanel } from './tweaksPanel';
 
 declare function acquireVsCodeApi(): {
   postMessage(message: unknown): void;
@@ -39,6 +40,7 @@ root.innerHTML = `
       <button id="od-shape-default" class="od-btn" title="Make this the shape exports use when none is given" hidden><span class="od-label">Use as default</span></button>
     </div>
     <span id="od-shape-fixed" class="od-pager-title" title="This design has a fixed size. Ask the agent to adapt it (adapt_open_design_artifact) for other shapes." hidden>Fixed size</span>
+    <button id="od-tweaks-toggle" class="od-btn" title="Tweaks: adjust this design's colors, type and spacing variables" aria-pressed="false">${icon('sliders')}<span class="od-label">Tweaks</span></button>
     <span class="od-toolbar-spacer"></span>
     <button id="od-send-comments" class="od-btn od-btn-primary" title="Send open comments to chat" hidden>${icon('send')}<span class="od-label">Send</span><span id="od-send-count" class="od-count"></span></button>
     <div class="od-toolbar-actions">
@@ -51,10 +53,16 @@ root.innerHTML = `
     </div>
   </div>
   <div class="od-stage">
+    <div id="od-errors" class="od-errors" role="status" hidden>
+      <div class="od-errors-text"><strong>This design has errors</strong><span id="od-errors-list"></span></div>
+      <button id="od-errors-fix" class="od-btn od-btn-primary">Ask the agent to fix</button>
+      <button id="od-errors-close" class="od-panel-close" aria-label="Dismiss">×</button>
+    </div>
     <iframe id="od-preview" class="od-preview" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups allow-pointer-lock allow-modals"></iframe>
     <div id="od-pins" class="od-pins"></div>
   </div>
   <div id="od-panel" class="od-panel" hidden></div>
+  <div id="od-tweaks" class="od-panel od-tweaks" hidden></div>
 `;
 
 const iframe = document.getElementById('od-preview') as HTMLIFrameElement;
@@ -72,6 +80,20 @@ const collectionIndex = document.getElementById('od-collection-index')!;
 const collectionTitle = document.getElementById('od-collection-title')!;
 const collectionPrevBtn = document.getElementById('od-collection-prev') as HTMLButtonElement;
 const collectionNextBtn = document.getElementById('od-collection-next') as HTMLButtonElement;
+
+const tweaksToggle = document.getElementById('od-tweaks-toggle') as HTMLButtonElement;
+const tweaksContainer = document.getElementById('od-tweaks')!;
+const tweaks = createTweaksPanel({ container: tweaksContainer, iframe, post: (m) => vscode.postMessage(m), escapeHtml });
+// Tweaks are a View-mode tool: opening the panel leaves Comment/Edit, and
+// entering either closes it (both use the same corner of the stage).
+new MutationObserver(() => {
+  tweaksToggle.classList.toggle('active', tweaks.isOpen());
+  tweaksToggle.setAttribute('aria-pressed', String(tweaks.isOpen()));
+}).observe(tweaksContainer, { attributes: true, attributeFilter: ['hidden'] });
+tweaksToggle.addEventListener('click', () => {
+  if (!tweaks.isOpen() && mode !== 'view') setMode('view');
+  tweaks.toggle();
+});
 
 let mode: Mode = 'view';
 let comments: ArtifactComment[] = [];
@@ -98,6 +120,7 @@ function setMode(next: Mode): void {
   });
   updateSendComments();
   panel.hidden = true;
+  if (next !== 'view') tweaks.toggle(false);
   selectedElement = null;
   hoverElement = null;
   updatePickMode();
@@ -127,7 +150,32 @@ function updateSendComments(): void {
   sendCommentsCount.textContent = open ? String(open) : '';
 }
 
+// Failed loads and uncaught errors the previewed page reports (see core's
+// PREVIEW_ERROR_REPORTER): shown in a banner, since a page whose script died
+// (a dead CDN URL, say) otherwise just renders blank.
+const errorsBanner = document.getElementById('od-errors')!;
+const errorsList = document.getElementById('od-errors-list')!;
+let previewErrors: string[] = [];
+function renderPreviewErrors(): void {
+  errorsBanner.hidden = previewErrors.length === 0;
+  const shown = previewErrors.slice(0, 3).map((e) => `<code>${escapeHtml(e)}</code>`).join('');
+  errorsList.innerHTML = shown + (previewErrors.length > 3 ? `<span>and ${previewErrors.length - 3} more</span>` : '');
+}
+window.addEventListener('message', (event) => {
+  if (event.source !== iframe.contentWindow || typeof event.data?.odPreviewError !== 'string') return;
+  const text = event.data.odPreviewError;
+  if (previewErrors.includes(text) || previewErrors.length >= 20) return;
+  previewErrors.push(text);
+  renderPreviewErrors();
+});
+document.getElementById('od-errors-fix')!.addEventListener('click', () => vscode.postMessage({ type: 'preview-errors-to-chat', errors: previewErrors }));
+document.getElementById('od-errors-close')!.addEventListener('click', () => {
+  errorsBanner.hidden = true;
+});
+
 function setIframeContent(html: string): void {
+  previewErrors = [];
+  renderPreviewErrors();
   iframe.srcdoc = html;
 }
 
@@ -139,6 +187,7 @@ iframe.addEventListener('load', () => {
   doc.addEventListener('mouseout', onIframeMouseOut, true);
   updatePickMode();
   applyShapeOverride();
+  tweaks.reapply();
   renderOverlays();
 });
 
@@ -707,6 +756,7 @@ window.addEventListener('message', (event) => {
       updateSendComments();
       applyCollectionInfo(message.collection);
       applyShapeInfo(message.shape);
+      tweaks.update(message.tweaks);
       setIframeContent(message.html);
       break;
     case 'source-updated':
@@ -720,6 +770,7 @@ window.addEventListener('message', (event) => {
       panel.hidden = true;
       applyCollectionInfo(message.collection);
       applyShapeInfo(message.shape);
+      tweaks.update(message.tweaks);
       setIframeContent(message.html);
       break;
     case 'shape-checked':

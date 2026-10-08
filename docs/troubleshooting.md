@@ -87,6 +87,16 @@ Deck export found no slide elements. Slides must match `.slide`, `[data-screen-l
 
 The warning `Slide N looks blank` means the capture came out as one flat color. The deck probably reveals slides in a way the exporter doesn't recognize, such as a custom JavaScript router. Check that the deck works with an `active` class on the current slide, and that nothing hides slides with `display: none` from a script after load. Then [open an issue](https://github.com/feimacode/open-design-agent-kit/issues) with the deck.
 
+### A 3D scene is blank (webgl)
+
+The check or export reports `webgl`:
+
+- **Error: three.js didn't load.** The page's script tags point at a three.js file that doesn't exist. `build/three.min.js` was removed in three.js r160 and `examples/js/…` in r148, so pages written from memory often use them, and then nothing renders. Ask the agent to load three.js the way the 3D object skill does: an import map for `three@0.160.0`'s `three.module.js`, imported from a module script.
+- **Error: no WebGL context.** The canvas marked `data-od-webgl` couldn't get WebGL. Exports already turn on software WebGL for these pages, so this usually means the page's script failed before it created the renderer: look for `Page script error` in the warnings. A canvas made by a script without `data-od-webgl`, in a page that doesn't import three.js, doesn't get software WebGL; add the attribute.
+- **Warning: the canvas is one flat color.** The scene drew nothing. Most often the model didn't load: a `broken-asset` finding names the file (check the path is relative to the design, for example `assets/bottle.glb`). Otherwise the camera may sit inside the object or face away from it, or the scene's `window.odScene.ready` resolved before the first frame was drawn.
+
+A transparent export that warns *no pixel is transparent* means the page or the scene still paints a background: set the scene's `TRANSPARENT` switch (no `scene.background`, renderer `alpha: true`) and keep `html` and `body` transparent. See [3D objects](guides/3d-objects.md).
+
 ## Video
 
 ### FFmpeg is missing

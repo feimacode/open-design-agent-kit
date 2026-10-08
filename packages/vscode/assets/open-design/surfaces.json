@@ -261,10 +261,13 @@
       "label": "3D object",
       "description": "A product or object in 3D, from a brief or your own model, as stills or a turntable.",
       "icon": "package",
-      "status": "planned",
-      "entries": [],
+      "status": "ready",
+      "entries": [
+        "3d-object"
+      ],
       "questions": [
-        "What object, and do you have a .glb model of it?"
+        "What object, and do you have a .glb model or an SVG logo of it?",
+        "Where will it go: a hero still, a transparent cut-out, or a turntable video?"
       ]
     }
   ]

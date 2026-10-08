@@ -17,14 +17,13 @@ import { findBrowser } from '../browserDiscovery';
 import { loadPage, mergeExportRecords } from '../exportArtifact';
 import { isValidDimension, resolveExportSize } from '../exportSize';
 import { findFfmpeg, type MotionFormat } from './ffmpeg';
+import { SWIFTSHADER_ARGS } from '../webgl';
 import { VIRTUAL_CLOCK_SCRIPT } from './virtualClock';
 
 export const MOTION_FORMATS: readonly MotionFormat[] = ['mp4', 'webm', 'gif'];
 export const MAX_MOTION_SECONDS = 60;
 const DEFAULT_SECONDS = 6;
 const CARD_SELECTOR = '[data-od-card]';
-/** Software WebGL, so canvas/WebGL animations render on machines without a GPU (CI, WSL, headless). */
-const SWIFTSHADER_ARGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
 
 export function isMotionFormat(format: string | undefined): format is MotionFormat {
   return format === 'mp4' || format === 'webm' || format === 'gif';
@@ -230,7 +229,8 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
     const { page } = session;
     await page.evaluateOnNewDocument(VIRTUAL_CLOCK_SCRIPT);
     await page.setViewport({ width: sized.viewport.width, height: sized.viewport.height, deviceScaleFactor: scale });
-    await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 300, warnings);
+    // A turntable keeps turning: the scene's own clock (virtual here) drives it.
+    await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 300, warnings, { still: false });
     if (fluid && canvas) await page.evaluate(applyShape, CARD_SELECTOR, { widthCss: `${canvas.width}px`, heightCss: `${canvas.height}px`, bleedCss: '0mm' });
     await page.evaluate('window.__odClock.advanceTo(0)');
     await page.evaluate('window.__odClock.painted()');

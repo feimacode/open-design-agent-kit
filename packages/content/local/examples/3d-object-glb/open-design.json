@@ -1,0 +1,12 @@
+{
+  "name": "example-3d-object-glb",
+  "title": "Field bottle — product shot from a GLB",
+  "description": "A product model loaded from a .glb, centered and framed automatically, with a soft ground shadow. The user's model variant.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Make a product shot of models/bottle.glb on a soft green stage, turning slowly, then export a transparent PNG."
+      }
+    }
+  }
+}

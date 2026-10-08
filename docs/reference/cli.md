@@ -67,6 +67,7 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--fps <n>` | `mp4`/`webm`/`gif`: frames per second, 1–60. Default 30 (15 for GIF). |
 | `--duration <seconds>` | `mp4`/`webm`/`gif`: length, 0.5–60. Default: from the page. |
 | `--loop`, `--no-loop` | `gif`: loop forever (the default) or play once. |
+| `--transparent` | `png`: capture without the page background, for cut-outs such as a [3D product shot](../guides/3d-objects.md). |
 | `--ffmpeg <path>` | ffmpeg executable. Default: [`OPEN_DESIGN_FFMPEG_PATH`](settings-and-env.md#open_design_ffmpeg_path), then auto-detect. |
 | `--campaign-sheet` | Fluid designs: also write `campaign-sheet.png`, every shape plus the other pieces in the master's collection. See [Run a campaign](../guides/campaigns.md). |
 | `--shape-sheet` | Fluid designs: also write `<name>-shapes.png`, the design at every shape (all formats unless `--presets`). |

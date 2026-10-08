@@ -8,7 +8,7 @@ describe('export command', () => {
   it('maps string flags onto export options', () => {
     assert.deepStrictEqual(
       parseExportFlags({ width: '1080', height: '1350', scale: '2', format: 'jpg', quality: '80', maxBytes: '5000000', selector: '[data-od-card]', browser: '/b' }),
-      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined, presets: undefined, shapeSheet: undefined, target: undefined, baseUrl: undefined, campaignSheet: undefined, fps: undefined, duration: undefined, loop: undefined, ffmpegPath: undefined },
+      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined, presets: undefined, shapeSheet: undefined, target: undefined, baseUrl: undefined, campaignSheet: undefined, transparent: undefined, fps: undefined, duration: undefined, loop: undefined, ffmpegPath: undefined },
     );
     assert.deepStrictEqual(parseExportFlags({}), {
       width: undefined,
@@ -35,11 +35,16 @@ describe('export command', () => {
       target: undefined,
       baseUrl: undefined,
       campaignSheet: undefined,
+      transparent: undefined,
       fps: undefined,
       duration: undefined,
       loop: undefined,
       ffmpegPath: undefined,
     });
+  });
+
+  it('passes --transparent through', () => {
+    assert.strictEqual(parseExportFlags({ format: 'png', transparent: true }).transparent, true);
   });
 
   it('parses packaging formats and the badge flag', () => {

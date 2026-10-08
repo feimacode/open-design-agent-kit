@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halo speaker — 3D product shot</title>
+<style>
+:root {
+  --bg: #efe9df;
+  --surface: #f8f5ef;
+  --fg: #1d1b18;
+  --muted: #6b645a;
+  --accent: #d0553a;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --text-sm: 14px;
+  --text-3xl: 40px;
+  --leading-tight: 1.05;
+}
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: var(--font-body); overflow: hidden; }
+/* A transparent cut-out sets this on <html>: no page background at all. */
+html.od-transparent, html.od-transparent body { background: transparent; }
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+.caption { position: fixed; left: 48px; bottom: 44px; pointer-events: none; }
+.caption h1 { margin: 0; font: 600 var(--text-3xl)/var(--leading-tight) var(--font-display); letter-spacing: -0.01em; }
+.caption p { margin: 6px 0 0; color: var(--muted); font-size: var(--text-sm); }
+html.od-transparent .caption { display: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="stage" data-od-webgl aria-label="Halo speaker, turning slowly on a pedestal"></canvas>
+<div class="caption">
+  <h1>Halo</h1>
+  <p>Room-filling sound, one quiet ring of light.</p>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+// ── Scene settings ─────────────────────────────────────────────
+const TRANSPARENT = false;      // true: no background, for a PNG cut-out (export with transparent: true)
+const ROTATION_SECONDS = 12;    // one full turn; a seamless turntable export uses this as its duration
+const AUTHORED_ANGLE = -0.45;   // the angle stills are taken at (radians around Y)
+
+// Colors come from the design system's tokens, so the object matches the page.
+const token = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+const palette = {
+  bg: new THREE.Color(token('--bg', '#efe9df')),
+  surface: new THREE.Color(token('--surface', '#f8f5ef')),
+  fg: new THREE.Color(token('--fg', '#1d1b18')),
+  accent: new THREE.Color(token('--accent', '#d0553a')),
+};
+if (TRANSPARENT) document.documentElement.classList.add('od-transparent');
+
+// ── Renderer, camera, light ────────────────────────────────────
+const canvas = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: TRANSPARENT, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = TRANSPARENT ? null : palette.bg;
+// Studio lighting from a generated room: no HDR files to load.
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const key = new THREE.DirectionalLight(0xffffff, 1.6);
+key.position.set(3, 6, 4);
+key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+key.shadow.camera.near = 1;
+key.shadow.camera.far = 20;
+key.shadow.radius = 6;
+scene.add(key);
+
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+camera.position.set(0, 2.6, 7.4);
+
+// ── The object: a speaker from a lathe profile ─────────────────
+const product = new THREE.Group();
+const profile = [
+  [0.0, 0.0], [0.82, 0.0], [0.9, 0.06], [0.94, 0.2], [0.95, 1.6], [0.92, 1.78], [0.84, 1.86], [0.0, 1.86],
+].map(([x, y]) => new THREE.Vector2(x, y));
+const body = new THREE.Mesh(
+  new THREE.LatheGeometry(profile, 96),
+  new THREE.MeshPhysicalMaterial({ color: palette.surface, roughness: 0.85, sheen: 1, sheenRoughness: 0.6, sheenColor: palette.bg }),
+);
+body.castShadow = true;
+product.add(body);
+
+// Three fine grooves around the body catch the light.
+for (const y of [0.42, 0.5, 0.58]) {
+  const groove = new THREE.Mesh(new THREE.TorusGeometry(0.951, 0.005, 8, 160), new THREE.MeshStandardMaterial({ color: palette.surface.clone().multiplyScalar(0.78), roughness: 0.9 }));
+  groove.rotation.x = Math.PI / 2;
+  groove.position.y = y;
+  product.add(groove);
+}
+
+const cap = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.84, 0.84, 0.05, 96),
+  new THREE.MeshPhysicalMaterial({ color: palette.fg, roughness: 0.35, metalness: 0.1, clearcoat: 0.6 }),
+);
+cap.position.y = 1.86;
+product.add(cap);
+
+const ring = new THREE.Mesh(
+  new THREE.TorusGeometry(0.56, 0.035, 24, 128),
+  new THREE.MeshStandardMaterial({ color: palette.accent, emissive: palette.accent, emissiveIntensity: 0.9, roughness: 0.4 }),
+);
+ring.rotation.x = Math.PI / 2;
+ring.position.y = 1.89;
+product.add(ring);
+
+const foot = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.78, 0.8, 0.06, 96),
+  new THREE.MeshStandardMaterial({ color: palette.fg, roughness: 0.6 }),
+);
+foot.position.y = 0.03;
+product.add(foot);
+product.position.y = -0.93;
+scene.add(product);
+
+// ── The stage: a soft ground shadow only ───────────────────────
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.ShadowMaterial({ opacity: 0.18 }));
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.93;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, -0.15, 0);
+camera.lookAt(controls.target);
+controls.enableDamping = true;
+controls.minDistance = 3.5;
+controls.maxDistance = 10;
+controls.maxPolarAngle = Math.PI / 2 - 0.05;
+
+function resize() {
+  const w = canvas.clientWidth || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  // Keep the whole object in frame on tall, narrow canvases too.
+  camera.position.setLength(camera.aspect < 1 ? 7.8 / camera.aspect ** 0.6 : 7.8);
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── The ready contract (exports, the check and motion export use it) ──
+// rotate: the turntable is on; setting it to false returns the object to
+// AUTHORED_ANGLE (stills). ready: resolves once everything has loaded and a
+// first frame has been drawn — with a direct render() call, not inside an
+// animation frame, so it resolves under motion export's virtual clock too.
+const start = performance.now();
+window.odScene = { rotate: true, rotationSeconds: ROTATION_SECONDS, ready: undefined };
+function pose(now) {
+  const turn = window.odScene.rotate ? (((now - start) / 1000) / ROTATION_SECONDS) * Math.PI * 2 : 0;
+  product.rotation.y = AUTHORED_ANGLE + turn;
+}
+window.odScene.ready = (async () => {
+  // Procedural: nothing to load. A scene with a model or textures awaits them here.
+  pose(performance.now());
+  renderer.render(scene, camera);
+})();
+renderer.setAnimationLoop((now) => {
+  pose(now);
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

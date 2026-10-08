@@ -1,0 +1,12 @@
+{
+  "name": "example-3d-object-logo",
+  "title": "Northwind mark — 3D logo",
+  "description": "The brand's SVG mark extruded and bevelled in brushed gold, turning slowly. The extruded logo variant.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Turn our logo SVG into a brushed-gold 3D mark that turns slowly, for the top of our launch page."
+      }
+    }
+  }
+}

@@ -21,6 +21,7 @@ import { findStaleSources, recordedSources } from '../generation/sourceNumberChe
 import { indexCheckSlides, markCheckSlide } from './deck/pageScripts';
 import { PRESENTER_CLONE_SELECTOR, SLIDE_SELECTOR } from './deck/selectors';
 import { fitFindings, loadPage, type ExportErrorCode } from './exportArtifact';
+import { usesWebgl, webglFindings } from './webgl';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize } from './exportSize';
 import { getFormat, isFluidHtml } from '../poster/formats';
 import { applyShape, collectHorizontalScroll, fitBoundText, type ShapeCss } from '../poster/pageScripts';
@@ -245,6 +246,8 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
     const { browser: instance, page } = session;
     await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
     await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 500, warnings);
+    // A 3D scene that couldn't get a WebGL context, or rendered nothing.
+    const webgl = usesWebgl(artifact.entryContent) ? await webglFindings(page, warnings) : [];
 
     const slideCount = await countSlides(page);
     const isDeck = kind === 'deck' || renderer === 'deck-html' || (slideCount >= 2 && (sourceSkillId ?? '').startsWith('od:deck:'));
@@ -257,7 +260,7 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
       viewports: mode === 'page' ? viewports : undefined,
       ok: true,
       mode,
-      findings: [...tileFindings, ...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
+      findings: [...tileFindings, ...webgl, ...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
       images,
       omitted: [...out.omitted, ...dropped],
       slideCount: mode === 'deck' ? slideCount : undefined,
@@ -302,7 +305,8 @@ async function captureAtTimes(options: CheckArtifactOptions, executablePath: str
     const { browser, page } = session;
     await page.evaluateOnNewDocument(VIRTUAL_CLOCK_SCRIPT);
     await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
-    await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 300, warnings);
+    // Timed captures follow the scene's own clock, turntable included.
+    await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 300, warnings, { still: false });
     const card = await page.$(CARD_SELECTOR);
     const box = card ? await card.boundingBox() : null;
     const clip = box && box.width >= 1 && box.height >= 1 ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined;

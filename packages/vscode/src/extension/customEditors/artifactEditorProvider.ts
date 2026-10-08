@@ -11,8 +11,14 @@ import {
   readShareRecords,
   findExplorationArtifacts,
   readExplorationPlan,
+  discoverTweaks,
+  formatTweaksForChat,
   inlineLocalFrames,
+  rewriteRootValues,
+  saveTweakVariant,
+  isContractToken,
   injectPreviewBase,
+  injectPreviewErrorReporter,
   localRelativePath,
   injectScriptNonce,
   readArtifact,
@@ -32,6 +38,7 @@ import {
 import type { ILogService } from '../log/logService';
 import { OD_TOKENS_CSS, odFontFaceCss } from '../webviews/openDesignTheme';
 import { getOutputDirectory } from '../../workspace/artifactWriter';
+import { getActiveDesignSystemId } from '../../workspace/activeDesignSystem';
 
 const MIME_BY_EXT: Record<string, string> = {
   '.png': 'image/png',
@@ -158,6 +165,32 @@ async function resolveCollectionNav(location: { workspaceRoot: string; entryPath
   return undefined;
 }
 
+/** The tweaked values from a webview message, as `--name: value` strings only. */
+function tweakValues(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== 'object') return {};
+  return Object.fromEntries(Object.entries(raw as Record<string, unknown>).filter((e): e is [string, string] => e[0].startsWith('--') && typeof e[1] === 'string'));
+}
+
+/**
+ * The custom design system "Apply to design system" writes: the one this
+ * design was made with, else the active one — only a custom (user:…) system
+ * with a tokens.css; bundled systems are read-only (design D5).
+ */
+async function resolveTweakDesignSystem(location: { workspaceRoot: string; entryPath: string } | undefined): Promise<{ id: string; name: string; tokensPath: string } | undefined> {
+  if (!location) return undefined;
+  const artifact = await readArtifact(location).catch(() => null);
+  const id = typeof artifact?.manifest?.designSystemId === 'string' ? artifact.manifest.designSystemId : getActiveDesignSystemId();
+  if (!id?.startsWith('user:')) return undefined;
+  const slug = id.slice('user:'.length);
+  const tokensPath = path.posix.join(getOutputDirectory(), 'design-systems', slug, 'tokens.css');
+  try {
+    await fs.access(path.join(location.workspaceRoot, tokensPath));
+  } catch {
+    return undefined;
+  }
+  return { id, name: slug, tokensPath };
+}
+
 function navAmong(entryPaths: string[], current: string, kind: CollectionNavInfo['kind'], title: string): CollectionNavInfo | undefined {
   const index = entryPaths.indexOf(current);
   if (index === -1) return undefined;
@@ -225,24 +258,35 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         return undefined;
       }
     };
+    // The top document also reports its failed loads and script errors to the
+    // preview, which shows them (a dead CDN URL otherwise just renders nothing).
     const previewHtml = async () =>
-      prepareHtml(
-        await inlineLocalFrames(document.getText(), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
-        documentDir,
+      injectScriptNonce(
+        injectPreviewErrorReporter(
+          prepareHtml(
+            await inlineLocalFrames(document.getText(), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
+            documentDir,
+          ),
+        ),
+        panelNonce,
       );
+
+    // Tweaks panel (openspec add-preview-tweaks): the knobs, plus the custom
+    // design system "Apply to design system" would write, when there is one.
+    const tweaksInfo = async () => ({ ...discoverTweaks(document.getText()), designSystem: await resolveTweakDesignSystem(location) });
 
     const sendInit = async () => {
       const comments = location ? await readArtifactComments(location.workspaceRoot, location.entryPath) : [];
       const collection = await resolveCollectionNav(location);
       const shape = await resolveShapeInfo(document.getText(), location);
-      webviewPanel.webview.postMessage({ type: 'init', html: await previewHtml(), comments, collection, shape });
+      webviewPanel.webview.postMessage({ type: 'init', html: await previewHtml(), comments, collection, shape, tweaks: await tweaksInfo() });
     };
 
     const changeSub = vscode.workspace.onDidChangeTextDocument(async (e) => {
       if (e.document.uri.toString() === document.uri.toString()) {
         const collection = await resolveCollectionNav(location);
         const shape = await resolveShapeInfo(document.getText(), location);
-        webviewPanel.webview.postMessage({ type: 'source-updated', html: await previewHtml(), collection, shape });
+        webviewPanel.webview.postMessage({ type: 'source-updated', html: await previewHtml(), collection, shape, tweaks: await tweaksInfo() });
       }
     });
 
@@ -286,6 +330,76 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
           }
           if (/\.html?$/i.test(rel)) await vscode.commands.executeCommand('vscode.openWith', target, ARTIFACT_EDITOR_VIEW_TYPE);
           else await vscode.commands.executeCommand('vscode.open', target);
+          break;
+        }
+        case 'preview-errors-to-chat': {
+          const errors = (Array.isArray(message.errors) ? message.errors : []).map(String).slice(0, 10);
+          const where = location?.entryPath ?? document.uri.fsPath;
+          const query = `The Open Design artifact at "${where}" has errors in the preview, and may render blank:\n\n${errors.map((e: string) => `- ${e}`).join('\n')}\n\nRegister it with register_open_design_artifact if it isn't registered, run check_open_design_artifact on it, and fix every error it reports. If it uses three.js, load it the way the 3d-object skill says (the pinned three@0.160.0 module build through an import map).`;
+          await vscode.commands.executeCommand('workbench.action.chat.open', { query, isPartialQuery: true });
+          break;
+        }
+        case 'tweaks-apply': {
+          const values = tweakValues(message.values);
+          const result = rewriteRootValues(document.getText(), values);
+          if (result.changed.length === 0) break;
+          this.log.info(`ArtifactEditorProvider: applying tweaks ${result.changed.join(', ')} to ${document.uri.fsPath}`);
+          await this.applyPatch(document, result.text);
+          if (result.missing.length) vscode.window.showWarningMessage(`Open Design: couldn't apply ${result.missing.join(', ')}: not declared on this design's base :root.`);
+          break;
+        }
+        case 'tweaks-variant': {
+          if (!location) {
+            vscode.window.showWarningMessage('Open Design: this design must be inside an open workspace folder to save variants of it.');
+            break;
+          }
+          const label = await vscode.window.showInputBox({ title: 'Save as variant', prompt: 'A short label for this variant', placeHolder: 'e.g. warm', validateInput: (v) => (v.trim() ? undefined : 'Enter a label') });
+          if (!label?.trim()) break;
+          const saved = await saveTweakVariant({ ...location, outputDir: getOutputDirectory(), source: document.getText(), values: tweakValues(message.values), label: label.trim() });
+          if (!saved.ok || !saved.entryPath) {
+            vscode.window.showWarningMessage(`Open Design: ${saved.error}`);
+            break;
+          }
+          this.log.info(`ArtifactEditorProvider: saved tweak variant ${saved.entryPath}`);
+          await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.file(path.join(location.workspaceRoot, saved.entryPath)), ARTIFACT_EDITOR_VIEW_TYPE);
+          break;
+        }
+        case 'tweaks-to-chat': {
+          const values = tweakValues(message.values);
+          const where = location?.entryPath ?? document.uri.fsPath;
+          const query = message.tokenize
+            ? `Tokenize the Open Design artifact at "${where}": move its hard-coded colors, fonts, type sizes, radii and spacing into custom properties on :root (use the design-token contract names, e.g. --bg, --fg, --accent, --font-display, --radius-md, where they fit), and style the page through them, so it can be adjusted in the preview's Tweaks panel. Keep its look unchanged.`
+            : formatTweaksForChat(where, values);
+          await vscode.commands.executeCommand('workbench.action.chat.open', { query, isPartialQuery: true });
+          break;
+        }
+        case 'tweaks-apply-ds': {
+          const ds = await resolveTweakDesignSystem(location);
+          if (!ds || !location) break;
+          const values = Object.fromEntries(Object.entries(tweakValues(message.values)).filter(([name]) => isContractToken(name)));
+          const names = Object.keys(values);
+          if (names.length === 0) {
+            vscode.window.showInformationMessage('Open Design: none of these tweaks are design-token contract variables, so there is nothing to apply to the design system.');
+            break;
+          }
+          const ok = await vscode.window.showWarningMessage(
+            `Apply ${names.join(', ')} to the "${ds.name}" design system? This rewrites its tokens.css, so every design that uses it changes.`,
+            { modal: true },
+            'Apply to design system',
+          );
+          if (ok !== 'Apply to design system') break;
+          const tokensPath = path.join(location.workspaceRoot, ds.tokensPath);
+          const result = rewriteRootValues(await fs.readFile(tokensPath, 'utf8'), values, 'css');
+          const uri = vscode.Uri.file(tokensPath);
+          const tokensDoc = await vscode.workspace.openTextDocument(uri);
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(uri, new vscode.Range(tokensDoc.positionAt(0), tokensDoc.positionAt(tokensDoc.getText().length)), result.text);
+          await vscode.workspace.applyEdit(edit);
+          await tokensDoc.save();
+          this.log.info(`ArtifactEditorProvider: applied ${result.changed.join(', ')} to ${ds.tokensPath}`);
+          vscode.window.showInformationMessage(
+            `Open Design: updated ${result.changed.length} token(s) in ${ds.tokensPath}.${result.missing.length ? ` Not declared there: ${result.missing.join(', ')}.` : ''}`,
+          );
           break;
         }
         case 'apply-patch':
@@ -569,6 +683,10 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
       `img-src ${webview.cspSource} data: https:`,
       `style-src ${webview.cspSource} 'unsafe-inline'`,
       `font-src ${webview.cspSource}`,
+      // fetch()/XHR from the artifact: a 3D scene's GLTFLoader reading its
+      // model from the design's folder (via the preview <base>), a data: URI,
+      // or a CDN-hosted decoder.
+      `connect-src ${webview.cspSource} https: data: blob:`,
       // 'nonce-<panelNonce>' + 'strict-dynamic' (not 'unsafe-inline'): the
       // artifact preview iframe's `srcdoc` inherits this CSP, and a
       // generated artifact's own inline <script> could be a `type="module"`
@@ -710,6 +828,32 @@ ${OD_TOKENS_CSS}
   .od-panel-footer { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--od-border-soft); }
   .od-panel-footer .od-spacer { flex: 1; }
   .od-panel-footer button { height: 30px; padding: 0 14px; }
+  .od-errors { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 5; max-width: min(720px, calc(100% - 24px)); display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 12px; border: 1px solid var(--od-red); border-radius: 8px; background: var(--od-bg); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 12px; }
+  .od-errors[hidden] { display: none; }
+  .od-errors-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .od-errors-text strong { color: var(--od-red); }
+  .od-errors-text code { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--od-text-muted); }
+  .od-errors .od-btn { flex: none; height: 28px; }
+  .od-tweaks { top: 12px; bottom: 12px; width: 320px; max-height: none; }
+  .od-tweaks .od-panel-footer { flex-wrap: wrap; }
+  .od-tweaks .od-panel-footer button { padding: 0 10px; }
+  #od-tweaks-toggle.active { background: var(--od-bg-subtle); border-color: var(--od-border-strong); }
+  .od-tweak { display: flex; flex-direction: column; gap: 2px; }
+  .od-tweak label { display: flex; gap: 6px; align-items: baseline; }
+  .od-tweak-note { font-size: 10px; color: var(--od-text-faint); }
+  .od-tweak-row { display: flex; align-items: center; gap: 6px; }
+  .od-tweak-color { width: 36px; flex: none; }
+  .od-tweak-text { flex: 1; min-width: 0; }
+  .od-tweak-range { flex: 1; min-width: 0; accent-color: var(--od-text-strong); }
+  .od-tweak-num { width: 64px; flex: none; }
+  .od-tweak-unit { font-size: 11px; color: var(--od-text-muted); min-width: 18px; }
+  .od-tweak-wide { width: 100%; }
+  .od-tweak-swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--od-border-strong); cursor: pointer; padding: 0; flex: none; }
+  .od-tweak-more { margin-top: 10px; }
+  .od-tweak-more summary { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--od-text-faint); cursor: pointer; }
+  .od-tweak-empty, .od-tweak-ds { border: 1px solid var(--od-border-soft); border-radius: 6px; padding: 8px 10px; margin: 6px 0; font-size: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  .od-tweak-empty p, .od-tweak-ds p { margin: 0; color: var(--od-text-muted); }
+  .od-tweak-warn { margin: 0 0 6px; font-size: 12px; color: var(--od-red); }
 </style>
 </head>
 <body>

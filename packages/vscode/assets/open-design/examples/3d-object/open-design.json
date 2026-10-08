@@ -1,0 +1,12 @@
+{
+  "name": "example-3d-object",
+  "title": "Halo speaker — 3D product shot",
+  "description": "A procedural speaker built from a lathe profile, in studio light on a turntable, colored from the design tokens.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Make a 3D hero shot of our speaker, a soft cylinder with a glowing ring on top, in our brand colors, turning slowly."
+      }
+    }
+  }
+}

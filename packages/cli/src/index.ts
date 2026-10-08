@@ -103,6 +103,7 @@ program
   .option('--loop', 'gif: loop forever (the default)')
   .option('--no-loop', 'gif: play once')
   .option('--ffmpeg <path>', 'ffmpeg executable (default: OPEN_DESIGN_FFMPEG_PATH, then auto-detect)')
+  .option('--transparent', 'png: capture without the page background (cut-outs, e.g. a 3D product shot)')
   .option('--campaign-sheet', 'Fluid designs: also write campaign-sheet.png, every shape plus the other pieces in the collection')
   .option('--shape-sheet', 'Fluid designs: also write <name>-shapes.png showing the design at every shape (all formats unless --presets)')
   .option('--split', 'PDF data exports: one PDF per row instead of one multi-page PDF')

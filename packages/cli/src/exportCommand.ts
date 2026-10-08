@@ -37,6 +37,7 @@ export interface ExportCliOptions {
   /** site, email, paste: where the files will be hosted. */
   baseUrl?: string;
   campaignSheet?: boolean;
+  transparent?: boolean;
   fps?: string;
   duration?: string;
   /** --loop / --no-loop (gif). */
@@ -108,6 +109,7 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     target: parseTarget(flags.target),
     baseUrl: flags.baseUrl,
     campaignSheet: flags.campaignSheet,
+    transparent: flags.transparent,
     fps: parseIntFlag('fps', flags.fps),
     duration: parseNumberFlag('duration', flags.duration),
     loop: flags.loop,

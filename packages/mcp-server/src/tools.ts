@@ -490,6 +490,7 @@ export async function exportArtifact(
     shapeSheet?: boolean;
     target?: PasteTarget;
     campaignSheet?: boolean;
+    transparent?: boolean;
     fps?: number;
     duration?: number;
     loop?: boolean;

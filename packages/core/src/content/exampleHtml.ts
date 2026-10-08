@@ -198,3 +198,24 @@ function joinRelative(parent: string, child: string): string {
   const dir = parent.includes('/') ? parent.slice(0, parent.lastIndexOf('/') + 1) : '';
   return dir + child;
 }
+
+/**
+ * A preview-only script, first in `<head>`, that reports the page's failed
+ * loads (scripts, stylesheets, images) and uncaught errors to the preview
+ * (`parent.postMessage({ odPreviewError })`), so a design that renders
+ * nothing (a dead CDN URL, a script error) says why. `data-od-preview-only`
+ * keeps it out of WYSIWYG saves.
+ */
+export const PREVIEW_ERROR_REPORTER =
+  '<script data-od-preview-only>(function(){function report(m){try{parent.postMessage({odPreviewError:String(m).slice(0,300)},"*")}catch(e){}}' +
+  'addEventListener("error",function(e){var t=e.target;if(t&&t!==window&&t.nodeType===1){var u=t.src||t.href||"";if(u)report("Failed to load "+u)}else if(e.message){report(e.message)}},true);' +
+  'addEventListener("unhandledrejection",function(e){var r=e.reason;report((r&&r.message)||r)})})();</script>';
+
+/** `html` with PREVIEW_ERROR_REPORTER as the first thing in `<head>` (after a preview `<base>`), so it sees every later script. */
+export function injectPreviewErrorReporter(html: string): string {
+  const base = /<base\b[^>]*data-od-preview-only[^>]*>/i.exec(html);
+  if (base) return html.slice(0, base.index + base[0].length) + PREVIEW_ERROR_REPORTER + html.slice(base.index + base[0].length);
+  const head = /<head(\s[^>]*)?>/i.exec(html);
+  if (head) return html.slice(0, head.index + head[0].length) + PREVIEW_ERROR_REPORTER + html.slice(head.index + head[0].length);
+  return PREVIEW_ERROR_REPORTER + html;
+}

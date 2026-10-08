@@ -26,6 +26,7 @@ import { checkFixedSize, formatPreflight, runPreflight, type Finding } from '../
 import { finishPrintPdf, mergePdfs, preparePrintPage, printBleedPage, RGB_NOTE, type PrintGeometry } from '../poster/printPdf';
 import { qrSvg } from '../poster/qr';
 import { composeShapeSheet, type ShapeThumbnail } from '../poster/shapeSheet';
+import { isFullyOpaquePng, usesWebgl, waitForScene, webglFindings } from './webgl';
 
 export type ImageFormat = 'png' | 'jpeg';
 /** Formats rendered in a headless browser. */
@@ -57,6 +58,8 @@ export interface ExportArtifactOptions {
   slides?: number[];
   /** Export each matching element as its own numbered image. */
   selector?: string;
+  /** PNG with no page background (omitBackground), for cut-outs such as a 3D product shot. Image exports of pages only. */
+  transparent?: boolean;
   /** Re-encode as progressively lower-quality JPEG until each file fits. */
   maxBytes?: number;
   /** Explicit browser executable (setting/flag); falls back to discovery. */
@@ -214,18 +217,19 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
     return 'selector applies to image exports of pages; it can\'t be combined with pdf/pptx or slides.';
   }
   if (o.maxBytes !== undefined && !(Number.isInteger(o.maxBytes) && o.maxBytes > 0)) return 'maxBytes must be a positive integer.';
+  if (o.transparent && o.format !== undefined && o.format !== 'png') return `transparent exports a PNG (the only image format with transparency), not "${o.format}".`;
   if (o.selector !== undefined && o.selector.trim() === '') return 'selector must not be empty.';
   if (isPackageFormat(o.format) && (o.selector !== undefined || o.slides !== undefined || o.maxBytes !== undefined)) {
     return `selector, slides and maxBytes apply to image, PDF and PPTX exports, not "${o.format}".`;
   }
   if (isMotionFormat(o.format)) {
-    const other = (['quality', 'selector', 'deck', 'slides', 'badge', 'baseUrl', 'bleed', 'cropMarks', 'checkOnly', 'data', 'presets', 'shapeSheet', 'campaignSheet', 'target'] as const).filter((k) => o[k] !== undefined);
+    const other = (['quality', 'selector', 'deck', 'slides', 'badge', 'baseUrl', 'bleed', 'cropMarks', 'checkOnly', 'data', 'presets', 'shapeSheet', 'campaignSheet', 'target', 'transparent'] as const).filter((k) => o[k] !== undefined);
     if (other.length > 0) return `${other.join(', ')} ${other.length === 1 ? "doesn't" : "don't"} apply to the "${o.format}" format (it takes fps, duration, loop, width/height or preset, scale and maxBytes).`;
     return undefined;
   }
   if (o.fps !== undefined || o.duration !== undefined || o.loop !== undefined) return 'fps, duration and loop apply to the mp4, webm and gif formats only.';
   if (isInlineFormat(o.format)) {
-    const other = (['width', 'height', 'scale', 'quality', 'selector', 'maxBytes', 'deck', 'slides', 'badge', 'preset', 'bleed', 'cropMarks', 'checkOnly', 'data', 'presets', 'shapeSheet'] as const).filter((k) => o[k] !== undefined);
+    const other = (['width', 'height', 'scale', 'quality', 'selector', 'maxBytes', 'deck', 'slides', 'badge', 'preset', 'bleed', 'cropMarks', 'checkOnly', 'data', 'presets', 'shapeSheet', 'transparent'] as const).filter((k) => o[k] !== undefined);
     if (other.length > 0) return `${other.join(', ')} ${other.length === 1 ? "doesn't" : "don't"} apply to the "${o.format}" format (it takes target and baseUrl).`;
     return undefined;
   }
@@ -317,7 +321,12 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | 'tim
   }
 }
 
-export async function loadPage(page: Page, url: string, readyTimeoutMs: number, settleMs: number, warnings: string[]): Promise<void> {
+/**
+ * Loads the page and waits for it to be ready: network idle, fonts, a 3D
+ * scene's `window.odScene.ready` (stopping its turntable for stills unless
+ * `still: false`), then `settleMs`.
+ */
+export async function loadPage(page: Page, url: string, readyTimeoutMs: number, settleMs: number, warnings: string[], options: { still?: boolean } = {}): Promise<void> {
   const failed: string[] = [];
   page.on('requestfailed', (req) => failed.push(`${req.url()} (${req.failure()?.errorText ?? 'failed'})`));
   page.on('response', (res) => {
@@ -333,6 +342,7 @@ export async function loadPage(page: Page, url: string, readyTimeoutMs: number, 
   // String form: this package compiles without DOM lib types.
   const fonts = await withTimeout(page.evaluate('document.fonts ? document.fonts.ready.then(() => true) : true'), 5000);
   if (fonts === 'timeout') warnings.push('Web fonts were still loading after 5s — text may use fallback fonts.');
+  await waitForScene(page, readyTimeoutMs, warnings, { still: options.still ?? true });
   if (settleMs > 0) await new Promise((r) => setTimeout(r, settleMs));
 
   // The browser's own automatic /favicon.ico probe isn't something the artifact asked for.
@@ -516,6 +526,9 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     const slideError = validateSlideNumbers(options.slides, slideCount);
     if (slideError && mode !== 'image' && mode !== 'page-pdf' && mode !== 'print-pdf') return fail('invalid-args', slideError);
     const pageMode = mode === 'image' || mode === 'page-pdf' || mode === 'print-pdf';
+    if (options.transparent && (mode !== 'image' || plans.some((p) => p.format !== 'png'))) {
+      return fail('invalid-args', `transparent applies to PNG image exports of pages, not ${mode === 'image' ? 'this format' : mode}.`);
+    }
     if (!pageMode && (table || options.checkOnly || multiShape || options.shapeSheet || options.campaignSheet)) {
       return fail('invalid-args', `data, checkOnly, presets and shapeSheet apply to page exports (images and page PDFs), not decks (${mode}).`);
     }
@@ -523,6 +536,8 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     const exportedAt = new Date().toISOString();
     const files: ExportedFile[] = [];
     const findings: Finding[] = [];
+    // A 3D scene that couldn't get a WebGL context, or rendered nothing.
+    if (usesWebgl(artifact.entryContent)) findings.push(...(await webglFindings(page, warnings)));
     const prints: PrintInfo[] = [];
     let shapeSheetPath: string | undefined;
     let campaignSheetPath: string | undefined;
@@ -626,7 +641,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
                   index: j + 1,
                   width: Math.round(box.width * passScale),
                   height: Math.round(box.height * passScale),
-                  capture: async (f, q) => Buffer.from(await handle.screenshot({ type: f, quality: q })),
+                  capture: async (f, q) => Buffer.from(await handle.screenshot({ type: f, quality: q, omitBackground: !!options.transparent })),
                 });
               }
               if (targets.length === 0) return fail('selector-no-match', `No element matching "${p.selector}" has a visible box.`);
@@ -635,18 +650,24 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
               targets.push({
                 width: s.viewport.width * passScale,
                 height: s.viewport.height * passScale,
-                capture: async (f, q) => Buffer.from(await page.screenshot({ type: f, quality: q })),
+                capture: async (f, q) => Buffer.from(await page.screenshot({ type: f, quality: q, omitBackground: !!options.transparent })),
               });
             }
             const imageFormat = p.format as ImageFormat;
             const passQuality = imageFormat === 'jpeg' ? (options.quality ?? 90) : undefined;
             for (const target of targets) {
-              const result = await captureWithinBudget(target.capture, imageFormat, passQuality, p.maxBytes);
+              // A transparent PNG is never re-encoded as JPEG to fit a budget: that would lose the transparency.
+              const result = await captureWithinBudget(target.capture, imageFormat, passQuality, options.transparent ? undefined : p.maxBytes);
               // Numbered only when there's more than one image; a single card keeps the plain name.
               const index = targets.length > 1 ? target.index : undefined;
               const relOut = suffix === undefined ? exportFilePath(relEntry, index, result.format) : exportFilePathWithSuffix(relEntry, suffix, index, result.format);
               await writeOut(relOut, result.buffer);
-              budgetWarnings(relOut, p.format, p.maxBytes, { ...result, bytes: result.buffer.length });
+              if (options.transparent) {
+                if (p.maxBytes !== undefined && result.buffer.length > p.maxBytes) warnings.push(`${relOut}: ${result.buffer.length} bytes is over maxBytes (${p.maxBytes}); transparent PNGs aren't re-encoded.`);
+                if (isFullyOpaquePng(result.buffer)) {
+                  warnings.push(`${relOut}: no pixel is transparent — the page or scene paints its own background. Make html/body background transparent (and, for a 3D scene, the renderer's alpha on with no scene background).`);
+                }
+              } else budgetWarnings(relOut, p.format, p.maxBytes, { ...result, bytes: result.buffer.length });
               files.push({ path: relOut, width: target.width, height: target.height, bytes: result.buffer.length, format: result.format, quality: result.quality });
             }
           } else if (passMode === 'print-pdf') {

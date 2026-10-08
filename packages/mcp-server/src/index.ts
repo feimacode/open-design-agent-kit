@@ -559,6 +559,11 @@ const TOOL_DEFS: ToolDef[] = [
             description:
               "gif only: loop forever. Default true.",
           },
+          transparent: {
+            type: 'boolean',
+            description:
+              "png only: capture without the page background, so everything the design doesn't paint is transparent — for cut-outs such as a 3D product shot to place on slides or pages. The page (and a 3D scene's renderer) must have a transparent background; a warning says so when every pixel came out opaque. PNGs aren't re-encoded to fit maxBytes when transparent.",
+          },
           campaignSheet: {
             type: 'boolean',
             description:
@@ -576,6 +581,7 @@ const TOOL_DEFS: ToolDef[] = [
           format?: 'png' | 'jpeg' | 'pdf' | 'pptx' | 'standalone' | 'site' | 'email' | 'paste';
           target?: 'wechat' | 'notion' | 'newsletter' | 'generic';
           campaignSheet?: boolean;
+          transparent?: boolean;
           fps?: number;
           duration?: number;
           loop?: boolean;
