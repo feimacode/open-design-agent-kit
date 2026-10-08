@@ -490,6 +490,9 @@ export async function exportArtifact(
     shapeSheet?: boolean;
     target?: PasteTarget;
     campaignSheet?: boolean;
+    fps?: number;
+    duration?: number;
+    loop?: boolean;
   },
 ): Promise<string> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself;
@@ -523,7 +526,7 @@ export async function addDiagramRuntime(ctx: ToolContext, input: { entryPath: st
 /** check_open_design_artifact: renders the artifact and returns findings plus screenshots; writes nothing. */
 export async function checkArtifact(
   ctx: ToolContext,
-  input: { entryPath: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number },
+  input: { entryPath: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number; at?: number[] },
 ): Promise<ToolOutput> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
   const result = await checkArtifactCore({

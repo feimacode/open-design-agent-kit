@@ -8,7 +8,7 @@ describe('export command', () => {
   it('maps string flags onto export options', () => {
     assert.deepStrictEqual(
       parseExportFlags({ width: '1080', height: '1350', scale: '2', format: 'jpg', quality: '80', maxBytes: '5000000', selector: '[data-od-card]', browser: '/b' }),
-      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined, presets: undefined, shapeSheet: undefined, target: undefined, baseUrl: undefined, campaignSheet: undefined },
+      { width: 1080, height: 1350, scale: 2, format: 'jpeg', quality: 80, maxBytes: 5000000, selector: '[data-od-card]', browserPath: '/b', deck: undefined, slides: undefined, badge: undefined, preset: undefined, bleed: undefined, cropMarks: undefined, checkOnly: undefined, data: undefined, sheet: undefined, nameField: undefined, split: undefined, presets: undefined, shapeSheet: undefined, target: undefined, baseUrl: undefined, campaignSheet: undefined, fps: undefined, duration: undefined, loop: undefined, ffmpegPath: undefined },
     );
     assert.deepStrictEqual(parseExportFlags({}), {
       width: undefined,
@@ -35,6 +35,10 @@ describe('export command', () => {
       target: undefined,
       baseUrl: undefined,
       campaignSheet: undefined,
+      fps: undefined,
+      duration: undefined,
+      loop: undefined,
+      ffmpegPath: undefined,
     });
   });
 
@@ -71,9 +75,15 @@ describe('export command', () => {
     assert.throws(() => parseExportFlags({ format: 'paste', target: 'slack' }), /--target must be wechat, notion, newsletter, generic/);
   });
 
+  it('parses motion flags', () => {
+    const o = parseExportFlags({ format: 'gif', fps: '12', duration: '2.5', loop: false, ffmpeg: '/opt/ffmpeg' });
+    assert.deepStrictEqual([o.format, o.fps, o.duration, o.loop, o.ffmpegPath], ['gif', 12, 2.5, false, '/opt/ffmpeg']);
+    assert.throws(() => parseExportFlags({ fps: '7.5' }), /--fps must be an integer/);
+  });
+
   it('rejects malformed flags', () => {
     assert.throws(() => parseExportFlags({ width: '10.5' }), ExportArgsError);
-    assert.throws(() => parseExportFlags({ format: 'gif' }), /--format must be png, jpeg, pdf, pptx, standalone, site, email or paste/);
+    assert.throws(() => parseExportFlags({ format: 'avi' }), /--format must be png, jpeg, pdf, pptx, standalone, site, email, paste, mp4, webm or gif/);
     assert.throws(() => parseExportFlags({ scale: 'big' }), /--scale must be a number/);
   });
 

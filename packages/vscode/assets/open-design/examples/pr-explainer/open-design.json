@@ -1,0 +1,12 @@
+{
+  "name": "example-pr-explainer",
+  "title": "PR explainer: add campaign export functionality",
+  "description": "An example of the pr-explainer skill: PR explainer: campaign kit.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Explain the latest commit as a pull request for reviewers: what changed and why, before and after, risks, tests, and a review tour of the files."
+      }
+    }
+  }
+}

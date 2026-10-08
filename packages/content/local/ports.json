@@ -1,0 +1,64 @@
+{
+  "$comment": "Content ported from other projects into local/ (openspec add-dev-doc-templates). check-content-sync.mjs verifies each skill and example carries its provenance header and is listed in docs/contributing/upstream-ports.md.",
+  "ports": [
+    {
+      "id": "exec-briefing-memo",
+      "source": "https://github.com/nexu-io/html-anything",
+      "path": "next/src/lib/templates/skills/exec-briefing-memo",
+      "commit": "553ed98c283f9c0f489902d035416a972d6a9699",
+      "license": "Apache-2.0",
+      "examples": [
+        "exec-briefing-memo",
+        "exec-briefing-memo-board-memo",
+        "exec-briefing-memo-board-paper",
+        "exec-briefing-memo-decision-command"
+      ]
+    },
+    {
+      "id": "experiment-readout",
+      "source": "https://github.com/nexu-io/html-anything",
+      "path": "next/src/lib/templates/skills/experiment-readout",
+      "commit": "553ed98c283f9c0f489902d035416a972d6a9699",
+      "license": "Apache-2.0",
+      "examples": [
+        "experiment-readout",
+        "experiment-readout-growth-console",
+        "experiment-readout-lab-notebook",
+        "experiment-readout-product-readout"
+      ]
+    },
+    {
+      "id": "competitive-teardown",
+      "source": "https://github.com/nexu-io/html-anything",
+      "path": "next/src/lib/templates/skills/competitive-teardown",
+      "commit": "553ed98c283f9c0f489902d035416a972d6a9699",
+      "license": "Apache-2.0",
+      "examples": [
+        "competitive-teardown",
+        "competitive-teardown-analyst-dossier",
+        "competitive-teardown-radar-map",
+        "competitive-teardown-war-room-grid"
+      ]
+    },
+    {
+      "id": "info-funnel",
+      "source": "https://github.com/nexu-io/html-anything",
+      "path": "next/src/lib/templates/skills/info-funnel",
+      "commit": "553ed98c283f9c0f489902d035416a972d6a9699",
+      "license": "Apache-2.0",
+      "examples": [
+        "info-funnel"
+      ]
+    },
+    {
+      "id": "article-sketchnote-editorial",
+      "source": "https://github.com/nexu-io/html-anything",
+      "path": "next/src/lib/templates/skills/article-sketchnote-editorial",
+      "commit": "553ed98c283f9c0f489902d035416a972d6a9699",
+      "license": "Apache-2.0",
+      "examples": [
+        "article-sketchnote-editorial"
+      ]
+    }
+  ]
+}

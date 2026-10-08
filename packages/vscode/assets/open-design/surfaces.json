@@ -60,7 +60,7 @@
     {
       "id": "document",
       "label": "Document",
-      "description": "A designed document to read in a browser: spec, runbook, report, article, release notes.",
+      "description": "A designed document to read in a browser: RFC, ADR, postmortem, PR explainer, spec, runbook, report, memo.",
       "icon": "file-text",
       "status": "ready",
       "entries": [
@@ -72,7 +72,16 @@
         "weekly-update",
         "meeting-notes",
         "blog-post",
-        "article-magazine"
+        "article-magazine",
+        "rfc",
+        "adr",
+        "postmortem",
+        "pr-explainer",
+        "changelog-page",
+        "exec-briefing-memo",
+        "experiment-readout",
+        "competitive-teardown",
+        "article-sketchnote-editorial"
       ],
       "questions": [
         "What kind of document, and is there source material to start from?"
@@ -135,7 +144,8 @@
       "status": "ready",
       "entries": [
         "research-decision-room",
-        "x-research"
+        "x-research",
+        "competitive-teardown"
       ],
       "questions": [
         "Where are the notes, transcripts or data, and what decision should this inform?"
@@ -150,7 +160,8 @@
       "entries": [
         "data-report",
         "dashboard",
-        "finance-report"
+        "finance-report",
+        "info-funnel"
       ],
       "questions": [
         "Which data file, and what question should the report answer?"

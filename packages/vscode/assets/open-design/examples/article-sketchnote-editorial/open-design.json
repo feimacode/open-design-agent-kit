@@ -1,0 +1,12 @@
+{
+  "name": "example-article-sketchnote-editorial",
+  "title": "Editorial Sketchnote",
+  "description": "Turns one concept into a magazine-style feature dossier — the real question, early failures, the turning point, the insight and its name — across six layout moulds.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Turn this concept into an editorial sketchnote feature: the real question, early attempts that failed, the turning point, the insight, and the name it was given."
+      }
+    }
+  }
+}

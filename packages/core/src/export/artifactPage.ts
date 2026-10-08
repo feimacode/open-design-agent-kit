@@ -22,7 +22,7 @@ export interface ArtifactPageSession {
  * is safe to call after a failed launch: a launch error closes what was
  * started before rethrowing.
  */
-export async function openArtifactPage(options: { workspaceRoot: string; relEntry: string; executablePath: string }): Promise<ArtifactPageSession> {
+export async function openArtifactPage(options: { workspaceRoot: string; relEntry: string; executablePath: string; extraArgs?: string[] }): Promise<ArtifactPageSession> {
   const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-export-profile-'));
   // The <deck-stage> fallback is injected into the served entry only (never the file on disk).
   const server = await startStaticServer(options.workspaceRoot, { entryPath: options.relEntry, transformEntry: injectDeckStageFallback });
@@ -40,7 +40,7 @@ export async function openArtifactPage(options: { workspaceRoot: string; relEntr
       userDataDir: profileDir,
       // A hung page (endless script, stalled frame) fails the export in a minute instead of blocking it.
       protocolTimeout: 60_000,
-      args: ['--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb'],
+      args: ['--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb', ...(options.extraArgs ?? [])],
     });
     const page = await browser.newPage();
     // Under tsx (dev runs, the MCP server's tests) esbuild's keepNames wraps nested functions in

@@ -1,0 +1,12 @@
+{
+  "name": "example-rfc",
+  "title": "RFC-012: Let the agent see what it built",
+  "description": "An example of the rfc skill: Let the agent see what it built.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Write an RFC for letting the agent see what it built: problem, goals and non-goals, the proposal with alternatives, risks, rollout and open questions, from the openspec change."
+      }
+    }
+  }
+}

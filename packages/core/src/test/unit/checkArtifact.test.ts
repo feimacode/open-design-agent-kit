@@ -102,6 +102,16 @@ describe('visual check (real browser; skipped when none is installed)', function
     assert.strictEqual(scroll[0].severity, 'warning');
   });
 
+  it('does not report text in a scroll container (overflow-x: auto) as clipped, but still reports overflow: hidden', async () => {
+    const wide = '<table style="width:900px"><tr><td>Option</td><td>Outcome</td></tr></table>';
+    const root = await workspace(page(`<div style="overflow-x:auto">${wide}</div><div style="overflow:hidden;width:200px;white-space:nowrap"><span>This label is far too long for its box</span></div>`));
+    const result = ok(await check(root, { maxImages: 0 }));
+    const overflow = result.findings.filter((f) => f.check === 'overflow');
+    assert.ok(overflow.every((f) => !/Option|Outcome/.test(f.message)), JSON.stringify(overflow));
+    assert.ok(overflow.some((f) => /far too long/.test(f.message)), JSON.stringify(result.findings));
+    assert.deepStrictEqual(result.findings.filter((f) => f.check === 'horizontal-scroll'), []);
+  });
+
   it('caps images on a tall page and lists what was left out', async () => {
     const root = await workspace(page('<div style="height:6000px;background:linear-gradient(#fff,#ccc)"></div>'));
     const result = ok(await check(root));

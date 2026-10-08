@@ -16,6 +16,8 @@ import { assemblePdf, assemblePptx } from './deck/assemble';
 import { captureDeckSlides, capturePagePdf, countSlides, resolveExportMode, validateSlideNumbers, type ExportMode } from './deck/captureDeck';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize, type SizeSource } from './exportSize';
 import { exportInline, formatInlineExportResult, type InlineExportResult, type PasteTarget } from './inlineExport';
+import type { MotionFormat } from './motion/ffmpeg';
+import { exportMotion, formatMotionExportResult, isMotionFormat, type MotionExportResult } from './motion/motionExport';
 import { formatPackageResult, isPackageFormat, packageArtifact, type PackageExportResult, type PackageFormat } from './packageArtifact';
 import { checkDataAgainstFields, loadDataTable, rowFileSuffixes, scanBoundFields, type DataTable } from '../poster/data';
 import { bleedBox, DEFAULT_SHEET_FORMAT_IDS, getFormat, isFluidHtml, unknownFormatError, type CanvasFormat } from '../poster/formats';
@@ -31,8 +33,8 @@ export type CaptureFormat = ImageFormat | 'pdf' | 'pptx';
 /** Inlined-style HTML for inboxes (`email`) and for pasting into editors (`paste`). */
 export type InlineFormat = 'email' | 'paste';
 /** Every format: captures, the browserless `standalone`/`site` packaging formats, and the inlined `email`/`paste`. */
-export type ExportFormat = CaptureFormat | PackageFormat | InlineFormat;
-const EXPORT_FORMATS: readonly ExportFormat[] = ['png', 'jpeg', 'pdf', 'pptx', 'standalone', 'site', 'email', 'paste'];
+export type ExportFormat = CaptureFormat | PackageFormat | InlineFormat | MotionFormat;
+const EXPORT_FORMATS: readonly ExportFormat[] = ['png', 'jpeg', 'pdf', 'pptx', 'standalone', 'site', 'email', 'paste', 'mp4', 'webm', 'gif'];
 
 function isInlineFormat(format: string | undefined): format is InlineFormat {
   return format === 'email' || format === 'paste';
@@ -97,6 +99,18 @@ export interface ExportArtifactOptions {
   campaignSheet?: boolean;
   /** The workspace's Open Design output directory, for finding the collection's other pieces. Default ".open-design". */
   outputDir?: string;
+  /** mp4/webm/gif: frames per second, 1–60 (default 30, 15 for GIF). */
+  fps?: number;
+  /** mp4/webm/gif: seconds, 0.5–60 (default: resolved from the page). */
+  duration?: number;
+  /** gif: loop forever (default true). */
+  loop?: boolean;
+  /** mp4/webm/gif: explicit ffmpeg (setting/flag); falls back to discovery. */
+  ffmpegPath?: string;
+  /** mp4/webm/gif: progress after each captured frame. */
+  onProgress?: (frame: number, total: number) => void;
+  /** mp4/webm/gif: checked between frames. */
+  isCancelled?: () => boolean;
 }
 
 /** How one shape is exported: its canvas, output format, print geometry, capture settings, and the fluid resize. */
@@ -204,6 +218,12 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
   if (isPackageFormat(o.format) && (o.selector !== undefined || o.slides !== undefined || o.maxBytes !== undefined)) {
     return `selector, slides and maxBytes apply to image, PDF and PPTX exports, not "${o.format}".`;
   }
+  if (isMotionFormat(o.format)) {
+    const other = (['quality', 'selector', 'deck', 'slides', 'badge', 'baseUrl', 'bleed', 'cropMarks', 'checkOnly', 'data', 'presets', 'shapeSheet', 'campaignSheet', 'target'] as const).filter((k) => o[k] !== undefined);
+    if (other.length > 0) return `${other.join(', ')} ${other.length === 1 ? "doesn't" : "don't"} apply to the "${o.format}" format (it takes fps, duration, loop, width/height or preset, scale and maxBytes).`;
+    return undefined;
+  }
+  if (o.fps !== undefined || o.duration !== undefined || o.loop !== undefined) return 'fps, duration and loop apply to the mp4, webm and gif formats only.';
   if (isInlineFormat(o.format)) {
     const other = (['width', 'height', 'scale', 'quality', 'selector', 'maxBytes', 'deck', 'slides', 'badge', 'preset', 'bleed', 'cropMarks', 'checkOnly', 'data', 'presets', 'shapeSheet'] as const).filter((k) => o[k] !== undefined);
     if (other.length > 0) return `${other.join(', ')} ${other.length === 1 ? "doesn't" : "don't"} apply to the "${o.format}" format (it takes target and baseUrl).`;
@@ -320,7 +340,7 @@ export async function loadPage(page: Page, url: string, readyTimeoutMs: number, 
 }
 
 /** A capture result, or a packaging result for the `standalone`/`site` formats. */
-export type AnyExportResult = ExportArtifactResult | PackageExportResult | InlineExportResult;
+export type AnyExportResult = ExportArtifactResult | PackageExportResult | InlineExportResult | MotionExportResult;
 
 export function exportArtifact(options: ExportArtifactOptions & { format: PackageFormat }): Promise<PackageExportResult>;
 export function exportArtifact(options: ExportArtifactOptions & { format?: CaptureFormat }): Promise<ExportArtifactResult>;
@@ -328,6 +348,9 @@ export function exportArtifact(options: ExportArtifactOptions): Promise<AnyExpor
 export async function exportArtifact(options: ExportArtifactOptions): Promise<AnyExportResult> {
   const invalid = validateOptions(options);
   if (invalid) return fail('invalid-args', invalid);
+  if (isMotionFormat(options.format)) {
+    return exportMotion({ ...options, format: options.format });
+  }
   if (isInlineFormat(options.format)) {
     return exportInline({
       workspaceRoot: options.workspaceRoot,
@@ -808,6 +831,7 @@ export function formatExportResult(result: AnyExportResult): string {
   if (!result.ok) return `Export failed (${result.code}): ${result.error}`;
   if ('output' in result) return formatPackageResult(result);
   if ('inline' in result) return formatInlineExportResult(result);
+  if ('motion' in result) return formatMotionExportResult(result);
   const checked = [result.rows !== undefined ? `${result.rows} data row(s)` : 'the page', result.shapes ? `at ${result.shapes.length} shapes` : result.shapeSheet ? 'at every shape' : ''].filter(Boolean).join(' ');
   const lines = result.checkOnly
     ? [`Checked ${checked} (checkOnly: ${result.shapeSheet ? 'only the shape sheet was written' : 'no files written'}).`]

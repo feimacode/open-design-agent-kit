@@ -1,0 +1,12 @@
+{
+  "name": "example-postmortem",
+  "title": "Sample postmortem: exports hung on a confined browser",
+  "description": "An example of the postmortem skill: Sample postmortem: exports hung on a confined browser.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Write a postmortem from these incident notes: impact, timeline, root cause, contributing factors, what went well and badly, and action items with owners."
+      }
+    }
+  }
+}

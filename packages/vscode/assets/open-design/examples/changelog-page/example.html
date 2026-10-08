@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Design Agent Kit — Changelog</title>
+<style>
+:root{--bg:#f7f6f3;--surface:#ffffff;--fg:#1c1e23;--muted:#555b66;--border:#e2dfd8;--accent:#2a56c6;--ok:#1d6b45;--ok-bg:#e3f2ea;--warn:#8a4b06;--warn-bg:#fbefdc;--bad:#a8231a;--bad-bg:#fbe5e2;--grey:#4f5560;--grey-bg:#ecebe8;
+--font:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16.5px/1.62 var(--font)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 72px}
+.kicker{font:600 12px/1.4 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+h1{font-size:34px;line-height:1.15;letter-spacing:-.02em;margin:0 0 14px}
+h2{font-size:19px;letter-spacing:-.01em;margin:44px 0 10px;padding-top:20px;border-top:1px solid var(--border)}
+h3{font-size:16px;margin:22px 0 6px}
+p,li{margin:0 0 10px}
+ul,ol{padding-left:22px;margin:0 0 12px}
+a{color:var(--accent)}
+code,pre{font-family:var(--mono);font-size:.88em}
+code{background:var(--grey-bg);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow-x:auto;line-height:1.5}
+pre code{background:none;padding:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--muted);font-size:14px;margin:0 0 6px}
+.status{display:inline-block;margin:0;padding:3px 10px;border-radius:999px;font:600 12.5px/1.5 var(--font);letter-spacing:.02em}
+.status[data-od-status=accepted],.status[data-od-status=closed],.status[data-od-status=reviewed]{background:var(--ok-bg);color:var(--ok)}
+.status[data-od-status=proposed],.status[data-od-status=draft]{background:var(--warn-bg);color:var(--warn)}
+.status[data-od-status=rejected]{background:var(--bad-bg);color:var(--bad)}
+.status[data-od-status=superseded],.status[data-od-status=deprecated]{background:var(--grey-bg);color:var(--grey)}
+.summary{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;padding:16px 20px;margin:24px 0 0;font-size:17px}
+.table{overflow-x:auto;margin:6px 0 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--border)}
+th{font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;background:#faf9f6}
+tr:last-child td{border-bottom:0}
+.sources{font-size:14px;color:var(--muted)}
+.sources li{margin:0 0 4px}
+@media (max-width:600px){main{padding:36px 18px 56px}h1{font-size:27px}body{font-size:16px}}
+</style>
+</head>
+<body>
+<main>
+
+<p class="kicker">Changelog</p>
+<h1>Open Design Agent Kit</h1>
+<p class="meta">Versions follow <code>0.MINOR.PATCH</code> while the kit is pre-1.0. Newest first.</p>
+<p class="meta"><a href="#v0-1-8">0.1.8</a> · <a href="#v0-1-7">0.1.7</a> · <a href="#v0-1-6">0.1.6</a></p>
+
+<h2 id="v0-1-8">0.1.8 <span class="meta">· 2026-09-30</span></h2>
+<p><strong>Highlight:</strong> export designs as images, decks as PowerPoint or PDF, and preview any design system before using it.</p>
+<h3>Added</h3>
+<ul>
+<li>You can export artifacts to PNG or JPEG, decks to PPTX or PDF, and follow a guided social-post workflow. <code>dd8dc70</code></li>
+<li>You can preview a design system (tokens, typography, components) from a new Design Systems view. <code>18baad2</code> <code>9d9e5ac</code></li>
+<li>Six new design systems: Roku, Sega, Sketch, Square, Stitch and Terracotta. <code>406dab1</code></li>
+<li>Canva export instructions and a tool to prepare a design for Canva import. <code>ca72516</code></li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>Design-system extraction is more accurate, with tests for each source format. <code>d932c3b</code></li>
+<li>Documentation is reorganised into guides and references, with a drift check. <code>bd0af97</code> <code>f162a64</code></li>
+</ul>
+
+<h2 id="v0-1-7">0.1.7 <span class="meta">· 2026-09-24</span></h2>
+<p><strong>Highlight:</strong> a packaging fix for the MCP server.</p>
+<h3>Fixed</h3>
+<ul><li>The published MCP server's tool count check matches the tools it ships. <code>eeb6e5c</code></li></ul>
+
+<h2 id="v0-1-6">0.1.6 <span class="meta">· 2026-09-24</span></h2>
+<p><strong>Highlight:</strong> community designs and Figma round-trips.</p>
+<h3>Added</h3>
+<ul>
+<li>You can pull a Figma frame into a design and push designs back to Figma. <code>2e1351a</code></li>
+<li>You can browse and sync community designs, and share your own as a pull request. <code>4509957</code> <code>98e1744</code></li>
+<li>Multi-screen collections, with navigation between screens in the preview. <code>1dcc443</code></li>
+</ul>
+<h3>Changed</h3>
+<ul><li>The product is consistently named "Open Design" everywhere. <code>2e4b036</code></li></ul>
+<h2>Sources</h2><ul class="sources"><li><code>git tag --sort=-creatordate (v0.1.6 – v0.1.8)</code></li><li><code>git log --format="%h %cs %s" v0.1.5..v0.1.8</code></li></ul>
+
+</main>
+</body>
+</html>

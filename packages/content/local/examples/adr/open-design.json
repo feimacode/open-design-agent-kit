@@ -1,0 +1,12 @@
+{
+  "name": "example-adr",
+  "title": "ADR-0007: Lay diagrams out in the browser",
+  "description": "An example of the adr skill: ADR-0007: Lay diagrams out in the browser.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Write an ADR for laying diagrams out in the browser instead of with a graph-layout library: context, decision, options considered and consequences."
+      }
+    }
+  }
+}

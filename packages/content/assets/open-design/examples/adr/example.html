@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0007: Lay diagrams out in the browser, not with a graph-layout library</title>
+<style>
+:root{--bg:#f7f6f3;--surface:#ffffff;--fg:#1c1e23;--muted:#555b66;--border:#e2dfd8;--accent:#2a56c6;--ok:#1d6b45;--ok-bg:#e3f2ea;--warn:#8a4b06;--warn-bg:#fbefdc;--bad:#a8231a;--bad-bg:#fbe5e2;--grey:#4f5560;--grey-bg:#ecebe8;
+--font:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16.5px/1.62 var(--font)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 72px}
+.kicker{font:600 12px/1.4 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+h1{font-size:34px;line-height:1.15;letter-spacing:-.02em;margin:0 0 14px}
+h2{font-size:19px;letter-spacing:-.01em;margin:44px 0 10px;padding-top:20px;border-top:1px solid var(--border)}
+h3{font-size:16px;margin:22px 0 6px}
+p,li{margin:0 0 10px}
+ul,ol{padding-left:22px;margin:0 0 12px}
+a{color:var(--accent)}
+code,pre{font-family:var(--mono);font-size:.88em}
+code{background:var(--grey-bg);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow-x:auto;line-height:1.5}
+pre code{background:none;padding:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--muted);font-size:14px;margin:0 0 6px}
+.status{display:inline-block;margin:0;padding:3px 10px;border-radius:999px;font:600 12.5px/1.5 var(--font);letter-spacing:.02em}
+.status[data-od-status=accepted],.status[data-od-status=closed],.status[data-od-status=reviewed]{background:var(--ok-bg);color:var(--ok)}
+.status[data-od-status=proposed],.status[data-od-status=draft]{background:var(--warn-bg);color:var(--warn)}
+.status[data-od-status=rejected]{background:var(--bad-bg);color:var(--bad)}
+.status[data-od-status=superseded],.status[data-od-status=deprecated]{background:var(--grey-bg);color:var(--grey)}
+.summary{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;padding:16px 20px;margin:24px 0 0;font-size:17px}
+.table{overflow-x:auto;margin:6px 0 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--border)}
+th{font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;background:#faf9f6}
+tr:last-child td{border-bottom:0}
+.sources{font-size:14px;color:var(--muted)}
+.sources li{margin:0 0 4px}
+@media (max-width:600px){main{padding:36px 18px 56px}h1{font-size:27px}body{font-size:16px}}
+</style>
+</head>
+<body>
+<main>
+
+<p class="kicker">Architecture decision record</p>
+<h1>ADR-0007: Lay diagrams out in the browser, not with a graph-layout library</h1>
+<div class="meta"><p class="status" data-od-status="accepted">Accepted</p><span>2026-10-07</span><span>Deciders: maintainers</span></div>
+
+<h2>Context</h2>
+<p>Agents draw diagrams of the user's code. Coordinates that a model places by hand overlap once a graph passes about eight nodes. The VS Code preview renders artifacts from their text through <code>srcdoc</code>, so a relative <code>&lt;script src&gt;</code> never loads there. The extension avoids heavy runtime dependencies, and <code>elkjs</code>, the strongest layout library, is EPL-2.0 and about 1.5&nbsp;MB.</p>
+
+<h2>Decision</h2>
+<p>We will lay diagrams out in the browser. The agent gives each node a <code>data-rank</code> (its step along the flow) and a <code>data-lane</code> (its position across it). CSS grid places the nodes, and a small dependency-free runtime, inlined in the artifact by <code>add_open_design_diagram_runtime</code>, draws right-angle connectors through the gaps between ranks and lanes.</p>
+
+<h2>Options considered</h2>
+<div class="table"><table><thead><tr><th>Option</th><th>For</th><th>Against</th><th>Outcome</th></tr></thead><tbody><tr><td>elkjs in Node, returning coordinates</td><td>Best compound layout and edge routing</td><td>EPL-2.0, ~1.5 MB, the agent still transcribes coordinates</td><td>Rejected</td></tr><tr><td>dagre in Node</td><td>MIT, small</td><td>Weak group layout, curved edges only</td><td>Rejected</td></tr><tr><td>Agent-placed SVG coordinates</td><td>No machinery</td><td>Degrades past ~8 nodes; several fix rounds</td><td>Rejected</td></tr><tr><td>CSS grid + inline runtime</td><td>Browser measures text; same render in preview, export and check; no dependency</td><td>The agent orders lanes; dense graphs can still cross</td><td>Chosen</td></tr></tbody></table></div>
+
+<h2>Consequences</h2>
+<h3>Positive</h3>
+<ul><li>One HTML file renders identically in the preview, in exports and in any browser.</li><li>Text edits and design-token tweaks re-flow the diagram for free.</li></ul>
+<h3>Negative</h3>
+<ul><li>Crossing minimisation is left to how the agent orders lanes; the visual check flags links that pass through nodes.</li><li>The runtime ships inside users' files, so it is versioned and upgraded in place by re-running the tool.</li></ul>
+<h3>Neutral</h3>
+<ul><li>Diagrams need scripts to render; the PNG and PDF exports are the portable form.</li></ul>
+<h2>Sources</h2><ul class="sources"><li><code>openspec/changes/archive/2026-10-07-add-codebase-diagrams/design.md</code></li><li><code>packages/core/src/generation/diagramRuntime.ts</code></li><li><code>packages/vscode/src/extension/customEditors/artifactEditorProvider.ts</code></li></ul>
+
+</main>
+</body>
+</html>

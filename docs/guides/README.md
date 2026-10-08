@@ -12,6 +12,7 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [Explore design directions](explore-directions.md)
 - [Turn a document into a deck](deck-from-a-document.md)
 - [Diagrams of your code](diagrams.md)
+- [Engineering documents](engineering-docs.md)
 - [Design systems](design-systems.md)
 - [Remix and the gallery](remix-and-gallery.md)
 - [Community designs](community-designs.md)
@@ -26,4 +27,5 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [YouTube videos](youtube-video.md)
 - [Export images](export-images.md)
 - [Export decks and PDFs](export-decks.md)
+- [Export animations](export-animations.md)
 - [Share and publish](share-and-publish.md)

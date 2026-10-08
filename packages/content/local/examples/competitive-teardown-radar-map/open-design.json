@@ -1,0 +1,12 @@
+{
+  "name": "example-competitive-teardown-radar-map",
+  "title": "Competitive Teardown — radar map style",
+  "description": "Positioning map, feature matrix, pricing comparison and opportunity windows: turns competitor research into a product decision report. The radar map style variant.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Write a competitive teardown of these products: positioning map, feature matrix, pricing comparison, user sentiment, and where we should play."
+      }
+    }
+  }
+}

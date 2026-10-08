@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RFC-012: Let the agent see what it built</title>
+<style>
+:root{--bg:#f7f6f3;--surface:#ffffff;--fg:#1c1e23;--muted:#555b66;--border:#e2dfd8;--accent:#2a56c6;--ok:#1d6b45;--ok-bg:#e3f2ea;--warn:#8a4b06;--warn-bg:#fbefdc;--bad:#a8231a;--bad-bg:#fbe5e2;--grey:#4f5560;--grey-bg:#ecebe8;
+--font:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16.5px/1.62 var(--font)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 72px}
+.kicker{font:600 12px/1.4 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+h1{font-size:34px;line-height:1.15;letter-spacing:-.02em;margin:0 0 14px}
+h2{font-size:19px;letter-spacing:-.01em;margin:44px 0 10px;padding-top:20px;border-top:1px solid var(--border)}
+h3{font-size:16px;margin:22px 0 6px}
+p,li{margin:0 0 10px}
+ul,ol{padding-left:22px;margin:0 0 12px}
+a{color:var(--accent)}
+code,pre{font-family:var(--mono);font-size:.88em}
+code{background:var(--grey-bg);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow-x:auto;line-height:1.5}
+pre code{background:none;padding:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--muted);font-size:14px;margin:0 0 6px}
+.status{display:inline-block;margin:0;padding:3px 10px;border-radius:999px;font:600 12.5px/1.5 var(--font);letter-spacing:.02em}
+.status[data-od-status=accepted],.status[data-od-status=closed],.status[data-od-status=reviewed]{background:var(--ok-bg);color:var(--ok)}
+.status[data-od-status=proposed],.status[data-od-status=draft]{background:var(--warn-bg);color:var(--warn)}
+.status[data-od-status=rejected]{background:var(--bad-bg);color:var(--bad)}
+.status[data-od-status=superseded],.status[data-od-status=deprecated]{background:var(--grey-bg);color:var(--grey)}
+.summary{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;padding:16px 20px;margin:24px 0 0;font-size:17px}
+.table{overflow-x:auto;margin:6px 0 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--border)}
+th{font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;background:#faf9f6}
+tr:last-child td{border-bottom:0}
+.sources{font-size:14px;color:var(--muted)}
+.sources li{margin:0 0 4px}
+@media (max-width:600px){main{padding:36px 18px 56px}h1{font-size:27px}body{font-size:16px}}
+</style>
+</head>
+<body>
+<main>
+
+<p class="kicker">RFC-012 · Open Design Agent Kit</p>
+<h1>Let the agent see what it built</h1>
+<div class="meta"><p class="status" data-od-status="accepted">Accepted</p><span>Proposed 2026-10-07</span><span>Owner: core</span></div>
+<p class="summary">The agent that writes an artifact never sees it: every tool result is text. We add <code>check_open_design_artifact</code>, which renders the artifact in the export browser and returns size-capped screenshots as images plus the existing preflight findings, for pages at desktop and phone width, card designs at their format, and decks slide by slide. Agents are told to check before calling a design done.</p>
+
+<h2>Problem</h2>
+<p>Composition problems that checks can't measure (a cramped hero, a lopsided grid, an empty slide) ship unless the user notices them. Three gaps sit next to that:</p>
+<ul>
+<li>Preflight is only reachable through <code>export_open_design_artifact</code> with <code>checkOnly: true</code>, framed as a poster step, so agents only run it for posters.</li>
+<li>Decks are excluded from preflight.</li>
+<li>Web pages are checked at one viewport, so a layout that scrolls sideways on a phone passes.</li>
+</ul>
+<p>Both hosts now accept images in tool results (VS Code <code>LanguageModelDataPart.image</code>, MCP <code>ImageContent</code>), and export already renders artifacts headlessly.</p>
+
+<h2>Goals</h2>
+<ul><li>One call shows the agent what the artifact looks like and what's measurably wrong, for pages, cards and decks.</li><li>A bounded token cost per call.</li><li>The same behaviour on VS Code, MCP hosts and the CLI.</li></ul>
+<h2>Non-goals</h2>
+<ul><li>An LLM-judged aesthetic score.</li><li>Pixel diffs against a previous render.</li><li>Interaction or animation testing.</li></ul>
+
+<h2>Proposal</h2>
+<p>A new tool rather than another export flag. It shares page loading with export through one helper, <code>openArtifactPage</code>, so export's behaviour is unchanged.</p>
+<div class="table"><table><thead><tr><th>Artifact</th><th>What is rendered</th><th>Findings tagged by</th></tr></thead><tbody><tr><td>Page (no card)</td><td>Desktop 1440×900 and mobile 390×844</td><td>viewport</td></tr><tr><td>Card design</td><td>Each card at its registered format</td><td>card</td></tr><tr><td>Deck</td><td>Every slide; one contact sheet of up to 12</td><td>slide</td></tr></tbody></table></div>
+<p>Images are JPEG, at most 1568&nbsp;px on the long edge, three per call by default. A new <code>horizontal-scroll</code> check names the element that makes a page scroll sideways.</p>
+
+<h2>Alternatives considered</h2>
+<ul>
+<li><strong>Return images from <code>checkOnly</code> exports.</strong> One tool fewer, but it makes poster vocabulary the entry point for every artifact, and that path rejects decks.</li>
+<li><strong>Write screenshots to disk and return paths.</strong> Copilot's agent can't open image files, which is the gap this closes.</li>
+</ul>
+
+<h2>Risks and mitigations</h2>
+<div class="table"><table><thead><tr><th>Risk</th><th>Mitigation</th></tr></thead><tbody><tr><td>Token cost in long sessions</td><td>Three images by default; <code>maxImages: 0</code> returns findings only</td></tr><tr><td>A browser start per check (1–2 s)</td><td>Acceptable for an end-of-step check; no daemon</td></tr><tr><td>Clients that ignore images</td><td>The text always carries every finding</td></tr></tbody></table></div>
+
+<h2>Rollout</h2>
+<ol><li>Core function and tests with a real browser.</li><li>VS Code and MCP tools; CLI <code>check</code> with <code>--fail-on</code>.</li><li>Instructions on every host: check before saying done, at most two fix rounds.</li></ol>
+
+<h2>Open questions</h2>
+<ol><li>A "Check" button in the preview. Deferred to a follow-up.</li><li>Running the check automatically on registration. Decided: no, registration stays browser-free.</li></ol>
+<h2>Sources</h2><ul class="sources"><li><code>openspec/changes/archive/2026-10-07-add-visual-check/proposal.md</code></li><li><code>openspec/changes/archive/2026-10-07-add-visual-check/design.md</code></li><li><code>packages/core/src/export/exportArtifact.ts</code></li><li><code>packages/core/src/poster/preflight.ts</code></li></ul>
+
+</main>
+</body>
+</html>

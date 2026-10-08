@@ -1,0 +1,12 @@
+{
+  "name": "example-exec-briefing-memo-board-memo",
+  "title": "Executive Briefing Memo — board memo style",
+  "description": "A one-page decision memo: the decision needed, a clear recommendation with confidence, key facts, tradeoffs, risks and next actions — compressed so a decision-maker can sign off in three minutes. The board memo style variant.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Turn these notes into a one-page executive briefing memo: the decision needed, a clear recommendation with a confidence level, key facts with their sources, a tradeoff table, risks and next actions."
+      }
+    }
+  }
+}

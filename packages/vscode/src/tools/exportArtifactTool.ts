@@ -27,6 +27,9 @@ interface ExportArtifactInput {
   shapeSheet?: boolean;
   target?: PasteTarget;
   campaignSheet?: boolean;
+  fps?: number;
+  duration?: number;
+  loop?: boolean;
 }
 
 export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifactInput> {
@@ -47,12 +50,14 @@ export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifa
   ): Promise<vscode.LanguageModelToolResult> {
     const config = vscode.workspace.getConfiguration('openDesign');
     const browserPath = config.get<string>('export.browserPath', '') || undefined;
+    const ffmpegPath = config.get<string>('export.ffmpegPath', '') || undefined;
     const packaging = options.input.format === 'standalone' || options.input.format === 'site';
     const result = await exportArtifact({
       ...options.input,
       workspaceRoot: getWorkspaceRoot(),
       outputDir: getOutputDirectory(),
       browserPath,
+      ...(['mp4', 'webm', 'gif'].includes(options.input.format ?? '') ? { ffmpegPath, isCancelled: () => token.isCancellationRequested } : {}),
       badgeSetting: packaging ? config.get<boolean>('share.badge', true) : undefined,
       lookupAspectHint: async (id) => (await this.contentIndex.getSkill(id))?.aspectHint,
     });

@@ -1,0 +1,12 @@
+{
+  "name": "example-info-funnel",
+  "title": "Funnel Infographic",
+  "description": "A 3–6 stage narrowing funnel that makes conversion rates, drop-off and filtering ratios obvious; vertical, sized for Stories and Xiaohongshu.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Make a vertical funnel infographic of our signup conversion: visitors, signups, trials, paid, retained, with absolute numbers and stage-to-stage conversion rates."
+      }
+    }
+  }
+}

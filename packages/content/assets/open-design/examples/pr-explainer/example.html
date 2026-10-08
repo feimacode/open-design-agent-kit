@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PR explainer: add campaign export functionality</title>
+<style>
+:root{--bg:#f7f6f3;--surface:#ffffff;--fg:#1c1e23;--muted:#555b66;--border:#e2dfd8;--accent:#2a56c6;--ok:#1d6b45;--ok-bg:#e3f2ea;--warn:#8a4b06;--warn-bg:#fbefdc;--bad:#a8231a;--bad-bg:#fbe5e2;--grey:#4f5560;--grey-bg:#ecebe8;
+--font:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16.5px/1.62 var(--font)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 72px}
+.kicker{font:600 12px/1.4 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+h1{font-size:34px;line-height:1.15;letter-spacing:-.02em;margin:0 0 14px}
+h2{font-size:19px;letter-spacing:-.01em;margin:44px 0 10px;padding-top:20px;border-top:1px solid var(--border)}
+h3{font-size:16px;margin:22px 0 6px}
+p,li{margin:0 0 10px}
+ul,ol{padding-left:22px;margin:0 0 12px}
+a{color:var(--accent)}
+code,pre{font-family:var(--mono);font-size:.88em}
+code{background:var(--grey-bg);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow-x:auto;line-height:1.5}
+pre code{background:none;padding:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--muted);font-size:14px;margin:0 0 6px}
+.status{display:inline-block;margin:0;padding:3px 10px;border-radius:999px;font:600 12.5px/1.5 var(--font);letter-spacing:.02em}
+.status[data-od-status=accepted],.status[data-od-status=closed],.status[data-od-status=reviewed]{background:var(--ok-bg);color:var(--ok)}
+.status[data-od-status=proposed],.status[data-od-status=draft]{background:var(--warn-bg);color:var(--warn)}
+.status[data-od-status=rejected]{background:var(--bad-bg);color:var(--bad)}
+.status[data-od-status=superseded],.status[data-od-status=deprecated]{background:var(--grey-bg);color:var(--grey)}
+.summary{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;padding:16px 20px;margin:24px 0 0;font-size:17px}
+.table{overflow-x:auto;margin:6px 0 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--border)}
+th{font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;background:#faf9f6}
+tr:last-child td{border-bottom:0}
+.sources{font-size:14px;color:var(--muted)}
+.sources li{margin:0 0 4px}
+@media (max-width:600px){main{padding:36px 18px 56px}h1{font-size:27px}body{font-size:16px}}
+</style>
+</head>
+<body>
+<main>
+
+<p class="kicker">Pull request explained</p>
+<h1>Add campaign export: channel sizes, fit-to-box text and a campaign sheet</h1>
+<div class="meta"><span><code>038ac77</code> → <code>main</code></span><span>1 commit</span><span>44 files</span><span><strong>+1041 −52</strong></span></div>
+<p class="summary">Marketing needs one message in every channel size. This adds nine canvas formats (LinkedIn, Open Graph, headers, an email header at 2×, and four display ads with 150&nbsp;KB budgets), a <code>data-od-fit</code> attribute that shrinks long translations until they fit, and a <code>campaignSheet</code> export option that shows every shape and every other piece of the campaign on one image.</p>
+
+<h2>Before and after</h2>
+<div class="table"><table><thead><tr><th></th><th>Before</th><th>After</th></tr></thead><tbody><tr><td>Display ads</td><td>No ad sizes; hand-typed <code>width</code>/<code>height</code>, no byte budget</td><td><code>preset: "banner-mrec"</code> and three more, each capped at 150 KB</td></tr><tr><td>German copy</td><td>Overflows and is reported as an error</td><td>Marked <code>data-od-fit</code>, it shrinks in 5% steps to 70%, and the shrink is reported as a note</td></tr><tr><td>Reviewing a campaign</td><td>One shape sheet per design</td><td><code>campaign-sheet.png</code>: every shape plus the landing page and email</td></tr></tbody></table></div>
+
+<h2>Risks</h2>
+<ul>
+<li><strong>Default shape sheets.</strong> Tiny ads would fail on every poster, so headers, banners and ads are left out of a sheet that names no presets (<code>inDefaultSheet: false</code>).</li>
+<li><strong>Fluid text.</strong> Fitting writes <code>calc((authored size) * k)</code>, not frozen pixels, so text still reflows across shapes.</li>
+</ul>
+
+<h2>How it was tested</h2>
+<ul><li><code>campaignKit.test.ts</code>: formats, budgets and the 2× email header; per-row fitting; the campaign sheet with a collection, all in a real browser.</li><li>Existing poster and export suites (70 tests) unchanged.</li></ul>
+
+<h2>Review tour</h2>
+<div class="table"><table><thead><tr><th>Order</th><th>Files</th><th>What to look for</th></tr></thead><tbody><tr><td>1</td><td><code>core/src/poster/formats.ts</code></td><td>The nine formats; <code>scale</code> and <code>inDefaultSheet</code></td></tr><tr><td>2</td><td><code>core/src/poster/pageScripts.ts</code></td><td><code>fitBoundText</code>: how fit is judged, and restoring the authored size</td></tr><tr><td>3</td><td><code>core/src/export/exportArtifact.ts</code></td><td>Per-shape scale; the campaign sheet built from the collection</td></tr><tr><td>4</td><td><code>core/src/poster/shapeSheet.ts</code></td><td>Image mime and size caps on tiles</td></tr><tr><td>5</td><td><code>core/src/test/unit/campaignKit.test.ts</code></td><td>Coverage of the above</td></tr><tr><td>6</td><td><code>vscode/package.json</code>, <code>mcp-server/src/*</code>, <code>cli/src/*</code></td><td>Schemas and flags; mechanical</td></tr><tr><td>7</td><td><code>content/**/campaign.md</code>, <code>surfaces.json</code>, generated prompts</td><td>The campaign flow text; the rest is generated</td></tr></tbody></table></div>
+<h2>Sources</h2><ul class="sources"><li><code>git show --stat 038ac77</code></li><li><code>git show 038ac77 -- packages/core/src</code></li><li><code>packages/core/src/test/unit/campaignKit.test.ts</code></li></ul>
+
+</main>
+</body>
+</html>

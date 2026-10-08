@@ -46,7 +46,7 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 
 | Option | Meaning |
 |---|---|
-| `--format <png\|jpeg\|pdf\|pptx\|standalone\|site\|email\|paste>` | Output format. Default `png`. `pptx` is for decks; `pdf` works for decks and pages. `standalone` is one self-contained `.html`; `site` is a deploy-ready folder; `email` is an [inbox-ready HTML email](../guides/html-email.md); `paste` is HTML to [paste into another editor](../guides/paste-html.md) (with `--target`). `jpg` is accepted for `jpeg`. |
+| `--format <png\|jpeg\|pdf\|pptx\|standalone\|site\|email\|paste\|mp4\|webm\|gif>` | Output format. Default `png`. `pptx` is for decks; `pdf` works for decks and pages. `standalone` is one self-contained `.html`; `site` is a deploy-ready folder; `email` is an [inbox-ready HTML email](../guides/html-email.md); `paste` is HTML to [paste into another editor](../guides/paste-html.md) (with `--target`). `jpg` is accepted for `jpeg`. `mp4`, `webm` and `gif` are [animations](../guides/export-animations.md). |
 | `--width <px>` | Width in CSS pixels, given with `--height`. Overrides the source skill's size, the measured slide size, or the page-PDF size. |
 | `--height <px>` | Height in CSS pixels, given with `--width`. |
 | `--scale <n>` | Device scale factor, 1–3. Default 2 for deck `pdf`/`pptx`, else 1. |
@@ -64,6 +64,10 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--name-field <column>` | The data column that names each row's file. Default: row numbers. |
 | `--split` | PDF data exports: one PDF per row instead of one multi-page PDF. |
 | `--presets <list>` | Fluid designs: several shapes in one export, comma-separated, e.g. `a3,ig-portrait,story`. |
+| `--fps <n>` | `mp4`/`webm`/`gif`: frames per second, 1–60. Default 30 (15 for GIF). |
+| `--duration <seconds>` | `mp4`/`webm`/`gif`: length, 0.5–60. Default: from the page. |
+| `--loop`, `--no-loop` | `gif`: loop forever (the default) or play once. |
+| `--ffmpeg <path>` | ffmpeg executable. Default: [`OPEN_DESIGN_FFMPEG_PATH`](settings-and-env.md#open_design_ffmpeg_path), then auto-detect. |
 | `--campaign-sheet` | Fluid designs: also write `campaign-sheet.png`, every shape plus the other pieces in the master's collection. See [Run a campaign](../guides/campaigns.md). |
 | `--shape-sheet` | Fluid designs: also write `<name>-shapes.png`, the design at every shape (all formats unless `--presets`). |
 | `--target <wechat\|notion\|newsletter\|generic>` | `--format paste` only: where it will be pasted. See [Paste into WeChat, Notion and newsletters](../guides/paste-html.md). |
@@ -114,6 +118,7 @@ npx @feimacode/open-design-agent-kit check <entryPath> [options]
 | `--viewport <name:WxH>` | Pages: a viewport to check instead of desktop `1440x900` and mobile `390x844`, e.g. `tablet:768x1024`. Repeat for several (at most 4). |
 | `--slides <list>` | Decks only: 1-based slide numbers, e.g. `1,3`. |
 | `--screenshots <dir>` | Write the screenshots as JPEG files named after their labels (`desktop.jpg`, `mobile.jpg`, `slides-1-12.jpg`) to this folder. Without it, no screenshots are rendered. |
+| `--at <seconds>` | Animations: also capture these moments, comma-separated (e.g. `0,1.5,3`). Write them with `--screenshots`. |
 | `--max-images <n>` | With `--screenshots`: how many, 0–6. Default 3. |
 | `--fail-on <error\|warning>` | Exit `1` when a finding at or above this severity exists, to gate CI. |
 | `--browser <path>` | Browser executable. Default: [`OPEN_DESIGN_BROWSER_PATH`](settings-and-env.md#open_design_browser_path), then auto-detect. |

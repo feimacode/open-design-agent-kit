@@ -10,6 +10,7 @@ import type { Browser, Page } from 'puppeteer-core';
 import { readArtifact } from '../vendored/artifactCreate';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { openArtifactPage, type ArtifactPageSession } from './artifactPage';
+import { VIRTUAL_CLOCK_SCRIPT } from './motion/virtualClock';
 import { findBrowser } from './browserDiscovery';
 import { captureDeckSlides, countSlides, validateSlideNumbers } from './deck/captureDeck';
 import { collectDiagramFindings, waitForDiagrams } from './diagramPageScripts';
@@ -56,6 +57,8 @@ export interface CheckArtifactOptions {
   settleMs?: number;
   /** The workspace's Open Design output directory, for resolving recorded sources. Default ".open-design". */
   outputDir?: string;
+  /** Up to 6 times in seconds: also capture the artifact at those moments on a virtual clock (animations). */
+  at?: number[];
 }
 
 export interface CheckImage {
@@ -116,6 +119,9 @@ function validateOptions(o: CheckArtifactOptions): string | undefined {
   }
   if (o.slides !== undefined && (!Array.isArray(o.slides) || o.slides.length === 0 || !o.slides.every((n) => Number.isInteger(n) && n >= 1))) {
     return 'slides must be a non-empty list of 1-based slide numbers.';
+  }
+  if (o.at !== undefined && (!Array.isArray(o.at) || o.at.length === 0 || o.at.length > 6 || !o.at.every((t) => typeof t === 'number' && t >= 0 && t <= 60))) {
+    return 'at must list 1–6 times in seconds, each between 0 and 60.';
   }
   if (o.viewports !== undefined) {
     if (!Array.isArray(o.viewports) || o.viewports.length === 0 || o.viewports.length > MAX_VIEWPORTS) return `viewports must list 1–${MAX_VIEWPORTS} viewports.`;
@@ -221,7 +227,9 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
   const warnings: string[] = [];
   const relEntry = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath));
   let session: ArtifactPageSession | undefined;
+  let timed: CheckImage[] = [];
   try {
+    if (options.at && maxImages > 0) timed = await captureAtTimes(options, browser.executablePath, viewports[0], warnings);
     session = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry, executablePath: browser.executablePath });
     const { browser: instance, page } = session;
     await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
@@ -230,18 +238,23 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
     const slideCount = await countSlides(page);
     const isDeck = kind === 'deck' || renderer === 'deck-html' || (slideCount >= 2 && (sourceSkillId ?? '').startsWith('od:deck:'));
     if (options.slides !== undefined && !isDeck) return fail('invalid-args', "slides applies to decks, and this artifact isn't one.");
-    const done = (mode: CheckMode, out: { findings: Finding[]; images: CheckImage[]; omitted: string[]; slidesChecked?: number[] }): CheckArtifactResult => ({
+    const done = (mode: CheckMode, out: { findings: Finding[]; images: CheckImage[]; omitted: string[]; slidesChecked?: number[] }): CheckArtifactResult => {
+      // Timestamped captures (`at`) come first and share the image budget with the regular ones.
+      const images = timed.length > 0 ? [...timed, ...out.images].slice(0, maxImages) : out.images;
+      const dropped = timed.length > 0 ? [...timed, ...out.images].slice(maxImages).map((i) => i.label) : [];
+      return {
       viewports: mode === 'page' ? viewports : undefined,
       ok: true,
       mode,
       findings: [...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
-      images: out.images,
-      omitted: out.omitted,
+      images,
+      omitted: [...out.omitted, ...dropped],
       slideCount: mode === 'deck' ? slideCount : undefined,
       slidesChecked: out.slidesChecked,
       warnings,
       browserPath: browser.executablePath,
-    });
+      };
+    };
 
     if (isDeck && slideCount > 0) {
       const slideError = validateSlideNumbers(options.slides, slideCount);
@@ -267,6 +280,31 @@ export async function checkArtifact(options: CheckArtifactOptions): Promise<Chec
     return fail('capture-failed', `Check failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     await session?.close();
+  }
+}
+
+/** Captures the first viewport (or the card) at each time in `at` on the virtual clock, labelled t=<seconds>s. */
+async function captureAtTimes(options: CheckArtifactOptions, executablePath: string, viewport: CheckViewport, warnings: string[]): Promise<CheckImage[]> {
+  const relEntry = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath));
+  const session = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry, executablePath });
+  try {
+    const { browser, page } = session;
+    await page.evaluateOnNewDocument(VIRTUAL_CLOCK_SCRIPT);
+    await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
+    await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 300, warnings);
+    const card = await page.$(CARD_SELECTOR);
+    const box = card ? await card.boundingBox() : null;
+    const clip = box && box.width >= 1 && box.height >= 1 ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined;
+    const images: CheckImage[] = [];
+    for (const t of [...options.at!].sort((a, b) => a - b)) {
+      await page.evaluate(`window.__odClock.advanceTo(${t * 1000})`);
+      await page.evaluate('window.__odClock.painted()');
+      const png = Buffer.from(await page.screenshot({ type: 'png', ...(clip ? { clip } : {}) }));
+      images.push(await toCheckImage(browser, `t=${t}s`, png));
+    }
+    return images;
+  } finally {
+    await session.close();
   }
 }
 

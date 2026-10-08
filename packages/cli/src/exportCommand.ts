@@ -37,6 +37,11 @@ export interface ExportCliOptions {
   /** site, email, paste: where the files will be hosted. */
   baseUrl?: string;
   campaignSheet?: boolean;
+  fps?: string;
+  duration?: string;
+  /** --loop / --no-loop (gif). */
+  loop?: boolean;
+  ffmpeg?: string;
 }
 
 export class ExportArgsError extends Error {}
@@ -66,9 +71,9 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
   let format: ExportFormat | undefined;
   if (flags.format !== undefined) {
     const f = flags.format.toLowerCase();
-    if (f === 'png' || f === 'pdf' || f === 'pptx' || f === 'standalone' || f === 'site' || f === 'email' || f === 'paste') format = f;
+    if (f === 'png' || f === 'pdf' || f === 'pptx' || f === 'standalone' || f === 'site' || f === 'email' || f === 'paste' || f === 'mp4' || f === 'webm' || f === 'gif') format = f;
     else if (f === 'jpeg' || f === 'jpg') format = 'jpeg';
-    else throw new ExportArgsError(`--format must be png, jpeg, pdf, pptx, standalone, site, email or paste (got "${flags.format}").`);
+    else throw new ExportArgsError(`--format must be png, jpeg, pdf, pptx, standalone, site, email, paste, mp4, webm or gif (got "${flags.format}").`);
   }
   let slides: number[] | undefined;
   if (flags.slides !== undefined) {
@@ -103,6 +108,10 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     target: parseTarget(flags.target),
     baseUrl: flags.baseUrl,
     campaignSheet: flags.campaignSheet,
+    fps: parseIntFlag('fps', flags.fps),
+    duration: parseNumberFlag('duration', flags.duration),
+    loop: flags.loop,
+    ffmpegPath: flags.ffmpeg,
   };
 }
 

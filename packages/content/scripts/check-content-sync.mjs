@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { DEFAULT_OPEN_DESIGN_REF } from './sync-open-design-content.mjs';
 import { LOCAL_ROOT, findRedundantOverrides, listOverlayFiles } from './apply-local-overlay.mjs';
 import { checkSurfaces } from './surfaces.mjs';
+import { checkPorts } from './ports.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const assetsRoot = path.join(__dirname, '..', 'assets', 'open-design');
@@ -88,9 +89,19 @@ async function checkSurfaceCatalog() {
   }
 }
 
+// Ported content keeps its provenance (openspec add-dev-doc-templates).
+async function checkPortProvenance() {
+  const problems = await checkPorts(LOCAL_ROOT, path.join(__dirname, '..', '..', '..', 'docs', 'contributing', 'upstream-ports.md'));
+  if (problems.length > 0) {
+    console.error(`Port provenance problems (packages/content/local/ports.json):\n- ${problems.join('\n- ')}`);
+    process.exit(1);
+  }
+}
+
 async function main() {
   await checkLocalOverlay();
   await checkSurfaceCatalog();
+  await checkPortProvenance();
   await checkRedundantOverrides();
 
   let manifest;

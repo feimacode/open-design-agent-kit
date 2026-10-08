@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sample postmortem: exports hung on a confined browser</title>
+<style>
+:root{--bg:#f7f6f3;--surface:#ffffff;--fg:#1c1e23;--muted:#555b66;--border:#e2dfd8;--accent:#2a56c6;--ok:#1d6b45;--ok-bg:#e3f2ea;--warn:#8a4b06;--warn-bg:#fbefdc;--bad:#a8231a;--bad-bg:#fbe5e2;--grey:#4f5560;--grey-bg:#ecebe8;
+--font:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16.5px/1.62 var(--font)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 72px}
+.kicker{font:600 12px/1.4 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+h1{font-size:34px;line-height:1.15;letter-spacing:-.02em;margin:0 0 14px}
+h2{font-size:19px;letter-spacing:-.01em;margin:44px 0 10px;padding-top:20px;border-top:1px solid var(--border)}
+h3{font-size:16px;margin:22px 0 6px}
+p,li{margin:0 0 10px}
+ul,ol{padding-left:22px;margin:0 0 12px}
+a{color:var(--accent)}
+code,pre{font-family:var(--mono);font-size:.88em}
+code{background:var(--grey-bg);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow-x:auto;line-height:1.5}
+pre code{background:none;padding:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--muted);font-size:14px;margin:0 0 6px}
+.status{display:inline-block;margin:0;padding:3px 10px;border-radius:999px;font:600 12.5px/1.5 var(--font);letter-spacing:.02em}
+.status[data-od-status=accepted],.status[data-od-status=closed],.status[data-od-status=reviewed]{background:var(--ok-bg);color:var(--ok)}
+.status[data-od-status=proposed],.status[data-od-status=draft]{background:var(--warn-bg);color:var(--warn)}
+.status[data-od-status=rejected]{background:var(--bad-bg);color:var(--bad)}
+.status[data-od-status=superseded],.status[data-od-status=deprecated]{background:var(--grey-bg);color:var(--grey)}
+.summary{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;padding:16px 20px;margin:24px 0 0;font-size:17px}
+.table{overflow-x:auto;margin:6px 0 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--border)}
+th{font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;background:#faf9f6}
+tr:last-child td{border-bottom:0}
+.sources{font-size:14px;color:var(--muted)}
+.sources li{margin:0 0 4px}
+@media (max-width:600px){main{padding:36px 18px 56px}h1{font-size:27px}body{font-size:16px}}
+</style>
+</head>
+<body>
+<main>
+
+<p class="kicker">Postmortem · <strong>Sample</strong>: an illustrative incident, not a real event</p>
+<h1>Exports hung for 47 minutes on a confined Chromium</h1>
+<div class="meta"><p class="status" data-od-status="reviewed">Reviewed</p><span>SEV3</span><span>Incident INC-0420 (sample)</span><span>Authors: export maintainers</span></div>
+<p class="summary">Image exports from CI runners that picked up a snap-packaged Chromium waited until the 60-second protocol timeout, then failed, for 47 minutes. 312 export jobs failed. A preference order that tried snap Chromium last, and a clearer error, fixed it.</p>
+
+<h2>Impact</h2>
+<div class="table"><table><thead><tr><th>Measure</th><th>Value</th><th>Source</th></tr></thead><tbody><tr><td>Duration</td><td>47 minutes</td><td>CI job timestamps (sample)</td></tr><tr><td>Export jobs failed</td><td>312</td><td>CI job log (sample)</td></tr><tr><td>Users affected</td><td>Teams exporting on Ubuntu runners</td><td>Support tickets (sample)</td></tr></tbody></table></div>
+
+<h2>Timeline (UTC)</h2>
+<div class="table"><table><thead><tr><th>Time</th><th>Event</th></tr></thead><tbody><tr><td>09:12</td><td>Runner image updated; <code>/snap/bin/chromium</code> is now the first browser found.</td></tr><tr><td>09:20</td><td>First export job fails with a protocol timeout.</td></tr><tr><td>09:41</td><td>On-call notices the failure rate and starts investigating.</td></tr><tr><td>09:52</td><td>Snap confinement identified: the browser can't read the hidden <code>.open-design/</code> folder.</td></tr><tr><td>09:59</td><td>Mitigated by setting <code>OPEN_DESIGN_BROWSER_PATH</code> on the runners.</td></tr></tbody></table></div>
+
+<h2>Root cause</h2>
+<ol><li>Browser discovery returned the first executable it found.</li><li>Snap's confinement blocks hidden directories under <code>$HOME</code> and gives the browser a private <code>/tmp</code>.</li><li>The page never loaded, so export waited for the full protocol timeout instead of failing fast.</li></ol>
+<h2>Contributing factors</h2>
+<ul><li>The timeout error didn't say which browser was used.</li><li>No test covered a browser that launches but can't read the workspace.</li></ul>
+
+<h2>What went well</h2>
+<ul><li>The <code>OPEN_DESIGN_BROWSER_PATH</code> override let on-call mitigate without a release.</li></ul>
+<h2>What went badly</h2>
+<ul><li>Detection relied on a person noticing the failure rate.</li></ul>
+
+<h2>Action items</h2>
+<div class="table"><table><thead><tr><th>Action</th><th>Owner</th><th>Priority</th><th>Due</th></tr></thead><tbody><tr><td>Try snap Chromium last in discovery</td><td>Export</td><td>P1</td><td>Done</td></tr><tr><td>Name the browser path in every export error</td><td>Export</td><td>P1</td><td>Done</td></tr><tr><td>Alert on export failure rate in CI</td><td>Platform</td><td>P2</td><td>2 weeks</td></tr></tbody></table></div>
+<h2>Sources</h2>
+<p class="sources">This is a sample written to show the format. A real postmortem lists its incident notes, chat timeline, dashboards and the commits that caused and fixed the issue. The snap-confinement behaviour itself is real and is documented in <code>packages/core/src/export/browserDiscovery.ts</code>.</p>
+
+</main>
+</body>
+</html>

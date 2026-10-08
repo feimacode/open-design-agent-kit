@@ -1,0 +1,12 @@
+{
+  "name": "example-changelog-page",
+  "title": "Open Design Agent Kit changelog",
+  "description": "An example of the changelog-page skill: Changelog: Open Design Agent Kit.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Make a changelog page for our last three releases from the git tags and commits."
+      }
+    }
+  }
+}

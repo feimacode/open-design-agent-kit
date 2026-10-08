@@ -1,0 +1,12 @@
+{
+  "name": "example-competitive-teardown",
+  "title": "Competitive Teardown",
+  "description": "Positioning map, feature matrix, pricing comparison and opportunity windows: turns competitor research into a product decision report.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Write a competitive teardown of these products: positioning map, feature matrix, pricing comparison, user sentiment, and where we should play."
+      }
+    }
+  }
+}

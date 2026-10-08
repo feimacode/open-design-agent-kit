@@ -7,6 +7,7 @@ interface CheckArtifactInput {
   viewports?: CheckViewport[];
   slides?: number[];
   maxImages?: number;
+  at?: number[];
 }
 
 export class CheckArtifactTool implements vscode.LanguageModelTool<CheckArtifactInput> {

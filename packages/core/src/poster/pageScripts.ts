@@ -111,7 +111,8 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
       let clipped = false;
       for (let a = el; a; a = a.parentElement) {
         const acs = getComputedStyle(a);
-        if (acs.overflowX !== 'visible' || acs.overflowY !== 'visible') {
+        // Only hidden/clip cut text off; a scroll container (auto/scroll) lets it be scrolled into view.
+        if (acs.overflowX === 'hidden' || acs.overflowX === 'clip' || acs.overflowY === 'hidden' || acs.overflowY === 'clip') {
           if (outside(r, a.getBoundingClientRect(), 1)) {
             clipped = true;
             add({ check: 'overflow', severity: 'error', message: name + (a === card ? ' runs past the edge of the card and is cut off.' : ' is clipped by its container ' + describe(a).split(' "')[0] + ' — the text is longer than its box.'), selector: name });

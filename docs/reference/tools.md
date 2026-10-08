@@ -380,6 +380,7 @@ What it renders depends on the artifact:
 | `viewports` | `{ name, width, height }`[] (1–4) | no | Pages only: the viewports to check instead of desktop and mobile. Ignored (with a warning) for card designs. |
 | `slides` | integer[] | no | Decks only: 1-based slide numbers to check. Default: every slide; the contact sheet shows the first 12 of them. |
 | `maxImages` | integer 0–6 | no | How many screenshots to attach. Default 3. `0` returns findings only. |
+| `at` | number[] (up to 6) | no | Animations: also capture the artifact at these times in seconds, on a virtual clock, labelled `t=<seconds>s`. They come first and share `maxImages`. |
 
 Screenshots are JPEG, at most 1568 px on the long edge. A page's first screen at each viewport comes first; further screens down a tall page fill the remaining images, and the result lists what was left out.
 
@@ -404,7 +405,7 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `entryPath` | string | yes | The registered artifact's entry file. |
-| `format` | `png` · `jpeg` · `pdf` · `pptx` · `standalone` · `site` · `email` · `paste` | no | Default `png`. `pdf` works for decks (one page per slide) and pages (printed, vector). `pptx` is for decks only. `standalone` writes one self-contained `exports/<name>.html`. `site` writes a deploy-ready `exports/site/` folder. See [Share and publish](../guides/share-and-publish.md). `email` writes an inbox-ready `exports/<name>.email.html` and `.email.txt` ([HTML email](../guides/html-email.md)). `paste` writes `exports/<name>.<target>.html` for pasting into another editor. |
+| `format` | `png` · `jpeg` · `pdf` · `pptx` · `standalone` · `site` · `email` · `paste` · `mp4` · `webm` · `gif` | no | Default `png`. `pdf` works for decks (one page per slide) and pages (printed, vector). `pptx` is for decks only. `standalone` writes one self-contained `exports/<name>.html`. `site` writes a deploy-ready `exports/site/` folder. See [Share and publish](../guides/share-and-publish.md). `email` writes an inbox-ready `exports/<name>.email.html` and `.email.txt` ([HTML email](../guides/html-email.md)). `paste` writes `exports/<name>.<target>.html` for pasting into another editor. `mp4`, `webm` and `gif` [render an animation frame by frame](../guides/export-animations.md) and need an installed ffmpeg. |
 | `quality` | integer 1–100 | no | JPEG quality. Default 90. |
 | `width`, `height` | integer 16–8192 | no | CSS pixels, given together. They override the skill's size for images, the measured slide size for decks, or the page size for page PDFs. |
 | `scale` | number 1–3 | no | Device scale factor. Default 2 for deck `pptx`/`pdf`, 1 otherwise. |
@@ -425,6 +426,9 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `split` | boolean | no | With `data` and a PDF: one PDF per row instead of one multi-page PDF. |
 | `presets` | [format id](#canvas-formats)[] (1–15) | no | Fluid designs only: several shapes in one export, each reflowed and checked at its own shape, written as `<name>-<format>.<ext>` (PDF for print shapes, PNG for screen shapes unless `format` is given). Not with `preset`, `width` or `height`. With `data`: one file per row per shape, at most 400. |
 | `shapeSheet` | boolean | no | Fluid designs only: also write `exports/<name>-shapes.png`, the design at every shape in `presets` (default: the poster and social formats, not headers, banners or ads), each marked when preflight found errors. With `checkOnly`, it's the only file written. |
+| `fps` | integer 1–60 | no | `mp4`/`webm`/`gif` only: frames per second. Default 30 (15 for GIF). See [Export animations](../guides/export-animations.md). |
+| `duration` | number 0.5–60 | no | `mp4`/`webm`/`gif` only: length in seconds. Default: the sum of the frames' `data-duration`, else the longest CSS or Web animation, else 6. |
+| `loop` | boolean | no | `gif` only: loop forever. Default true. |
 | `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. See [Run a campaign](../guides/campaigns.md). |
 
 **Result (text):** each written file with its pixel size, file size and format; for decks, the slide count and the stage size and scale used; where the size came from; for print PDFs, the trim size, bleed and a note that the PDF is RGB; for page exports, the **preflight** findings, errors first ([the checks](../guides/posters.md#preflight-checks)); and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Posters and print](../guides/posters.md).

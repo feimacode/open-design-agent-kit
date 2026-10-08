@@ -24,6 +24,8 @@ export interface CheckCliOptions {
   workspace?: string;
   /** Exit non-zero when a finding at or above this severity exists. */
   failOn?: string;
+  /** Comma-separated seconds, e.g. 0,1.5,3. */
+  at?: string;
 }
 
 export type FailOn = 'error' | 'warning';
@@ -56,7 +58,15 @@ export function parseCheckFlags(flags: CheckCliOptions): { options: Omit<CheckAr
     if (flags.failOn !== 'error' && flags.failOn !== 'warning') throw new ExportArgsError(`--fail-on must be error or warning (got "${flags.failOn}").`);
     failOn = flags.failOn;
   }
-  return { options: { viewports, slides, maxImages, browserPath: flags.browser }, failOn };
+  let at: number[] | undefined;
+  if (flags.at !== undefined) {
+    at = flags.at.split(',').map((part) => {
+      const n = Number(part.trim());
+      if (!Number.isFinite(n) || n < 0) throw new ExportArgsError(`--at must be comma-separated seconds like 0,1.5,3 (got "${flags.at}").`);
+      return n;
+    });
+  }
+  return { options: { viewports, slides, maxImages, browserPath: flags.browser, at }, failOn };
 }
 
 /** A screenshot label as a file name: "desktop 2/3" → "desktop-2-3.jpg". */

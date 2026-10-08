@@ -54,6 +54,8 @@ export * from './export/browserDiscovery';
 export * from './export/exportArtifact';
 export * from './export/checkArtifact';
 export * from './export/inlineExport';
+export * from './export/motion/ffmpeg';
+export * from './export/motion/motionExport';
 export * from './generation/diagramRuntime';
 export * from './export/exportFormats';
 export * from './export/exportSize';

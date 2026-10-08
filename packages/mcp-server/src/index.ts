@@ -419,7 +419,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'export_open_design_artifact',
       description:
-        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions. POSTERS AND PREFLIGHT: page exports run preflight checks (text overflow, safe area, print bleed size, minimum type size, contrast, emoji, image resolution for print, QR codes that don't decode, broken assets) and list findings, errors first; findings never block the export. Pass checkOnly: true to check without writing files, and fix every error before the real export. Pass preset with a format id (\"ig-portrait\", \"story\", \"a3\"…) rather than width/height/selector/maxBytes. Pass data with a spreadsheet to export one poster, card or certificate per row. FLUID POSTERS (cards with data-od-fluid): preset reflows the design to that shape in the rendered page (the file is unchanged); presets exports several shapes at once; shapeSheet shows them all in one image. EMAIL AND PASTE: format \"email\" writes an inbox-safe email (and checks for what breaks in Gmail and Outlook: flex/grid layout, SVG, transforms, local images, missing alt, width over 640px, size over 102 KB); format \"paste\" with target wechat|notion|newsletter|generic writes an inlined fragment. Both compute styles in the browser, so Tailwind or any runtime CSS is inlined. To use the result, the user opens the file in a browser, selects all, copies and pastes.",
+        "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions. POSTERS AND PREFLIGHT: page exports run preflight checks (text overflow, safe area, print bleed size, minimum type size, contrast, emoji, image resolution for print, QR codes that don't decode, broken assets) and list findings, errors first; findings never block the export. Pass checkOnly: true to check without writing files, and fix every error before the real export. Pass preset with a format id (\"ig-portrait\", \"story\", \"a3\"…) rather than width/height/selector/maxBytes. Pass data with a spreadsheet to export one poster, card or certificate per row. FLUID POSTERS (cards with data-od-fluid): preset reflows the design to that shape in the rendered page (the file is unchanged); presets exports several shapes at once; shapeSheet shows them all in one image. EMAIL AND PASTE: format \"email\" writes an inbox-safe email (and checks for what breaks in Gmail and Outlook: flex/grid layout, SVG, transforms, local images, missing alt, width over 640px, size over 102 KB); format \"paste\" with target wechat|notion|newsletter|generic writes an inlined fragment. Both compute styles in the browser, so Tailwind or any runtime CSS is inlined. To use the result, the user opens the file in a browser, selects all, copies and pastes. VIDEO AND GIF: format \"mp4\", \"webm\" or \"gif\" renders animated HTML (CSS animations, requestAnimationFrame, timers, data-duration storyboards, WebGL) frame by frame and encodes it with an installed ffmpeg (never downloaded; a 'no-ffmpeg' or 'ffmpeg-missing-encoder' error says what to install). Up to 60 seconds. Use maxBytes for platform limits (re-encodes smaller). HyperFrames compositions still render with the HyperFrames CLI.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -429,9 +429,9 @@ const TOOL_DEFS: ToolDef[] = [
           },
           format: {
             type: 'string',
-            enum: ['png', 'jpeg', 'pdf', 'pptx', 'standalone', 'site', 'email', 'paste'],
+            enum: ['png', 'jpeg', 'pdf', 'pptx', 'standalone', 'site', 'email', 'paste', 'mp4', 'webm', 'gif'],
             description:
-              'Output format. png/jpeg: images; pdf: deck slides or a printed page; pptx: decks only; standalone: one self-contained .html with local CSS, scripts, images and fonts inlined (to attach or send); site: a deploy-ready folder (exports/site/) with index.html and its files (to publish — prefer publish_open_design_artifact, which builds it for you). standalone/site need no browser. Default png. email: an inbox-ready HTML email (exports/<name>.email.html, styles inlined, 600px column, preheader, dark-mode meta) plus a plain-text exports/<name>.email.txt, with email preflight; pass baseUrl once the artifact\'s assets are hosted so image URLs become absolute. paste: an inlined HTML fragment to paste into another editor (exports/<name>.<target>.html); needs target.',
+              'Output format. png/jpeg: images; pdf: deck slides or a printed page; pptx: decks only; standalone: one self-contained .html with local CSS, scripts, images and fonts inlined (to attach or send); site: a deploy-ready folder (exports/site/) with index.html and its files (to publish — prefer publish_open_design_artifact, which builds it for you). standalone/site need no browser. Default png. email: an inbox-ready HTML email (exports/<name>.email.html, styles inlined, 600px column, preheader, dark-mode meta) plus a plain-text exports/<name>.email.txt, with email preflight; pass baseUrl once the artifact\'s assets are hosted so image URLs become absolute. paste: an inlined HTML fragment to paste into another editor (exports/<name>.<target>.html); needs target. mp4, webm, gif: animate the page on a virtual clock (frame-exact, the same on every run) and encode it with an installed ffmpeg; size from width/height, preset or the skill, duration from the page unless you pass duration.',
           },
           quality: {
             type: 'integer',
@@ -540,6 +540,25 @@ const TOOL_DEFS: ToolDef[] = [
             description:
               "Fluid designs only: also write exports/<name>-shapes.png, one image showing the design at every shape in presets (default: all catalog formats), each labelled and marked when preflight found errors there. With checkOnly: true it is the only file written. Use it to show the user how a poster looks in every size.",
           },
+          fps: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 60,
+            description:
+              "mp4/webm/gif only: frames per second. Default 30 (15 for GIF).",
+          },
+          duration: {
+            type: 'number',
+            minimum: 0.5,
+            maximum: 60,
+            description:
+              "mp4/webm/gif only: length in seconds. Default: the sum of the frames' data-duration, else the longest CSS/Web animation, else 6.",
+          },
+          loop: {
+            type: 'boolean',
+            description:
+              "gif only: loop forever. Default true.",
+          },
           campaignSheet: {
             type: 'boolean',
             description:
@@ -557,6 +576,9 @@ const TOOL_DEFS: ToolDef[] = [
           format?: 'png' | 'jpeg' | 'pdf' | 'pptx' | 'standalone' | 'site' | 'email' | 'paste';
           target?: 'wechat' | 'notion' | 'newsletter' | 'generic';
           campaignSheet?: boolean;
+          fps?: number;
+          duration?: number;
+          loop?: boolean;
           quality?: number;
           width?: number;
           height?: number;
@@ -627,6 +649,13 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'array',
             description: 'Decks only: 1-based slide numbers to check (default every slide; the contact sheet shows the first 12 of them).',
             items: { type: 'integer', minimum: 1 },
+          },
+          at: {
+            type: 'array',
+            maxItems: 6,
+            items: { type: 'number', minimum: 0, maximum: 60 },
+            description:
+              "Animations: up to 6 times in seconds. Also captures the artifact at those moments on a virtual clock (labelled t=<seconds>s), so you can see the start, middle and end of an animation. They share maxImages with the regular screenshots.",
           },
           maxImages: {
             type: 'integer',

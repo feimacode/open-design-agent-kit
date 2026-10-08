@@ -28,6 +28,8 @@ All of them are explicit-only. To see the current list, type `/od-` in the chat 
 | Prompt | What it does |
 |---|---|
 | `/open-design-new` | Start a new design by picking a [surface](tools.md#surfaces) (wireframe, poster, diagram…): asks only what's missing, then builds it with the right recipe. The Gallery's **New design** tiles prefill it. |
+| `/open-design-campaign` | [Run a campaign](../guides/campaigns.md): one master design in every channel size and language, checked, with a campaign sheet. |
+| `/open-design-docs` | Turn a folder of Markdown docs into [one designed page per file](../guides/engineering-docs.md#a-folder-of-markdown-docs), and refresh only the changed ones on a re-run. |
 | `/open-design-generate` | Generate a design from a brief: picks a skill, prepares the brief, writes and registers the artifact. |
 | `/open-design-list-skills` | Browse the skill catalog. |
 | `/open-design-custom-design-system` | Invent a design system for your brand. |
@@ -75,6 +77,8 @@ Installed by the plugin (`/plugin install open-design`) or by [`init --tools cla
 |---|---|---|
 | `open-design` | picked up from any design request | yes |
 | `open-design-new` | `/open-design:open-design-new` (plugin) or `/open-design-new` (init) | yes |
+| `open-design-campaign` | `/open-design:open-design-campaign` (plugin) or `/open-design-campaign` (init) | yes, from campaign and multi-size requests |
+| `open-design-docs` | `/open-design:open-design-docs` (plugin) or `/open-design-docs` (init) | yes, from requests to turn Markdown docs into pages |
 | `open-design-social-post` | `/open-design:open-design-social-post` (plugin) or `/open-design-social-post` (init) | yes, from social-post requests |
 | `open-design-explore` | `/open-design:open-design-explore` (plugin) or `/open-design-explore` (init) | yes, from requests for several options |
 | `open-design-publish` | `/open-design:open-design-publish` (plugin) or `/open-design-publish` (init) | yes, from requests to share, publish or get a link |
@@ -83,7 +87,7 @@ Installed by the plugin (`/plugin install open-design`) or by [`init --tools cla
 
 The MCP server also offers **MCP prompts**. In Claude Code they appear as `/mcp__open-design__<name>`:
 
-- `open-design-new`, `open-design-social-post`, `open-design-explore`, `open-design-publish` and `open-design-deck-from-source` take an optional `brief` argument.
+- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-explore`, `open-design-publish` and `open-design-deck-from-source` take an optional `brief` argument.
 - There's one prompt per remixable example, named `od-<mode>-<id>`, e.g. `od-deck-deck-guizang-editorial-example`. Selecting one prefills a remix request; nothing runs until you send it.
 
 ## Codex
@@ -94,6 +98,8 @@ Skills in `.agents/skills/` (from [`init --tools codex`](cli.md#init) or copied 
 |---|---|
 | `open-design` | yes |
 | `open-design-new` | yes |
+| `open-design-campaign` | yes |
+| `open-design-docs` | yes |
 | `open-design-social-post` | yes |
 | `open-design-explore` | yes |
 | `open-design-publish` | yes |

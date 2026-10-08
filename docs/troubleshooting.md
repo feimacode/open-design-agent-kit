@@ -93,6 +93,18 @@ The warning `Slide N looks blank` means the capture came out as one flat color. 
 
 HyperFrames renders need FFmpeg. Install it (`brew install ffmpeg`, `sudo apt install ffmpeg`, or [ffmpeg.org](https://ffmpeg.org/)) so that `ffmpeg -version` works in the same terminal, then render again.
 
+### Export failed (no-ffmpeg)
+
+Exporting an animation as MP4, WebM or GIF needs ffmpeg, which is never downloaded for you. Install it (`brew install ffmpeg`, `sudo apt install ffmpeg`, `winget install ffmpeg`, or [ffmpeg.org](https://ffmpeg.org/)), or point [`OPEN_DESIGN_FFMPEG_PATH`](reference/settings-and-env.md#open_design_ffmpeg_path) (VS Code: `openDesign.export.ffmpegPath`) at one. The error lists where it looked.
+
+### Export failed (ffmpeg-missing-encoder)
+
+An ffmpeg was found, but it can't make the format you asked for. The message says what it can make. The usual case is Playwright's bundled ffmpeg, which only encodes WebM (VP8): MP4 needs H.264 and GIF needs the palette filters. Install a full ffmpeg build, or export as `webm`.
+
+### An animation looks wrong in the video
+
+Exports run the page on a virtual clock, so CSS animations, `requestAnimationFrame` and timers all advance frame by frame. Two things don't: Web Workers (they keep real time) and `<video>` elements (they show their current frame). The export warns about both. To see a moment before exporting, check with `at`, for example `[0, 1.5, 3]`.
+
 ### The HyperFrames render hangs
 
 A render stalls partway through capturing frames. Some agent sandboxes (for example, sandboxed shell tools on macOS) stop headless Chrome from finishing. Run the same `npx hyperframes render …` command outside the sandbox: allow it in your agent, or run it yourself, or use [`render-video`](reference/cli.md#render-video). Renders take minutes; run them as a background or long-running command.

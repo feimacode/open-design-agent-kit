@@ -1,0 +1,12 @@
+{
+  "name": "example-experiment-readout-product-readout",
+  "title": "Experiment Readout — product readout style",
+  "description": "Hypothesis, metrics, results, interpretation and decision: turns an A/B test or product experiment into a ship / stop / iterate recommendation. The product readout style variant.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Turn this A/B test data into an experiment readout: hypothesis, primary and guardrail metrics, results with confidence, interpretation, and a ship / stop / iterate decision."
+      }
+    }
+  }
+}
