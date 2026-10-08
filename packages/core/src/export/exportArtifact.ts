@@ -9,6 +9,8 @@ import type { Page } from 'puppeteer-core';
 import { readArtifact, writeArtifactManifest } from '../vendored/artifactCreate';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { openArtifactPage, type ArtifactPageSession } from './artifactPage';
+import { checkArtifact } from './checkArtifact';
+import { findCollectionArtifacts } from '../workspace/collectionScan';
 import { findBrowser } from './browserDiscovery';
 import { assemblePdf, assemblePptx } from './deck/assemble';
 import { captureDeckSlides, capturePagePdf, countSlides, resolveExportMode, validateSlideNumbers, type ExportMode } from './deck/captureDeck';
@@ -16,12 +18,12 @@ import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize, type Size
 import { exportInline, formatInlineExportResult, type InlineExportResult, type PasteTarget } from './inlineExport';
 import { formatPackageResult, isPackageFormat, packageArtifact, type PackageExportResult, type PackageFormat } from './packageArtifact';
 import { checkDataAgainstFields, loadDataTable, rowFileSuffixes, scanBoundFields, type DataTable } from '../poster/data';
-import { bleedBox, FORMAT_IDS, getFormat, isFluidHtml, unknownFormatError, type CanvasFormat } from '../poster/formats';
-import { applyShape, bindRow, type ShapeCss } from '../poster/pageScripts';
+import { bleedBox, DEFAULT_SHEET_FORMAT_IDS, getFormat, isFluidHtml, unknownFormatError, type CanvasFormat } from '../poster/formats';
+import { applyShape, bindRow, fitBoundText, type ShapeCss } from '../poster/pageScripts';
 import { checkFixedSize, formatPreflight, runPreflight, type Finding } from '../poster/preflight';
 import { finishPrintPdf, mergePdfs, preparePrintPage, printBleedPage, RGB_NOTE, type PrintGeometry } from '../poster/printPdf';
 import { qrSvg } from '../poster/qr';
-import { composeShapeSheet } from '../poster/shapeSheet';
+import { composeShapeSheet, type ShapeThumbnail } from '../poster/shapeSheet';
 
 export type ImageFormat = 'png' | 'jpeg';
 /** Formats rendered in a headless browser. */
@@ -91,6 +93,10 @@ export interface ExportArtifactOptions {
   shapeSheet?: boolean;
   /** paste: where it will be pasted. */
   target?: PasteTarget;
+  /** Fluid designs: also write exports/campaign-sheet.png — every shape plus the first screen of every other piece in the master's collection. */
+  campaignSheet?: boolean;
+  /** The workspace's Open Design output directory, for finding the collection's other pieces. Default ".open-design". */
+  outputDir?: string;
 }
 
 /** How one shape is exported: its canvas, output format, print geometry, capture settings, and the fluid resize. */
@@ -148,6 +154,8 @@ export type ExportArtifactResult =
       shapes?: string[];
       /** Workspace-relative path of the shape sheet, when one was written. */
       shapeSheet?: string;
+      /** Workspace-relative path of the campaign sheet, when one was written. */
+      campaignSheet?: string;
     }
   | { ok: false; code: ExportErrorCode; error: string };
 
@@ -219,8 +227,8 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
     if (new Set(o.presets).size !== o.presets.length) return 'presets lists a format twice.';
     if (o.preset !== undefined || o.width !== undefined || o.height !== undefined) return "presets can't be combined with preset, width or height.";
   }
-  if (isPackageFormat(o.format) && (o.presets !== undefined || o.shapeSheet)) return `presets and shapeSheet apply to image and PDF exports, not "${o.format}".`;
-  if (o.format === 'pptx' && (o.presets !== undefined || o.shapeSheet)) return 'presets and shapeSheet apply to images and PDFs, not PPTX.';
+  if (isPackageFormat(o.format) && (o.presets !== undefined || o.shapeSheet || o.campaignSheet)) return `presets, shapeSheet and campaignSheet apply to image and PDF exports, not "${o.format}".`;
+  if (o.format === 'pptx' && (o.presets !== undefined || o.shapeSheet || o.campaignSheet)) return 'presets, shapeSheet and campaignSheet apply to images and PDFs, not PPTX.';
   return undefined;
 }
 
@@ -373,10 +381,10 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
   const presetFormat = getFormat(options.preset);
   const recordedId = manifest.metadata && typeof manifest.metadata === 'object' ? (manifest.metadata as JsonRecord).format : undefined;
   const recordedFormat = typeof recordedId === 'string' ? getFormat(recordedId) : undefined;
-  if ((options.presets !== undefined || options.shapeSheet) && !fluid) {
+  if ((options.presets !== undefined || options.shapeSheet || options.campaignSheet) && !fluid) {
     return fail(
       'invalid-args',
-      `presets and shapeSheet need a fluid design (a [data-od-card] with data-od-fluid), which reflows to any shape. ${options.entryPath} is fixed-size: use adapt_open_design_artifact to make other shapes.`,
+      `presets, shapeSheet and campaignSheet need a fluid design (a [data-od-card] with data-od-fluid), which reflows to any shape. ${options.entryPath} is fixed-size: use adapt_open_design_artifact to make other shapes.`,
     );
   }
   const explicitSize = options.width !== undefined && options.height !== undefined;
@@ -459,7 +467,9 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     session = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry, executablePath: browser.executablePath });
     const { browser: instance, page } = session;
     const layout = layoutFor(first, size);
-    await page.setViewport({ width: layout.width, height: layout.height, deviceScaleFactor: options.scale ?? 1 });
+    // A format can ask for a capture scale (retina email headers); an explicit scale always wins.
+    const scaleFor = (p: ShapePlan): number => options.scale ?? p.canvas?.scale ?? 1;
+    await page.setViewport({ width: layout.width, height: layout.height, deviceScaleFactor: scaleFor(first) });
     await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 500, warnings);
 
     // Non-mutating: page-mode exports must see the original DOM.
@@ -483,7 +493,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     const slideError = validateSlideNumbers(options.slides, slideCount);
     if (slideError && mode !== 'image' && mode !== 'page-pdf' && mode !== 'print-pdf') return fail('invalid-args', slideError);
     const pageMode = mode === 'image' || mode === 'page-pdf' || mode === 'print-pdf';
-    if (!pageMode && (table || options.checkOnly || multiShape || options.shapeSheet)) {
+    if (!pageMode && (table || options.checkOnly || multiShape || options.shapeSheet || options.campaignSheet)) {
       return fail('invalid-args', `data, checkOnly, presets and shapeSheet apply to page exports (images and page PDFs), not decks (${mode}).`);
     }
 
@@ -492,7 +502,8 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     const findings: Finding[] = [];
     const prints: PrintInfo[] = [];
     let shapeSheetPath: string | undefined;
-    let scale = options.scale ?? 1;
+    let campaignSheetPath: string | undefined;
+    let scale = scaleFor(first);
     let viewport = size.viewport;
     let sizeSource: SizeSource = size.source;
     let sizeDetail = fluid && first.shape ? `${size.detail}, reflowed (fluid design)` : size.detail;
@@ -516,12 +527,13 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       // Export passes, then (shape sheet only) render-only passes for the sheet's remaining shapes.
       type Pass = { plan: ShapePlan; exported: boolean };
       const passes: Pass[] = plans.map((p) => ({ plan: p, exported: true }));
-      if (options.shapeSheet) {
+      const wantSheet = !!options.shapeSheet || !!options.campaignSheet;
+      if (wantSheet) {
         const covered = new Set(plans.map((p) => p.canvas?.id));
-        for (const id of multiShape ? [] : FORMAT_IDS) if (!covered.has(id)) passes.push({ plan: plan(getFormat(id)!, 'preset'), exported: false });
+        for (const id of multiShape ? [] : DEFAULT_SHEET_FORMAT_IDS) if (!covered.has(id)) passes.push({ plan: plan(getFormat(id)!, 'preset'), exported: false });
       }
-      const tagShapes = multiShape || !!options.shapeSheet;
-      const thumbnails: Array<{ label: string; png: Buffer; errors: number }> = [];
+      const tagShapes = multiShape || wantSheet;
+      const thumbnails: ShapeThumbnail[] = [];
       const rows: Array<Record<string, string> | undefined> = table ? table.rows : [undefined];
       const qrFields = scanBoundFields(artifact.entryContent).qrFields;
       const bind = async (row: Record<string, string>): Promise<void> => {
@@ -533,12 +545,13 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
 
       for (const [passIndex, pass] of passes.entries()) {
         const p = pass.plan;
+        const passScale = scaleFor(p);
         const shapeId = tagShapes ? p.canvas?.id : undefined;
         const cardSelector = p.selector ?? CARD_SELECTOR;
         if (passIndex > 0) {
           const s = sizeFor(p);
           const l = layoutFor(p, s);
-          await page.setViewport({ width: l.width, height: l.height, deviceScaleFactor: options.scale ?? 1 });
+          await page.setViewport({ width: l.width, height: l.height, deviceScaleFactor: scaleFor(p) });
         }
         if (p.shape) await page.evaluate(applyShape, cardSelector, p.shape);
         const geometry: PrintGeometry | undefined = p.printPath ? { trimWidth: p.canvas!.width, trimHeight: p.canvas!.height, bleed: p.bleed! } : undefined;
@@ -558,9 +571,10 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
           const rowNo = row && pass.exported ? i + 1 : undefined;
           const rowName = row && pass.exported && options.nameField ? row[options.nameField] : undefined;
           if (row) await bind(row);
+          findings.push(...fitFindings(await page.evaluate(fitBoundText, cardSelector), { row: rowNo, rowName, shape: shapeId }));
           findings.push(...(await runPreflight(page, { cardSelector, format: p.canvas, bleed: p.bleed, row: rowNo, rowName, fluid, shape: shapeId })));
           if (fluid && p.shape && i === 0) findings.push(...(await checkFixedSize(page, cardSelector, p.shape, { shape: shapeId })));
-          if (options.shapeSheet && i === 0) {
+          if (wantSheet && i === 0) {
             const handle = await page.$(cardSelector);
             if (handle) thumbnails.push({ label: p.canvas?.label ?? 'Default', png: Buffer.from(await handle.screenshot({ type: 'png' })), errors: 0 });
           }
@@ -587,8 +601,8 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
                 }
                 targets.push({
                   index: j + 1,
-                  width: Math.round(box.width * scale),
-                  height: Math.round(box.height * scale),
+                  width: Math.round(box.width * passScale),
+                  height: Math.round(box.height * passScale),
                   capture: async (f, q) => Buffer.from(await handle.screenshot({ type: f, quality: q })),
                 });
               }
@@ -596,8 +610,8 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
             } else {
               const s = sizeFor(p);
               targets.push({
-                width: s.viewport.width * scale,
-                height: s.viewport.height * scale,
+                width: s.viewport.width * passScale,
+                height: s.viewport.height * passScale,
                 capture: async (f, q) => Buffer.from(await page.screenshot({ type: f, quality: q })),
               });
             }
@@ -618,7 +632,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
             pdfs.push(await capturePagePdf(page, { width: options.width, height: options.height }));
           }
         }
-        if (options.shapeSheet) {
+        if (wantSheet) {
           const last = thumbnails[thumbnails.length - 1];
           if (last) last.errors = findings.slice(passFindingsStart).filter((f) => f.severity === 'error').length;
         }
@@ -655,6 +669,25 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       if (options.shapeSheet && thumbnails.length > 0) {
         shapeSheetPath = exportFilePathWithSuffix(relEntry, 'shapes', undefined, 'png');
         await writeOut(shapeSheetPath, await composeShapeSheet(instance, thumbnails, title));
+      }
+      if (options.campaignSheet && thumbnails.length > 0) {
+        // Every shape of the master, then the first screen of each other piece in its collection (landing page,
+        // email…), each with its own visual check so its error dot is real.
+        const tiles = [...thumbnails];
+        const collectionId = typeof manifest.collectionId === 'string' ? manifest.collectionId : undefined;
+        const members = collectionId ? await findCollectionArtifacts(options.workspaceRoot, options.outputDir ?? '.open-design', collectionId) : [];
+        for (const member of members) {
+          if (path.posix.normalize(member.entryPath) === path.posix.normalize(relEntry.split(path.sep).join('/'))) continue;
+          const checked = await checkArtifact({ workspaceRoot: options.workspaceRoot, entryPath: member.entryPath, browserPath: options.browserPath, maxImages: 1, viewports: [{ name: 'desktop', width: 1440, height: 900 }], settleMs: options.settleMs, outputDir: options.outputDir });
+          if (!checked.ok || checked.images.length === 0) {
+            warnings.push(`Campaign sheet: couldn't capture ${member.entryPath}${checked.ok ? '' : ` (${checked.error})`}.`);
+            continue;
+          }
+          const label = member.title || member.screenRole || path.posix.basename(member.entryPath);
+          tiles.push({ label, png: checked.images[0].data, mime: checked.images[0].mime, errors: checked.findings.filter((f) => f.severity === 'error').length });
+        }
+        campaignSheetPath = path.posix.join(path.posix.dirname(relEntry.split(path.sep).join('/')), 'exports', 'campaign-sheet.png');
+        await writeOut(campaignSheetPath, await composeShapeSheet(instance, tiles, title, `${title ?? 'Campaign'} — every piece`));
       }
       // Failed loads are reported as findings too, so the agent sees them with everything else to fix.
       for (const w of warnings) if (w.startsWith('Failed to load: ')) findings.push({ check: 'broken-asset', severity: 'warning', message: w.slice('Failed to load: '.length) });
@@ -740,12 +773,28 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       prints: prints.length > 0 ? prints : undefined,
       shapes: multiShape ? options.presets : undefined,
       shapeSheet: shapeSheetPath,
+      campaignSheet: campaignSheetPath,
     };
   } catch (err) {
     return fail('capture-failed', `Export failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     await session?.close();
   }
+}
+
+/** data-od-fit results as info findings (text that still overflows is preflight's overflow error). */
+export function fitFindings(fitted: Array<{ name: string; percent: number; fits: boolean }>, tag: { row?: number; rowName?: string; shape?: string } = {}): Finding[] {
+  return fitted
+    .filter((f) => f.fits)
+    .map((f) => ({
+      check: 'fit',
+      severity: 'info' as const,
+      message: `${f.name} was set at ${f.percent}% of its size to fit (data-od-fit).`,
+      selector: f.name,
+      ...(tag.row !== undefined ? { row: tag.row } : {}),
+      ...(tag.rowName ? { rowName: tag.rowName } : {}),
+      ...(tag.shape ? { shape: tag.shape } : {}),
+    }));
 }
 
 function geometryInfo(format: CanvasFormat | undefined, bleed: number | undefined, cropMarks: boolean | undefined): PrintInfo | undefined {
@@ -769,6 +818,7 @@ export function formatExportResult(result: AnyExportResult): string {
         ),
       ];
   if (result.slideCount !== undefined) lines.push(`Deck: ${result.slideCount} slide(s) found.`);
+  if (result.campaignSheet) lines.push(`Campaign sheet: ${result.campaignSheet} — every shape and every other piece in the collection; a red dot marks pieces with errors.`);
   if (result.shapeSheet) lines.push(`Shape sheet: ${result.shapeSheet} — the design at every shape; a red dot marks shapes with preflight errors.`);
   if (result.prints) {
     for (const p of result.prints) {

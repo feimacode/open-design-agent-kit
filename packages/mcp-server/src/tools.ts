@@ -489,6 +489,7 @@ export async function exportArtifact(
     presets?: string[];
     shapeSheet?: boolean;
     target?: PasteTarget;
+    campaignSheet?: boolean;
   },
 ): Promise<string> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself;
@@ -496,6 +497,7 @@ export async function exportArtifact(
   const result = await exportArtifactCore({
     ...input,
     workspaceRoot: ctx.workspaceRoot,
+    outputDir: ctx.outputDir,
     lookupAspectHint: async (id) => (await ctx.contentIndex.getSkill(id))?.aspectHint,
   });
   return formatExportResult(result);

@@ -36,6 +36,7 @@ export interface ExportCliOptions {
   target?: string;
   /** site, email, paste: where the files will be hosted. */
   baseUrl?: string;
+  campaignSheet?: boolean;
 }
 
 export class ExportArgsError extends Error {}
@@ -101,6 +102,7 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     shapeSheet: flags.shapeSheet,
     target: parseTarget(flags.target),
     baseUrl: flags.baseUrl,
+    campaignSheet: flags.campaignSheet,
   };
 }
 

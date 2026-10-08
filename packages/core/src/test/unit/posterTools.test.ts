@@ -186,8 +186,8 @@ function freeIdentifiers(source: string): string[] {
 describe('poster page scripts', () => {
   const fns = Object.entries(posterPageScripts).filter(([, v]) => typeof v === 'function') as unknown as Array<[string, () => void]>;
 
-  it('exports the six page scripts', () => {
-    assert.deepStrictEqual(fns.map(([n]) => n).sort(), ['applyShape', 'bindRow', 'collectHorizontalScroll', 'collectPreflight', 'isolateCardForPrint', 'measureScalables']);
+  it('exports the seven page scripts', () => {
+    assert.deepStrictEqual(fns.map(([n]) => n).sort(), ['applyShape', 'bindRow', 'collectHorizontalScroll', 'collectPreflight', 'fitBoundText', 'isolateCardForPrint', 'measureScalables']);
   });
 
   for (const [name, fn] of fns) {
@@ -223,7 +223,7 @@ describe('poster page scripts', () => {
     const mod = { exports: {} as Record<string, unknown> };
     new Function('module', 'exports', out.outputFiles[0].text)(mod, mod.exports);
     const minified = Object.entries(mod.exports).filter(([, v]) => typeof v === 'function');
-    assert.strictEqual(minified.length, 6);
+    assert.strictEqual(minified.length, 7);
     for (const [name, fn] of minified) assert.deepStrictEqual(freeIdentifiers((fn as () => void).toString()), [], name);
   });
 });

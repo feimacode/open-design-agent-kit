@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { exportArtifact, formatExportResult, type ContentIndex, type ExportFormat, type PasteTarget } from '@feimacode/open-design-agent-kit-core';
-import { getWorkspaceRoot } from '../workspace/artifactWriter';
+import { getOutputDirectory, getWorkspaceRoot } from '../workspace/artifactWriter';
 
 interface ExportArtifactInput {
   entryPath: string;
@@ -26,6 +26,7 @@ interface ExportArtifactInput {
   presets?: string[];
   shapeSheet?: boolean;
   target?: PasteTarget;
+  campaignSheet?: boolean;
 }
 
 export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifactInput> {
@@ -50,6 +51,7 @@ export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifa
     const result = await exportArtifact({
       ...options.input,
       workspaceRoot: getWorkspaceRoot(),
+      outputDir: getOutputDirectory(),
       browserPath,
       badgeSetting: packaging ? config.get<boolean>('share.badge', true) : undefined,
       lookupAspectHint: async (id) => (await this.contentIndex.getSkill(id))?.aspectHint,

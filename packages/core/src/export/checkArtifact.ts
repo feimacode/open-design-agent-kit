@@ -18,10 +18,10 @@ import { collectEmailFindings } from './inlinePageScripts';
 import { findStaleSources, recordedSources } from '../generation/sourceNumberCheck';
 import { indexCheckSlides, markCheckSlide } from './deck/pageScripts';
 import { PRESENTER_CLONE_SELECTOR, SLIDE_SELECTOR } from './deck/selectors';
-import { loadPage, type ExportErrorCode } from './exportArtifact';
+import { fitFindings, loadPage, type ExportErrorCode } from './exportArtifact';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize } from './exportSize';
 import { getFormat, isFluidHtml } from '../poster/formats';
-import { applyShape, collectHorizontalScroll, type ShapeCss } from '../poster/pageScripts';
+import { applyShape, collectHorizontalScroll, fitBoundText, type ShapeCss } from '../poster/pageScripts';
 import { formatPreflight, runPreflight, type Finding } from '../poster/preflight';
 import { renderShapeSheetHtml, type ShapeThumbnail } from '../poster/shapeSheet';
 
@@ -370,7 +370,7 @@ async function checkCards(
   }
   await settle(page);
 
-  const findings = await runPreflight(page, { cardSelector: CARD_SELECTOR, format: canvas, bleed, fluid });
+  const findings = [...fitFindings(await page.evaluate(fitBoundText, CARD_SELECTOR)), ...(await runPreflight(page, { cardSelector: CARD_SELECTOR, format: canvas, bleed, fluid }))];
   const handles = await page.$$(CARD_SELECTOR);
   const label = handles.length > 1 ? `cards 1–${handles.length}` : canvas ? canvas.label : 'card';
   if (maxImages === 0) return { findings, images: [], omitted: [label] };

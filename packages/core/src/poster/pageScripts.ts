@@ -485,3 +485,88 @@ export function collectHorizontalScroll(maxErrorWidth: number): PageFinding[] {
     },
   ];
 }
+
+/**
+ * data-od-fit (openspec add-campaign-kit, "Fit Bound Text"): shrinks each
+ * marked element's font in 5% steps, down to 70% of its authored size, until
+ * its text fits its own box, its clipping ancestors and the card. Runs after
+ * a row is bound and the shape applied, so it first restores the authored size
+ * (fluid designs size text in container units, which must never be frozen into
+ * px across shapes). Returns what it changed; text still overflowing at 70% is
+ * left for preflight's overflow check.
+ */
+export function fitBoundText(cardSelector: string): Array<{ name: string; percent: number; fits: boolean }> {
+  const out: Array<{ name: string; percent: number; fits: boolean }> = [];
+  const describe = (el: any): string => {
+    let s = String(el.tagName || '').toLowerCase();
+    if (el.id) s += '#' + el.id;
+    const field = el.getAttribute('data-od-field');
+    if (field) s += '[data-od-field="' + field + '"]';
+    const text = String(el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text) s += ' "' + (text.length > 40 ? text.slice(0, 39) + '…' : text) + '"';
+    return s;
+  };
+  const inside = (r: any, b: any): boolean => r.left >= b.left - 1 && r.top >= b.top - 1 && r.right <= b.right + 1 && r.bottom <= b.bottom + 1;
+  // Glyphs routinely extend past a tight line box (line-height 1), so vertical fit is judged against
+  // clipping ancestors and the card, like preflight's overflow check, not the element's own scrollHeight.
+  const fits = (el: any): boolean => {
+    if (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) return false;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const r = range.getBoundingClientRect();
+    if (r.width < 0.5 && r.height < 0.5) return true;
+    const card = el.closest(cardSelector);
+    for (let a = el.parentElement; a; a = a.parentElement) {
+      const cs = window.getComputedStyle(a);
+      if ((cs.overflowX !== 'visible' || cs.overflowY !== 'visible') && !inside(r, a.getBoundingClientRect())) return false;
+      if (a === card) break;
+    }
+    return !card || inside(r, card.getBoundingClientRect());
+  };
+  // The authored font-size expression (e.g. "min(12cqw, 22cqh)"), so a fitted size stays relative to the
+  // card on every shape instead of being frozen into px. Last matching rule wins (specificity ignored).
+  const authoredSize = (el: any): string => {
+    let found = '';
+    const scan = (rules: any): void => {
+      for (const rule of Array.prototype.slice.call(rules || [])) {
+        if (rule.type === 4 && rule.media && window.matchMedia(rule.media.mediaText).matches) scan(rule.cssRules);
+        else if (rule.type === 12) scan(rule.cssRules);
+        else if (rule.type === 1 && rule.style && rule.style.getPropertyValue('font-size')) {
+          let hit = false;
+          try {
+            hit = el.matches(rule.selectorText);
+          } catch {
+            hit = false;
+          }
+          if (hit) found = rule.style.getPropertyValue('font-size');
+        }
+      }
+    };
+    for (const sheet of Array.prototype.slice.call(document.styleSheets)) {
+      try {
+        scan(sheet.cssRules);
+      } catch {
+        // Cross-origin stylesheet: unreadable; fall back to the computed size.
+      }
+    }
+    return found;
+  };
+  for (const el of Array.prototype.slice.call(document.querySelectorAll('[data-od-fit]'))) {
+    if (!el.hasAttribute('data-od-fit-inline')) el.setAttribute('data-od-fit-inline', el.style.fontSize || '');
+    const inline = el.getAttribute('data-od-fit-inline');
+    el.style.fontSize = inline;
+    if (fits(el)) continue;
+    const expr = inline || authoredSize(el) || window.getComputedStyle(el).fontSize;
+    let percent = 100;
+    let ok = false;
+    while (!ok && percent > 70) {
+      percent -= 5;
+      el.style.fontSize = 'calc((' + expr + ') * ' + percent / 100 + ')';
+      ok = fits(el);
+    }
+    // Still too long at 70%: back to the authored size, so preflight reports the overflow as it would have.
+    if (!ok) el.style.fontSize = inline;
+    out.push({ name: describe(el), percent, fits: ok });
+  }
+  return out;
+}

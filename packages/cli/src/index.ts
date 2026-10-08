@@ -98,6 +98,7 @@ program
   .option('--sheet <name>', 'XLSX data: the sheet to read (default: the first)')
   .option('--name-field <column>', 'Data column that names each row\'s file')
   .option('--presets <list>', 'Fluid designs: several canvas shapes in one export, comma-separated, e.g. a3,ig-portrait,story')
+  .option('--campaign-sheet', 'Fluid designs: also write campaign-sheet.png, every shape plus the other pieces in the collection')
   .option('--shape-sheet', 'Fluid designs: also write <name>-shapes.png showing the design at every shape (all formats unless --presets)')
   .option('--split', 'PDF data exports: one PDF per row instead of one multi-page PDF')
   .option('--badge', 'standalone/site: add the "Made with Open Design" footer badge (default: on for site, off for standalone)')

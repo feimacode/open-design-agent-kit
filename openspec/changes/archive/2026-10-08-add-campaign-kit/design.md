@@ -22,6 +22,12 @@ German and Finnish copy runs long. `data-od-fit` on a bound element shrinks its 
 ### D4. Ad sizes as canvas formats with byte budgets
 IAB sizes become regular formats (medium `screen`, `maxBytes: 150000`), so `presets`, preflight, `card-size` and budget re-encoding apply unchanged. `email-header` captures at scale 2 for retina displays.
 
+### D4b. Formats gain `scale` and `inDefaultSheet`
+`email-header` sets `scale: 2`, which export uses unless the caller passes `scale`. That's the "captured at 2×" in the spec, applied per shape so a multi-shape export can mix scales. Headers, banners, the email header and the ads set `inDefaultSheet: false`: a shape sheet with no `presets` would otherwise render every poster at 320×50 and fill the sheet with guaranteed failures.
+
+### D3b. `data-od-fit` scales the authored expression
+Fluid designs size text in container units. Fitting writes `calc((<authored font-size>) * k)` (the authored value found in the CSSOM) instead of a frozen px size, so the fitted text still reflows across shapes and the fixed-size check doesn't fire. Fit is judged against clipping ancestors and the card, not the element's own `scrollHeight`, because glyphs routinely overflow a tight line box. Text that doesn't fit at 70% is restored to its authored size, so preflight reports the overflow as before.
+
 ### D5. Campaign sheet reuses the shape-sheet composer
 After the exports, `exportArtifact` with `shapeSheet` already composes the card shapes. The campaign sheet adds the landing page's and the email's first-screen thumbnails, from the visual check's capture code, into one labelled image.
 

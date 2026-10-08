@@ -64,6 +64,7 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--name-field <column>` | The data column that names each row's file. Default: row numbers. |
 | `--split` | PDF data exports: one PDF per row instead of one multi-page PDF. |
 | `--presets <list>` | Fluid designs: several shapes in one export, comma-separated, e.g. `a3,ig-portrait,story`. |
+| `--campaign-sheet` | Fluid designs: also write `campaign-sheet.png`, every shape plus the other pieces in the master's collection. See [Run a campaign](../guides/campaigns.md). |
 | `--shape-sheet` | Fluid designs: also write `<name>-shapes.png`, the design at every shape (all formats unless `--presets`). |
 | `--target <wechat\|notion\|newsletter\|generic>` | `--format paste` only: where it will be pasted. See [Paste into WeChat, Notion and newsletters](../guides/paste-html.md). |
 | `--base-url <https-url>` | `site`, `email` and `paste`: where the files will be hosted, so image and link URLs become absolute. |

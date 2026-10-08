@@ -29,6 +29,10 @@ export interface CanvasFormat {
   multiCard?: boolean;
   /** The recipe to use when the user didn't name one. */
   skillHint?: string;
+  /** Screen only: device scale factor for captures (e.g. 2 for retina email headers). Default 1. */
+  scale?: number;
+  /** False keeps it out of a shape sheet that names no presets (tiny ad sizes would fail on any poster). Default true. */
+  inDefaultSheet?: boolean;
 }
 
 /** 3 mm is the ISO convention; US printers ask for 0.125 in. */
@@ -42,6 +46,15 @@ const LIST: CanvasFormat[] = [
   { id: 'story', label: 'Story / Reels / TikTok cover', medium: 'screen', width: 1080, height: 1920, unit: 'px', safeInset: 48, maxBytes: 8_000_000, skillHint: 'od:prototype:poster-hero' },
   { id: 'xhs-card', label: 'Xiaohongshu cards', medium: 'screen', width: 1080, height: 1440, unit: 'px', safeInset: 48, multiCard: true, skillHint: 'od:prototype:card-xiaohongshu' },
   { id: 'yt-thumbnail', label: 'YouTube thumbnail', medium: 'screen', width: 1280, height: 720, unit: 'px', safeInset: 48, maxBytes: 2_000_000, skillHint: 'od:prototype:social-youtube-thumbnail' },
+  { id: 'linkedin-image', label: 'LinkedIn image', medium: 'screen', width: 1200, height: 627, unit: 'px', safeInset: 48, maxBytes: 5_000_000, skillHint: 'od:prototype:poster-hero' },
+  { id: 'og-image', label: 'Link preview (Open Graph)', medium: 'screen', width: 1200, height: 630, unit: 'px', safeInset: 60, maxBytes: 5_000_000, skillHint: 'od:prototype:poster-hero' },
+  { id: 'x-header', label: 'X header', medium: 'screen', width: 1500, height: 500, unit: 'px', safeInset: 60, maxBytes: 5_000_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
+  { id: 'linkedin-banner', label: 'LinkedIn banner', medium: 'screen', width: 1584, height: 396, unit: 'px', safeInset: 60, maxBytes: 8_000_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
+  { id: 'email-header', label: 'Email header', medium: 'screen', width: 600, height: 200, unit: 'px', safeInset: 24, maxBytes: 1_000_000, scale: 2, skillHint: 'od:prototype:email-campaign', inDefaultSheet: false },
+  { id: 'banner-mrec', label: 'Display ad 300×250 (medium rectangle)', medium: 'screen', width: 300, height: 250, unit: 'px', safeInset: 12, maxBytes: 150_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
+  { id: 'banner-leaderboard', label: 'Display ad 728×90 (leaderboard)', medium: 'screen', width: 728, height: 90, unit: 'px', safeInset: 8, maxBytes: 150_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
+  { id: 'banner-skyscraper', label: 'Display ad 160×600 (wide skyscraper)', medium: 'screen', width: 160, height: 600, unit: 'px', safeInset: 10, maxBytes: 150_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
+  { id: 'banner-mobile', label: 'Display ad 320×50 (mobile banner)', medium: 'screen', width: 320, height: 50, unit: 'px', safeInset: 4, maxBytes: 150_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
   { id: 'a4', label: 'A4 (210×297 mm)', medium: 'print', width: 210, height: 297, unit: 'mm', safeInset: 5, bleed: ISO_BLEED, minTypePt: 9, skillHint: 'od:prototype:poster-hero' },
   { id: 'a3', label: 'A3 (297×420 mm)', medium: 'print', width: 297, height: 420, unit: 'mm', safeInset: 5, bleed: ISO_BLEED, minTypePt: 10, skillHint: 'od:prototype:poster-hero' },
   { id: 'a2', label: 'A2 (420×594 mm)', medium: 'print', width: 420, height: 594, unit: 'mm', safeInset: 10, bleed: ISO_BLEED, minTypePt: 14, skillHint: 'od:prototype:poster-hero' },
@@ -55,6 +68,8 @@ const LIST: CanvasFormat[] = [
 
 export const FORMATS: Readonly<Record<string, CanvasFormat>> = Object.freeze(Object.fromEntries(LIST.map((f) => [f.id, f])));
 export const FORMAT_IDS: readonly string[] = LIST.map((f) => f.id);
+/** The shapes a shape sheet shows when no presets are named. */
+export const DEFAULT_SHEET_FORMAT_IDS: readonly string[] = LIST.filter((f) => f.inDefaultSheet !== false).map((f) => f.id);
 
 export function getFormat(id: string | undefined): CanvasFormat | undefined {
   return id === undefined ? undefined : FORMATS[id];

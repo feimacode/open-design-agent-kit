@@ -148,6 +148,15 @@ Composes the instructions for a new design. It combines the skill's workflow, th
 | `story` | screen | 1080×1920 px | 48 px | | | 8 MB |
 | `xhs-card` | screen | 1080×1440 px per card | 48 px | | | |
 | `yt-thumbnail` | screen | 1280×720 px | 48 px | | | 2 MB |
+| `linkedin-image` | screen | 1200×627 px | 48 px | | | 5 MB |
+| `og-image` | screen | 1200×630 px | 60 px | | | 5 MB |
+| `x-header` | screen | 1500×500 px | 60 px | | | 5 MB |
+| `linkedin-banner` | screen | 1584×396 px | 60 px | | | 8 MB |
+| `email-header` | screen | 600×200 px, captured at 2× | 24 px | | | 1 MB |
+| `banner-mrec` | screen | 300×250 px | 12 px | | | 150 KB |
+| `banner-leaderboard` | screen | 728×90 px | 8 px | | | 150 KB |
+| `banner-skyscraper` | screen | 160×600 px | 10 px | | | 150 KB |
+| `banner-mobile` | screen | 320×50 px | 4 px | | | 150 KB |
 | `a4` | print | 210×297 mm | 5 mm | 3 mm | 9 pt | |
 | `a3` | print | 297×420 mm | 5 mm | 3 mm | 10 pt | |
 | `a2` | print | 420×594 mm | 10 mm | 3 mm | 14 pt | |
@@ -158,7 +167,7 @@ Composes the instructions for a new design. It combines the skill's workflow, th
 | `poster-18x24` | print | 18×24 in | 10 mm | 0.125 in | 14 pt | |
 | `poster-24x36` | print | 24×36 in | 12 mm | 0.125 in | 18 pt | |
 
-Print sizes are trim sizes. The design's `[data-od-card]` is authored at the trim size plus the bleed on every side (A3: 303×426 mm), and the safe area is measured inside the trim.
+Headers, banners, the email header and the display ads are left out of a shape sheet that names no `presets`, since they need a design's own banner layout. Print sizes are trim sizes. The design's `[data-od-card]` is authored at the trim size plus the bleed on every side (A3: 303×426 mm), and the safe area is measured inside the trim.
 
 ### register_open_design_artifact
 
@@ -415,7 +424,8 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `nameField` | string | no | With `data`: the column that names each row's file (slugified and made unique), e.g. `poster-ada-lovelace.png`. Default: row numbers. |
 | `split` | boolean | no | With `data` and a PDF: one PDF per row instead of one multi-page PDF. |
 | `presets` | [format id](#canvas-formats)[] (1–15) | no | Fluid designs only: several shapes in one export, each reflowed and checked at its own shape, written as `<name>-<format>.<ext>` (PDF for print shapes, PNG for screen shapes unless `format` is given). Not with `preset`, `width` or `height`. With `data`: one file per row per shape, at most 400. |
-| `shapeSheet` | boolean | no | Fluid designs only: also write `exports/<name>-shapes.png`, the design at every shape in `presets` (default: every format), each marked when preflight found errors. With `checkOnly`, it's the only file written. |
+| `shapeSheet` | boolean | no | Fluid designs only: also write `exports/<name>-shapes.png`, the design at every shape in `presets` (default: the poster and social formats, not headers, banners or ads), each marked when preflight found errors. With `checkOnly`, it's the only file written. |
+| `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. See [Run a campaign](../guides/campaigns.md). |
 
 **Result (text):** each written file with its pixel size, file size and format; for decks, the slide count and the stage size and scale used; where the size came from; for print PDFs, the trim size, bleed and a note that the PDF is RGB; for page exports, the **preflight** findings, errors first ([the checks](../guides/posters.md#preflight-checks)); and any warnings (failed requests, blank slides, budget re-encoding). Details in [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md) and [Posters and print](../guides/posters.md).
 

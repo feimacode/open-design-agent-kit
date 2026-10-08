@@ -191,6 +191,22 @@
       ]
     },
     {
+      "id": "campaign",
+      "label": "Campaign",
+      "description": "One message across every channel: social sizes, banners, display ads, landing page and email, in every language.",
+      "icon": "megaphone",
+      "status": "ready",
+      "prompt": "open-design-campaign",
+      "entries": [
+        "poster-hero",
+        "social-carousel"
+      ],
+      "questions": [
+        "What is the campaign for, and which channels does it need?",
+        "Which languages or audiences?"
+      ]
+    },
+    {
       "id": "email",
       "label": "HTML email",
       "description": "A newsletter or launch email that renders in Gmail, Outlook and Apple Mail.",

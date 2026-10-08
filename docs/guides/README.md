@@ -22,6 +22,7 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [HTML email](html-email.md)
 - [Paste into WeChat, Notion and newsletters](paste-html.md)
 - [Posters and print](posters.md)
+- [Run a campaign](campaigns.md)
 - [YouTube videos](youtube-video.md)
 - [Export images](export-images.md)
 - [Export decks and PDFs](export-decks.md)

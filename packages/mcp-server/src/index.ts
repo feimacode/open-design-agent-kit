@@ -137,7 +137,7 @@ const TOOL_DEFS: ToolDef[] = [
           format: {
             type: 'string',
             enum: [...FORMAT_IDS],
-            description: 'Optional canvas format. Adds a Canvas section with the exact size, units, safe area and, for print, bleed and minimum type size, so any skill can produce a post or poster at that size. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720). Print (trim sizes, authored in mm with bleed): a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36. Pass the same id as format to register_open_design_artifact.',
+            description: 'Optional canvas format. Adds a Canvas section with the exact size, units, safe area and, for print, bleed and minimum type size, so any skill can produce a post or poster at that size. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50). Print (trim sizes, authored in mm with bleed): a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36. Pass the same id as format to register_open_design_artifact.',
           },
           fluid: {
             type: 'boolean',
@@ -495,7 +495,7 @@ const TOOL_DEFS: ToolDef[] = [
           preset: {
             type: 'string',
             enum: [...FORMAT_IDS],
-            description: "A canvas format id instead of hand-copied sizes. Screen formats (x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720)) fill in width/height, selector \"[data-od-card]\" and the platform's byte budget. Print formats (a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36) produce a print-ready PDF the size of the bleed box, with TrimBox and BleedBox set. Explicit arguments still win. Without preset, the format the artifact was registered with is used.",
+            description: "A canvas format id instead of hand-copied sizes. Screen formats (x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50)) fill in width/height, selector \"[data-od-card]\" and the platform's byte budget. Print formats (a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36) produce a print-ready PDF the size of the bleed box, with TrimBox and BleedBox set. Explicit arguments still win. Without preset, the format the artifact was registered with is used.",
           },
           bleed: {
             type: 'number',
@@ -540,6 +540,11 @@ const TOOL_DEFS: ToolDef[] = [
             description:
               "Fluid designs only: also write exports/<name>-shapes.png, one image showing the design at every shape in presets (default: all catalog formats), each labelled and marked when preflight found errors there. With checkOnly: true it is the only file written. Use it to show the user how a poster looks in every size.",
           },
+          campaignSheet: {
+            type: 'boolean',
+            description:
+              "Fluid designs: also write exports/campaign-sheet.png — the master at every shape in presets (default: the usual poster and social shapes), plus the first screen of every other piece registered in the master's collection (landing page, email…), each labelled and marked when it has preflight errors. Use it to show the user a whole campaign at a glance. With checkOnly: true it is the only file written.",
+          },
         },
         required: ['entryPath'],
       },
@@ -551,6 +556,7 @@ const TOOL_DEFS: ToolDef[] = [
           entryPath: string;
           format?: 'png' | 'jpeg' | 'pdf' | 'pptx' | 'standalone' | 'site' | 'email' | 'paste';
           target?: 'wechat' | 'notion' | 'newsletter' | 'generic';
+          campaignSheet?: boolean;
           quality?: number;
           width?: number;
           height?: number;
@@ -654,7 +660,7 @@ const TOOL_DEFS: ToolDef[] = [
             },
             minItems: 1,
             maxItems: 6,
-            description: '1–6 target canvas formats. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720). Print: a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36.',
+            description: '1–6 target canvas formats. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50). Print: a4, a3, a2, a1, a0, letter, tabloid, poster-18x24, poster-24x36.',
           },
           notes: {
             type: 'string',
