@@ -29,6 +29,21 @@ Both workflows publish the artifacts already built for the GitHub Release, and b
 - **Publish npm Packages** (`publish-npm.yml`): publishes `content`, then `mcp-server`, then `cli`.
 - **Publish to Marketplace** (`publish-marketplace.yml`): verifies the `.vsix` checksum and runs `vsce publish` with the `VSCE_PAT` secret.
 
+## 4. Update the Claude Code plugin's MCP pin (manual, after npm publish)
+
+The Claude Code plugin (`packages/claude-plugin`) does not follow the release version automatically. It pins the MCP server to an exact version in its own `package.json` and `package-lock.json`, which Claude Code installs with `npm ci` when the plugin is installed (the Claude plugin directory requires this lockfile for its Verified badge). `.mcp.json` then launches the server from the plugin's `node_modules`, not through `npx`.
+
+Once the new `mcp-server` version is on npm:
+
+```bash
+# set "@feimacode/open-design-agent-kit-mcp" to the new exact version (e.g. "0.2.0") in packages/claude-plugin/package.json, then:
+npm run update-lock --workspace=@feimacode/open-design-agent-kit-claude-plugin
+npm install                                   # refresh the root lockfile
+git commit -am "chore(claude-plugin): pin MCP server 0.2.0"
+```
+
+`update-lock` resolves the plugin's standalone lockfile against the npm registry, so it only works after the version is published. The plugin's `lint` (`update-plugin-lock.mjs --check`) fails if the pin, the lockfile and `.mcp.json` disagree. It does not catch a pin that is still on the previous release, so don't skip this step.
+
 ## Checklist before tagging
 
 - [ ] `npm run lint` and `npm run test:unit` pass locally.
