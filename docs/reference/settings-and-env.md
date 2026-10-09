@@ -52,7 +52,7 @@ For the MCP server and the CLI, set these in the environment of the process that
 
 ### OPEN_DESIGN_WORKSPACE_ROOT
 
-MCP server. Default: the server process's working directory, which Claude Code and Codex set to your project. It's the workspace artifacts are written to, and where `.open-design/config.json` (the active design system) is kept.
+MCP server. Default: the first workspace folder the client reports through MCP roots (VS Code does), otherwise the server process's working directory, which Claude Code and Codex set to your project. Setting it overrides both. It's the workspace artifacts are written to, and where `.open-design/config.json` (the active design system) is kept.
 
 ### OPEN_DESIGN_OUTPUT_DIR
 

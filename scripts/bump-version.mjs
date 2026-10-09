@@ -45,6 +45,26 @@ async function updatePackageVersion(pkgDir, version, dryRun) {
   return pkgJsonPath;
 }
 
+// The MCP registry entry (packages/mcp-server/server.json) names the npm
+// version it installs, so it moves with mcp-server's package.json.
+const SERVER_JSON = 'packages/mcp-server/server.json';
+
+async function updateServerJsonVersion(version, dryRun) {
+  const serverJsonPath = path.join(repoRoot, SERVER_JSON);
+  const server = JSON.parse(await fs.readFile(serverJsonPath, 'utf8'));
+  if (server.version === version && server.packages.every((p) => p.version === version)) {
+    log(`${SERVER_JSON}: already at ${version}, leaving untouched`);
+    return null;
+  }
+  log(`${SERVER_JSON}: ${server.version} -> ${version}${dryRun ? ' (dry run)' : ''}`);
+  if (dryRun) return serverJsonPath;
+
+  server.version = version;
+  for (const pkg of server.packages) pkg.version = version;
+  await fs.writeFile(serverJsonPath, JSON.stringify(server, null, 2) + '\n', 'utf8');
+  return serverJsonPath;
+}
+
 async function checkChangelog(version) {
   const changelogPath = path.join(repoRoot, 'CHANGELOG.md');
   let contents;
@@ -77,6 +97,8 @@ async function main() {
     const changed = await updatePackageVersion(dir, version, dryRun);
     if (changed) changedPaths.push(changed);
   }
+  const serverJsonChanged = await updateServerJsonVersion(version, dryRun);
+  if (serverJsonChanged) changedPaths.push(serverJsonChanged);
 
   if (dryRun) {
     log('dry run complete — nothing written, nothing committed');

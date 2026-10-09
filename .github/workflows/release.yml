@@ -102,6 +102,23 @@ jobs:
             echo "✅ Version match confirmed for $PKG: $VERSION"
           done
 
+      - name: Validate MCP registry server.json matches the release
+        # publish-npm.yml publishes this file to the MCP registry right after
+        # mcp-server reaches npm; it must name the version being published.
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          node -e '
+            const s = require("./packages/mcp-server/server.json");
+            const p = require("./packages/mcp-server/package.json");
+            const v = process.argv[1];
+            const bad = [s.version, ...s.packages.map((x) => x.version)].some((x) => x !== v);
+            if (bad || s.name !== p.mcpName) {
+              console.error(`❌ server.json must be at ${v} with name ${p.mcpName} (run scripts/bump-version.mjs)`);
+              process.exit(1);
+            }
+            console.log(`✅ server.json matches ${v}`);
+          ' "$VERSION"
+
   build:
     needs: validate
     runs-on: ubuntu-latest

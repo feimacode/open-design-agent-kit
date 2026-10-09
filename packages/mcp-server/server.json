@@ -1,0 +1,33 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.feimacode/open-design",
+  "title": "Open Design",
+  "description": "Design skills, design systems and artifact tools: landing pages, decks, prototypes, posters, more.",
+  "websiteUrl": "https://github.com/feimacode/open-design-agent-kit#readme",
+  "repository": {
+    "url": "https://github.com/feimacode/open-design-agent-kit",
+    "source": "github",
+    "subfolder": "packages/mcp-server"
+  },
+  "version": "0.1.8",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@feimacode/open-design-agent-kit-mcp",
+      "version": "0.1.8",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "OPEN_DESIGN_FIGMA_TOKEN",
+          "description": "Optional. A Figma personal access token, used only to import Figma frames. Leave empty if you don't use Figma.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

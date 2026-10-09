@@ -1,13 +1,39 @@
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
- * The workspace root this server operates on: the launching process's own
+ * The workspace root this server starts with: the launching process's own
  * cwd by default (how Claude Code and Codex both start a local stdio MCP
  * server — with cwd already set to the active project), overridable for
- * testing or an unusual host via OPEN_DESIGN_WORKSPACE_ROOT.
+ * testing or an unusual host via OPEN_DESIGN_WORKSPACE_ROOT. Without the
+ * override, index.ts replaces it with the client's first MCP root once the
+ * client reports one (see workspaceRootFromClientRoots).
  */
 export function getWorkspaceRoot(): string {
-  return process.env.OPEN_DESIGN_WORKSPACE_ROOT?.trim() || process.cwd();
+  return getWorkspaceRootOverride() || process.cwd();
+}
+
+/** An explicit OPEN_DESIGN_WORKSPACE_ROOT, which beats the client's roots. */
+export function getWorkspaceRootOverride(): string | undefined {
+  return process.env.OPEN_DESIGN_WORKSPACE_ROOT?.trim() || undefined;
+}
+
+/**
+ * The workspace a client reports through MCP roots: the first file:// root.
+ * Hosts that install servers from a registry gallery (VS Code's @mcp view)
+ * don't necessarily start them in the open folder, so the cwd alone isn't
+ * reliable there. Undefined when the client reports no usable root.
+ */
+export function workspaceRootFromClientRoots(roots: readonly { uri: string }[]): string | undefined {
+  for (const root of roots) {
+    if (!root.uri.startsWith('file://')) continue;
+    try {
+      return fileURLToPath(root.uri);
+    } catch {
+      continue;
+    }
+  }
+  return undefined;
 }
 
 const DEFAULT_OUTPUT_DIR = '.open-design';

@@ -9,7 +9,7 @@ node scripts/bump-version.mjs 0.2.0     # or 0.2.0-beta.1; --dry-run to preview
 git push origin main --follow-tags
 ```
 
-`bump-version.mjs` sets the version in `packages/vscode`, `packages/content`, `packages/mcp-server` and `packages/cli`, then commits and tags `v0.2.0` locally. It never pushes. Optionally add a `## [0.2.0]` section to `CHANGELOG.md`; the release notes use it when present.
+`bump-version.mjs` sets the version in `packages/vscode`, `packages/content`, `packages/mcp-server` (including its MCP registry `server.json`) and `packages/cli`, then commits and tags `v0.2.0` locally. It never pushes. Optionally add a `## [0.2.0]` section to `CHANGELOG.md`; the release notes use it when present.
 
 ## 2. Release workflow (automatic)
 
@@ -26,7 +26,7 @@ Pushing a `vX.Y.Z` (or `-alpha.N` / `-beta.N`) tag runs [`.github/workflows/rele
 
 Both workflows publish the artifacts already built for the GitHub Release, and both require typing `PUBLISH` to confirm:
 
-- **Publish npm Packages** (`publish-npm.yml`): publishes `content`, then `mcp-server`, then `cli`.
+- **Publish npm Packages** (`publish-npm.yml`): publishes `content`, then `mcp-server`, then `cli`. A follow-up job then publishes `packages/mcp-server/server.json` to the [MCP registry](https://registry.modelcontextprotocol.io) as `io.github.feimacode/open-design` (GitHub OIDC, no secret), which feeds the GitHub MCP Registry and VS Code's `@mcp` gallery. If only that job fails, re-run it. The registry checks `mcpName` in the published npm package, so it can't list a version before it's on npm.
 - **Publish to Marketplace** (`publish-marketplace.yml`): verifies the `.vsix` checksum and runs `vsce publish` with the `VSCE_PAT` secret.
 
 ## 4. Update the Claude Code plugin's MCP pin (manual, after npm publish)

@@ -16,10 +16,11 @@ import {
   GetPromptRequestSchema,
   ListPromptsRequestSchema,
   ListToolsRequestSchema,
+  RootsListChangedNotificationSchema,
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ContentIndex, FORMAT_IDS, type ListSkillsInput } from '@feimacode/open-design-agent-kit-core';
-import { getAssetsRoot, getFigmaToken, getOutputDirectory, getWorkspaceRoot } from './env';
+import { getAssetsRoot, getFigmaToken, getOutputDirectory, getWorkspaceRoot, getWorkspaceRootOverride, workspaceRootFromClientRoots } from './env';
 import { createFileActiveDesignSystemStore } from './store';
 import * as tools from './tools';
 import type { ToolContext } from './tools';
@@ -795,8 +796,7 @@ const TOOL_DEFS: ToolDef[] = [
   },
 ];
 
-function buildContext(): ToolContext {
-  const workspaceRoot = getWorkspaceRoot();
+function buildContext(workspaceRoot: string = getWorkspaceRoot()): ToolContext {
   const outputDir = getOutputDirectory();
   const assetsRoot = getAssetsRoot();
   const contentIndex = new ContentIndex(assetsRoot, () => `${workspaceRoot}/${outputDir}/design-systems`);
@@ -805,12 +805,33 @@ function buildContext(): ToolContext {
 }
 
 async function main(): Promise<void> {
-  const ctx = buildContext();
+  let ctx = buildContext();
   const server = new Server({ name: 'open-design', version: '0.1.0' }, { capabilities: { tools: {}, prompts: {} } });
+
+  // Workspace root precedence: OPEN_DESIGN_WORKSPACE_ROOT, then the client's
+  // MCP roots, then the cwd (already in ctx). Requests wait for the first
+  // roots lookup so nothing is written to the cwd before it's known.
+  const syncRootsFromClient = async (): Promise<void> => {
+    if (getWorkspaceRootOverride() || !server.getClientCapabilities()?.roots) return;
+    try {
+      const root = workspaceRootFromClientRoots((await server.listRoots()).roots);
+      if (root && root !== ctx.workspaceRoot) ctx = buildContext(root);
+    } catch {
+      // A client that advertises roots but fails the request keeps the cwd.
+    }
+  };
+  let rootsReady: Promise<void> = Promise.resolve();
+  server.oninitialized = () => {
+    rootsReady = syncRootsFromClient();
+  };
+  server.setNotificationHandler(RootsListChangedNotificationSchema, async () => {
+    rootsReady = syncRootsFromClient();
+  });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOL_DEFS.map((d) => d.tool) }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    await rootsReady;
     const def = TOOL_DEFS.find((d) => d.tool.name === request.params.name);
     if (!def) {
       return { content: [{ type: 'text' as const, text: `Unknown tool: ${request.params.name}` }], isError: true };
@@ -830,6 +851,7 @@ async function main(): Promise<void> {
   // Hand-written workflow prompts (e.g. open-design-social-post) are listed
   // first, each taking the user's brief as an optional argument.
   server.setRequestHandler(ListPromptsRequestSchema, async () => {
+    await rootsReady;
     const localPrompts = await tools.listLocalPrompts(ctx);
     const prompts = await tools.listRemixablePrompts(ctx);
     return {
@@ -845,6 +867,7 @@ async function main(): Promise<void> {
   });
 
   server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    await rootsReady;
     const localPrompt = (await tools.listLocalPrompts(ctx)).find((p) => p.name === request.params.name);
     if (localPrompt) {
       return {

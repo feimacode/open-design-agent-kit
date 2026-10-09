@@ -56,6 +56,10 @@ claude mcp add open-design -- npx -y @feimacode/open-design-agent-kit-mcp
 
 Or install the [Claude Code plugin](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/claude-code.md) instead: it registers this server automatically and adds the Open Design skills on top.
 
+**Other MCP clients**
+
+The server is listed in the [MCP registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.feimacode/open-design) as `io.github.feimacode/open-design`, so clients that read it (such as VS Code's `@mcp` gallery) can install it directly. In VS Code, prefer the [extension](https://marketplace.visualstudio.com/items?itemName=feima.open-design-agent-kit): it adds live preview and editing, and installing both gives you two copies of the same tools.
+
 **Codex CLI**
 
 ```bash
