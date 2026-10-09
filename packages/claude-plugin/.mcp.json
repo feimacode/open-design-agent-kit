@@ -2,7 +2,10 @@
   "mcpServers": {
     "open-design": {
       "command": "npx",
-      "args": ["-y", "@feimacode/open-design-agent-kit-mcp"]
+      "args": ["-y", "@feimacode/open-design-agent-kit-mcp@0.1.8"],
+      "env": {
+        "OPEN_DESIGN_FIGMA_TOKEN": "${user_config.figma_token}"
+      }
     }
   }
 }

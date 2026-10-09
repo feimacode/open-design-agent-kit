@@ -6,5 +6,16 @@
     "name": "feimacode"
   },
   "license": "MIT",
-  "keywords": ["design", "design-system", "prototype", "landing-page", "deck", "ui"]
+  "keywords": ["design", "design-system", "prototype", "landing-page", "deck", "ui"],
+  "icon": ".claude-plugin/icon.png",
+  "userConfig": {
+    "figma_token": {
+      "type": "string",
+      "title": "Figma access token",
+      "description": "Optional. A Figma personal access token (Figma → Settings → Personal access tokens), used only to import Figma frames. Leave empty if you don't use Figma.",
+      "required": false,
+      "default": "",
+      "sensitive": true
+    }
+  }
 }

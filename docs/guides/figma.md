@@ -10,7 +10,9 @@ A Figma personal access token (Figma → Settings → Personal access tokens).
 
 > **In VS Code:** run **Open Design: Set Figma Access Token** and paste it. It's stored encrypted and never shown again.
 
-> **In Claude Code / Codex:** set [`OPEN_DESIGN_FIGMA_TOKEN`](../reference/settings-and-env.md#open_design_figma_token) in the MCP server's `env`.
+> **In the Claude Code plugin:** enter it as the plugin's **Figma access token** option (`/plugin` → Open Design → configure). It's stored in your keychain, not in `settings.json`.
+
+> **In Codex, or Claude Code without the plugin:** set [`OPEN_DESIGN_FIGMA_TOKEN`](../reference/settings-and-env.md#open_design_figma_token) in the MCP server's `env`.
 
 ### Steps
 
