@@ -6,6 +6,7 @@ interface PublishArtifactInput {
   entryPath: string;
   provider?: string;
   badge?: boolean;
+  includeFiles?: string[];
   published?: PublishedInput;
 }
 

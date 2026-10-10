@@ -1,0 +1,191 @@
+{
+  "$comment": "Trusted third-party MCP servers (openspec add-integration-registry). Official vendor servers and well-known aggregators only, never community servers. Checked by packages/content/scripts/integrations.mjs; loaded by packages/core/src/integrations. Re-verify an entry (URL, auth, tool names) before bumping its verifiedAt.",
+  "capabilities": {
+    "design.import": "Bring a finished file (PDF, PPTX, image) into the service as an editable design",
+    "design.upload": "Upload a local file or asset into the service",
+    "design.export": "Export a design from the service as PDF, PNG, PPTX or similar",
+    "design.read": "Read a design's structure, layers, variables or content",
+    "design.write": "Create or edit designs in the service",
+    "brand.kits": "Read the user's brand kit (colors, fonts, logos)",
+    "docs.read": "Read a page or document",
+    "docs.write": "Create or update a page or document",
+    "storage.read": "Read a stored file's content",
+    "storage.search": "Find files in the user's storage",
+    "storage.upload": "Save a file into the user's storage",
+    "team.share": "Post a message, image or link to a team channel",
+    "social.post": "Publish or draft a post on a social network",
+    "social.schedule": "Schedule a social post for later"
+  },
+  "integrations": [
+    {
+      "id": "x",
+      "displayName": "X (official API server)",
+      "vendor": "X",
+      "tier": "official-platform",
+      "platforms": ["x"],
+      "capabilities": {
+        "social.post": "createPosts"
+      },
+      "installable": false,
+      "manualSetup": "X's official MCP server (xdevplatform/xmcp) runs on the user's own machine and needs their own X developer app.\n1. Create an app at developer.x.com and note its consumer key/secret and bearer token. X API usage may be billed.\n2. Follow the README at https://github.com/xdevplatform/xmcp to start the server locally; it serves http://127.0.0.1:8000/mcp.\n3. Add that local URL to this agent as an HTTP MCP server, then restart the agent.",
+      "caveats": [
+        "Self-hosted: there is no hosted endpoint to connect to.",
+        "Media is uploaded through the server's chunked upload tools (initializeMediaUpload, appendMediaUpload, finalizeMediaUpload) before createPosts."
+      ],
+      "docsUrl": "https://github.com/xdevplatform/xmcp",
+      "verifiedAt": "2026-10-10",
+      "toolsVerified": true
+    },
+    {
+      "id": "canva",
+      "displayName": "Canva",
+      "vendor": "Canva",
+      "tier": "official-service",
+      "capabilities": {
+        "design.import": "import-design-from-url",
+        "design.upload": "create-upload-url",
+        "design.export": "export-design",
+        "design.read": "read-design",
+        "design.write": "create-design",
+        "brand.kits": "list-brand-kits"
+      },
+      "server": { "transport": "http", "url": "https://mcp.canva.com/mcp", "suggestedName": "canva" },
+      "auth": { "kind": "oauth-dcr" },
+      "claudeAiConnector": "Canva",
+      "installable": true,
+      "caveats": [
+        "Brand templates and brand kits need a Canva plan that includes them.",
+        "import-design-from-url needs a public HTTPS URL (a PDF, PPTX or webpage) and returns an editable design; create-upload-url plus a raw POST puts a private file in the user's Uploads (a fileId, not a design). Both tested 2026-10-10."
+      ],
+      "docsUrl": "https://canva.dev/docs/mcp/",
+      "verifiedAt": "2026-10-10",
+      "toolsVerified": true
+    },
+    {
+      "id": "figma",
+      "displayName": "Figma",
+      "vendor": "Figma",
+      "tier": "official-service",
+      "capabilities": {
+        "design.read": "get_design_context",
+        "design.export": "download_assets",
+        "design.upload": "upload_assets",
+        "design.write": "use_figma"
+      },
+      "server": { "transport": "http", "url": "https://mcp.figma.com/mcp", "suggestedName": "figma" },
+      "auth": { "kind": "oauth-dcr" },
+      "claudeAiConnector": "Figma",
+      "installable": true,
+      "caveats": [
+        "Figma only accepts clients listed in its MCP catalog (Claude Code, Codex, Cursor and VS Code are listed).",
+        "Write access differs per client: Codex supports Figma Design and FigJam only."
+      ],
+      "docsUrl": "https://developers.figma.com/docs/figma-mcp-server/remote-server-installation",
+      "verifiedAt": "2026-10-10",
+      "toolsVerified": true
+    },
+    {
+      "id": "notion",
+      "displayName": "Notion",
+      "vendor": "Notion",
+      "tier": "official-service",
+      "capabilities": {
+        "docs.read": "notion-fetch",
+        "docs.write": "notion-create-pages",
+        "storage.upload": "notion-create-file-upload"
+      },
+      "server": { "transport": "http", "url": "https://mcp.notion.com/mcp", "suggestedName": "notion" },
+      "auth": { "kind": "oauth-dcr" },
+      "claudeAiConnector": "Notion",
+      "installable": true,
+      "caveats": [
+        "Which tools work depends on the workspace's plan; notion-get-tool-access reports it."
+      ],
+      "docsUrl": "https://developers.notion.com/guides/mcp/get-started-with-mcp",
+      "verifiedAt": "2026-10-10",
+      "toolsVerified": true
+    },
+    {
+      "id": "google-drive",
+      "displayName": "Google Drive",
+      "vendor": "Google",
+      "tier": "official-service",
+      "capabilities": {
+        "storage.read": "read_file_content",
+        "storage.search": "search_files",
+        "storage.upload": "create_file"
+      },
+      "server": { "transport": "http", "url": "https://drivemcp.googleapis.com/mcp/v1", "suggestedName": "google-drive" },
+      "auth": { "kind": "own-oauth-client", "docsUrl": "https://developers.google.com/workspace/drive/api/guides/configure-mcp-server" },
+      "claudeAiConnector": "Google Drive",
+      "installable": true,
+      "caveats": [
+        "Outside claude.ai, Google's server needs the user's own Google Cloud project and OAuth client."
+      ],
+      "docsUrl": "https://developers.google.com/workspace/drive/api/guides/configure-mcp-server",
+      "verifiedAt": "2026-10-10",
+      "toolsVerified": true
+    },
+    {
+      "id": "slack",
+      "displayName": "Slack",
+      "vendor": "Slack",
+      "tier": "official-service",
+      "capabilities": {
+        "team.share": null
+      },
+      "server": { "transport": "http", "url": "https://mcp.slack.com/mcp", "suggestedName": "slack" },
+      "auth": { "kind": "oauth-dcr" },
+      "claudeAiConnector": "Slack",
+      "installable": true,
+      "caveats": [
+        "Slack only accepts its partner clients; if sign-in is refused, use the claude.ai connector or Slack's own instructions for this agent.",
+        "Tool names not yet verified: pick Slack's tool that sends a message by its description."
+      ],
+      "verifiedAt": "2026-10-10",
+      "toolsVerified": false
+    },
+    {
+      "id": "buffer",
+      "displayName": "Buffer",
+      "vendor": "Buffer",
+      "tier": "aggregator",
+      "platforms": ["x", "linkedin", "instagram", "facebook", "threads", "bluesky", "mastodon", "tiktok", "pinterest", "youtube"],
+      "capabilities": {
+        "social.post": "create_post",
+        "social.schedule": "create_post"
+      },
+      "server": { "transport": "http", "url": "https://mcp.buffer.com/mcp", "suggestedName": "buffer" },
+      "auth": { "kind": "api-key-header", "envVar": "BUFFER_API_KEY", "header": "Authorization", "scheme": "Bearer", "docsUrl": "https://developers.buffer.com/guides/integrations/mcp.md" },
+      "installable": true,
+      "caveats": [
+        "Media must be a public URL: Buffer has no upload endpoint.",
+        "Posts to X, Mastodon, Threads and Bluesky are text only through Buffer's API; Instagram and TikTok need an image or video."
+      ],
+      "docsUrl": "https://developers.buffer.com/guides/integrations/mcp.md",
+      "verifiedAt": "2026-10-10",
+      "toolsVerified": true
+    },
+    {
+      "id": "metricool",
+      "displayName": "Metricool",
+      "vendor": "Metricool",
+      "tier": "aggregator",
+      "platforms": ["instagram", "facebook", "linkedin", "tiktok", "youtube"],
+      "capabilities": {
+        "social.post": null,
+        "social.schedule": null
+      },
+      "server": { "transport": "http", "url": "https://ai.metricool.com/mcp", "suggestedName": "metricool" },
+      "auth": { "kind": "oauth-dcr" },
+      "claudeAiConnector": "Metricool",
+      "installable": true,
+      "caveats": [
+        "Tool names not yet verified: pick Metricool's tool that creates or schedules a post by its description."
+      ],
+      "docsUrl": "https://help.metricool.com/en/article/how-to-connect-metricools-mcp-1364s63/",
+      "verifiedAt": "2026-10-10",
+      "toolsVerified": false
+    }
+  ]
+}

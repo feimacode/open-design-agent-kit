@@ -60,7 +60,9 @@ The `site` export result SHALL include a preflight with every file's bundle path
 - **THEN** the preflight warnings SHALL include `no-viewport` and `external-script` naming that URL
 
 ### Requirement: Publish Instructions Tool
-The system SHALL provide `publish_open_design_artifact` in both the VS Code language-model tool surface and the MCP server. It SHALL accept `entryPath`, an optional `provider`, an optional `badge` and an optional `published` object.
+The system SHALL provide `publish_open_design_artifact` in both the VS Code language-model tool surface and the MCP server. It SHALL accept `entryPath`, an optional `provider`, an optional `badge`, an optional `includeFiles` list and an optional `published` object.
+
+`includeFiles` SHALL name workspace paths of files inside the artifact's own `exports/` folder, excluding the site bundle itself. Each SHALL be copied into the bundle at `files/<file name>`. The result SHALL list each included file with its path in the bundle, and the publish instructions SHALL present those files as going public. A path outside the artifact's `exports/` folder, a missing file, or two files with the same name SHALL return an error without writing a bundle.
 
 Without `published`, it SHALL:
 - run the `site` export
@@ -90,6 +92,14 @@ When `provider` is omitted, the instructions SHALL present these choices with th
 #### Scenario: Bundle build fails
 - **WHEN** the `site` export fails with `missing-references`
 - **THEN** the tool SHALL return that error and SHALL NOT return publish instructions
+
+#### Scenario: Export file included in the bundle
+- **WHEN** the tool is called with `includeFiles: [".open-design/poster/exports/poster.pdf"]` for that artifact
+- **THEN** the bundle SHALL contain `files/poster.pdf` and the result SHALL list it as going public at `<site URL>/files/poster.pdf`
+
+#### Scenario: File outside the artifact's exports rejected
+- **WHEN** `includeFiles` names a file outside the artifact's `exports/` folder
+- **THEN** the tool SHALL return an error and SHALL NOT write a bundle
 
 ### Requirement: Explicit Confirmation Before Anything Goes Public
 The composed publish instructions SHALL require the model to stop before running any deploy command. At that point it SHALL show the user:
@@ -149,3 +159,4 @@ The system SHALL ship a curated `publish` command (local overlay prompt) rendere
 #### Scenario: Claude Code user asks for a link
 - **WHEN** a Claude Code user with the generated skills says "give me a shareable link for the pitch deck"
 - **THEN** the overview skill SHALL direct the model to `publish_open_design_artifact` for that deck's entry path
+

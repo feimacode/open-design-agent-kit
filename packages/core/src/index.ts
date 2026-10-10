@@ -72,3 +72,5 @@ export * from './poster/printPdf';
 export * from './poster/qr';
 export * from './generation/adaptInstructions';
 export * from './poster/shapeSheet';
+
+export * from './integrations';

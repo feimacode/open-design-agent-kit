@@ -629,6 +629,36 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'list_open_design_integrations',
+      description:
+        "Looks up trusted third-party MCP servers (Canva, Figma, Notion, Google Drive, Slack, posting services such as Buffer and Metricool, X's official server) that a workflow step can use instead of a manual handoff. Call it whenever a step would hand work to another service (import into Canva, read a Figma frame, save to Drive, share in Slack, post to a social network). With no arguments it returns the catalog of capabilities and integrations. With capability, integration and/or platform it returns the providers in priority order (official platform server, then official service, then posting services), the tool-name patterns that show each one is installed, the setup steps for this agent, and the consent rules. Check your own tools (including deferred ones) against those patterns: if one is installed, use it by its server-defined tool name. If none is, offer setup once and only proceed after the user says yes; never install silently, never ask for or write API keys. If the user declines, continue with the workflow's manual path. This tool only returns text: it installs nothing and contacts no service.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          capability: {
+            type: 'string',
+            description: 'What the step needs, e.g. "design.import", "design.read", "storage.upload", "team.share", "social.post". Call with no arguments to see every capability.',
+          },
+          integration: {
+            type: 'string',
+            description: 'A specific integration id, e.g. "canva", "figma", "notion", "google-drive", "slack", "buffer", "metricool", "x".',
+          },
+          platform: {
+            type: 'string',
+            description: 'Social network, for social.* capabilities: x, linkedin, instagram, facebook, threads, tiktok, youtube, pinterest, bluesky, mastodon.',
+          },
+          agent: {
+            type: 'string',
+            enum: ['claude-code', 'codex', 'vscode', 'cursor', 'generic'],
+            description: 'Which agent the setup steps are for. Defaults to the agent this server is connected to.',
+          },
+        },
+      },
+    },
+    handler: (ctx, args) => tools.listIntegrations(ctx, args as tools.ListIntegrationsArgs),
+  },
+  {
+    tool: {
       name: 'check_open_design_artifact',
       description:
         "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and returns what it looks like: screenshots attached as images, plus preflight findings (overflow and clipped text, contrast, text overlap, safe area, broken images/fonts, emoji, QR codes, and horizontal-scroll for pages that scroll sideways). Writes no files and leaves the manifest alone. Call it after creating or substantially editing an artifact and registering it, before telling the user it's done: fix every ERROR, look at the screenshots for what the checks can't measure (balance, hierarchy, crowded or empty areas, text over busy imagery), then re-check — at most two fix rounds; tell the user about anything left. What it renders: a page without a [data-od-card] at each viewport (default desktop 1440×900 and mobile 390×844, findings tagged by viewport); a card design (poster, social post) at its registered format size; a deck slide by slide (findings tagged by slide, one contact sheet of up to 12 slides — pass slides to see others). Screenshots are JPEG with a long edge of at most 1568 px; maxImages (default 3, max 6) bounds how many are attached, and 0 returns findings only. Returns a 'no-browser' error when no browser is installed: then skip the check and tell the user once that visual checking needs Chrome, Edge or Chromium. For bulk data rows or shape sheets, use export_open_design_artifact with checkOnly instead.",
@@ -767,6 +797,12 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'boolean',
             description: 'Add the small, closeable "Made with Open Design" footer badge to the published page. Default true (OPEN_DESIGN_SHARE_BADGE=0 turns the default off).',
           },
+          includeFiles: {
+            type: 'array',
+            items: { type: 'string' },
+            maxItems: 10,
+            description: "Workspace paths of files in this artifact's own exports/ folder (e.g. an exported PDF) to host alongside the page, at files/<name> in the bundle, publicly downloadable at <site URL>/files/<name>. Used by the Canva flow to give Canva a URL to import. Export the files first.",
+          },
           published: {
             type: 'object',
             description: 'Record mode: what the deploy reported. Doesn\'t rebuild anything.',
@@ -790,9 +826,27 @@ const TOOL_DEFS: ToolDef[] = [
           entryPath: string;
           provider?: string;
           badge?: boolean;
+          includeFiles?: string[];
           published?: { provider: string; url: string; claimUrl?: string; expiresAt?: string; siteRef?: string };
         },
       ),
+  },
+  {
+    tool: {
+      name: 'publish_open_design_artifact_to_canva',
+      description: "Gets a finished Open Design artifact into Canva. Composes instructions only: it writes nothing and never talks to Canva itself. The instructions have you export the artifact (PDF, or PPTX for a deck), check whether the user's Canva MCP server is connected (via list_open_design_integrations), and then: when Canva is connected, let the user choose between an editable import (the export is hosted briefly on a public link with publish_open_design_artifact, then Canva's import-design-from-url converts it into a design, optionally published as a Brand Template after their yes) and a private upload into their Canva Uploads; when it isn't, offer setup once and otherwise give them Canva's manual Import a file steps. Use when the user wants an artifact in Canva, as a Canva design or a Canva template.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: {
+            type: 'string',
+            description: 'The workspace-relative path of the artifact to get into Canva (as passed to register_open_design_artifact).',
+          },
+        },
+        required: ['entryPath'],
+      },
+    },
+    handler: (ctx, args) => tools.publishToCanva(ctx, args as { entryPath: string }),
   },
 ];
 
@@ -837,7 +891,8 @@ async function main(): Promise<void> {
       return { content: [{ type: 'text' as const, text: `Unknown tool: ${request.params.name}` }], isError: true };
     }
     try {
-      return { content: tools.toCallToolContent(await def.handler(ctx, (request.params.arguments as Record<string, unknown>) ?? {})) };
+      const callCtx = { ...ctx, clientName: server.getClientVersion()?.name };
+      return { content: tools.toCallToolContent(await def.handler(callCtx, (request.params.arguments as Record<string, unknown>) ?? {})) };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return { content: [{ type: 'text' as const, text: `Tool "${request.params.name}" failed: ${message}` }], isError: true };

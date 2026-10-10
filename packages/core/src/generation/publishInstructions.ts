@@ -23,6 +23,8 @@ export interface ComposePublishInstructionsInput {
   siteName: string;
   slug: string;
   today: string;
+  /** Bundle paths of extra hosted files (includeFiles), e.g. files/poster.pdf. */
+  includedFiles?: string[];
 }
 
 /** Short kebab-case name from a title or file name. */
@@ -71,6 +73,11 @@ export function composePublishInstructions(input: ComposePublishInstructionsInpu
     `# Publish ${name}\n\nThe artifact has been packaged into a deploy-ready folder (a local export; nothing is online yet). Publishing it makes it reachable on the internet, under the user's own account or a temporary no-account link, so follow the stages below in order and do not skip the confirmation stage.`,
   );
   parts.push(`\n\n## The bundle\n\n${bundleSummary(input)}`);
+  if (input.includedFiles?.length) {
+    parts.push(
+      `\n\n## Hosted files\n\nThese files go online with the page, each publicly downloadable at \`<site URL>/<path>\` once deployed:\n${input.includedFiles.map((f) => `- \`${f}\``).join('\n')}`,
+    );
+  }
 
   const live = input.records.filter((r) => !r.expiresAt || Date.parse(r.expiresAt) > Date.now());
   if (live.length > 0) {

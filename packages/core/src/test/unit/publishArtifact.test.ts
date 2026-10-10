@@ -230,3 +230,38 @@ describe('share naming', () => {
     assert.strictEqual(siteNameForShare('pitch', () => 0.5), 'od-pitch-8000');
   });
 });
+
+describe('publishArtifact — includeFiles', () => {
+  const PDF = '.open-design/pitch/exports/pitch.pdf';
+
+  it('copies an exported file into files/ and lists it as going public', async () => {
+    const root = await workspace();
+    await fs.mkdir(path.join(root, '.open-design/pitch/exports'), { recursive: true });
+    await fs.writeFile(path.join(root, PDF), '%PDF-1.7 test');
+    const { ok, text } = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, provider: 'cloudflare-temporary', includeFiles: [PDF] });
+    assert.ok(ok, text);
+    assert.strictEqual(await fs.readFile(path.join(root, '.open-design/pitch/exports/site/files/pitch.pdf'), 'utf8'), '%PDF-1.7 test');
+    assert.match(text, /## Hosted files[\s\S]*`files\/pitch\.pdf`/);
+    assert.match(text, /- files\/pitch\.pdf \(/);
+  });
+
+  it('rejects a path outside the exports folder, a missing file and duplicate names, writing no bundle', async () => {
+    const root = await workspace();
+    await fs.mkdir(path.join(root, '.open-design/pitch/exports/a'), { recursive: true });
+    await fs.writeFile(path.join(root, PDF), 'x');
+    await fs.writeFile(path.join(root, '.open-design/pitch/exports/a/pitch.pdf'), 'y');
+    const cases: [string[], RegExp][] = [
+      [['.open-design/pitch/pitch.html'], /not in this artifact's exports folder/],
+      [['.open-design/pitch/exports/../../../secret.txt'], /not in this artifact's exports folder/],
+      [['.open-design/pitch/exports/site/index.html'], /not in this artifact's exports folder/],
+      [['.open-design/pitch/exports/missing.pdf'], /doesn't exist/],
+      [[PDF, '.open-design/pitch/exports/a/pitch.pdf'], /two files are named pitch\.pdf/],
+    ];
+    for (const [includeFiles, re] of cases) {
+      const { ok, text } = await publishArtifact({ workspaceRoot: root, entryPath: ENTRY, provider: 'cloudflare-temporary', includeFiles });
+      assert.strictEqual(ok, false, includeFiles.join(','));
+      assert.match(text, re);
+    }
+    await assert.rejects(fs.access(path.join(root, '.open-design/pitch/exports/site')));
+  });
+});

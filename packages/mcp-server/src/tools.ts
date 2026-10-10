@@ -58,6 +58,10 @@ import {
   createArtifactQrCode,
   formatQrCodeResult,
   FigmaApiError,
+  agentFromClientName,
+  composePublishCanvaTemplateInstructions,
+  formatIntegrations,
+  type ListIntegrationsInput,
   type ActiveDesignSystemStore,
   type ContentIndex,
   type ExportFormat,
@@ -71,6 +75,8 @@ export interface ToolContext {
   outputDir: string;
   assetsRoot: string;
   figmaToken?: string;
+  /** The client name from the MCP initialize handshake (e.g. "claude-code", "codex-mcp-client"). */
+  clientName?: string;
 }
 
 function slugify(input: string): string {
@@ -524,6 +530,13 @@ export async function addDiagramRuntime(ctx: ToolContext, input: { entryPath: st
   return formatAddDiagramRuntimeResult(await addDiagramRuntimeCore({ ...input, workspaceRoot: ctx.workspaceRoot }));
 }
 
+export type ListIntegrationsArgs = ListIntegrationsInput;
+
+/** list_open_design_integrations: trusted third-party MCP servers with setup steps for the connected agent; read-only. */
+export async function listIntegrations(ctx: ToolContext, input: ListIntegrationsInput): Promise<string> {
+  return formatIntegrations(await ctx.contentIndex.getIntegrationRegistry(), input, agentFromClientName(ctx.clientName));
+}
+
 /** check_open_design_artifact: renders the artifact and returns findings plus screenshots; writes nothing. */
 export async function checkArtifact(
   ctx: ToolContext,
@@ -559,11 +572,27 @@ export async function publishArtifact(
     entryPath: string;
     provider?: string;
     badge?: boolean;
+    includeFiles?: string[];
     published?: { provider: string; url: string; claimUrl?: string; expiresAt?: string; siteRef?: string };
   },
 ): Promise<string> {
   const result = await publishArtifactCore({ ...input, workspaceRoot: ctx.workspaceRoot });
   return result.text;
+}
+
+/** publish_open_design_artifact_to_canva: instructions to get an artifact into Canva (connector-aware); writes nothing. */
+export async function publishToCanva(ctx: ToolContext, input: { entryPath: string }): Promise<string> {
+  const artifact = await readArtifact({ workspaceRoot: ctx.workspaceRoot, entryPath: input.entryPath });
+  if (!artifact) return `No artifact found at ${input.entryPath}. It may not have been written yet.`;
+  const manifest = artifact.manifest as Record<string, unknown> | undefined;
+  const metadata = manifest?.metadata as Record<string, unknown> | undefined;
+  return composePublishCanvaTemplateInstructions({
+    artifactEntryPath: input.entryPath,
+    artifactContent: artifact.entryContent,
+    manifestTitle: typeof manifest?.title === 'string' ? manifest.title : undefined,
+    manifestKind: typeof manifest?.kind === 'string' ? manifest.kind : undefined,
+    manifestFormat: typeof metadata?.format === 'string' ? metadata.format : undefined,
+  });
 }
 
 /** Hand-written prompts (e.g. open-design-social-post) shipped under the content assets' prompts/ folder. */

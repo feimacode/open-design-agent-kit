@@ -66,6 +66,14 @@ For a **poster, flyer, certificate or other print piece**, or when the user want
 
 When the user wants to **share** a design with people who don't have this project open: for a link ("publish this", "deploy it", "give me a link to send the team", "host it somewhere"), call `publish_open_design_artifact` with its `entryPath` (pass `provider` only if they already said where; otherwise it returns the choices to show them). It builds a deploy-ready folder and returns step-by-step instructions to run with your terminal under the user's own CLI login, or as a temporary no-account link. Follow them exactly: they stop for the user's explicit yes before anything goes online, and after a successful deploy you call the tool again with `published` to record the link. For a single file to attach or send ("export it as one HTML file"), call `export_open_design_artifact` with `format: "standalone"` instead; nothing goes online. The `open-design-publish` skill walks through the whole flow.
 
+When a step would **hand work to another service** (import into Canva, read or push a Figma frame, save to Google Drive, write a Notion page, share in Slack, or post to a social network), call `list_open_design_integrations` first with the `capability` (plus `platform` for a social post). Then:
+1. Check your own tools for one matching the returned patterns, including deferred or on-demand tools you can search for. If one is there, use it, calling its tools by their server-defined names (e.g. Canva's `import-design-from-url`).
+2. If none is, offer to set up the first provider, once per conversation and only when the step needs it: say what it does and what sign-in it needs. Only after the user says yes, follow the returned setup steps (user-level configuration only). Never install silently, and never ask for an API key or write one into a file: the user sets it themselves.
+3. Help the user sign in and reload if needed, then confirm by listing your tools.
+4. If the user declines or setup fails, carry on with the workflow's manual path.
+
+Anything that publishes, sends or posts on the user's account still needs their go-ahead first.
+
 ## Help
 
 When the user asks how something works, or a tool reports an error, point them to the relevant page:
@@ -75,6 +83,7 @@ When the user asks how something works, or a tool reports an error, point them t
 - Exploring design directions: https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/explore-directions.md
 - Turning a document into a deck: https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/deck-from-a-document.md
 - Sharing and publishing: https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/share-and-publish.md
+- Connecting Canva, Figma, Notion, Google Drive, Slack or a posting service: https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/integrations.md
 - Social media posts: https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/social-posts.md
 - Posters and print: https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/posters.md
 - Export images: https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/export-images.md · Export decks and PDFs: https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/export-decks.md

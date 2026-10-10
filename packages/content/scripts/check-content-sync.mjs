@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { DEFAULT_OPEN_DESIGN_REF } from './sync-open-design-content.mjs';
 import { LOCAL_ROOT, findRedundantOverrides, listOverlayFiles } from './apply-local-overlay.mjs';
 import { checkSurfaces } from './surfaces.mjs';
+import { checkIntegrations } from './integrations.mjs';
 import { checkPorts } from './ports.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -89,6 +90,16 @@ async function checkSurfaceCatalog() {
   }
 }
 
+// Trusted MCP servers: valid entries, https URLs, no literal secrets (openspec add-integration-registry).
+async function checkIntegrationRegistry() {
+  const { errors, warnings } = await checkIntegrations(assetsRoot);
+  for (const w of warnings) console.warn(`Integration registry: ${w}`);
+  if (errors.length > 0) {
+    console.error(`Integration registry problems (packages/content/local/integrations.json):\n- ${errors.join('\n- ')}`);
+    process.exit(1);
+  }
+}
+
 // Ported content keeps its provenance (openspec add-dev-doc-templates).
 async function checkPortProvenance() {
   const problems = await checkPorts(LOCAL_ROOT, path.join(__dirname, '..', '..', '..', 'docs', 'contributing', 'upstream-ports.md'));
@@ -101,6 +112,7 @@ async function checkPortProvenance() {
 async function main() {
   await checkLocalOverlay();
   await checkSurfaceCatalog();
+  await checkIntegrationRegistry();
   await checkPortProvenance();
   await checkRedundantOverrides();
 

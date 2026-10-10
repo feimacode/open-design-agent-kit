@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { collectCuratedEntries } from '@feimacode/open-design-agent-kit-content/scripts/curatedEntries.mjs';
 import { loadLocalPrompts, renderPromptBody } from '@feimacode/open-design-agent-kit-content/scripts/localPrompts.mjs';
 import { buildRemixableExamplesReference } from '@feimacode/open-design-agent-kit-content/scripts/remixableExamplesReference.mjs';
+import { checkIntegrationUsage } from '@feimacode/open-design-agent-kit-content/scripts/integrations.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(__dirname, '..');
@@ -125,6 +126,36 @@ async function main() {
     const committedReference = await fs.readFile(referencePath, 'utf8');
     const expectedReference = await buildRemixableExamplesReference(assetsRoot);
     if (committedReference !== expectedReference) problems.push('stale skills/open-design/references/remixable-examples.md');
+  }
+
+  // Third-party MCP tools keep the agent's per-call approval, and every host's
+  // overview carries the shared integration block (openspec add-integration-registry).
+  const repoRoot = path.resolve(pluginRoot, '..', '..');
+  const integrationsFile = path.join(assetsRoot, 'integrations.json');
+  if (await pathExists(integrationsFile)) {
+    const registry = JSON.parse(await fs.readFile(integrationsFile, 'utf8'));
+    const skillRoots = [committedSkillsDir, path.join(repoRoot, '.agents', 'skills'), path.join(repoRoot, 'packages', 'cli', 'assets', 'claude-skills'), path.join(repoRoot, 'packages', 'cli', 'assets', 'codex-skills')];
+    const skills = [];
+    for (const root of skillRoots) {
+      if (!(await pathExists(root))) continue;
+      for (const dir of await fs.readdir(root, { withFileTypes: true })) {
+        const file = path.join(root, dir.name, 'SKILL.md');
+        if (dir.isDirectory() && (await pathExists(file))) skills.push({ file: path.relative(repoRoot, file), content: await fs.readFile(file, 'utf8') });
+      }
+    }
+    const overviewFiles = [
+      path.join(committedSkillsDir, 'open-design', 'SKILL.md'),
+      path.join(repoRoot, '.agents', 'skills', 'open-design', 'SKILL.md'),
+      path.join(repoRoot, 'packages', 'cli', 'assets', 'claude-skills', 'open-design', 'SKILL.md'),
+      path.join(repoRoot, 'packages', 'cli', 'assets', 'codex-skills', 'open-design', 'SKILL.md'),
+      path.join(repoRoot, 'packages', 'vscode', 'instructions', 'open-design.instructions.md'),
+    ];
+    const overviews = [];
+    for (const file of overviewFiles) {
+      if (await pathExists(file)) overviews.push({ file: path.relative(repoRoot, file), content: await fs.readFile(file, 'utf8') });
+      else problems.push(`missing overview ${path.relative(repoRoot, file)}`);
+    }
+    problems.push(...checkIntegrationUsage(registry, skills, overviews));
   }
 
   if (problems.length > 0) {

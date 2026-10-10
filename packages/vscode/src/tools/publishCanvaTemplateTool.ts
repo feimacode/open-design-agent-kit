@@ -7,9 +7,9 @@ interface PublishCanvaTemplateInput {
 }
 
 // Composes instructions only — never writes files, never talks to Canva.
-// Same principle as ShareToCommunityTool/PortToAppCodeTool: the model calls
-// export_open_design_artifact itself, then hands the result to the user for
-// Canva's own (manual, account-gated) import and publish steps.
+// The model exports, then imports through the user's Canva MCP connector when
+// one is connected (openspec connect-canva-publish), or hands the file over
+// for Canva's manual import.
 export class PublishCanvaTemplateTool implements vscode.LanguageModelTool<PublishCanvaTemplateInput> {
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<PublishCanvaTemplateInput>,
@@ -31,12 +31,15 @@ export class PublishCanvaTemplateTool implements vscode.LanguageModelTool<Publis
 
     const manifestTitle = typeof artifact.manifest?.title === 'string' ? artifact.manifest.title : undefined;
     const manifestKind = typeof artifact.manifest?.kind === 'string' ? artifact.manifest.kind : undefined;
+    const metadata = artifact.manifest?.metadata as Record<string, unknown> | undefined;
+    const manifestFormat = typeof metadata?.format === 'string' ? metadata.format : undefined;
 
     const instructions = composePublishCanvaTemplateInstructions({
       artifactEntryPath: entryPath,
       artifactContent: artifact.entryContent,
       manifestTitle,
       manifestKind,
+      manifestFormat,
     });
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(instructions)]);

@@ -23,6 +23,7 @@ Two rules apply to every tool:
 | [`create_open_design_design_system`](#create_open_design_design_system) | `#od-create-design-system` | yes | Instructions for a custom design system |
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
+| [`publish_open_design_artifact_to_canva`](#publish_open_design_artifact_to_canva) | `#od-publish-to-canva` | yes | Get a design into Canva: through your Canva connector when it's connected, otherwise a file to import |
 | [`pull_open_design_figma_frame`](#pull_open_design_figma_frame) | `#od-pull-figma-frame` | yes | Instructions to rebuild a Figma frame as code |
 | [`check_open_design_artifact`](#check_open_design_artifact) | `#od-check` | yes | Render a design and see it: screenshots plus preflight findings, at desktop and mobile, per card or per slide |
 | [`export_open_design_artifact`](#export_open_design_artifact) | `#od-export` | yes | Export to PNG, JPEG, PDF, PowerPoint, standalone HTML or a site folder; check a design; one file per data row |
@@ -30,6 +31,7 @@ Two rules apply to every tool:
 | [`adapt_open_design_artifact`](#adapt_open_design_artifact) | `#od-adapt` | yes | Instructions to re-compose a design for other sizes |
 | [`create_open_design_qr_code`](#create_open_design_qr_code) | `#od-qr-code` | yes | Make a real QR code for a design |
 | [`publish_open_design_artifact`](#publish_open_design_artifact) | `#od-publish` | yes | Package for hosting and get instructions to publish a link |
+| [`list_open_design_integrations`](#list_open_design_integrations) | `#od-integrations` | yes | Find trusted integrations (Canva, Figma, Notion, Drive, Slack, social posting) and setup steps for this agent |
 
 ## Catalog
 
@@ -342,13 +344,20 @@ VS Code only. Composes instructions to package a finished artifact as a new entr
 
 ### publish_open_design_artifact_to_canva
 
-VS Code only. Composes instructions to export a finished artifact and prepare it for import into Canva. **It writes nothing and does not talk to Canva itself** — Canva has no CLI and this project has no connected account, so every step past the export happens manually in your own Canva session.
+Composes instructions to get a finished artifact into Canva. **It writes nothing and never talks to Canva itself.** The agent exports the artifact (`pdf`, or `pptx` for a registered deck), then checks whether your Canva MCP server is connected ([`list_open_design_integrations`](#list_open_design_integrations)):
+
+- **Canva connected:** it explains two routes, recommends the first and waits for your choice.
+  - **Editable design.** The export is hosted briefly on a public link through [`publish_open_design_artifact`](#publish_open_design_artifact) with `includeFiles`, after that tool's own confirmation (`cloudflare-temporary` or your own host, never `netlify-temporary`, whose links are password-protected). Canva's `import-design-from-url` then converts it into a design, and the agent checks it with `read-design` and gives you the edit link. It publishes a Brand Template with `publish-brand-template` only if you say yes.
+  - **Private upload.** The file goes straight into your Canva **Uploads** (`create-upload-url` plus one `curl` POST), and you open it there to edit. Nothing goes public.
+- **Canva not connected:** the agent offers to connect it once. If you decline, it hands you the file with Canva's own **Import a file** steps.
+
+The import passes a Canva design type when one fits the artifact: a deck becomes `presentation`, an `ig-square`/`ig-portrait` card `instagram_post`, `story` `your_story`, `x-image` `twitter_post`, `yt-thumbnail` `youtube_thumbnail`, `a4` `a4`, `letter` `us_letter`, and larger print sizes `poster`. Public Creator templates on Canva's marketplace stay a manual step in Canva.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `entryPath` | string | yes | The artifact to prepare. |
+| `entryPath` | string | yes | The artifact to get into Canva. |
 
-**Result:** the instructions text. Directs the agent to call `export_open_design_artifact` itself (`pptx` for a registered deck, `pdf` otherwise), then hand the exported file to you for Canva's own **Import a file** flow. Also explains — without attempting any of them — the three things "publish as a template" can mean in Canva: personal reuse, a Brand Template (Canva Pro/Teams), or a public Creator template (gated behind Canva's own Creator program).
+**Result:** the instructions text.
 
 ### pull_open_design_figma_frame
 
@@ -504,6 +513,7 @@ Packages a registered artifact into a deploy-ready folder (`exports/site/`) and 
 |---|---|---|---|
 | `entryPath` | string | yes | The registered artifact's entry file. |
 | `provider` | `netlify-temporary` · `cloudflare-temporary` · `netlify` · `vercel` · `cloudflare-pages` · `github-pages` | no | Where to publish. Omitted: the instructions list the choices for the user to pick. |
+| `includeFiles` | string[] | no | Up to 10 files from this artifact's own `exports/` folder (e.g. an exported PDF) to host alongside the page, at `files/<name>` in the bundle and publicly downloadable at `<site URL>/files/<name>`. They're listed among the files going out at the confirmation stage. A path outside the artifact's `exports/`, a missing file or a duplicate name is an error, and nothing is built. The Canva flow uses this to give Canva a URL to import. |
 | `badge` | boolean | no | Add the closeable "Made with Open Design" footer badge. Default `true`, unless [`openDesign.share.badge`](settings-and-env.md#opendesignsharebadge) is off or [`OPEN_DESIGN_SHARE_BADGE`](settings-and-env.md#open_design_share_badge) is `0`. |
 | `published` | object | no | Record mode, after a successful deploy: `{ provider, url, claimUrl?, expiresAt?, siteRef? }`. `url` and `claimUrl` must be `https:`. Nothing is rebuilt. |
 
@@ -516,3 +526,27 @@ Packages a registered artifact into a deploy-ready folder (`exports/site/`) and 
 ```json
 { "entryPath": ".open-design/launch/launch.html", "provider": "netlify-temporary" }
 ```
+
+## Integrations
+
+### list_open_design_integrations
+
+Looks up the trusted third-party MCP servers a workflow step can use instead of a manual handoff: Canva, Figma, Notion, Google Drive, Slack, the posting services Buffer and Metricool, and X's official server. **It installs nothing, contacts no service and writes no files.** The agent calls it when a step would hand work to another service, checks its own tools against the returned patterns, uses an installed integration, and otherwise offers setup once and waits for the user's yes. See [Connect other services](../guides/integrations.md).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `capability` | string | no | What the step needs: `design.import`, `design.upload`, `design.export`, `design.read`, `design.write`, `brand.kits`, `docs.read`, `docs.write`, `storage.read`, `storage.search`, `storage.upload`, `team.share`, `social.post`, `social.schedule`. |
+| `integration` | string | no | One integration by id: `canva`, `figma`, `notion`, `google-drive`, `slack`, `buffer`, `metricool`, `x`. |
+| `platform` | string | no | A social network, for `social.*`: `x`, `linkedin`, `instagram`, `facebook`, `threads`, `tiktok`, `youtube`, `pinterest`, `bluesky`, `mastodon`. |
+| `agent` | `claude-code` · `codex` · `vscode` · `cursor` · `generic` | no | Which agent the setup steps are for. VS Code defaults to `vscode`; the MCP server infers it from the connecting client, falling back to `generic`. |
+
+**Result (text):**
+- With no arguments: the capability vocabulary and the list of integrations.
+- With filters: the matching providers in priority order. Official platform servers come first, then vendors' official servers, then posting services; when several posting services match, it says to ask the user which one they use. Each provider lists its tools, the tool-name patterns that show it's installed, caveats, and setup steps for the agent. Then come the consent rules: install only after the user's yes, at user level, never write or ask for API keys, still ask before publishing or posting, and fall back to the manual path if declined.
+
+**Example (MCP arguments):**
+
+```json
+{ "capability": "social.post", "platform": "linkedin" }
+```
+

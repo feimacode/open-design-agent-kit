@@ -662,8 +662,8 @@
       {
         "name": "publish_open_design_artifact_to_canva",
         "displayName": "Publish Artifact to Canva",
-        "modelDescription": "Composes instructions for turning a finished Open Design artifact into a Canva design the user can import and, if they choose, publish as a template. Does NOT write any files and does NOT talk to Canva itself — Canva has no CLI and this extension has no connected account. The returned instructions direct the model to: (1) derive a title/description/tags from the artifact itself, (2) call export_open_design_artifact for the right format (pptx for a registered deck — image-per-slide, not editable text; pdf otherwise — real vector text via the browser's print engine, the best realistic shot at an editable Canva import), then (3) hand the exported file to the user to import at canva.com themselves (Create a design → Import a file), and (4) explain — without attempting any of them — the three different things \"publish as a template\" can mean in Canva: personal reuse (just duplicate the design), a Brand Template (Canva Pro/Teams, reusable within their own account), or a public Creator template (Canva's marketplace, gated behind Canva's own Creator program application).",
-        "userDescription": "Prepare a finished Open Design artifact for Canva",
+        "modelDescription": "Gets a finished Open Design artifact into Canva. Composes instructions only: it writes nothing and never talks to Canva itself. The instructions have you export the artifact (PDF, or PPTX for a deck), check whether the user's Canva MCP server is connected (via list_open_design_integrations), and then: when Canva is connected, let the user choose between an editable import (the export is hosted briefly on a public link with publish_open_design_artifact, then Canva's import-design-from-url converts it into a design, optionally published as a Brand Template after their yes) and a private upload into their Canva Uploads; when it isn't, offer setup once and otherwise give them Canva's manual Import a file steps. Use when the user wants an artifact in Canva, as a Canva design or a Canva template.",
+        "userDescription": "Get a finished Open Design artifact into Canva (through the Canva connector when it's connected)",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-publish-to-canva",
         "icon": "$(link-external)",
@@ -1161,6 +1161,14 @@
               "type": "boolean",
               "description": "Add the small, closeable \"Made with Open Design\" footer badge to the published page. Default true; the openDesign.share.badge setting turns it off."
             },
+            "includeFiles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 10,
+              "description": "Workspace paths of files in this artifact's own exports/ folder (e.g. an exported PDF) to host alongside the page, at files/<name> in the bundle, publicly downloadable at <site URL>/files/<name>. Used by the Canva flow to give Canva a URL to import. Export the files first."
+            },
             "published": {
               "type": "object",
               "description": "Record mode: what the deploy reported. Doesn't rebuild anything.",
@@ -1202,6 +1210,43 @@
           "required": [
             "entryPath"
           ]
+        }
+      },
+      {
+        "name": "list_open_design_integrations",
+        "displayName": "List Open Design Integrations",
+        "modelDescription": "Looks up trusted third-party MCP servers (Canva, Figma, Notion, Google Drive, Slack, posting services such as Buffer and Metricool, X's official server) that a workflow step can use instead of a manual handoff. Call it whenever a step would hand work to another service (import into Canva, read a Figma frame, save to Drive, share in Slack, post to a social network). With no arguments it returns the catalog of capabilities and integrations. With capability, integration and/or platform it returns the providers in priority order (official platform server, then official service, then posting services), the tool-name patterns that show each one is installed, the setup steps for this agent, and the consent rules. Check your own tools (including deferred ones) against those patterns: if one is installed, use it by its server-defined tool name. If none is, offer setup once and only proceed after the user says yes; never install silently, never ask for or write API keys. If the user declines, continue with the workflow's manual path. This tool only returns text: it installs nothing and contacts no service.",
+        "userDescription": "Find the trusted integrations (Canva, Figma, Notion, Drive, Slack, social posting) a design workflow can use, with setup steps",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-integrations",
+        "icon": "$(plug)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "capability": {
+              "type": "string",
+              "description": "What the step needs, e.g. \"design.import\", \"design.read\", \"storage.upload\", \"team.share\", \"social.post\". Call with no arguments to see every capability."
+            },
+            "integration": {
+              "type": "string",
+              "description": "A specific integration id, e.g. \"canva\", \"figma\", \"notion\", \"google-drive\", \"slack\", \"buffer\", \"metricool\", \"x\"."
+            },
+            "platform": {
+              "type": "string",
+              "description": "Social network, for social.* capabilities: x, linkedin, instagram, facebook, threads, tiktok, youtube, pinterest, bluesky, mastodon."
+            },
+            "agent": {
+              "type": "string",
+              "enum": [
+                "claude-code",
+                "codex",
+                "vscode",
+                "cursor",
+                "generic"
+              ],
+              "description": "Which agent the setup steps are for. Defaults to vscode here."
+            }
+          }
         }
       }
     ],

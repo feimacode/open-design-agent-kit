@@ -20,6 +20,8 @@ export const LOCAL_ROOT = path.join(packageRoot, 'local');
 export const OVERLAY_MARKER = '.od-local-overlay';
 /** The surface catalog (openspec add-surface-picker): local/surfaces.json, copied to the assets root. */
 export const SURFACES_FILE = 'surfaces.json';
+/** Trusted third-party MCP servers (openspec add-integration-registry): local/integrations.json, copied to the assets root. */
+export const INTEGRATIONS_FILE = 'integrations.json';
 // The only file an overlay may contribute to an EXISTING upstream design
 // system: additive token overrides, applied on top of (never instead of) the
 // vendored tokens.css by core's resolveDesignSystemTokens().
@@ -71,6 +73,7 @@ export async function listOverlayFiles(localRoot = LOCAL_ROOT) {
   for (const id of await listDirs(path.join(localRoot, 'examples'))) await walk(path.join('examples', id));
   for (const name of await listFiles(path.join(localRoot, 'prompts'))) files.push(path.join('prompts', name));
   if (await pathExists(path.join(localRoot, SURFACES_FILE))) files.push(SURFACES_FILE);
+  if (await pathExists(path.join(localRoot, INTEGRATIONS_FILE))) files.push(INTEGRATIONS_FILE);
   for (const id of await listDirs(path.join(localRoot, 'design-systems'))) {
     const names = new Set(await listFiles(path.join(localRoot, 'design-systems', id)));
     if (names.size === 1 && names.has(TOKENS_OVERRIDE_FILE)) {
@@ -198,6 +201,11 @@ export async function applyLocalOverlay(targetRoot, localRoot = LOCAL_ROOT) {
   const hasSurfaces = await pathExists(path.join(localRoot, SURFACES_FILE));
   if (hasSurfaces) await fs.copyFile(path.join(localRoot, SURFACES_FILE), path.join(targetRoot, SURFACES_FILE));
   else await fs.rm(path.join(targetRoot, SURFACES_FILE), { force: true });
+
+  // integrations.json likewise has no upstream counterpart.
+  const hasIntegrations = await pathExists(path.join(localRoot, INTEGRATIONS_FILE));
+  if (hasIntegrations) await fs.copyFile(path.join(localRoot, INTEGRATIONS_FILE), path.join(targetRoot, INTEGRATIONS_FILE));
+  else await fs.rm(path.join(targetRoot, INTEGRATIONS_FILE), { force: true });
 
   // Drop overrides from a previous run that local/ no longer has, so a
   // standalone re-apply after deleting one doesn't leave it in effect.

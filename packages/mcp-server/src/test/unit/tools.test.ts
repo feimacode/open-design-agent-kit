@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { ContentIndex, findBrowser } from '@feimacode/open-design-agent-kit-core';
+import { composePublishCanvaTemplateInstructions, ContentIndex, findBrowser, formatIntegrations, writeArtifactManifest } from '@feimacode/open-design-agent-kit-core';
 import * as tools from '../../tools';
 import type { ToolContext } from '../../tools';
 import { createFileActiveDesignSystemStore } from '../../store';
@@ -403,5 +403,59 @@ describe('check_open_design_artifact (real browser; skipped when none is install
     assert.strictEqual(content[0].type, 'text');
     assert.deepStrictEqual(content.slice(1).map((c) => (c.type === 'image' ? c.mimeType : c.type)), ['image/jpeg', 'image/jpeg']);
     assert.ok(!(await fs.readdir(path.join(ctx.workspaceRoot, '.open-design', 'landing'))).includes('exports'));
+  });
+});
+
+describe('list_open_design_integrations (shipped registry)', () => {
+  const assetsRoot = path.resolve(__dirname, '..', '..', '..', '..', 'content', 'assets', 'open-design');
+  const ctxFor = (clientName?: string): ToolContext => ({
+    contentIndex: new ContentIndex(assetsRoot),
+    store: createFileActiveDesignSystemStore(os.tmpdir()),
+    workspaceRoot: os.tmpdir(),
+    outputDir: '.open-design',
+    assetsRoot,
+    clientName,
+  });
+
+  it('infers the agent from the MCP client name', async () => {
+    const codex = await tools.listIntegrations(ctxFor('codex-mcp-client'), { integration: 'canva' });
+    assert.match(codex, /Install steps are for: \*\*codex\*\*/);
+    assert.match(codex, /codex mcp add canva --url https:\/\/mcp\.canva\.com\/mcp/);
+    const claude = await tools.listIntegrations(ctxFor('claude-code'), { integration: 'canva' });
+    assert.match(claude, /claude\.ai\/customize\/connectors/);
+  });
+
+  it('falls back to generic for an unknown client, and an explicit agent wins', async () => {
+    assert.match(await tools.listIntegrations(ctxFor('mystery-client'), { integration: 'notion' }), /\*\*generic\*\*/);
+    assert.match(await tools.listIntegrations(ctxFor('claude-code'), { integration: 'notion', agent: 'cursor' }), /~\/\.cursor\/mcp\.json/);
+  });
+
+  it('returns exactly what the VS Code tool returns for the same input and agent', async () => {
+    const input = { capability: 'social.post', platform: 'linkedin', agent: 'vscode' };
+    const registry = await new ContentIndex(assetsRoot).getIntegrationRegistry();
+    assert.strictEqual(await tools.listIntegrations(ctxFor('claude-code'), input), formatIntegrations(registry, input, 'vscode'));
+  });
+});
+
+describe('publish_open_design_artifact_to_canva', () => {
+  it('composes the connector-aware Canva flow from the artifact, like the VS Code tool', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'od-mcp-canva-'));
+    const entryPath = '.open-design/poster/poster.html';
+    await fs.mkdir(path.join(root, '.open-design/poster'), { recursive: true });
+    await fs.writeFile(path.join(root, entryPath), '<!doctype html><h1>Poster</h1>');
+    await writeArtifactManifest({
+      workspaceRoot: root,
+      entryPath,
+      artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: 'Poster', metadata: { format: 'a3' } },
+    });
+    const ctx = { workspaceRoot: root, outputDir: '.open-design' } as ToolContext;
+    const text = await tools.publishToCanva(ctx, { entryPath });
+    assert.match(text, /intended_design_type: "poster"/);
+    assert.match(text, /list_open_design_integrations/);
+    assert.strictEqual(
+      text,
+      composePublishCanvaTemplateInstructions({ artifactEntryPath: entryPath, artifactContent: '<!doctype html><h1>Poster</h1>', manifestTitle: 'Poster', manifestKind: 'html', manifestFormat: 'a3' }),
+    );
+    assert.match(await tools.publishToCanva(ctx, { entryPath: '.open-design/nope/nope.html' }), /No artifact found/);
   });
 });

@@ -36,6 +36,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [Export images](guides/export-images.md): PNG and JPEG, sizes, cards, file-size budgets
 - [Export decks and PDFs](guides/export-decks.md): PowerPoint, deck PDF, page PDF
 - [Share and publish](guides/share-and-publish.md): one HTML file, a temporary link, or your own Netlify, Vercel, Cloudflare or GitHub Pages
+- [Connect other services](guides/integrations.md): let the agent use Canva, Figma, Notion, Google Drive, Slack or a posting service directly, with your consent
 
 ## Reference
 

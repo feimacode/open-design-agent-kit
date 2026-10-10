@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import matter from 'gray-matter';
+import { loadIntegrationRegistry, type IntegrationRegistry } from '../integrations/registry';
 
 export type SkillSource = 'skill' | 'design-template' | 'example' | 'community';
 // Priority order used both to decide which source keeps the plain public id
@@ -489,6 +490,7 @@ function mergeSkillPools(...pools: Map<string, SkillDetail>[]): Map<string, Skil
 
 export class ContentIndex {
   private loaded: Promise<LoadedContent> | undefined;
+  private integrations: Promise<IntegrationRegistry> | undefined;
 
   constructor(
     private readonly assetsRoot: string,
@@ -507,6 +509,12 @@ export class ContentIndex {
     // see loadedSkills().
     private readonly getCommunityContentDir?: () => string | undefined,
   ) {}
+
+  /** Trusted third-party MCP servers (openspec add-integration-registry): `<assetsRoot>/integrations.json`, empty when absent. */
+  getIntegrationRegistry(): Promise<IntegrationRegistry> {
+    if (!this.integrations) this.integrations = loadIntegrationRegistry(this.assetsRoot).then((r) => r.registry);
+    return this.integrations;
+  }
 
   private ensureLoaded(): Promise<LoadedContent> {
     if (!this.loaded) {
