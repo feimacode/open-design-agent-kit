@@ -9,13 +9,13 @@
     "source": "github",
     "subfolder": "packages/mcp-server"
   },
-  "version": "0.1.8",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@feimacode/open-design-agent-kit-mcp",
-      "version": "0.1.8",
+      "version": "0.2.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
