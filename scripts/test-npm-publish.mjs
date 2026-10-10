@@ -258,7 +258,16 @@ async function testMcpServerResolution(scratchDir) {
     const call = await waitForResponse(3);
 
     assert(init?.result?.serverInfo?.name === 'open-design', 'initialize did not return the expected serverInfo');
-    assert(list?.result?.tools?.length === 20, `expected 20 tools, got ${list?.result?.tools?.length}`);
+    // Expected names come from the server's own TOOL_DEFS source, so adding a
+    // tool needs no change here; a published bundle missing one still fails.
+    const source = await fs.readFile(path.join(repoRoot, 'packages', 'mcp-server', 'src', 'index.ts'), 'utf8');
+    const expected = [...source.matchAll(/^ {6}name: '([a-z_]+)',$/gm)].map((m) => m[1]).sort();
+    const actual = (list?.result?.tools ?? []).map((t) => t.name).sort();
+    assert(expected.length > 0, 'found no tool names in packages/mcp-server/src/index.ts');
+    assert(
+      JSON.stringify(actual) === JSON.stringify(expected),
+      `tools/list mismatch: missing [${expected.filter((n) => !actual.includes(n))}], unexpected [${actual.filter((n) => !expected.includes(n))}]`,
+    );
     const callText = call?.result?.content?.[0]?.text;
     const parsedCall = callText ? JSON.parse(callText) : undefined;
     assert(Array.isArray(parsedCall) && parsedCall.length > 0, 'list_open_design_skills returned no entries');
@@ -276,16 +285,26 @@ async function testCliInit(scratchDir) {
     stdio: 'inherit',
   });
 
-  const claudeSkills = await fs.readdir(path.join(scratchDir, '.claude', 'skills'));
-  const codexSkills = await fs.readdir(path.join(scratchDir, '.agents', 'skills'));
-  assert(claudeSkills.length === 31, `expected 31 Claude skills, got ${claudeSkills.length}`);
-  assert(codexSkills.length === 31, `expected 31 Codex skills, got ${codexSkills.length}`);
+  // Expected skills are the ones the CLI package bundles, so adding a skill
+  // needs no change here; init writing fewer or other skills still fails.
+  const cliAssets = path.join(repoRoot, 'packages', 'cli', 'assets');
+  for (const [host, written, bundled] of [
+    ['Claude', path.join(scratchDir, '.claude', 'skills'), path.join(cliAssets, 'claude-skills')],
+    ['Codex', path.join(scratchDir, '.agents', 'skills'), path.join(cliAssets, 'codex-skills')],
+  ]) {
+    const actual = (await fs.readdir(written)).sort();
+    const expected = (await fs.readdir(bundled)).sort();
+    assert(
+      JSON.stringify(actual) === JSON.stringify(expected),
+      `${host} skills mismatch: missing [${expected.filter((n) => !actual.includes(n))}], unexpected [${actual.filter((n) => !expected.includes(n))}]`,
+    );
+  }
   assert(
     JSON.parse(await fs.readFile(path.join(scratchDir, '.mcp.json'), 'utf8')).mcpServers['open-design'],
     '.mcp.json missing the open-design entry',
   );
   await fs.access(path.join(scratchDir, '.codex', 'config.toml'));
-  log('cli init OK (29 skills per host, .mcp.json and .codex/config.toml written)');
+  log('cli init OK (bundled skills for both hosts, .mcp.json and .codex/config.toml written)');
 }
 
 async function main() {
