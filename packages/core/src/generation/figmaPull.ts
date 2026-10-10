@@ -19,30 +19,36 @@
 export interface FigmaUrlRef {
   fileKey: string;
   nodeId?: string;
+  /** Which Figma editor the link is for. */
+  kind?: 'design' | 'board' | 'slides' | 'make';
 }
 
-// Matches both figma.com/file/<key>/... (legacy) and figma.com/design/<key>/...
-// (current). A node id, when present, arrives as a `node-id` query param
-// with `-` in place of the API's `:` separator (e.g. "123-456" -> "123:456")
-// — how Figma's own "Copy link to selection" formats it.
-const FIGMA_URL_RE = /^https?:\/\/(?:www\.)?figma\.com\/(?:file|design)\/([A-Za-z0-9]+)/i;
+// Matches figma.com/design/<key>/… (current), /file/<key>/… (legacy),
+// /board/ (FigJam), /slides/ and /make/. For a branch link
+// (/design/<key>/branch/<branchKey>/…) the branch key is the file key, as
+// Figma's MCP server expects. A node id arrives as a `node-id` query param
+// with `-` in place of the API's `:` separator ("123-456" -> "123:456"), how
+// Figma's own "Copy link to selection" formats it.
+const FIGMA_URL_RE = /^https?:\/\/(?:www\.)?figma\.com\/(file|design|board|slides|make)\/([A-Za-z0-9]+)(?:\/branch\/([A-Za-z0-9]+))?/i;
 
 export function parseFigmaUrl(url: string): FigmaUrlRef | undefined {
   const match = FIGMA_URL_RE.exec(url.trim());
   if (!match) return undefined;
-  const fileKey = match[1];
+  const editor = match[1].toLowerCase();
+  const kind = editor === 'file' ? 'design' : (editor as FigmaUrlRef['kind']);
+  const fileKey = match[3] ?? match[2];
 
   let nodeId: string | undefined;
   try {
     const parsed = new URL(url);
     const raw = parsed.searchParams.get('node-id');
-    if (raw) nodeId = raw.replace('-', ':');
+    if (raw) nodeId = raw.replace(/-/g, ':');
   } catch {
     // Malformed URL beyond the file-key prefix — still return the file key,
     // just without a node id.
   }
 
-  return { fileKey, nodeId };
+  return { fileKey, nodeId, kind };
 }
 
 export interface FigmaColor {
@@ -225,39 +231,63 @@ export function summarizeFigmaNode(node: FigmaNode, opts: { maxNodes?: number } 
 }
 
 export interface ComposePullFigmaInstructionsInput {
-  frameSummary: FigmaFrameSummary;
-  frameName: string;
+  /** The structural summary from the token path; absent when no token is configured. */
+  frameSummary?: FigmaFrameSummary;
+  frameName?: string;
   imageUrl?: string;
   designSystemId?: string;
   suggestedEntryPath: string;
+  /** The parsed link, for Figma's MCP tools. */
+  figmaRef?: FigmaUrlRef;
+  /** How to configure a token in this host, shown when neither Figma nor a token is available. */
+  tokenSetupHint?: string;
 }
 
+/**
+ * Instructions to rebuild a Figma frame as an Open Design artifact (openspec
+ * connect-figma). Figma's MCP server comes first when the user has it
+ * connected; the token-based structural summary is extra ground truth when a
+ * token is configured, and the fallback otherwise.
+ */
 export function composePullFigmaInstructions(input: ComposePullFigmaInstructionsInput): string {
-  const { frameSummary, frameName, imageUrl, designSystemId, suggestedEntryPath } = input;
+  const { frameSummary, frameName, imageUrl, designSystemId, suggestedEntryPath, figmaRef } = input;
+  const label = frameName ? `the Figma frame "${frameName}"` : 'the Figma frame';
   const parts: string[] = [];
 
   parts.push(
-    `# Translate a Figma frame into a code artifact\n\nYou are translating the Figma frame "${frameName}" into a real, production-quality HTML/CSS (or React, if more appropriate) artifact with 1:1 visual fidelity — not a loose interpretation.`,
+    `# Translate a Figma frame into a code artifact\n\nYou are translating ${label} into a real, production-quality HTML/CSS artifact with 1:1 visual fidelity, not a loose interpretation.`,
   );
 
+  const ids = figmaRef?.nodeId
+    ? `\`fileKey: "${figmaRef.fileKey}"\` and \`nodeId: "${figmaRef.nodeId}"\``
+    : 'the file key and node id from the link';
   parts.push(
-    `\n\n## Ground truth\n\nThe JSON below is a deterministic, exact structural summary of the frame — positions, sizes, fill/stroke colors (hex), corner radii, and text runs (with their exact characters, font, size). Treat it as authoritative: match exact colors, relative positions/sizes, and text content precisely. Do not invent content, copy, or elements that aren't present in this data.${
-      frameSummary.truncated
-        ? ` NOTE: this summary was truncated at ${frameSummary.nodeCount} nodes — the frame has more content than shown; ask the user if the missing portion matters before proceeding.`
-        : ''
-    }\n\n\`\`\`json\n${JSON.stringify(frameSummary.root, null, 2)}\n\`\`\``,
+    `\n\n## Step 1 — use Figma's own server when it's connected\n\nCall \`list_open_design_integrations\` with \`integration: "figma"\` and check your own tools, including deferred ones you can search for, for Figma's \`get_design_context\`.\n\nIf it's there:\n1. Load Figma's guidance first (Figma requires it): call \`get_figma_skill\` with \`uri: "skill://figma/figma-design-to-code/SKILL.md"\`.\n2. Call \`get_design_context\` with ${ids}, \`clientLanguages: "html,css"\` and \`clientFrameworks: "unknown"\`. It returns reference code, a screenshot and download URLs for the frame's assets.\n3. Call \`get_variable_defs\` with the same ids for the frame's colors, type and spacing variables.\n4. Download the assets the design uses right away (their URLs are short-lived) into the artifact's folder, and reference them by relative path.\n5. Treat the returned code as a **reference**, not the final file: rebuild it as one self-contained HTML entry file (CSS in a \`<style>\` block) following the rules below, using the variables' real values.\n6. When the artifact is written, call \`get_screenshot\` with the same ids and compare it with your result; fix any visible differences.${frameSummary ? '\n\nThe structural summary below (from the access token) is extra ground truth either way.' : ''}`,
   );
 
-  parts.push(
-    imageUrl
-      ? `\n\n## Visual reference\n\nA rendered PNG export of this exact frame is available at: ${imageUrl}\nIf your environment can view images from a URL, fetch and look at it to cross-check visual fidelity (layering, gradients, and other details the structural JSON above simplifies away). If it cannot, rely on the structural JSON alone.`
-      : `\n\n## Visual reference\n\nNo rendered image export was available — rely on the structural JSON alone.`,
-  );
+  if (frameSummary) {
+    parts.push(
+      `\n\n## Ground truth\n\nThe JSON below is a deterministic, exact structural summary of the frame — positions, sizes, fill/stroke colors (hex), corner radii, and text runs (with their exact characters, font, size). Treat it as authoritative: match exact colors, relative positions/sizes, and text content precisely. Do not invent content, copy, or elements that aren't present in this data.${
+        frameSummary.truncated
+          ? ` NOTE: this summary was truncated at ${frameSummary.nodeCount} nodes — the frame has more content than shown; ask the user if the missing portion matters before proceeding.`
+          : ''
+      }\n\n\`\`\`json\n${JSON.stringify(frameSummary.root, null, 2)}\n\`\`\``,
+    );
+    parts.push(
+      imageUrl
+        ? `\n\n## Visual reference\n\nA rendered PNG export of this exact frame is available at: ${imageUrl}\nIf your environment can view images from a URL, fetch and look at it to cross-check visual fidelity (layering, gradients, and other details the structural JSON above simplifies away). If it cannot, rely on the structural JSON alone.`
+        : `\n\n## Visual reference\n\nNo rendered image export was available — rely on the structural JSON alone.`,
+    );
+  } else {
+    parts.push(
+      `\n\n## Step 2 — if Figma isn't connected\n\nNo Figma access token is configured either, so there's nothing to read the frame with yet. Offer to connect Figma once, using the setup steps \`list_open_design_integrations\` returned, and only after the user says yes. If they'd rather not, they can use a personal access token instead: ${input.tokenSetupHint ?? 'configure a Figma personal access token for Open Design (Figma → Settings → Personal access tokens)'}, then ask again. Don't guess the design from the link alone.`,
+    );
+  }
 
   parts.push(
     designSystemId
-      ? `\n\n## Design system\n\nThis frame is associated with design system "${designSystemId}" — reuse its component conventions where the frame's structure clearly matches them, but the frame's own exact colors/type from the JSON above still take precedence over the design system's generic tokens.`
-      : `\n\n## Design system\n\nNo design system was specified — implement the frame's own exact styling from the JSON above directly (inline styles or plain CSS), without inventing a design-system abstraction that wasn't requested.`,
+      ? `\n\n## Design system\n\nThis frame is associated with design system "${designSystemId}" — reuse its component conventions where the frame's structure clearly matches them, but the frame's own exact colors/type still take precedence over the design system's generic tokens.`
+      : `\n\n## Design system\n\nNo design system was specified — implement the frame's own exact styling directly (inline styles or plain CSS), without inventing a design-system abstraction that wasn't requested.`,
   );
 
   parts.push(
@@ -265,4 +295,67 @@ export function composePullFigmaInstructions(input: ComposePullFigmaInstructions
   );
 
   return parts.join('');
+}
+
+export interface PreparePullFigmaFrameOptions {
+  figmaUrl: string;
+  designSystemId?: string;
+  /** The host's configured personal access token, if any. */
+  token?: string;
+  /** Workspace-relative output directory, e.g. ".open-design". */
+  outputDir: string;
+  /** How to configure a token in this host. */
+  tokenSetupHint: string;
+  fetchImpl?: FetchLike;
+}
+
+function frameSlug(input: string): string {
+  return (
+    input
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || 'frame'
+  );
+}
+
+/**
+ * The pull_open_design_figma_frame tool, shared by both hosts: parses the
+ * link, fetches the token summary when a token is configured, and composes
+ * connector-first instructions. Returns the tool's text result.
+ */
+export async function preparePullFigmaFrame(options: PreparePullFigmaFrameOptions): Promise<string> {
+  const ref = parseFigmaUrl(options.figmaUrl);
+  if (!ref) return `"${options.figmaUrl}" does not look like a Figma file/design URL.`;
+  if (!ref.nodeId && ref.kind !== 'make') {
+    return 'That link points at a whole Figma file, not a frame. Ask the user to select the frame in Figma and use "Copy link to selection" (the link must contain node-id), then call this tool again with it.';
+  }
+  if (ref.kind === 'make' && !ref.nodeId) ref.nodeId = '0:1';
+
+  let frameSummary: FigmaFrameSummary | undefined;
+  let frameName: string | undefined;
+  let imageUrl: string | undefined;
+  const notes: string[] = [];
+  if (options.token) {
+    try {
+      const node = await fetchFigmaNode(options.token, ref, options.fetchImpl);
+      frameSummary = summarizeFigmaNode(node);
+      frameName = node.name;
+      imageUrl = await fetchFigmaFrameImage(options.token, ref.fileKey, ref.nodeId!, options.fetchImpl);
+    } catch (err) {
+      notes.push(`The access token couldn't read the frame (${err instanceof Error ? err.message : String(err)}), so only Figma's own server can be used.`);
+    }
+  }
+  const suggestedEntryPath = `${options.outputDir.replace(/\/+$/, '')}/figma/${frameSlug(frameName ?? `frame-${ref.nodeId}`)}.html`;
+  let instructions = composePullFigmaInstructions({
+    frameSummary,
+    frameName,
+    imageUrl,
+    designSystemId: options.designSystemId,
+    suggestedEntryPath,
+    figmaRef: ref,
+    tokenSetupHint: options.tokenSetupHint,
+  });
+  if (notes.length) instructions = `${notes.join('\n')}\n\n${instructions}`;
+  return JSON.stringify({ instructions, suggestedEntryPath }, null, 2);
 }

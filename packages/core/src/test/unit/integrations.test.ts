@@ -36,7 +36,7 @@ describe('integration registry', () => {
     const { registry: r, errors } = parseIntegrationRegistry({
       capabilities: { 'design.import': 'd' },
       integrations: [
-        { id: 'bad', displayName: 'Bad', vendor: 'B', tier: 'official-service', installable: false, manualSetup: 'x', capabilities: { 'design.teleport': 'y' }, verifiedAt: '2026-10-10' },
+        { id: 'bad', displayName: 'Bad', vendor: 'B', tier: 'official-service', installable: false, manualSetup: 'x', manualFallback: 'by hand', capabilities: { 'design.teleport': 'y' }, verifiedAt: '2026-10-10' },
       ],
     });
     assert.strictEqual(r.integrations.length, 0);
@@ -101,9 +101,13 @@ describe('integration registry', () => {
     const text = formatIntegrations(registry, { integration: 'notion' }, 'generic');
     for (const rule of INTEGRATION_CONSENT_RULES) assert.ok(text.includes(rule), rule);
     assert.match(text, /only after the user says yes/);
-    const cat = formatIntegrations(registry, {}, 'generic');
-    assert.match(cat, /`design\.import`/);
-    assert.match(cat, /\*\*Canva\*\*/);
+    const cat = formatIntegrations(registry, {}, 'claude-code');
+    assert.match(cat, /## Design[\s\S]*### Canva \(`canva`\)/);
+    assert.match(cat, /## Docs & storage[\s\S]*### Notion/);
+    assert.match(cat, /## Social posting[\s\S]*### Buffer/);
+    assert.match(cat, /Connected if your tools include: `mcp__claude_ai_Canva__\*`/);
+    assert.match(cat, /### X \(official API server\)[\s\S]*?Setup here: manual only on this agent/);
+    assert.match(cat, /claude mcp list/);
   });
 
   it('rejects unknown filter values with the valid ones', () => {
@@ -127,4 +131,10 @@ describe('integration registry', () => {
     const cc = formatIntegrations(registry, { integration: 'canva' }, 'claude-code');
     assert.match(cc, /`mcp__claude_ai_Canva__\*`/);
   });
+
+  it('names each provider\'s manual path in lookups (Notion: the paste export)', () => {
+    const text = formatIntegrations(registry, { capability: 'docs.write' }, 'vscode');
+    assert.match(text, /Manual path \(if it isn't set up\): Call export_open_design_artifact with format "paste" and target "notion"/);
+  });
 });
+

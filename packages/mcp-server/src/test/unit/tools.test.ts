@@ -229,11 +229,14 @@ describe('mcp-server tools', () => {
     assert.match(raw, /has no remixable starting artifact/);
   });
 
-  it('pullFigmaFrame reports clearly when no token is configured', async () => {
+  it('pullFigmaFrame works without a token: connector-first instructions, token as the fallback', async () => {
     const ctx = await makeContext();
     const raw = await tools.pullFigmaFrame(ctx, { figmaUrl: 'https://www.figma.com/design/abc123/File?node-id=1-2' });
-    assert.match(raw, /No Figma access token configured/);
-    assert.match(raw, /OPEN_DESIGN_FIGMA_TOKEN/);
+    const { instructions, suggestedEntryPath } = JSON.parse(raw);
+    assert.match(instructions, /`get_design_context`/);
+    assert.match(instructions, /`fileKey: "abc123"` and `nodeId: "1:2"`/);
+    assert.match(instructions, /OPEN_DESIGN_FIGMA_TOKEN/);
+    assert.match(suggestedEntryPath, /figma\/frame-1-2\.html$/);
   });
 
   it('pullFigmaFrame reports clearly for a non-Figma URL', async () => {
@@ -245,7 +248,7 @@ describe('mcp-server tools', () => {
   it('pullFigmaFrame reports clearly when the URL has no node id', async () => {
     const ctx = { ...(await makeContext()), figmaToken: 'fake-token' };
     const raw = await tools.pullFigmaFrame(ctx, { figmaUrl: 'https://www.figma.com/design/abc123/File' });
-    assert.match(raw, /no node id/);
+    assert.match(raw, /not a frame[\s\S]*Copy link to selection/);
   });
 
   it('prepareBrief requires screenRole when collectionId is given', async () => {
@@ -457,5 +460,23 @@ describe('publish_open_design_artifact_to_canva', () => {
       composePublishCanvaTemplateInstructions({ artifactEntryPath: entryPath, artifactContent: '<!doctype html><h1>Poster</h1>', manifestTitle: 'Poster', manifestKind: 'html', manifestFormat: 'a3' }),
     );
     assert.match(await tools.publishToCanva(ctx, { entryPath: '.open-design/nope/nope.html' }), /No artifact found/);
+  });
+});
+
+describe('push_open_design_artifact_to_figma', () => {
+  it('reuses a fresh capture, writes the parts and returns the push instructions', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'od-mcp-figma-'));
+    const entryPath = '.open-design/card/card.html';
+    await fs.mkdir(path.join(root, '.open-design/card'), { recursive: true });
+    await fs.writeFile(path.join(root, entryPath), '<h1>Card</h1>');
+    await new Promise((r) => setTimeout(r, 20));
+    await fs.writeFile(
+      path.join(root, `${entryPath}.od-figma.json`),
+      JSON.stringify({ version: 1, source: { url: 'x', title: 'Card', capturedAt: 0, viewport: { width: 400, height: 300 }, dpr: 1 }, fonts: [], root: { type: 'FRAME', name: 'body', x: 0, y: 0, width: 400, height: 300, children: [] } }),
+    );
+    const text = await tools.pushToFigma({ workspaceRoot: root, outputDir: '.open-design' } as ToolContext, { entryPath });
+    assert.match(text, /# Push/);
+    assert.match(text, /part-01\.js/);
+    await fs.access(path.join(root, '.open-design/card/exports/figma/manifest.json'));
   });
 });

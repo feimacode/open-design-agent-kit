@@ -1,4 +1,5 @@
-// Ported from open-design's own web clipper (/home/iven/tools/open-design/
+// Shared by the VS Code preview (webview) and the headless runner
+// (captureArtifactForFigma); openspec connect-figma. Ported from open-design's own web clipper (/home/iven/tools/open-design/
 // clipper/capture.js's buildFigmaIr()) — the producer of the ".od-figma.json"
 // capture IR documented in figma-plugin/IR.md, which a separate, vendored
 // Figma plugin (assets/figma-plugin/) rebuilds into real Figma layers. This
@@ -24,78 +25,21 @@
 //    is ever injected INTO the artifact's iframe document, unlike a live web
 //    page carrying the clipper's own on-page toolbar.
 
-const IR_VERSION = 1;
-const MAX_NODES = 6000;
+import type { FigmaCaptureCornerRadii, FigmaCaptureDocument, FigmaCaptureEffect, FigmaCaptureFrameNode, FigmaCaptureNode, FigmaCapturePaint, FigmaCaptureTextNode } from './captureTypes';
 
-export interface FigmaCaptureColor {
-  r: number;
-  g: number;
-  b: number;
-}
+// Core compiles without the DOM library, so the DOM objects this walks are
+// typed loosely here; the code itself only ever runs in a browser.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type CaptureDocument = any;
+type CSSStyleDeclaration = any;
+type Element = any;
+type Node = any;
+type DOMRect = { left: number; top: number; width: number; height: number };
+type ParsedColor = { r: number; g: number; b: number; a: number };
+declare function getComputedStyle(el: Element): CSSStyleDeclaration;
 
-export type FigmaCapturePaint = { type: 'SOLID'; color: FigmaCaptureColor; opacity?: number } | { type: 'IMAGE'; scaleMode: string; url?: string; dataUri?: string };
-
-export interface FigmaCaptureEffect {
-  type: 'DROP_SHADOW';
-  color: FigmaCaptureColor & { a: number };
-  offset: { x: number; y: number };
-  radius: number;
-  spread: number;
-}
-
-export interface FigmaCaptureCornerRadii {
-  topLeft: number;
-  topRight: number;
-  bottomRight: number;
-  bottomLeft: number;
-}
-
-interface FigmaCaptureBoxFields {
-  name: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  fills?: FigmaCapturePaint[];
-  strokes?: FigmaCapturePaint[];
-  strokeWeight?: number;
-  cornerRadius?: number;
-  rectangleCornerRadii?: FigmaCaptureCornerRadii;
-  effects?: FigmaCaptureEffect[];
-  opacity?: number;
-}
-
-export interface FigmaCaptureFrameNode extends FigmaCaptureBoxFields {
-  type: 'FRAME';
-  clipsContent?: boolean;
-  children?: FigmaCaptureNode[];
-}
-
-export interface FigmaCaptureTextNode {
-  type: 'TEXT';
-  name: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  characters: string;
-  fontFamily: string;
-  fontStyle: string;
-  fontSize: number;
-  lineHeight?: number;
-  letterSpacing?: number;
-  textAlign: 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFIED';
-  color: FigmaCaptureColor;
-  opacity?: number;
-}
-
-export type FigmaCaptureNode = FigmaCaptureFrameNode | FigmaCaptureTextNode;
-
-export interface FigmaCaptureDocument {
-  version: 1;
-  source: { url: string; title: string; capturedAt: number; viewport: { width: number; height: number }; dpr: number };
-  fonts: Array<{ family: string; styles: string[] }>;
-  root: FigmaCaptureFrameNode;
+export interface FigmaCaptureSourceMeta {
+  title: string;
 }
 
 export interface FigmaCaptureResult {
@@ -104,126 +48,121 @@ export interface FigmaCaptureResult {
   truncated: boolean;
 }
 
-function isDataUri(ref: string): boolean {
-  return /^data:/i.test(ref);
-}
+export function captureFigmaIr(iframeDoc: CaptureDocument, sourceMeta: FigmaCaptureSourceMeta): FigmaCaptureResult {
+  // Everything below is nested on purpose: the headless runner injects this
+  // function as source text (captureFigmaIr.toString()), so it must not refer
+  // to anything outside itself.
+  const IR_VERSION = 1;
+  const MAX_NODES = 6000;
 
-function px(v: string): number {
-  const n = parseFloat(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-interface ParsedColor {
-  r: number;
-  g: number;
-  b: number;
-  a: number;
-}
-
-function parseColor(str: string | undefined): ParsedColor | null {
-  if (!str) return null;
-  const m = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,/\s]+([\d.]+))?\s*\)/i.exec(str);
-  if (!m) return null;
-  const a = m[4] === undefined ? 1 : Number(m[4]);
-  return { r: Math.min(1, Number(m[1]) / 255), g: Math.min(1, Number(m[2]) / 255), b: Math.min(1, Number(m[3]) / 255), a: Number.isFinite(a) ? a : 1 };
-}
-
-function solidFill(color: ParsedColor | null): FigmaCapturePaint | null {
-  if (!color || color.a === 0) return null;
-  return { type: 'SOLID', color: { r: color.r, g: color.g, b: color.b }, opacity: color.a };
-}
-
-function hexToColor(hex: string): ParsedColor | null {
-  const clean = hex.replace('#', '');
-  if (![3, 4, 6, 8].includes(clean.length)) return null;
-  const full = clean.length <= 4 ? clean.split('').map((c) => c + c).join('') : clean;
-  const r = parseInt(full.slice(0, 2), 16) / 255;
-  const g = parseInt(full.slice(2, 4), 16) / 255;
-  const b = parseInt(full.slice(4, 6), 16) / 255;
-  const a = full.length === 8 ? parseInt(full.slice(6, 8), 16) / 255 : 1;
-  return { r, g, b, a };
-}
-
-// The IR's Paint type has no GRADIENT variant (matches the vendored plugin's
-// own Figma-side type — see IR.md), so a real gradient can't round-trip.
-// Rather than emit nothing (transparent), this takes the gradient's first
-// color stop as a best-effort approximation — visibly closer to the source
-// than a missing fill, even though it flattens the gradient itself.
-function firstGradientColor(image: string): ParsedColor | null {
-  if (!image || !/gradient\(/i.test(image)) return null;
-  const m = /rgba?\([^)]+\)|#[0-9a-fA-F]{3,8}/.exec(image);
-  if (!m) return null;
-  return m[0].startsWith('#') ? hexToColor(m[0]) : parseColor(m[0]);
-}
-
-function uniformRadius(s: CSSStyleDeclaration): number | FigmaCaptureCornerRadii {
-  const tl = px(s.borderTopLeftRadius);
-  const tr = px(s.borderTopRightRadius);
-  const br = px(s.borderBottomRightRadius);
-  const bl = px(s.borderBottomLeftRadius);
-  if (tl === tr && tr === br && br === bl) return tl;
-  return { topLeft: tl, topRight: tr, bottomRight: br, bottomLeft: bl };
-}
-
-function borderStroke(s: CSSStyleDeclaration): { stroke: FigmaCapturePaint; weight: number } | null {
-  const w = px(s.borderTopWidth);
-  if (!w || s.borderTopStyle === 'none' || s.borderTopStyle === 'hidden') return null;
-  const fill = solidFill(parseColor(s.borderTopColor));
-  if (!fill) return null;
-  const uniform = s.borderTopWidth === s.borderRightWidth && s.borderRightWidth === s.borderBottomWidth && s.borderBottomWidth === s.borderLeftWidth;
-  if (!uniform) return null;
-  return { stroke: fill, weight: w };
-}
-
-function parseShadow(boxShadow: string): FigmaCaptureEffect | null {
-  if (!boxShadow || boxShadow === 'none') return null;
-  const first = boxShadow.split(/,(?![^(]*\))/)[0].trim();
-  if (/\binset\b/.test(first)) return null;
-  const colorMatch = /rgba?\([^)]+\)|#[0-9a-f]{3,8}/i.exec(first);
-  const color = parseColor(colorMatch ? colorMatch[0] : '');
-  const nums = (first.replace(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/i, '').match(/-?[\d.]+px/g) || []).map(px);
-  if (!color || nums.length < 2) return null;
-  return {
-    type: 'DROP_SHADOW',
-    color: { r: color.r, g: color.g, b: color.b, a: color.a },
-    offset: { x: nums[0] || 0, y: nums[1] || 0 },
-    radius: nums[2] || 0,
-    spread: nums[3] || 0,
-  };
-}
-
-function fontStyleName(weight: string, italic: boolean): string {
-  const w = Number(weight) || 400;
-  const name = w <= 100 ? 'Thin' : w <= 200 ? 'ExtraLight' : w <= 300 ? 'Light' : w <= 400 ? 'Regular' : w <= 500 ? 'Medium' : w <= 600 ? 'SemiBold' : w <= 700 ? 'Bold' : w <= 800 ? 'ExtraBold' : 'Black';
-  if (italic) return name === 'Regular' ? 'Italic' : `${name} Italic`;
-  return name;
-}
-
-function firstFamily(fontFamily: string): string {
-  return (fontFamily || 'Inter').split(',')[0].replace(/["']/g, '').trim() || 'Inter';
-}
-
-function isVisible(s: CSSStyleDeclaration): boolean {
-  if (s.display === 'none' || s.visibility === 'hidden' || s.visibility === 'collapse') return false;
-  if (Number(s.opacity) === 0) return false;
-  return true;
-}
-
-function textRect(node: Node, doc: Document): DOMRect | null {
-  try {
-    const range = doc.createRange();
-    range.selectNodeContents(node);
-    return range.getBoundingClientRect();
-  } catch {
-    return null;
+  function isDataUri(ref: string): boolean {
+    return /^data:/i.test(ref);
   }
-}
 
-export interface FigmaCaptureSourceMeta {
-  title: string;
-}
+  function px(v: string): number {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : 0;
+  }
 
-export function captureFigmaIr(iframeDoc: Document, sourceMeta: FigmaCaptureSourceMeta): FigmaCaptureResult {
+  function parseColor(str: string | undefined): ParsedColor | null {
+    if (!str) return null;
+    const m = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,/\s]+([\d.]+))?\s*\)/i.exec(str);
+    if (!m) return null;
+    const a = m[4] === undefined ? 1 : Number(m[4]);
+    return { r: Math.min(1, Number(m[1]) / 255), g: Math.min(1, Number(m[2]) / 255), b: Math.min(1, Number(m[3]) / 255), a: Number.isFinite(a) ? a : 1 };
+  }
+
+  function solidFill(color: ParsedColor | null): FigmaCapturePaint | null {
+    if (!color || color.a === 0) return null;
+    return { type: 'SOLID', color: { r: color.r, g: color.g, b: color.b }, opacity: color.a };
+  }
+
+  function hexToColor(hex: string): ParsedColor | null {
+    const clean = hex.replace('#', '');
+    if (![3, 4, 6, 8].includes(clean.length)) return null;
+    const full = clean.length <= 4 ? clean.split('').map((c) => c + c).join('') : clean;
+    const r = parseInt(full.slice(0, 2), 16) / 255;
+    const g = parseInt(full.slice(2, 4), 16) / 255;
+    const b = parseInt(full.slice(4, 6), 16) / 255;
+    const a = full.length === 8 ? parseInt(full.slice(6, 8), 16) / 255 : 1;
+    return { r, g, b, a };
+  }
+
+  // The IR's Paint type has no GRADIENT variant (matches the vendored plugin's
+  // own Figma-side type — see IR.md), so a real gradient can't round-trip.
+  // Rather than emit nothing (transparent), this takes the gradient's first
+  // color stop as a best-effort approximation — visibly closer to the source
+  // than a missing fill, even though it flattens the gradient itself.
+  function firstGradientColor(image: string): ParsedColor | null {
+    if (!image || !/gradient\(/i.test(image)) return null;
+    const m = /rgba?\([^)]+\)|#[0-9a-fA-F]{3,8}/.exec(image);
+    if (!m) return null;
+    return m[0].startsWith('#') ? hexToColor(m[0]) : parseColor(m[0]);
+  }
+
+  function uniformRadius(s: CSSStyleDeclaration): number | FigmaCaptureCornerRadii {
+    const tl = px(s.borderTopLeftRadius);
+    const tr = px(s.borderTopRightRadius);
+    const br = px(s.borderBottomRightRadius);
+    const bl = px(s.borderBottomLeftRadius);
+    if (tl === tr && tr === br && br === bl) return tl;
+    return { topLeft: tl, topRight: tr, bottomRight: br, bottomLeft: bl };
+  }
+
+  function borderStroke(s: CSSStyleDeclaration): { stroke: FigmaCapturePaint; weight: number } | null {
+    const w = px(s.borderTopWidth);
+    if (!w || s.borderTopStyle === 'none' || s.borderTopStyle === 'hidden') return null;
+    const fill = solidFill(parseColor(s.borderTopColor));
+    if (!fill) return null;
+    const uniform = s.borderTopWidth === s.borderRightWidth && s.borderRightWidth === s.borderBottomWidth && s.borderBottomWidth === s.borderLeftWidth;
+    if (!uniform) return null;
+    return { stroke: fill, weight: w };
+  }
+
+  function parseShadow(boxShadow: string): FigmaCaptureEffect | null {
+    if (!boxShadow || boxShadow === 'none') return null;
+    const first = boxShadow.split(/,(?![^(]*\))/)[0].trim();
+    if (/\binset\b/.test(first)) return null;
+    const colorMatch = /rgba?\([^)]+\)|#[0-9a-f]{3,8}/i.exec(first);
+    const color = parseColor(colorMatch ? colorMatch[0] : '');
+    const nums = (first.replace(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/i, '').match(/-?[\d.]+px/g) || []).map(px);
+    if (!color || nums.length < 2) return null;
+    return {
+      type: 'DROP_SHADOW',
+      color: { r: color.r, g: color.g, b: color.b, a: color.a },
+      offset: { x: nums[0] || 0, y: nums[1] || 0 },
+      radius: nums[2] || 0,
+      spread: nums[3] || 0,
+    };
+  }
+
+  function fontStyleName(weight: string, italic: boolean): string {
+    const w = Number(weight) || 400;
+    const name = w <= 100 ? 'Thin' : w <= 200 ? 'ExtraLight' : w <= 300 ? 'Light' : w <= 400 ? 'Regular' : w <= 500 ? 'Medium' : w <= 600 ? 'SemiBold' : w <= 700 ? 'Bold' : w <= 800 ? 'ExtraBold' : 'Black';
+    if (italic) return name === 'Regular' ? 'Italic' : `${name} Italic`;
+    return name;
+  }
+
+  function firstFamily(fontFamily: string): string {
+    return (fontFamily || 'Inter').split(',')[0].replace(/["']/g, '').trim() || 'Inter';
+  }
+
+  function isVisible(s: CSSStyleDeclaration): boolean {
+    if (s.display === 'none' || s.visibility === 'hidden' || s.visibility === 'collapse') return false;
+    if (Number(s.opacity) === 0) return false;
+    return true;
+  }
+
+  function textRect(node: Node, doc: CaptureDocument): DOMRect | null {
+    try {
+      const range = doc.createRange();
+      range.selectNodeContents(node);
+      return range.getBoundingClientRect();
+    } catch {
+      return null;
+    }
+  }
+
   const win = iframeDoc.defaultView;
   const sx = win?.scrollX || 0;
   const sy = win?.scrollY || 0;
@@ -277,7 +216,7 @@ export function captureFigmaIr(iframeDoc: Document, sourceMeta: FigmaCaptureSour
       if (m) imageRef = m[1];
     }
     if (el.tagName === 'IMG') {
-      const src = (el as HTMLImageElement).currentSrc || (el as HTMLImageElement).src;
+      const src = (el as any).currentSrc || (el as any).src;
       if (src) imageRef = src;
     }
     if (imageRef) {
@@ -306,7 +245,7 @@ export function captureFigmaIr(iframeDoc: Document, sourceMeta: FigmaCaptureSour
     if (s.overflow === 'hidden' || s.overflowX === 'hidden' || s.overflowY === 'hidden') node.clipsContent = true;
 
     const children: FigmaCaptureNode[] = [];
-    for (const child of Array.from(el.childNodes)) {
+    for (const child of Array.from(el.childNodes as ArrayLike<Node>)) {
       if (child.nodeType === 1 /* ELEMENT_NODE */) {
         const childEl = child as Element;
         if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'LINK', 'META', 'HEAD', 'TITLE', 'BR', 'SVG'].includes(childEl.tagName)) continue;

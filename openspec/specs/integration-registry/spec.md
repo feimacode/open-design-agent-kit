@@ -142,3 +142,23 @@ Every existing tool and workflow SHALL work with no third-party server installed
 - **WHEN** a user with no third-party MCP servers runs any existing workflow
 - **THEN** it SHALL complete through its existing path, with at most one offer to set up an integration
 
+### Requirement: Generated Integration Docs
+The supported-integrations tables in `docs/guides/integrations.md` and `README.md` SHALL be generated from the registry between `<!-- integrations:start -->` and `<!-- integrations:end -->` markers. The docs check SHALL fail when either table differs from what the registry renders.
+
+#### Scenario: Registry changed, docs not regenerated
+- **WHEN** an integration is added to the registry and the docs generator isn't re-run
+- **THEN** the docs check SHALL fail and name the stale file
+
+### Requirement: Manual Fallback and Purpose Group
+Every registry entry SHALL declare a non-empty `manualFallback` describing how to finish the step without the integration. The content guard SHALL reject an entry without one. Each entry SHALL belong to one purpose group derived from its first capability: Design, Docs & storage, Team or Social posting.
+
+Filtered lookups SHALL show each provider's manual fallback. The catalog result, with no filters, SHALL list each entry with its group, the current agent's tool-name hints, whether it can be installed on this agent, and its manual fallback.
+
+#### Scenario: Missing fallback rejected
+- **WHEN** an entry has no `manualFallback`
+- **THEN** the content check SHALL fail and name the entry
+
+#### Scenario: Notion fallback named
+- **WHEN** integrations are looked up for `docs.write`
+- **THEN** the Notion provider SHALL show the paste export (`format: "paste"`, `target: "notion"`) as its manual path
+

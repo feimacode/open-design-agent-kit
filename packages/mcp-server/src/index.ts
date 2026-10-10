@@ -391,7 +391,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'pull_open_design_figma_frame',
       description:
-        "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. Fetches the frame's structure via the Figma REST API (requires the OPEN_DESIGN_FIGMA_TOKEN environment variable — a Figma personal access token) and a best-effort rendered image export, then returns 'instructions' embedding a deterministic structural summary as ground truth. Does NOT write any files — after calling it, author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\"), not a bare file link.",
+        "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. When the user's Figma MCP server is connected (checked via list_open_design_integrations), the instructions use Figma's own get_design_context, get_variable_defs and get_screenshot; no token needed. A Figma personal access token is optional: when one is configured, the frame's structural summary and a rendered image are fetched too and included as ground truth, and it's the fallback when Figma isn't connected. Does NOT write any files \u2014 author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\", with node-id), not a bare file link.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -847,6 +847,24 @@ const TOOL_DEFS: ToolDef[] = [
       },
     },
     handler: (ctx, args) => tools.publishToCanva(ctx, args as { entryPath: string }),
+  },
+  {
+    tool: {
+      name: 'push_open_design_artifact_to_figma',
+      description: "Pushes a finished Open Design artifact into Figma as editable layers through the user's Figma MCP server. Renders the artifact in a headless browser and captures its layers (or reuses a capture newer than the file), then writes ready-to-run code parts and image files under the artifact's exports/figma/ and returns instructions: check Figma is connected (list_open_design_integrations), ask the user whether to add to an existing Figma file (a link) or create a new one, load Figma's figma-use guidance, run each part with Figma's use_figma exactly as written, upload the images with upload_assets, then verify with get_screenshot and share the link. Never contacts Figma itself. When Figma isn't connected, the instructions offer setup and otherwise give the OD Figma Import plugin steps. Use when the user wants a design in Figma (\"push this to Figma\", \"get this into Figma\", \"hand this off to design\").",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: {
+            type: 'string',
+            description: "The workspace-relative path of the artifact's entry file (as passed to register_open_design_artifact).",
+          },
+          refresh: { type: 'boolean', description: "Re-capture the artifact even when a capture newer than the file exists (for example after changing assets the capture can't see)." },
+        },
+        required: ['entryPath'],
+      },
+    },
+    handler: (ctx, args) => tools.pushToFigma(ctx, args as { entryPath: string; refresh?: boolean }),
   },
 ];
 

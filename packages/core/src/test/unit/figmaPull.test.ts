@@ -24,17 +24,17 @@ function fakeFetch(handler: (url: string) => { ok: boolean; status?: number; jso
 describe('parseFigmaUrl', () => {
   it('parses a "design" URL with a node-id, converting the dash to a colon', () => {
     const ref = parseFigmaUrl('https://www.figma.com/design/abc123/My-File?node-id=45-678&t=xyz');
-    assert.deepStrictEqual(ref, { fileKey: 'abc123', nodeId: '45:678' });
+    assert.deepStrictEqual(ref, { fileKey: 'abc123', nodeId: '45:678', kind: 'design' });
   });
 
   it('parses a legacy "file" URL', () => {
     const ref = parseFigmaUrl('https://figma.com/file/abc123/My-File?node-id=1-2');
-    assert.deepStrictEqual(ref, { fileKey: 'abc123', nodeId: '1:2' });
+    assert.deepStrictEqual(ref, { fileKey: 'abc123', nodeId: '1:2', kind: 'design' });
   });
 
   it('returns a fileKey with no nodeId when node-id is absent', () => {
     const ref = parseFigmaUrl('https://www.figma.com/design/abc123/My-File');
-    assert.deepStrictEqual(ref, { fileKey: 'abc123', nodeId: undefined });
+    assert.deepStrictEqual(ref, { fileKey: 'abc123', nodeId: undefined, kind: 'design' });
   });
 
   it('returns undefined for a non-Figma URL', () => {
@@ -49,7 +49,7 @@ describe('fetchFigmaNode', () => {
       assert.match(url, /\/v1\/files\/abc123\/nodes\?ids=45%3A678/);
       return { ok: true, json: { nodes: { '45:678': { document: node } } } };
     });
-    const result = await fetchFigmaNode('token', { fileKey: 'abc123', nodeId: '45:678' }, fetchImpl);
+    const result = await fetchFigmaNode('token', { fileKey: 'abc123', nodeId: '45:678', kind: 'design' }, fetchImpl);
     assert.deepStrictEqual(result, node);
   });
 
@@ -59,12 +59,12 @@ describe('fetchFigmaNode', () => {
 
   it('throws FigmaApiError on a non-ok response', async () => {
     const fetchImpl = fakeFetch(() => ({ ok: false, status: 403, json: {} }));
-    await assert.rejects(fetchFigmaNode('token', { fileKey: 'abc123', nodeId: '1:2' }, fetchImpl), FigmaApiError);
+    await assert.rejects(fetchFigmaNode('token', { fileKey: 'abc123', nodeId: '1:2', kind: 'design' }, fetchImpl), FigmaApiError);
   });
 
   it('throws FigmaApiError when the response has no matching document', async () => {
     const fetchImpl = fakeFetch(() => ({ ok: true, json: { nodes: {} } }));
-    await assert.rejects(fetchFigmaNode('token', { fileKey: 'abc123', nodeId: '1:2' }, fetchImpl), FigmaApiError);
+    await assert.rejects(fetchFigmaNode('token', { fileKey: 'abc123', nodeId: '1:2', kind: 'design' }, fetchImpl), FigmaApiError);
   });
 });
 
@@ -191,5 +191,36 @@ describe('composePullFigmaInstructions', () => {
     );
     const result = composePullFigmaInstructions({ ...base, frameSummary: truncated });
     assert.match(result, /was truncated/);
+  });
+});
+
+describe('figma pull: connector-first (connect-figma)', () => {
+  it('parses branch, board, make and slides links', () => {
+    assert.deepStrictEqual(parseFigmaUrl('https://www.figma.com/design/abc123/branch/br456/Name?node-id=1-2'), { fileKey: 'br456', nodeId: '1:2', kind: 'design' });
+    assert.strictEqual(parseFigmaUrl('https://www.figma.com/board/bd1/Name?node-id=3-4')?.kind, 'board');
+    assert.strictEqual(parseFigmaUrl('https://www.figma.com/make/mk1/Name')?.kind, 'make');
+    assert.strictEqual(parseFigmaUrl('https://www.figma.com/slides/sl1/Name?node-id=5-6')?.nodeId, '5:6');
+  });
+
+  it('composes connector-first instructions with no token summary', () => {
+    const result = composePullFigmaInstructions({
+      suggestedEntryPath: '.open-design/figma/frame.html',
+      figmaRef: { fileKey: 'abc123', nodeId: '12:345' },
+      tokenSetupHint: 'set OPEN_DESIGN_FIGMA_TOKEN',
+    });
+    assert.match(result, /`list_open_design_integrations` with `integration: "figma"`/);
+    assert.match(result, /skill:\/\/figma\/figma-design-to-code\/SKILL\.md/);
+    assert.match(result, /`fileKey: "abc123"` and `nodeId: "12:345"`/);
+    assert.match(result, /`get_variable_defs`/);
+    assert.match(result, /`get_screenshot`/);
+    assert.match(result, /set OPEN_DESIGN_FIGMA_TOKEN/);
+    assert.ok(!/## Ground truth/.test(result));
+  });
+
+  it('keeps the token summary as extra ground truth when one is configured', () => {
+    const summary = summarizeFigmaNode({ id: '1:1', name: 'Hero', type: 'FRAME' });
+    const result = composePullFigmaInstructions({ frameSummary: summary, frameName: 'Hero', suggestedEntryPath: 'x.html', figmaRef: { fileKey: 'k', nodeId: '1:1' } });
+    assert.match(result, /extra ground truth/);
+    assert.match(result, /## Ground truth/);
   });
 });

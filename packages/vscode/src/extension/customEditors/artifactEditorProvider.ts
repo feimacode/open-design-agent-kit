@@ -24,6 +24,7 @@ import {
   readArtifact,
   readArtifactComments,
   resolveFigmaCaptureAssets,
+  createWorkspaceFigmaAssetReader,
   writeArtifactComments,
   writeFigmaCapture,
   writeArtifactManifest,
@@ -32,49 +33,12 @@ import {
   isFluidHtml,
   sortFindings,
   type ArtifactComment,
-  type FigmaCaptureAssetReader,
   type FigmaCaptureDocument,
 } from '@feimacode/open-design-agent-kit-core';
 import type { ILogService } from '../log/logService';
 import { OD_TOKENS_CSS, odFontFaceCss } from '../webviews/openDesignTheme';
 import { getOutputDirectory } from '../../workspace/artifactWriter';
 import { getActiveDesignSystemId } from '../../workspace/activeDesignSystem';
-
-const MIME_BY_EXT: Record<string, string> = {
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
-  '.webp': 'image/webp',
-  '.avif': 'image/avif',
-};
-
-// Local-file-only, same posture as every image the artifact itself was
-// already allowed to reference: resolved relative to the entry file's own
-// directory (the same convention register_open_design_artifact's
-// supportingFiles already uses), never fetched remotely — a remote http(s)
-// image fill is simply dropped, matching the plugin's own documented
-// "unresolvable fill is dropped, not aborted" posture.
-function createFigmaAssetReader(workspaceRoot: string, entryPath: string): FigmaCaptureAssetReader {
-  const entryDir = path.dirname(entryPath);
-  return {
-    async read(reference: string) {
-      if (/^https?:\/\//i.test(reference)) return undefined;
-      const mimeType = MIME_BY_EXT[path.extname(reference).toLowerCase()];
-      if (!mimeType) return undefined;
-      try {
-        const abs = path.join(workspaceRoot, entryDir, reference);
-        const rel = path.relative(workspaceRoot, abs);
-        if (rel.startsWith('..') || path.isAbsolute(rel)) return undefined;
-        const bytes = await fs.readFile(abs);
-        return { base64: bytes.toString('base64'), mimeType };
-      } catch {
-        return undefined;
-      }
-    },
-  };
-}
 
 export const ARTIFACT_EDITOR_VIEW_TYPE = 'openDesign.artifactEditor';
 
@@ -659,16 +623,22 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
   }
 
   private async pushToFigma(location: { workspaceRoot: string; entryPath: string }, capture: FigmaCaptureDocument): Promise<void> {
-    const resolved = await resolveFigmaCaptureAssets(capture, createFigmaAssetReader(location.workspaceRoot, location.entryPath));
+    const resolved = await resolveFigmaCaptureAssets(capture, createWorkspaceFigmaAssetReader(location.workspaceRoot, location.entryPath));
     const absSidecar = await writeFigmaCapture(location.workspaceRoot, location.entryPath, resolved);
     const sidecarRel = path.relative(location.workspaceRoot, absSidecar).split(path.sep).join('/');
 
     const choice = await vscode.window.showInformationMessage(
-      `Open Design: Figma capture saved to ${sidecarRel}. Import it in Figma desktop via the vendored "OD Figma Import" plugin (Plugins → Development → Import plugin from manifest…, one-time setup).`,
+      `Open Design: Figma capture saved to ${sidecarRel}. Push it with your Figma connection (Copilot runs it after you pick a Figma file), or import it yourself with the "OD Figma Import" plugin.`,
+      'Push with Figma connection',
       'Copy JSON',
       'Show Import Plugin',
     );
-    if (choice === 'Copy JSON') {
+    if (choice === 'Push with Figma connection') {
+      await vscode.commands.executeCommand('workbench.action.chat.open', {
+        query: `Use the push_open_design_artifact_to_figma tool to push the Open Design artifact at "${location.entryPath}" into Figma, then follow its instructions.`,
+        isPartialQuery: true,
+      });
+    } else if (choice === 'Copy JSON') {
       await vscode.env.clipboard.writeText(JSON.stringify(resolved));
       vscode.window.showInformationMessage('Open Design: capture JSON copied to clipboard — paste it into the "OD Figma Import" plugin window.');
     } else if (choice === 'Show Import Plugin') {

@@ -9,10 +9,12 @@
 //     absolute links to this repo's blob/main/ paths point to files that exist
 //     (also checked in the VS Code walkthrough pages, packages/vscode/media/).
 //  3. Every docs page is reachable from docs/README.md within two clicks.
+//  4. The integrations tables match the registry (generate-integrations-docs.mjs).
 // `--links-only` skips (1). No dependencies.
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { staleIntegrationDocs } from './generate-integrations-docs.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const REPO_BLOB_PREFIX = 'https://github.com/feimacode/open-design-agent-kit/blob/main/';
@@ -291,6 +293,7 @@ async function main() {
   await checkLinks(problems);
   await checkBareRepoUrls(problems);
   await checkReachability(problems);
+  problems.push(...(await staleIntegrationDocs(repoRoot)));
   if (problems.length > 0) {
     console.error(`Docs check failed (${problems.length} problem${problems.length === 1 ? '' : 's'}):\n${problems.map((p) => `  - ${p}`).join('\n')}`);
     process.exit(1);

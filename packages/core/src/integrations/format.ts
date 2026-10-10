@@ -1,6 +1,7 @@
 // The text list_open_design_integrations returns, identical on every host
 // (openspec add-integration-registry, D5/D7).
 import { resolveIntegrations, SOCIAL_PLATFORMS, type IntegrationEntry, type IntegrationQuery, type IntegrationRegistry } from './registry';
+import { installableOn, integrationGroup, INTEGRATION_GROUPS } from './status';
 import { INTEGRATION_AGENTS, isIntegrationAgent, renderInstall, toolNameHints, type IntegrationAgent } from './render';
 
 /** Repeated in every result so it applies even when the overview instructions aren't loaded. */
@@ -30,12 +31,30 @@ function capabilityLines(entry: IntegrationEntry, registry: IntegrationRegistry,
     .map(([key, tool]) => `  - \`${key}\` (${registry.capabilities[key] ?? key}): ${tool ? `tool \`${tool}\`` : `tool name not verified: pick ${entry.displayName}'s tool for this by its description`}`);
 }
 
-function catalog(registry: IntegrationRegistry): string {
-  const lines = ['# Open Design integrations', '', 'Trusted third-party MCP servers this workflow can use. Call again with `capability`, `integration` and/or `platform` for providers, tool hints and install steps.', '', '## Capabilities', ''];
-  for (const [key, desc] of Object.entries(registry.capabilities)) lines.push(`- \`${key}\`: ${desc}`);
-  lines.push('', '## Integrations', '');
-  for (const e of registry.integrations) {
-    lines.push(`- **${e.displayName}** (\`${e.id}\`, ${TIER_LABEL[e.tier]}): ${Object.keys(e.capabilities).join(', ')}${e.platforms.length ? `; platforms: ${e.platforms.join(', ')}` : ''}`);
+function catalog(registry: IntegrationRegistry, agent: IntegrationAgent): string {
+  const lines = [
+    '# Open Design integrations',
+    '',
+    `Trusted third-party MCP servers Open Design workflows can use, grouped by purpose, with hints for **${agent}**. Call again with \`capability\`, \`integration\` and/or \`platform\` for priority order and setup steps.`,
+    '',
+    'To show the user a status for each, check your own tools (including deferred ones) against the hints: a match means connected. If you have a shell, `claude mcp list` (Claude Code) or `codex mcp list` (Codex) also shows servers that are configured but not connected.',
+  ];
+  for (const group of INTEGRATION_GROUPS) {
+    const entries = registry.integrations.filter((e) => integrationGroup(e) === group);
+    if (!entries.length) continue;
+    lines.push('', `## ${group}`);
+    for (const e of entries) {
+      const what = e.docs?.summary ?? Object.keys(e.capabilities).map((k) => registry.capabilities[k] ?? k).join('; ');
+      lines.push(
+        '',
+        `### ${e.displayName} (\`${e.id}\`)`,
+        `- What it does: ${what}${e.platforms.length ? ` (${e.platforms.join(', ')})` : ''}`,
+        `- Kind: ${TIER_LABEL[e.tier].toLowerCase()}`,
+        `- Connected if your tools include: ${toolNameHints(e, agent).map((h) => (h.startsWith('any ') ? h : `\`${h}\``)).join(', ')}`,
+        `- Setup here: ${installableOn(e, agent) ? 'can be added on this agent' : 'manual only on this agent'}`,
+        `- Without it: ${e.manualFallback}`,
+      );
+    }
   }
   return lines.join('\n');
 }
@@ -53,7 +72,7 @@ export function formatIntegrations(registry: IntegrationRegistry, input: ListInt
   }
   if (problems.length > 0) return problems.join('\n');
 
-  if (!input.capability && !input.integration && !input.platform) return catalog(registry);
+  if (!input.capability && !input.integration && !input.platform) return catalog(registry, isIntegrationAgent(input.agent) ? input.agent : defaultAgent);
 
   const agent = isIntegrationAgent(input.agent) ? input.agent : defaultAgent;
   const { providers, askWhichAggregator } = resolveIntegrations(registry, input);
@@ -71,6 +90,7 @@ export function formatIntegrations(registry: IntegrationRegistry, input: ListInt
       lines.push(`- Installed if your tools include: ${toolNameHints(e, agent).map((h) => (h.startsWith('any ') ? h : `\`${h}\``)).join(', ')}`);
       if (e.platforms.length) lines.push(`- Platforms: ${e.platforms.join(', ')}`);
       for (const c of e.caveats) lines.push(`- Note: ${c}`);
+      lines.push(`- Manual path (if it isn't set up): ${e.manualFallback}`);
       const install = renderInstall(e, agent);
       lines.push('', install.manualOnly ? '**Setup (manual, by the user):**' : '**Setup, only after the user says yes:**', '');
       install.steps.forEach((s, n) => lines.push(`${n + 1}. ${s}`));

@@ -23,6 +23,7 @@ import { registerSyncCommunityContentCommand } from './commands/syncCommunityCon
 import { registerGalleryTreeView } from './views/galleryTreeProvider';
 import { registerCollectionsTreeView } from './views/collectionsTreeProvider';
 import { registerDesignSystemsTreeView } from './views/designSystemsTreeProvider';
+import { registerIntegrationsTreeView } from './views/integrationsTreeProvider';
 import { registerImportDesignSystemCommand } from './commands/importDesignSystemCommand';
 import { registerSetFigmaTokenCommand } from './commands/setFigmaTokenCommand';
 import { registerRevealFigmaPluginCommand } from './commands/revealFigmaPluginCommand';
@@ -56,6 +57,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const galleryTreeProvider = registerGalleryTreeView(context, contentIndex);
   registerDesignSystemsTreeView(context, contentIndex, log);
   registerCollectionsTreeView(context);
+  registerIntegrationsTreeView(context, contentIndex, log);
   registerImportDesignSystemCommand(context, log);
   registerSetFigmaTokenCommand(context, log);
   registerRevealFigmaPluginCommand(context, log);

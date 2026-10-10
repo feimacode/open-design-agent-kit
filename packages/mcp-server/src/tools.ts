@@ -17,7 +17,6 @@ import {
   composeDesignSystemTokensInstructions,
   composeInstructions,
   composePortToAppInstructions,
-  composePullFigmaInstructions,
   copyExampleArtifact,
   detectExistingApp,
   addDiagramRuntime as addDiagramRuntimeCore,
@@ -35,18 +34,14 @@ import {
   loadLocalPrompts,
   renderLocalPrompt,
   extractBrandEvidence,
-  fetchFigmaFrameImage,
-  fetchFigmaNode,
   findCollectionArtifacts,
   hostOverrideFor,
-  parseFigmaUrl,
   readArtifact,
   readArtifactComments,
   resolveActiveDesignSystem,
   selectCraftSections,
   setActiveDesignSystem,
   suggestCollectionScreenEntryPath,
-  summarizeFigmaNode,
   suggestTargetComponentPath,
   writeArtifactManifest,
   getFormat,
@@ -57,9 +52,10 @@ import {
   formatAdaptResult,
   createArtifactQrCode,
   formatQrCodeResult,
-  FigmaApiError,
   agentFromClientName,
   composePublishCanvaTemplateInstructions,
+  preparePullFigmaFrame,
+  prepareFigmaPush,
   formatIntegrations,
   type ListIntegrationsInput,
   type ActiveDesignSystemStore,
@@ -396,36 +392,14 @@ export async function portToAppCode(
 }
 
 export async function pullFigmaFrame(ctx: ToolContext, input: { figmaUrl: string; designSystemId?: string }): Promise<string> {
-  if (!ctx.figmaToken) {
-    return 'No Figma access token configured. Set the OPEN_DESIGN_FIGMA_TOKEN environment variable for this MCP server to a Figma personal access token (Figma → Settings → Personal access tokens) and try again.';
-  }
-
-  const ref = parseFigmaUrl(input.figmaUrl);
-  if (!ref) {
-    return `"${input.figmaUrl}" does not look like a Figma file/design URL.`;
-  }
-
-  let node;
-  try {
-    node = await fetchFigmaNode(ctx.figmaToken, ref);
-  } catch (err) {
-    return err instanceof FigmaApiError ? err.message : `Failed to fetch the Figma frame: ${err instanceof Error ? err.message : String(err)}`;
-  }
-
-  const frameSummary = summarizeFigmaNode(node);
-  const imageUrl = await fetchFigmaFrameImage(ctx.figmaToken, ref.fileKey, ref.nodeId!);
-  const slug = slugify(node.name);
-  const suggestedEntryPath = path.posix.join(ctx.outputDir, 'figma', `${slug}.html`);
-
-  const instructions = composePullFigmaInstructions({
-    frameSummary,
-    frameName: node.name,
-    imageUrl,
+  return preparePullFigmaFrame({
+    figmaUrl: input.figmaUrl,
     designSystemId: input.designSystemId,
-    suggestedEntryPath,
+    token: ctx.figmaToken,
+    outputDir: ctx.outputDir,
+    tokenSetupHint:
+      'set the OPEN_DESIGN_FIGMA_TOKEN environment variable for this MCP server (in the Claude Code plugin, its "Figma access token" option) to a personal access token from Figma → Settings → Personal access tokens',
   });
-
-  return JSON.stringify({ instructions, suggestedEntryPath }, null, 2);
 }
 
 export async function remixExample(ctx: ToolContext, input: { skillId: string }): Promise<string> {
@@ -593,6 +567,12 @@ export async function publishToCanva(ctx: ToolContext, input: { entryPath: strin
     manifestKind: typeof manifest?.kind === 'string' ? manifest.kind : undefined,
     manifestFormat: typeof metadata?.format === 'string' ? metadata.format : undefined,
   });
+}
+
+/** push_open_design_artifact_to_figma: captures the artifact and writes use_figma parts; returns instructions. Never contacts Figma. */
+export async function pushToFigma(ctx: ToolContext, input: { entryPath: string; refresh?: boolean }): Promise<string> {
+  // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
+  return (await prepareFigmaPush({ ...input, workspaceRoot: ctx.workspaceRoot })).text;
 }
 
 /** Hand-written prompts (e.g. open-design-social-post) shipped under the content assets' prompts/ folder. */

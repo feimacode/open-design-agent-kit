@@ -29,7 +29,9 @@ The tool returns `Unknown skillId "…"` with a few valid ids. Skill ids are ful
 
 ### Figma: no access token
 
-`pull_open_design_figma_frame` says no Figma token is configured.
+A token is only needed when Figma isn't connected to your agent. The easiest fix is to connect Figma: in Claude Code at [claude.ai/customize/connectors](https://claude.ai/customize/connectors), or by accepting the agent's offer to add Figma's server. See [Connect other services](guides/integrations.md).
+
+To use a token instead:
 
 - **VS Code:** run **Open Design: Set Figma Access Token**.
 - **MCP:** set [`OPEN_DESIGN_FIGMA_TOKEN`](reference/settings-and-env.md#open_design_figma_token) in the server's `env` and restart the agent.

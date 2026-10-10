@@ -16,7 +16,7 @@ const base = () => ({
       id: 'demo', displayName: 'Demo', vendor: 'Demo', tier: 'official-service', installable: true,
       capabilities: { 'design.import': 'import-thing' },
       server: { transport: 'http', url: 'https://mcp.example.com/mcp', suggestedName: 'demo' },
-      auth: { kind: 'oauth-dcr' }, verifiedAt: '2026-10-01', toolsVerified: true,
+      auth: { kind: 'oauth-dcr' }, manualFallback: 'Export and upload by hand.', verifiedAt: '2026-10-01', toolsVerified: true,
     },
   ],
 });
@@ -110,4 +110,16 @@ test('a skill pre-approving a registry tool is flagged; an overview without the 
   assert.ok(problems.some((p) => p.startsWith('b/SKILL.md')));
   assert.ok(problems.some((p) => p.startsWith('d/SKILL.md')));
   assert.ok(problems.some((p) => p.startsWith('bad.md')));
+});
+
+test('docs must be an object of strings when present', () => {
+  const r = base();
+  r.integrations[0].docs = { summary: 'ok', signIn: 3 };
+  assert.match(validateIntegrations(r, NOW).errors.join('\n'), /demo: docs\.signIn must be a string/);
+});
+
+test('an entry without a manual fallback is rejected', () => {
+  const r = base();
+  delete r.integrations[0].manualFallback;
+  assert.match(validateIntegrations(r, NOW).errors.join('\n'), /demo: needs a manualFallback/);
 });

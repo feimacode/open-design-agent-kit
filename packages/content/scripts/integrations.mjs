@@ -76,6 +76,13 @@ export function validateIntegrations(registry, now = new Date()) {
       errors.push(`${id}: a non-installable integration needs manualSetup steps`);
     }
 
+    if (typeof e.manualFallback !== 'string' || !e.manualFallback.trim()) errors.push(`${id}: needs a manualFallback (how to finish the step without this integration)`);
+
+    if (e.docs !== undefined) {
+      if (!e.docs || typeof e.docs !== 'object' || Array.isArray(e.docs)) errors.push(`${id}: docs must be an object`);
+      else for (const k of ['summary', 'signIn', 'notes']) if (e.docs[k] !== undefined && typeof e.docs[k] !== 'string') errors.push(`${id}: docs.${k} must be a string`);
+    }
+
     for (const [at, value] of strings(e)) {
       if (CREDENTIAL_PATTERNS.some((re) => re.test(value))) errors.push(`${id}: ${at} looks like a literal credential; reference an env var instead`);
     }

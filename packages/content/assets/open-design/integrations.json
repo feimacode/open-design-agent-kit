@@ -33,6 +33,8 @@
         "Media is uploaded through the server's chunked upload tools (initializeMediaUpload, appendMediaUpload, finalizeMediaUpload) before createPosts."
       ],
       "docsUrl": "https://github.com/xdevplatform/xmcp",
+      "docs": { "summary": "Post through X's own server", "signIn": "Your X developer app", "notes": "Self-hosted; set up by hand from [xdevplatform/xmcp](https://github.com/xdevplatform/xmcp)" },
+      "manualFallback": "Export the images with export_open_design_artifact (the social-post presets) and post them on X yourself.",
       "verifiedAt": "2026-10-10",
       "toolsVerified": true
     },
@@ -58,6 +60,8 @@
         "import-design-from-url needs a public HTTPS URL (a PDF, PPTX or webpage) and returns an editable design; create-upload-url plus a raw POST puts a private file in the user's Uploads (a fileId, not a design). Both tested 2026-10-10."
       ],
       "docsUrl": "https://canva.dev/docs/mcp/",
+      "docs": { "summary": "Import a design, upload assets, export, read brand kits", "signIn": "Canva account", "notes": "Also a claude.ai connector" },
+      "manualFallback": "Export a PDF (or PPTX for a deck) with export_open_design_artifact, then use Canva's Import a file on canva.com.",
       "verifiedAt": "2026-10-10",
       "toolsVerified": true
     },
@@ -78,9 +82,13 @@
       "installable": true,
       "caveats": [
         "Figma only accepts clients listed in its MCP catalog (Claude Code, Codex, Cursor and VS Code are listed).",
-        "Write access differs per client: Codex supports Figma Design and FigJam only."
+        "Write access differs per client: Codex supports Figma Design and FigJam only.",
+        "Load Figma's guidance before using it: skill://figma/figma-design-to-code/SKILL.md before get_design_context, skill://figma/figma-use/SKILL.md before use_figma (via get_figma_skill).",
+        "use_figma runs at most 50,000 characters of Plugin API code per call with no state between calls; push_open_design_artifact_to_figma prepares parts that fit. generate_figma_design is not on the hosted server. Push tested end to end 2026-10-10."
       ],
       "docsUrl": "https://developers.figma.com/docs/figma-mcp-server/remote-server-installation",
+      "docs": { "summary": "Read frames into code, push designs in as editable layers, export and upload assets", "signIn": "Figma account", "notes": "Only approved clients; Codex can write to Figma Design and FigJam only" },
+      "manualFallback": "Frames into code: pull_open_design_figma_frame with a Figma access token. Designs into Figma: push_open_design_artifact_to_figma's capture, pasted into the OD Figma Import plugin.",
       "verifiedAt": "2026-10-10",
       "toolsVerified": true
     },
@@ -102,6 +110,8 @@
         "Which tools work depends on the workspace's plan; notion-get-tool-access reports it."
       ],
       "docsUrl": "https://developers.notion.com/guides/mcp/get-started-with-mcp",
+      "docs": { "summary": "Read pages, create pages, upload files", "signIn": "Notion account", "notes": "Available tools depend on your workspace plan" },
+      "manualFallback": "Call export_open_design_artifact with format \"paste\" and target \"notion\", open the file in a browser, copy everything and paste it into a Notion page.",
       "verifiedAt": "2026-10-10",
       "toolsVerified": true
     },
@@ -123,6 +133,8 @@
         "Outside claude.ai, Google's server needs the user's own Google Cloud project and OAuth client."
       ],
       "docsUrl": "https://developers.google.com/workspace/drive/api/guides/configure-mcp-server",
+      "docs": { "summary": "Search, read and save files", "signIn": "Google account", "notes": "Outside claude.ai, needs your own Google Cloud OAuth client" },
+      "manualFallback": "Export the file with export_open_design_artifact (PDF, PNG, PPTX or standalone HTML) and upload it in Google Drive.",
       "verifiedAt": "2026-10-10",
       "toolsVerified": true
     },
@@ -142,6 +154,8 @@
         "Slack only accepts its partner clients; if sign-in is refused, use the claude.ai connector or Slack's own instructions for this agent.",
         "Tool names not yet verified: pick Slack's tool that sends a message by its description."
       ],
+      "docs": { "summary": "Share a message or image in a channel", "signIn": "Slack account", "notes": "Only Slack's partner clients" },
+      "manualFallback": "Export a PNG or a standalone HTML file with export_open_design_artifact and post it in Slack yourself.",
       "verifiedAt": "2026-10-10",
       "toolsVerified": false
     },
@@ -163,6 +177,8 @@
         "Posts to X, Mastodon, Threads and Bluesky are text only through Buffer's API; Instagram and TikTok need an image or video."
       ],
       "docsUrl": "https://developers.buffer.com/guides/integrations/mcp.md",
+      "docs": { "summary": "Draft and schedule posts on X, LinkedIn, Instagram, Facebook, Threads, Bluesky, Mastodon, TikTok, Pinterest, YouTube", "signIn": "**API key** you set as `BUFFER_API_KEY`", "notes": "Images must be public URLs; text only on X, Mastodon, Threads and Bluesky" },
+      "manualFallback": "Export the images with export_open_design_artifact and schedule the post in Buffer's own app.",
       "verifiedAt": "2026-10-10",
       "toolsVerified": true
     },
@@ -184,6 +200,8 @@
         "Tool names not yet verified: pick Metricool's tool that creates or schedules a post by its description."
       ],
       "docsUrl": "https://help.metricool.com/en/article/how-to-connect-metricools-mcp-1364s63/",
+      "docs": { "summary": "Schedule posts on Instagram, Facebook, LinkedIn, TikTok, YouTube", "signIn": "Metricool account", "notes": "Also a claude.ai connector" },
+      "manualFallback": "Export the images with export_open_design_artifact and schedule the post in Metricool's own app.",
       "verifiedAt": "2026-10-10",
       "toolsVerified": false
     }

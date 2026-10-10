@@ -6,18 +6,37 @@ Open Design keeps a short list of **trusted integrations**: official servers run
 
 ## Supported integrations
 
+<!-- integrations:start -->
 | Integration | What the agent can do with it | Sign-in | Notes |
 |---|---|---|---|
 | Canva | Import a design, upload assets, export, read brand kits | Canva account | Also a claude.ai connector |
-| Figma | Read frames, export and upload assets, create and edit designs | Figma account | Only approved clients; Codex can write to Figma Design and FigJam only |
+| Figma | Read frames into code, push designs in as editable layers, export and upload assets | Figma account | Only approved clients; Codex can write to Figma Design and FigJam only |
 | Notion | Read pages, create pages, upload files | Notion account | Available tools depend on your workspace plan |
 | Google Drive | Search, read and save files | Google account | Outside claude.ai, needs your own Google Cloud OAuth client |
 | Slack | Share a message or image in a channel | Slack account | Only Slack's partner clients |
 | Buffer | Draft and schedule posts on X, LinkedIn, Instagram, Facebook, Threads, Bluesky, Mastodon, TikTok, Pinterest, YouTube | **API key** you set as `BUFFER_API_KEY` | Images must be public URLs; text only on X, Mastodon, Threads and Bluesky |
 | Metricool | Schedule posts on Instagram, Facebook, LinkedIn, TikTok, YouTube | Metricool account | Also a claude.ai connector |
 | X | Post through X's own server | Your X developer app | Self-hosted; set up by hand from [xdevplatform/xmcp](https://github.com/xdevplatform/xmcp) |
+<!-- integrations:end -->
 
 For social posts, X's own server comes first when you have it. Otherwise the agent uses whichever posting service you've connected. If more than one would work and none is connected, it asks which one you use.
+
+## See what's connected
+
+Every integration has one of three statuses:
+
+- 🟢 **Connected**: its tools are available, so workflows use it automatically.
+- 🟡 **Installed, not connected**: it's configured but not usable yet. It usually needs a sign-in or a restart.
+- ⚪ **Not installed**.
+
+**In chat (any agent):** run `/open-design-integrations` (`/open-design:open-design-integrations` with the Claude Code plugin), or just ask "which integrations are connected?". The agent lists them by purpose with their status and next step, and offers to set up any you pick. In Claude Code and Codex it also checks `claude mcp list` / `codex mcp list` to spot 🟡 ones.
+
+> **In VS Code:** the **Integrations** view in the Open Design sidebar shows the same list with coloured dots. Click one to open its setup view:
+> - **Install in VS Code** opens VS Code's own install page; you confirm there, and API keys go into VS Code's secure prompt.
+> - Or copy the `mcp.json` snippet and add it yourself (**Open User MCP Configuration**).
+> - It also shows how to manage without the integration.
+>
+> A connected integration offers **Use in chat** instead. The view refreshes when you open it or return to VS Code; use its refresh button after installing.
 
 ## What the agent does
 

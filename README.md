@@ -87,6 +87,23 @@ Every one of these started from `remix_open_design_example` (copy a real example
 - **Any of the [75+ agents `skills` supports](https://github.com/vercel-labs/skills):** `npx skills add https://github.com/feimacode/open-design-agent-kit/tree/main/packages/claude-plugin/skills/open-design` (add `--agent <name>` to target one directly). The skill wires up the MCP server on its own the first time it runs.
 - **Scripts and CI:** `npx @feimacode/open-design-agent-kit export …` and `render-video …`. See the [CLI guide](docs/getting-started/cli.md).
 
+## Works with the tools you already use
+
+When your agent is connected to one of these services' official MCP servers, Open Design's workflows use it directly instead of handing you a file to upload: importing into Canva, pushing designs into Figma, saving to Drive, posting through a scheduler. Nothing is installed without your yes. See [Connect other services](docs/guides/integrations.md).
+
+<!-- integrations:start -->
+| Integration | What your agent can do with it |
+|---|---|
+| Canva | Import a design, upload assets, export, read brand kits |
+| Figma | Read frames into code, push designs in as editable layers, export and upload assets |
+| Notion | Read pages, create pages, upload files |
+| Google Drive | Search, read and save files |
+| Slack | Share a message or image in a channel |
+| Buffer | Draft and schedule posts on X, LinkedIn, Instagram, Facebook, Threads, Bluesky, Mastodon, TikTok, Pinterest, YouTube |
+| Metricool | Schedule posts on Instagram, Facebook, LinkedIn, TikTok, YouTube |
+| X | Post through X's own server |
+<!-- integrations:end -->
+
 ## Documentation
 
 Everything lives in [`docs/`](docs/README.md):

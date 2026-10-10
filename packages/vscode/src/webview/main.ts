@@ -1,7 +1,7 @@
 import { ensureDataOdId, cssSelectorFor, htmlHintFor } from './dom/elementTargeting';
 import { applyPatch, serializeDocument, PREVIEW_ONLY_ATTR, type ManualEditPatch, type CuratedStyles } from './dom/sourcePatches';
 import { computePinPosition, type ArtifactComment } from './dom/commentOverlay';
-import { captureFigmaIr } from './dom/figmaCapture';
+import { captureFigmaIr } from '@feimacode/open-design-agent-kit-core/src/figma/captureIr';
 import { icon } from './dom/icons';
 import { attachMenu } from './dom/menuButton';
 import { createTweaksPanel } from './tweaksPanel';

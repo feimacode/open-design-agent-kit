@@ -39,8 +39,12 @@ export interface IntegrationEntry {
   claudeAiConnector?: string;
   installable: boolean;
   manualSetup?: string;
+  /** How to finish the step without this integration (shown in lookups, the list and the setup view). */
+  manualFallback: string;
   caveats: string[];
   docsUrl?: string;
+  /** Wording for the generated integration docs tables. */
+  docs?: { summary?: string; signIn?: string; notes?: string };
   verifiedAt: string;
   toolsVerified: boolean;
 }
@@ -117,8 +121,16 @@ export function parseIntegrationRegistry(raw: unknown): { registry: IntegrationR
       claudeAiConnector: typeof item.claudeAiConnector === 'string' ? item.claudeAiConnector : undefined,
       installable: item.installable === true,
       manualSetup: typeof item.manualSetup === 'string' ? item.manualSetup : undefined,
+      manualFallback: String(item.manualFallback),
       caveats: strings(item.caveats),
       docsUrl: typeof item.docsUrl === 'string' ? item.docsUrl : undefined,
+      docs: isRecord(item.docs)
+        ? {
+            summary: typeof item.docs.summary === 'string' ? item.docs.summary : undefined,
+            signIn: typeof item.docs.signIn === 'string' ? item.docs.signIn : undefined,
+            notes: typeof item.docs.notes === 'string' ? item.docs.notes : undefined,
+          }
+        : undefined,
       verifiedAt: String(item.verifiedAt),
       toolsVerified: item.toolsVerified === true,
     });
@@ -130,6 +142,7 @@ function entryProblem(e: Record<string, unknown>, vocabulary: Record<string, str
   if (typeof e.displayName !== 'string' || typeof e.vendor !== 'string') return 'needs a displayName and a vendor';
   if (!(INTEGRATION_TIERS as readonly string[]).includes(String(e.tier))) return `unknown tier "${String(e.tier)}"`;
   if (!isRecord(e.capabilities) || Object.keys(e.capabilities).length === 0) return 'needs at least one capability';
+  if (typeof e.manualFallback !== 'string' || !e.manualFallback.trim()) return 'needs a manualFallback';
   for (const key of Object.keys(e.capabilities)) if (!(key in vocabulary)) return `unknown capability "${key}"`;
   if (e.installable === true) {
     if (!isRecord(e.server) || typeof e.server.url !== 'string' || !e.server.url.startsWith('https://')) return 'server.url must be an https:// URL';

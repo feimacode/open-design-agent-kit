@@ -74,3 +74,4 @@ export * from './generation/adaptInstructions';
 export * from './poster/shapeSheet';
 
 export * from './integrations';
+export * from './figma';

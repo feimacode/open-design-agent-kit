@@ -24,7 +24,8 @@ Two rules apply to every tool:
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
 | [`publish_open_design_artifact_to_canva`](#publish_open_design_artifact_to_canva) | `#od-publish-to-canva` | yes | Get a design into Canva: through your Canva connector when it's connected, otherwise a file to import |
-| [`pull_open_design_figma_frame`](#pull_open_design_figma_frame) | `#od-pull-figma-frame` | yes | Instructions to rebuild a Figma frame as code |
+| [`pull_open_design_figma_frame`](#pull_open_design_figma_frame) | `#od-pull-figma-frame` | yes | Instructions to rebuild a Figma frame as code (through your Figma connection, or a token) |
+| [`push_open_design_artifact_to_figma`](#push_open_design_artifact_to_figma) | `#od-push-to-figma` | yes | Push a design into Figma as editable layers through your Figma connection |
 | [`check_open_design_artifact`](#check_open_design_artifact) | `#od-check` | yes | Render a design and see it: screenshots plus preflight findings, at desktop and mobile, per card or per slide |
 | [`export_open_design_artifact`](#export_open_design_artifact) | `#od-export` | yes | Export to PNG, JPEG, PDF, PowerPoint, standalone HTML or a site folder; check a design; one file per data row |
 | [`add_open_design_diagram_runtime`](#add_open_design_diagram_runtime) | `#od-diagram-runtime` | yes | Add or update the layout runtime in a diagram |
@@ -361,14 +362,36 @@ The import passes a Canva design type when one fits the artifact: a deck becomes
 
 ### pull_open_design_figma_frame
 
-Fetches a Figma frame's structure (and a rendered image, best effort) through the Figma REST API, and composes instructions to rebuild it as code with 1:1 fidelity. **It writes nothing.** It needs a Figma token: the "Open Design: Set Figma Access Token" command in VS Code, or [`OPEN_DESIGN_FIGMA_TOKEN`](settings-and-env.md#open_design_figma_token) for MCP.
+Composes instructions to rebuild a Figma frame as code with 1:1 fidelity. **It writes nothing and never needs a token when Figma is connected.** The agent checks for your Figma MCP server ([`list_open_design_integrations`](#list_open_design_integrations)). When it's connected, the agent loads Figma's design-to-code guidance, then uses Figma's `get_design_context` (reference code, a screenshot and asset links), `get_variable_defs` and `get_screenshot`, and translates the result into a registered artifact.
+
+A Figma token is optional: the "Open Design: Set Figma Access Token" command in VS Code, or [`OPEN_DESIGN_FIGMA_TOKEN`](settings-and-env.md#open_design_figma_token) for MCP. With one, the tool also fetches the frame's structure and a rendered image through Figma's REST API and includes them as ground truth. It's the fallback when Figma isn't connected. With neither, the agent offers to connect Figma or explains the token.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `figmaUrl` | string | yes | A frame link from Figma's "Copy link to selection" (it must contain `node-id`). |
+| `figmaUrl` | string | yes | A frame link from Figma's "Copy link to selection" (it must contain `node-id`). Branch, FigJam (`/board/`), Slides and Make links work too. |
 | `designSystemId` | string | no | A design system to align the code with. |
 
-**Result:** `{ instructions, suggestedEntryPath }`. See [Figma](../guides/figma.md).
+**Result:** `{ instructions, suggestedEntryPath }`, or a request for a frame link when the link has no `node-id`. See [Figma](../guides/figma.md).
+
+### push_open_design_artifact_to_figma
+
+Pushes a finished artifact into Figma as editable layers through your Figma MCP server. **It never contacts Figma itself.** It renders the artifact in a headless browser and captures its layers, or reuses a capture newer than the file. Then it writes ready-to-run code parts (at most 30,000 characters each) and the artifact's images under `exports/figma/`, and returns instructions:
+
+1. Check that Figma is connected.
+2. Ask you whether to add the design to an existing Figma file (paste its link) or a new one.
+3. Load Figma's `figma-use` guidance.
+4. Run each part with Figma's `use_figma` exactly as written.
+5. Upload the images with `upload_assets`.
+6. Verify with `get_screenshot` and give you the link.
+
+A push always adds a new frame and never changes existing layers. Without a Figma connection, the instructions offer setup, then fall back to the OD Figma Import plugin.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | yes | The artifact's entry file. |
+| `refresh` | boolean | no | Capture again even when a capture newer than the file exists. |
+
+**Result:** the instructions text, after writing `exports/figma/` (`part-NN.js`, `images/`, `manifest.json`) and `<entry>.od-figma.json`. See [Figma](../guides/figma.md).
 
 ## Export
 
