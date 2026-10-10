@@ -30,8 +30,8 @@ Open Design itself is a full local-first desktop app with its own daemon, projec
 
 Ways in:
 
-- **[VS Code extension](packages/vscode/README.md)**: native tools for GitHub Copilot Chat, plus a gallery, a live artifact preview with comments and WYSIWYG editing, multi-screen collections, and Figma import and export.
-- **[Claude Code plugin](docs/getting-started/claude-code.md)**: `/plugin install open-design` gives you skills that trigger on design requests (including social posts), 27 curated `/open-design:*` commands, and the MCP server, registered automatically.
+- **[VS Code extension](packages/vscode/README.md)**: native tools for GitHub Copilot Chat, plus a gallery, a live artifact preview with comments, WYSIWYG editing and a Tweaks panel, multi-screen collections and explorations, and an Integrations view.
+- **[Claude Code plugin](docs/getting-started/claude-code.md)**: `/plugin install open-design` gives you skills that trigger on design requests (including social posts, posters, campaigns, explorations and decks from documents), 27 curated `/open-design:*` commands, and the MCP server, registered automatically.
 - **[Codex CLI](docs/getting-started/codex.md)**: the same skills in Codex's own `.agents/skills` format, plus the MCP server.
 - **[One-command project setup](packages/cli/README.md)**: `npx @feimacode/open-design-agent-kit init` wires Claude Code and/or Codex into your project.
 - **[MCP server](packages/mcp-server/README.md)**: `npx @feimacode/open-design-agent-kit-mcp` for Cursor or any other MCP-capable agent.
@@ -85,7 +85,7 @@ Every one of these started from `remix_open_design_example` (copy a real example
 - **Codex CLI:** `npx @feimacode/open-design-agent-kit init --tools codex`. See the [getting-started guide](docs/getting-started/codex.md).
 - **Any MCP agent (Cursor and others):** register `npx -y @feimacode/open-design-agent-kit-mcp` as a stdio MCP server. See the [MCP server README](packages/mcp-server/README.md).
 - **Any of the [75+ agents `skills` supports](https://github.com/vercel-labs/skills):** `npx skills add https://github.com/feimacode/open-design-agent-kit/tree/main/packages/claude-plugin/skills/open-design` (add `--agent <name>` to target one directly). The skill wires up the MCP server on its own the first time it runs.
-- **Scripts and CI:** `npx @feimacode/open-design-agent-kit export …` and `render-video …`. See the [CLI guide](docs/getting-started/cli.md).
+- **Scripts and CI:** `npx @feimacode/open-design-agent-kit export …`, `check …` and `render-video …`. See the [CLI guide](docs/getting-started/cli.md).
 
 ## Works with the tools you already use
 
@@ -109,9 +109,11 @@ When your agent is connected to one of these services' official MCP servers, Ope
 Everything lives in [`docs/`](docs/README.md):
 
 - **Guides:**
-  - [generate a design](docs/guides/generate-a-design.md), [explore design directions](docs/guides/explore-directions.md), [turn a document into a deck](docs/guides/deck-from-a-document.md), [design systems](docs/guides/design-systems.md), [remix and the gallery](docs/guides/remix-and-gallery.md), [community designs](docs/guides/community-designs.md);
-  - [preview, comment and edit](docs/guides/preview-comments-edit.md), [Figma](docs/guides/figma.md), [promote to app code](docs/guides/promote-to-app-code.md);
-  - [social media posts](docs/guides/social-posts.md), [YouTube videos](docs/guides/youtube-video.md), [export images](docs/guides/export-images.md), [export decks and PDFs](docs/guides/export-decks.md).
+  - [generate a design](docs/guides/generate-a-design.md), [explore design directions](docs/guides/explore-directions.md), [turn a document into a deck](docs/guides/deck-from-a-document.md), [diagrams of your code](docs/guides/diagrams.md), [3D objects](docs/guides/3d-objects.md), [engineering documents](docs/guides/engineering-docs.md);
+  - [design systems](docs/guides/design-systems.md), [remix and the gallery](docs/guides/remix-and-gallery.md), [community designs](docs/guides/community-designs.md);
+  - [preview, comment and edit](docs/guides/preview-comments-edit.md), [Figma](docs/guides/figma.md), [promote to app code](docs/guides/promote-to-app-code.md), [connect other services](docs/guides/integrations.md);
+  - [social media posts](docs/guides/social-posts.md), [HTML email](docs/guides/html-email.md), [paste into WeChat, Notion and newsletters](docs/guides/paste-html.md), [posters and print](docs/guides/posters.md), [run a campaign](docs/guides/campaigns.md), [YouTube videos](docs/guides/youtube-video.md);
+  - [export images](docs/guides/export-images.md), [export decks and PDFs](docs/guides/export-decks.md), [export animations](docs/guides/export-animations.md), [share and publish](docs/guides/share-and-publish.md).
 - **Reference:** [tools](docs/reference/tools.md), [prompts and commands](docs/reference/prompts-and-commands.md), [CLI](docs/reference/cli.md), [settings and environment variables](docs/reference/settings-and-env.md), [artifact manifest](docs/reference/artifact-manifest.md).
 - **Help:** [troubleshooting](docs/troubleshooting.md).
 - **Automation:** [social media pipeline](docs/automation/social-pipeline.md).

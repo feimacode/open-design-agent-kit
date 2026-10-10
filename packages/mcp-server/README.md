@@ -91,29 +91,32 @@ Or run `npx @feimacode/open-design-agent-kit init --tools codex` to add the matc
 
 ## Tools and prompts
 
-11 tools, the same as the VS Code extension's (minus community sharing):
+23 tools, the same as the VS Code extension's (minus community sharing):
 
 - **Catalog:** `list_open_design_skills`, `list_open_design_design_systems`
-- **Generating:** `prepare_open_design_brief`, `register_open_design_artifact`, `get_open_design_artifact`, `remix_open_design_example`
+- **Generating:** `read_open_design_source` (DOCX, PPTX, XLSX, PDF and more to Markdown), `prepare_open_design_brief`, `register_open_design_artifact`, `get_open_design_artifact`, `remix_open_design_example`, `add_open_design_diagram_runtime`
+- **Exploring directions:** `prepare_open_design_exploration`, `compare_open_design_exploration`, `choose_open_design_direction`
 - **Design systems:** `set_active_design_system`, `create_open_design_design_system`
-- **Beyond the prototype:** `port_open_design_artifact_to_app`, `pull_open_design_figma_frame`
-- **Export:** `export_open_design_artifact` (PNG/JPEG, deck PowerPoint/PDF, page PDF; needs an installed Chrome, Edge or Chromium)
+- **Beyond the prototype:** `port_open_design_artifact_to_app`, `pull_open_design_figma_frame`, `push_open_design_artifact_to_figma`, `publish_open_design_artifact_to_canva`
+- **Check and export:** `check_open_design_artifact` (screenshots plus preflight findings), `export_open_design_artifact` (PNG/JPEG, PDF, PowerPoint, MP4/WebM/GIF, standalone HTML, a site folder, email HTML, paste-ready HTML, one file per spreadsheet row), `adapt_open_design_artifact`, `create_open_design_qr_code`. Rendering needs an installed Chrome, Edge or Chromium; animation export also needs FFmpeg.
+- **Sharing:** `publish_open_design_artifact` (a temporary link, or your own Netlify, Vercel, Cloudflare Pages or GitHub Pages)
+- **Integrations:** `list_open_design_integrations` (Canva, Figma, Notion, Google Drive, Slack and posting services your agent can connect to)
 
-MCP prompts: `open-design-social-post`, and one `od-<mode>-<id>` prompt per remixable example.
+MCP prompts: the workflows `open-design-new`, `open-design-social-post`, `open-design-poster`, `open-design-campaign`, `open-design-docs`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source` and `open-design-integrations`, plus one `od-<mode>-<id>` prompt per remixable example.
 
 Arguments, results and errors: [tools reference](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/tools.md). Prompts: [prompts and commands](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/prompts-and-commands.md#claude-code).
 
 ## Configuration
 
-Zero config by default. The server works in the directory your agent starts it in. Optional environment variables (`OPEN_DESIGN_WORKSPACE_ROOT`, `OPEN_DESIGN_OUTPUT_DIR`, `OPEN_DESIGN_FIGMA_TOKEN`, `OPEN_DESIGN_BROWSER_PATH`) are described in [settings and environment variables](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/settings-and-env.md#environment-variables).
+Zero config by default. The server works in the directory your agent starts it in. Optional environment variables (`OPEN_DESIGN_WORKSPACE_ROOT`, `OPEN_DESIGN_OUTPUT_DIR`, `OPEN_DESIGN_FIGMA_TOKEN`, `OPEN_DESIGN_BROWSER_PATH`, `OPEN_DESIGN_FFMPEG_PATH`, `OPEN_DESIGN_SHARE_BADGE`) are described in [settings and environment variables](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/settings-and-env.md#environment-variables).
 
 ## What's not here
 
-Live preview, inline comments, and WYSIWYG editing are webview-based and stay VS-Code-only — see the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=feima.open-design-agent-kit) for those. This package is the headless skill/design-system/artifact workflow only.
+Live preview, inline comments, WYSIWYG editing, and the Tweaks panel are webview-based and stay VS-Code-only — see the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=feima.open-design-agent-kit) for those. This package is the headless skill/design-system/artifact workflow only.
 
 ## More
 
-[Documentation](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/README.md) · [Troubleshooting](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/troubleshooting.md) · [Social media posts](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/social-posts.md) · [Export decks and PDFs](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/export-decks.md)
+[Documentation](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/README.md) · [Troubleshooting](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/troubleshooting.md) · [All guides](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/README.md) · [Social media posts](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/social-posts.md) · [Export decks and PDFs](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/export-decks.md)
 
 ## License
 

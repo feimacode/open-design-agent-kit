@@ -34,6 +34,7 @@ All of them are explicit-only. To see the current list, type `/od-` in the chat 
 | `/open-design-list-skills` | Browse the skill catalog. |
 | `/open-design-custom-design-system` | Invent a design system for your brand. |
 | `/open-design-social-post` | [Design a social media post](../guides/social-posts.md) for a platform and export ready-to-upload files. |
+| `/open-design-poster` | [Design a poster or flyer](../guides/posters.md) for print or screens, check it, and export print-ready PDFs or images, in other sizes or one per spreadsheet row. |
 | `/open-design-explore` | [Explore 2–4 design directions](../guides/explore-directions.md) side by side, then take one forward. |
 | `/open-design-publish` | [Share a design](../guides/share-and-publish.md) as a link or as one HTML file. |
 | `/open-design-deck-from-source` | [Turn a document into a deck](../guides/deck-from-a-document.md), outline first. |
@@ -68,7 +69,7 @@ Copilot also receives Open Design's chat instructions on every request, so a pla
 | Open Design: Sync Community Designs | `openDesign.syncCommunityContent` | Fetch the community catalog at [`openDesign.communityContentRef`](settings-and-env.md#opendesigncommunitycontentref). |
 | Open Design: Open Docs | `openDesign.openDocs` | Open this documentation in the browser. |
 
-The Open Design activity-bar icon has three views: **Gallery** (examples by category), **Design Systems** (every design system by category, with a [preview](../guides/design-systems.md#preview-a-design-system)) and **Collections** (multi-screen collections and [explorations](../guides/explore-directions.md) in the workspace).
+The Open Design activity-bar icon has four views: **Gallery** (examples by category), **Design Systems** (every design system by category, with a [preview](../guides/design-systems.md#preview-a-design-system)), **Collections** (multi-screen collections and [explorations](../guides/explore-directions.md) in the workspace) and **Integrations** ([which services are connected](../guides/integrations.md#see-whats-connected)).
 
 For a guided tour, open **Welcome → Walkthroughs → Get started with Open Design** (five steps: first design, gallery, design system, social post, export).
 
@@ -83,6 +84,7 @@ Installed by the plugin (`/plugin install open-design`) or by [`init --tools cla
 | `open-design-campaign` | `/open-design:open-design-campaign` (plugin) or `/open-design-campaign` (init) | yes, from campaign and multi-size requests |
 | `open-design-docs` | `/open-design:open-design-docs` (plugin) or `/open-design-docs` (init) | yes, from requests to turn Markdown docs into pages |
 | `open-design-social-post` | `/open-design:open-design-social-post` (plugin) or `/open-design-social-post` (init) | yes, from social-post requests |
+| `open-design-poster` | `/open-design:open-design-poster` (plugin) or `/open-design-poster` (init) | yes, from poster, flyer and print requests |
 | `open-design-explore` | `/open-design:open-design-explore` (plugin) or `/open-design-explore` (init) | yes, from requests for several options |
 | `open-design-publish` | `/open-design:open-design-publish` (plugin) or `/open-design-publish` (init) | yes, from requests to share, publish or get a link |
 | `open-design-deck-from-source` | `/open-design:open-design-deck-from-source` (plugin) or `/open-design-deck-from-source` (init) | yes, from requests to make slides or a one-pager from a document |
@@ -91,7 +93,7 @@ Installed by the plugin (`/plugin install open-design`) or by [`init --tools cla
 
 The MCP server also offers **MCP prompts**. In Claude Code they appear as `/mcp__open-design__<name>`:
 
-- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source` and `open-design-integrations` take an optional `brief` argument.
+- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-poster`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source` and `open-design-integrations` take an optional `brief` argument.
 - There's one prompt per remixable example, named `od-<mode>-<id>`, e.g. `od-deck-deck-guizang-editorial-example`. Selecting one prefills a remix request; nothing runs until you send it.
 
 ## Codex
@@ -105,6 +107,7 @@ Skills in `.agents/skills/` (from [`init --tools codex`](cli.md#init) or copied 
 | `open-design-campaign` | yes |
 | `open-design-docs` | yes |
 | `open-design-social-post` | yes |
+| `open-design-poster` | yes |
 | `open-design-explore` | yes |
 | `open-design-publish` | yes |
 | `open-design-deck-from-source` | yes |
@@ -115,4 +118,4 @@ MCP prompts are the same as for Claude Code, if your Codex version surfaces them
 
 ## CLI
 
-See the [CLI reference](cli.md): `init`, `export`, `render-video`.
+See the [CLI reference](cli.md): `init`, `export`, `check`, `render-video`.

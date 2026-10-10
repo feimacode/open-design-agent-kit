@@ -8,7 +8,7 @@ In Claude Code, Open Design comes as **skills** (they tell Claude when and how t
 - Node.js 18 or later (the MCP server runs with `npx`).
 - Optional:
   - an installed Chrome, Edge or Chromium, for exporting images, PDFs and PowerPoint;
-  - [FFmpeg](https://ffmpeg.org/), for video.
+  - [FFmpeg](https://ffmpeg.org/), for video and for exporting animations.
 
 ## Option A: the plugin
 
@@ -20,7 +20,8 @@ In Claude Code, Open Design comes as **skills** (they tell Claude when and how t
 This installs:
 
 - the `open-design` overview skill, which triggers on design requests;
-- the `open-design-social-post` skill, which triggers on social-post requests;
+- workflow skills that also trigger on their own kind of request: social posts, posters, campaigns, exploring several directions, decks from a document, Markdown docs as pages, sharing a link, and integrations (see [Prompts and commands](../reference/prompts-and-commands.md#claude-code));
+- `/open-design:open-design-new`, to see what Open Design can make and start one;
 - one explicit-only skill per [curated entry](../reference/prompts-and-commands.md#curated-entries), named `/open-design:od-<mode>-<id>`;
 - the MCP server, registered automatically.
 
@@ -61,5 +62,6 @@ It stays until you switch ("switch to Apple") or clear it ("stop using a design 
 ## Next
 
 - [Generate a design](../guides/generate-a-design.md) and [Design systems](../guides/design-systems.md)
-- [Social media posts](../guides/social-posts.md), [Export decks and PDFs](../guides/export-decks.md)
-- [Prompts and commands](../reference/prompts-and-commands.md#claude-code)
+- [Social media posts](../guides/social-posts.md), [Posters and print](../guides/posters.md), [Export decks and PDFs](../guides/export-decks.md)
+- [Share and publish](../guides/share-and-publish.md) and [Connect other services](../guides/integrations.md) (Canva, Figma, Notion and more through your agent's connectors)
+- [Prompts and commands](../reference/prompts-and-commands.md#claude-code) and [all guides](../guides/README.md)

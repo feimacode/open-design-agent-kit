@@ -38,7 +38,7 @@ This writes the skills into `.agents/skills/` and creates `.codex/config.toml` w
 
 2. Copy this repository's generated [`.agents/skills/`](https://github.com/feimacode/open-design-agent-kit/tree/main/.agents/skills) folder into your project. It contains:
    - `open-design/`: the overview skill. It triggers on any design request and walks the agent through the tools.
-   - `open-design-social-post/`: the social-post workflow, which also triggers by itself on requests to make something for social media.
+   - The workflow skills (`open-design-new/`, `open-design-social-post/`, `open-design-poster/`, `open-design-campaign/`, `open-design-docs/`, `open-design-explore/`, `open-design-publish/`, `open-design-deck-from-source/`, `open-design-integrations/`). Each also triggers by itself on its kind of request, such as a social post, a poster or "show me a few options".
    - One folder per curated entry (e.g. `guizang-ppt/`, `card-twitter/`). These are explicit-only: each has an `agents/openai.yaml` with `policy.allow_implicit_invocation: false`, so they run only when you pick them.
 
 The server never edits `~/.codex/config.toml` or your `.agents/skills/` itself.
@@ -64,5 +64,6 @@ It stays until you switch ("switch to Apple") or clear it ("stop using a design 
 ## Next
 
 - [Generate a design](../guides/generate-a-design.md)
-- [Social media posts](../guides/social-posts.md) and [Export decks and PDFs](../guides/export-decks.md)
+- [Social media posts](../guides/social-posts.md), [Posters and print](../guides/posters.md) and [Export decks and PDFs](../guides/export-decks.md)
+- [All guides](../guides/README.md)
 - Codex's extensibility surface changes quickly. If something here doesn't match, check Codex's own docs at `https://developers.openai.com/codex`, and [open an issue](https://github.com/feimacode/open-design-agent-kit/issues).

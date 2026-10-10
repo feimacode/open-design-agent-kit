@@ -27,7 +27,7 @@ Two rules apply to every tool:
 | [`pull_open_design_figma_frame`](#pull_open_design_figma_frame) | `#od-pull-figma-frame` | yes | Instructions to rebuild a Figma frame as code (through your Figma connection, or a token) |
 | [`push_open_design_artifact_to_figma`](#push_open_design_artifact_to_figma) | `#od-push-to-figma` | yes | Push a design into Figma as editable layers through your Figma connection |
 | [`check_open_design_artifact`](#check_open_design_artifact) | `#od-check` | yes | Render a design and see it: screenshots plus preflight findings, at desktop and mobile, per card or per slide |
-| [`export_open_design_artifact`](#export_open_design_artifact) | `#od-export` | yes | Export to PNG, JPEG, PDF, PowerPoint, standalone HTML or a site folder; check a design; one file per data row |
+| [`export_open_design_artifact`](#export_open_design_artifact) | `#od-export` | yes | Export to PNG, JPEG, PDF, PowerPoint, MP4, WebM, GIF, standalone HTML, a site folder, email HTML or paste-ready HTML; check a design; one file per data row |
 | [`add_open_design_diagram_runtime`](#add_open_design_diagram_runtime) | `#od-diagram-runtime` | yes | Add or update the layout runtime in a diagram |
 | [`adapt_open_design_artifact`](#adapt_open_design_artifact) | `#od-adapt` | yes | Instructions to re-compose a design for other sizes |
 | [`create_open_design_qr_code`](#create_open_design_qr_code) | `#od-qr-code` | yes | Make a real QR code for a design |
@@ -72,10 +72,11 @@ A surface is a kind of thing to make, such as a wireframe, a poster or a diagram
 | `data-report` | Data report | |
 | `poster` | Poster / flier | [poster flow](../guides/posters.md) |
 | `social` | Social post | [social-post flow](../guides/social-posts.md) |
+| `campaign` | Campaign | [campaign flow](../guides/campaigns.md) |
 | `email` | HTML email | [HTML email](../guides/html-email.md) |
 | `diagram` | Diagram | [diagrams](../guides/diagrams.md) |
-
-Color + type and 3D object are planned and don't appear yet.
+| `color-type` | Color + type | [style tiles](../guides/design-systems.md#pick-one-from-style-tiles) |
+| `3d` | 3D object | [3D objects](../guides/3d-objects.md) |
 
 **`surface: "list"`** returns `{ surfaces: [{ id, label, description, entryCount, prompt? }] }`.
 

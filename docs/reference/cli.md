@@ -27,7 +27,7 @@ What it writes:
 
 - **Claude Code:**
   - `.claude/skills/open-design/` (the overview skill);
-  - `.claude/skills/open-design-social-post/`;
+  - the workflow skills: `open-design-new`, `open-design-social-post`, `open-design-poster`, `open-design-campaign`, `open-design-docs`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source` and `open-design-integrations` (see [Prompts and commands](prompts-and-commands.md#claude-code));
   - one explicit-only skill per curated entry;
   - an `open-design` entry merged into `.mcp.json`. Other servers in the file are kept.
 - **Codex:**

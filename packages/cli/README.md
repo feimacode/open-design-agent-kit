@@ -85,13 +85,14 @@ Once `init` has run, just talk to your agent — no further CLI commands needed.
 
 The agent picks a matching skill and produces a real design, saved into your project as plain HTML/JSX/CSS you can keep editing.
 
-### 3. Export or render from a script (optional)
+### 3. Export, check or render from a script (optional)
 
-Once an artifact exists, export it to an image, PDF, or PowerPoint, or render a HyperFrames composition to video — no agent needed:
+Once an artifact exists, export it (image, PDF, PowerPoint, animation, standalone HTML…), check how it renders, or render a HyperFrames composition to video — no agent needed:
 
 ```bash
 npx @feimacode/open-design-agent-kit export .open-design/launch/launch.html --max-bytes 5000000
 npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format pptx
+npx @feimacode/open-design-agent-kit check .open-design/landing/landing.html --fail-on error
 npx @feimacode/open-design-agent-kit render-video .open-design/promo --output .open-design/promo/exports/promo.mp4
 ```
 

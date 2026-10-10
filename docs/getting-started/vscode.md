@@ -8,7 +8,7 @@ The extension builds Open Design into Copilot Chat as native language-model tool
 - [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat), or any chat agent that can call VS Code's language-model tools. The gallery, collections and preview work without one; generating needs one.
 - Optional:
   - an installed Chrome, Edge or Chromium, for exporting images, PDFs and PowerPoint;
-  - [FFmpeg](https://ffmpeg.org/), for video.
+  - [FFmpeg](https://ffmpeg.org/), for video and for exporting animations as MP4, WebM or GIF.
 
 ## Install
 
@@ -38,13 +38,15 @@ Or be explicit:
 
 ## Where things are
 
-- **The Open Design activity-bar icon:** the **Gallery** (examples to remix) and **Collections** (multi-screen flows).
+- **The Open Design activity-bar icon:** the **Gallery** (examples to remix), **Design Systems** (browse and preview them), **Collections** (multi-screen flows and [explorations](../guides/explore-directions.md)) and **Integrations** ([which services are connected](../guides/integrations.md#see-whats-connected)).
 - **The status bar:** the active design system. Click it to change it.
-- **Right-click an `.html` file → Open Artifact Preview:** view, comment on or edit any artifact. See [Preview, comment and edit](../guides/preview-comments-edit.md).
+- **Right-click an `.html` file → Open Artifact Preview:** view, comment on, edit or tweak any artifact, and export or share it from the toolbar. See [Preview, comment and edit](../guides/preview-comments-edit.md).
 - **Open Design: Open Docs:** opens this documentation.
 
 ## Next
 
-- [Generate a design](../guides/generate-a-design.md) and [Design systems](../guides/design-systems.md)
-- [Social media posts](../guides/social-posts.md), [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md)
+- [Generate a design](../guides/generate-a-design.md), [Explore design directions](../guides/explore-directions.md) and [Design systems](../guides/design-systems.md)
+- [Social media posts](../guides/social-posts.md), [Posters and print](../guides/posters.md), [Export images](../guides/export-images.md), [Export decks and PDFs](../guides/export-decks.md)
+- [Share and publish](../guides/share-and-publish.md) and [Connect other services](../guides/integrations.md)
+- [All guides](../guides/README.md)
 - [Settings](../reference/settings-and-env.md#vs-code-settings)
