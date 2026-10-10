@@ -9,10 +9,10 @@ import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectCuratedEntries } from '@feimacode/open-design-agent-kit-content/scripts/curatedEntries.mjs';
-import { loadLocalPrompts, renderPromptBody } from '@feimacode/open-design-agent-kit-content/scripts/localPrompts.mjs';
-import { buildRemixableExamplesReference } from '@feimacode/open-design-agent-kit-content/scripts/remixableExamplesReference.mjs';
-import { checkIntegrationUsage } from '@feimacode/open-design-agent-kit-content/scripts/integrations.mjs';
+import { collectCuratedEntries } from '../../content/scripts/curatedEntries.mjs';
+import { loadLocalPrompts, renderPromptBody } from '../../content/scripts/localPrompts.mjs';
+import { buildRemixableExamplesReference } from '../../content/scripts/remixableExamplesReference.mjs';
+import { checkIntegrationUsage } from '../../content/scripts/integrations.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pluginRoot = path.resolve(__dirname, '..');
