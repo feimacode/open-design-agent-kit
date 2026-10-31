@@ -65,6 +65,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 ## Help
 
 - [Troubleshooting](troubleshooting.md)
+- [Privacy policy](legal/privacy.md) and [terms of service](legal/terms.md)
 
 ## Automation
 

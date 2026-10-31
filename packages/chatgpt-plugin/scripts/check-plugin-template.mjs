@@ -27,10 +27,14 @@ const openai = plugin.extensions?.['com.openai'];
 if (!openai?.interface?.displayName) problems.push('plugin.template.json: missing extensions.com.openai.interface.displayName');
 // The submission portal's listing limits (developers.openai.com/plugins/deploy/submission).
 const ui = openai?.interface ?? {};
+for (const field of ['privacyPolicyURL', 'termsOfServiceURL']) {
+  const m = /^https:\/\/github\.com\/feimacode\/open-design-agent-kit\/blob\/main\/(.+)$/.exec(ui[field] ?? '');
+  if (m && !existsSync(path.join(repoRoot, m[1]))) problems.push(`plugin.template.json: interface.${field} points at ${m[1]}, which doesn't exist`);
+}
 for (const [field, max] of [['displayName', 30], ['shortDescription', 30], ['longDescription', 4000]]) {
   if (typeof ui[field] !== 'string' || !ui[field] || ui[field].length > max) problems.push(`plugin.template.json: interface.${field} must be 1-${max} characters`);
 }
-for (const field of ['developerName', 'category', 'websiteURL', 'logo', 'composerIcon']) if (!ui[field]) problems.push(`plugin.template.json: missing interface.${field}`);
+for (const field of ['developerName', 'category', 'websiteURL', 'supportURL', 'privacyPolicyURL', 'termsOfServiceURL', 'logo', 'composerIcon']) if (!ui[field]) problems.push(`plugin.template.json: missing interface.${field}`);
 if (openai?.onboardingSkill !== './skills/open-design/SKILL.md') problems.push('plugin.template.json: onboardingSkill must be ./skills/open-design/SKILL.md');
 if (!existsSync(path.join(repoRoot, '.agents', 'skills', 'open-design', 'SKILL.md'))) problems.push('.agents/skills/open-design/SKILL.md is missing (run npm run sync-content)');
 
