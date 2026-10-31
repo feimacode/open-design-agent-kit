@@ -43,6 +43,19 @@ import {
 import { getAssetsRoot, getDefaultWorkspace, getFigmaToken, getOutputDirectory, getWorkspaceRootOverride, isDesktopExtension, isFolderlessAppHost, isPluginLaunched, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
 import { DEFERRED_TO_EXTENSION_MESSAGE, extensionLockPath, holdExtensionLock, readLiveExtensionLock, shouldDeferToExtension, watchExtensionLock } from './extensionLock';
 import { desktopLayout, type WorkspaceLayout } from './layout';
+import { startHttpServer } from './httpServer';
+import {
+  folderUsage,
+  isRemoteProfile,
+  MinuteRateLimiter,
+  newDownloads,
+  REMOTE_HIDDEN_TOOLS,
+  REMOTE_PROFILE,
+  remoteArgRefusal,
+  snapshotFiles,
+  usageRefusal,
+  type RemoteLimits,
+} from './remote';
 import { getManagedRoot, openManagedWorkspace } from './managedWorkspace';
 import { createFileActiveDesignSystemStore } from './store';
 import { TOOL_ANNOTATIONS } from './toolAnnotations';
@@ -1579,18 +1592,34 @@ function textResult(text: string, isError = false) {
   return { content: [{ type: 'text' as const, text }], ...(isError ? { isError: true } : {}) };
 }
 
-async function main(): Promise<void> {
-  const desktopExtension = isDesktopExtension();
-  // Folder rules follow the Claude Desktop extension for the ChatGPT desktop plugin too; the lock below stays the extension's own.
-  const folderlessAppHost = isFolderlessAppHost();
-  const pluginLaunched = isPluginLaunched();
+/** A hosted session (openspec add-remote-mcp-server): its own folder, limits and download links. */
+export interface RemoteSession {
+  sessionId: string;
+  /** The session's own folder: the managed root its designs go in. */
+  root: string;
+  limits: RemoteLimits;
+  /** A signed, expiring HTTPS link to a file under root (workspace-relative path). */
+  downloadLink(rel: string): string;
+}
+
+/** One MCP server: the stdio process's only one, or one per hosted session. */
+export function createSession(remote?: RemoteSession): Server {
+  const desktopExtension = !remote && isDesktopExtension();
+  // Folder rules follow the Claude Desktop extension for the ChatGPT desktop plugin and hosted sessions too; the lock below stays the extension's own.
+  const folderlessAppHost = remote !== undefined || isFolderlessAppHost();
+  const pluginLaunched = !remote && isPluginLaunched();
   const lockPath = extensionLockPath();
   if (desktopExtension) holdExtensionLock(lockPath, SERVER_VERSION);
 
-  const initial = initialWorkspace({ override: getWorkspaceRootOverride(), defaultWorkspace: getDefaultWorkspace(), cwd: process.cwd() });
+  const initial = remote
+    ? { root: remote.root, source: 'default' as WorkspaceSource }
+    : initialWorkspace({ override: getWorkspaceRootOverride(), defaultWorkspace: getDefaultWorkspace(), cwd: process.cwd() });
   let ctx = buildContext(initial.root);
   let source: WorkspaceSource = initial.source;
   let hadRoots = false;
+  const managedRoot = (): string => (remote ? remote.root : getManagedRoot());
+  const rateLimiter = remote ? new MinuteRateLimiter(remote.limits.callsPerMinute) : undefined;
+  let exportsMade = 0;
 
   const server = new Server(
     { name: 'open-design', version: SERVER_VERSION },
@@ -1600,14 +1629,14 @@ async function main(): Promise<void> {
   const deferred = (): boolean =>
     shouldDeferToExtension({ pluginLaunched, clientName: server.getClientVersion()?.name, lockIsLive: pluginLaunched && readLiveExtensionLock(lockPath) !== undefined });
   // The managed-workspace tools are for a Claude Desktop chat with no folder (openspec add-folderless-chat-support).
-  const folderless = (): boolean => hasNoFolderOfItsOwn({ override: getWorkspaceRootOverride(), hadRoots, cwd: process.cwd(), desktopExtension: folderlessAppHost });
+  const folderless = (): boolean => remote !== undefined || hasNoFolderOfItsOwn({ override: getWorkspaceRootOverride(), hadRoots, cwd: process.cwd(), desktopExtension: folderlessAppHost });
 
   // Workspace root precedence (workspace.ts): an agent-set folder, then
   // OPEN_DESIGN_WORKSPACE_ROOT, then the client's MCP roots, then
   // OPEN_DESIGN_DEFAULT_WORKSPACE, then the cwd. Requests wait for the first
   // roots lookup so nothing is written before it's known.
   const syncRootsFromClient = async (): Promise<void> => {
-    if (!rootsMayReplace(source) || !server.getClientCapabilities()?.roots) return;
+    if (remote || !rootsMayReplace(source) || !server.getClientCapabilities()?.roots) return;
     try {
       const root = workspaceRootFromClientRoots((await server.listRoots()).roots);
       if (!root) return;
@@ -1643,7 +1672,9 @@ async function main(): Promise<void> {
     if (deferred()) return { tools: [] };
     const showFolderless = folderless();
     return {
-      tools: TOOL_DEFS.filter((d) => (!(d.appOnly || d.appsHostOnly) || rendersMcpApps()) && (showFolderless || !FOLDERLESS_TOOLS.has(d.tool.name))).map((d) => ({ ...d.tool, annotations: TOOL_ANNOTATIONS[d.tool.name] })),
+      tools: TOOL_DEFS.filter(
+        (d) => (!(d.appOnly || d.appsHostOnly) || rendersMcpApps()) && (showFolderless || !FOLDERLESS_TOOLS.has(d.tool.name)) && (!remote || !(d.tool.name in REMOTE_HIDDEN_TOOLS)),
+      ).map((d) => ({ ...d.tool, annotations: TOOL_ANNOTATIONS[d.tool.name] })),
     };
   });
 
@@ -1663,6 +1694,19 @@ async function main(): Promise<void> {
     await rootsReady;
     const name = request.params.name;
     if (deferred()) return textResult(DEFERRED_TO_EXTENSION_MESSAGE, true);
+    if (remote) {
+      if (name in REMOTE_HIDDEN_TOOLS) return textResult(`Tool "${name}" isn't available on the hosted Open Design server: it needs ${REMOTE_HIDDEN_TOOLS[name]}.`, true);
+      if (!rateLimiter?.take()) return textResult(`Too many requests: this session allows ${remote.limits.callsPerMinute} tool calls a minute. Wait a minute, then try again.`, true);
+      const refusal = remoteArgRefusal(name, (request.params.arguments as Record<string, unknown>) ?? {});
+      if (refusal) return textResult(refusal, true);
+      if (TOOL_ANNOTATIONS[name]?.readOnlyHint !== true) {
+        const full = usageRefusal(await folderUsage(remote.root), remote.limits);
+        if (full) return textResult(full, true);
+      }
+      if (name === 'export_open_design_artifact' && exportsMade >= remote.limits.maxExports) {
+        return textResult(`This session has reached its limit of ${remote.limits.maxExports} exports. Nothing was exported. Start a new chat to begin a fresh session.`, true);
+      }
+    }
     if (name === SET_WORKSPACE_TOOL) {
       try {
         const root = workspaceRootFromArg(request.params.arguments?.path);
@@ -1682,7 +1726,7 @@ async function main(): Promise<void> {
         return textResult(`Tool "${MANAGED_WORKSPACE_TOOL}" is only for a chat with no folder. This server already has one (${ctx.workspaceRoot}); write design files with your own file tools there, or call ${SET_WORKSPACE_TOOL} for another folder.`, true);
       }
       try {
-        const opened = await openManagedWorkspace(request.params.arguments?.name);
+        const opened = remote ? await openManagedWorkspace(request.params.arguments?.name, remote.root, []) : await openManagedWorkspace(request.params.arguments?.name);
         const layout = opened.legacy ? { layout: 'classic' as const, designsDir: '.open-design' } : await desktopLayout(opened.root, true);
         ctx = buildContext(opened.root, { managed: true, layout, managedDesignSlug: opened.legacy ? undefined : opened.slug });
         source = 'managed';
@@ -1710,13 +1754,28 @@ async function main(): Promise<void> {
     const args = (request.params.arguments as Record<string, unknown>) ?? {};
     const catalogOnly = typeof def.catalogOnly === 'function' ? def.catalogOnly(args) : def.catalogOnly === true;
     if (!catalogOnly && needsFolderFromAgent({ root: ctx.workspaceRoot, source, desktopExtension: folderlessAppHost })) {
-      return textResult(workspaceGuardMessage({ root: ctx.workspaceRoot, source, toolName: name, managedToolListed: folderless(), managedRoot: getManagedRoot() }), true);
+      return textResult(workspaceGuardMessage({ root: ctx.workspaceRoot, source, toolName: name, managedToolListed: folderless(), managedRoot: managedRoot() }), true);
     }
     try {
-      const callCtx = { ...ctx, figmaToken: getFigmaToken(), clientName: server.getClientVersion()?.name, rendersMcpApps: rendersMcpApps() };
+      const callCtx = { ...ctx, figmaToken: remote ? undefined : getFigmaToken(), clientName: server.getClientVersion()?.name, rendersMcpApps: rendersMcpApps() };
+      const exporting = remote !== undefined && name === 'export_open_design_artifact';
+      const before = exporting ? await snapshotFiles(remote.root) : undefined;
       const out = await def.handler(callCtx, args);
       const structuredContent = typeof out === 'string' ? undefined : out.structuredContent;
-      return { content: tools.toCallToolContent(out), ...(structuredContent ? { structuredContent } : {}) };
+      const content = tools.toCallToolContent(out);
+      if (exporting && before) {
+        // Hosted exports are files on the server: hand out signed, expiring links (openspec add-remote-mcp-server).
+        const files = newDownloads(before, await snapshotFiles(remote.root));
+        if (files.length) {
+          exportsMade += 1;
+          const links = files.map((rel) => `- ${rel}: ${remote.downloadLink(rel)}`).join('\n');
+          content.push({
+            type: 'text',
+            text: `Download links (valid for ${remote.limits.linkHours} hours; give them to the user, as these files are on the Open Design server, not their computer):\n${links}`,
+          });
+        }
+      }
+      return { content, ...(structuredContent ? { structuredContent } : {}) };
     } catch (err) {
       return textResult(`Tool "${name}" failed: ${err instanceof Error ? err.message : String(err)}`, true);
     }
@@ -1769,8 +1828,20 @@ async function main(): Promise<void> {
     };
   });
 
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  return server;
+}
+
+async function main(): Promise<void> {
+  const argv = process.argv.slice(2);
+  if (argv.includes('--http')) {
+    const portFlag = argv.indexOf('--port');
+    const port = portFlag !== -1 ? Number(argv[portFlag + 1]) : Number(process.env.PORT) || 8080;
+    if (!isRemoteProfile()) process.env.OPEN_DESIGN_PROFILE = REMOTE_PROFILE;
+    await startHttpServer({ port, createSession, serverVersion: SERVER_VERSION });
+    return;
+  }
+  const server = createSession();
+  await server.connect(new StdioServerTransport());
 }
 
 main().catch((err) => {

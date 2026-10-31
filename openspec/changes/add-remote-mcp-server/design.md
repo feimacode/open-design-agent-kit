@@ -22,7 +22,7 @@ ChatGPT custom MCP apps need a public HTTPS URL. Write tools need confirmation u
 
 **2. Hide, don't stub, local-only tools.** A hidden tool can't be called by mistake, and the model doesn't learn about features it can't use. A single `REMOTE_HIDDEN_TOOLS` set is tested against `TOOL_DEFS`, so a new tool has to be classified.
 
-**3. `WorkspaceStore` at the file level.** The interface covers read, write, list, stat, delete, and "materialise to a temp folder" for Chromium. The current code becomes `FsWorkspaceStore`. Remote mode uses an object-storage store and materialises a design into a temp folder only for checks and exports. This is the riskiest refactor, so phase 1 starts by moving every disk access behind the interface while keeping stdio tests green.
+**3. Phase 1: a folder per session, on a mounted volume.** (Changed while applying.) Each session's files live in `<data dir>/sessions/<id>/`, and the session is a managed root, so every tool keeps its file-system code and Chromium reads the files where they are. Durability comes from the host: mount the data directory on a volume (Cloud Storage FUSE on Cloud Run, a volume on Fly.io). A `WorkspaceStore` interface with an object-storage store, read, write, list, stat, delete and "materialise to a temp folder" for Chromium, is deferred to phase 2, when several instances must share sessions. This avoids the riskiest refactor before anyone has used the hosted server.
 
 **4. Session lifetime: 7 days, no accounts.** Files are kept under an opaque id for 7 days after the last request, then deleted. Download links expire after 24 hours. Without accounts, a new ChatGPT or Claude conversation may get a new session, so the guide says to export what you want to keep.
 
@@ -35,5 +35,6 @@ ChatGPT custom MCP apps need a public HTTPS URL. Write tools need confirmation u
 
 - **Cost and abuse.** Chromium per export is CPU-heavy. Phase 1 has hard per-session limits and a token-gated URL.
 - **Privacy.** User content sits on our storage. Phase 1 is private testing only. A privacy policy is required before any listing.
-- **Refactor risk.** Moving disk access behind `WorkspaceStore` touches most tools. It's done first, with the full test suite, before any remote code.
+- **Refactor risk.** Avoided in phase 1 by keeping sessions as folders (decision 3). The cost: one instance only, and the host must provide a durable volume.
+- **Server-side fetching.** Remote mode hides `extract_open_design_design_system` and refuses `sourceUrl` and `embedAssets`, so the server never fetches a URL a user names. Headless Chromium still loads whatever URLs a design's HTML references during checks and exports; run the server where it can't reach private networks or cloud metadata. Blocking those requests in Chromium is phase 2.
 - **Host differences.** ChatGPT may render MCP Apps differently from Claude (see `chatgpt-mcp-apps-compat`). The text fallback has to be good on its own.

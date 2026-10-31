@@ -63,7 +63,7 @@ describe('project context files (add-impeccable-interop)', () => {
     assert.ok(fm.includes('typography:\n  display:\n    fontFamily: "Fraunces"\n    fontSize: "64px"'));
     assert.ok(fm.includes('  body:\n    fontFamily: "Inter"\n    fontSize: "16px"\n    lineHeight: "1.6"'));
     assert.ok(fm.includes('rounded:\n  sm: "6px"\n  md: "10px"'));
-    assert.ok(/spacing:\n(  \w+: "[^"]+"\n)*  sm: "8px"\n  md: "16px"/.test(fm));
+    assert.ok(/spacing:\n( {2}\w+: "[^"]+"\n)* {2}sm: "8px"\n {2}md: "16px"/.test(fm));
     assert.ok(!fm.includes('color-mix'));
     assert.ok(fm.endsWith('\n---'));
   });
