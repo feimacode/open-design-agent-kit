@@ -78,12 +78,45 @@ function applyHostContext(): void {
   const ctx = app.getHostContext();
   const dark = ctx?.theme ? ctx.theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
   document.body.classList.toggle('od-dark', dark);
-  document.body.classList.toggle('od-fullscreen', ctx?.displayMode === 'fullscreen');
+  const mode = currentDisplayMode();
+  document.body.classList.toggle('od-fullscreen', mode === 'fullscreen');
   const fullscreen = document.getElementById('od-fullscreen');
   if (fullscreen) {
-    fullscreen.hidden = !(ctx?.availableDisplayModes ?? []).includes('fullscreen');
-    fullscreen.setAttribute('aria-pressed', String(ctx?.displayMode === 'fullscreen'));
+    fullscreen.hidden = !canGoFullscreen();
+    fullscreen.setAttribute('aria-pressed', String(mode === 'fullscreen'));
   }
+}
+
+// Display mode (openspec chatgpt-mcp-apps-compat): the MCP Apps spec's
+// request-display-mode first; ChatGPT's window.openai.requestDisplayMode only
+// when the host lists no display modes. Feature-detected, never by host name.
+interface OpenAiDisplayExtras {
+  displayMode?: string;
+  requestDisplayMode?: (args: { mode: string }) => Promise<unknown>;
+}
+function openAiExtras(): OpenAiDisplayExtras | undefined {
+  const openai = (window as unknown as { openai?: OpenAiDisplayExtras }).openai;
+  return openai && typeof openai.requestDisplayMode === 'function' ? openai : undefined;
+}
+function specListsFullscreen(): boolean {
+  return (app.getHostContext()?.availableDisplayModes ?? []).includes('fullscreen');
+}
+function canGoFullscreen(): boolean {
+  return specListsFullscreen() || openAiExtras() !== undefined;
+}
+let requestedMode: string | undefined;
+function currentDisplayMode(): string | undefined {
+  return app.getHostContext()?.displayMode ?? openAiExtras()?.displayMode ?? requestedMode;
+}
+function requestDisplayMode(mode: 'inline' | 'fullscreen'): Promise<unknown> {
+  if (specListsFullscreen()) return app.requestDisplayMode({ mode });
+  const extras = openAiExtras();
+  if (!extras?.requestDisplayMode) return Promise.reject(new Error('This app can\'t change the view.'));
+  return extras.requestDisplayMode({ mode }).then((result) => {
+    requestedMode = mode;
+    applyHostContext();
+    return result;
+  });
 }
 
 function fullscreenButton(): string {
@@ -98,8 +131,8 @@ function backButton(): string {
 function wireFullscreen(): void {
   document.getElementById('od-back')?.addEventListener('click', () => goBack());
   document.getElementById('od-fullscreen')?.addEventListener('click', () => {
-    const next = app.getHostContext()?.displayMode === 'fullscreen' ? 'inline' : 'fullscreen';
-    app.requestDisplayMode({ mode: next }).catch((err) => toast(`Couldn't change the view: ${errorText(err)}`));
+    const next = currentDisplayMode() === 'fullscreen' ? 'inline' : 'fullscreen';
+    requestDisplayMode(next).catch((err) => toast(`Couldn't change the view: ${errorText(err)}`));
   });
   applyHostContext();
 }
