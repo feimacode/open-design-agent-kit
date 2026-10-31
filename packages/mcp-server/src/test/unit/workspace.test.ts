@@ -3,7 +3,8 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { getDefaultWorkspace, getFigmaToken, settingFromEnv } from '../../env';
+import { defaultWorkspaceProblem, getDefaultWorkspace, getFigmaToken, settingFromEnv } from '../../env';
+import { mkdtempSync } from 'node:fs';
 import { extensionLockPath, holdExtensionLock, readLiveExtensionLock, shouldDeferToExtension, watchExtensionLock } from '../../extensionLock';
 import { getManagedRoot, managedFolderName, openManagedWorkspace, writeManagedFile } from '../../managedWorkspace';
 import { hasNoFolderOfItsOwn, initialWorkspace, needsFolderFromAgent, rootsMayReplace, workspaceGuardMessage } from '../../workspace';
@@ -260,5 +261,21 @@ describe('writeManagedFile', () => {
     const big = Buffer.alloc(6 * 1024 * 1024).toString('base64');
     await assert.rejects(writeManagedFile({ workspaceRoot, outputDir, path: '.open-design/p/big.png', content: big, encoding: 'base64' }), /5 MiB/);
     await assert.rejects(fs.access(path.join(workspaceRoot, '.open-design', 'p', 'big.png')));
+  });
+});
+
+describe('defaultWorkspaceProblem', () => {
+  it('says why a set default folder was not used, and nothing when it is unset or usable', () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'od-default-'));
+    assert.strictEqual(defaultWorkspaceProblem({} as NodeJS.ProcessEnv), undefined);
+    assert.strictEqual(defaultWorkspaceProblem({ OPEN_DESIGN_DEFAULT_WORKSPACE: '${user_config.workspace}' } as NodeJS.ProcessEnv), undefined);
+    assert.strictEqual(defaultWorkspaceProblem({ OPEN_DESIGN_DEFAULT_WORKSPACE: dir } as NodeJS.ProcessEnv), undefined);
+    assert.match(defaultWorkspaceProblem({ OPEN_DESIGN_DEFAULT_WORKSPACE: 'designs' } as NodeJS.ProcessEnv) ?? '', /isn't an absolute path/);
+    assert.match(defaultWorkspaceProblem({ OPEN_DESIGN_DEFAULT_WORKSPACE: path.join(dir, 'missing') } as NodeJS.ProcessEnv) ?? '', /doesn't exist/);
+  });
+
+  it('is named in the folder guard', () => {
+    const message = workspaceGuardMessage({ root: 'C:\\Windows\\system32', source: 'cwd', toolName: 'prepare_open_design_brief', managedToolListed: true, managedRoot: 'C:\\Users\\x\\Documents\\Open Design', defaultProblem: "the Default design folder setting, D:\\Designs, doesn't exist" });
+    assert.match(message, /It didn't use the default folder: the Default design folder setting, D:\\Designs, doesn't exist\./);
   });
 });

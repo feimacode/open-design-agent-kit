@@ -39,7 +39,7 @@ import {
   type DesignProfile,
   type ListSkillsInput,
 } from '@feimacode/open-design-agent-kit-core';
-import { getAssetsRoot, getDefaultWorkspace, getFigmaToken, getOutputDirectory, getWorkspaceRootOverride, isDesktopExtension, isPluginLaunched, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
+import { defaultWorkspaceProblem, getAssetsRoot, getDefaultWorkspace, getFigmaToken, getOutputDirectory, getWorkspaceRootOverride, isDesktopExtension, isPluginLaunched, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
 import { DEFERRED_TO_EXTENSION_MESSAGE, extensionLockPath, holdExtensionLock, readLiveExtensionLock, shouldDeferToExtension, watchExtensionLock } from './extensionLock';
 import { desktopLayout, type WorkspaceLayout } from './layout';
 import { getManagedRoot, openManagedWorkspace } from './managedWorkspace';
@@ -1583,6 +1583,9 @@ async function main(): Promise<void> {
   let ctx = buildContext(initial.root);
   let source: WorkspaceSource = initial.source;
   let hadRoots = false;
+  // One line in the host's server log (Claude Desktop: mcp-server-<name>.log), so a wrong folder can be traced.
+  const problem = defaultWorkspaceProblem();
+  console.error(`[open-design] ${SERVER_VERSION} started in ${process.cwd()}; workspace ${initial.root} (${initial.source})${problem ? `; ${problem}` : ''}`);
 
   const server = new Server(
     { name: 'open-design', version: SERVER_VERSION },
@@ -1702,7 +1705,7 @@ async function main(): Promise<void> {
     const args = (request.params.arguments as Record<string, unknown>) ?? {};
     const catalogOnly = typeof def.catalogOnly === 'function' ? def.catalogOnly(args) : def.catalogOnly === true;
     if (!catalogOnly && needsFolderFromAgent({ root: ctx.workspaceRoot, source, desktopExtension })) {
-      return textResult(workspaceGuardMessage({ root: ctx.workspaceRoot, source, toolName: name, managedToolListed: folderless(), managedRoot: getManagedRoot() }), true);
+      return textResult(workspaceGuardMessage({ root: ctx.workspaceRoot, source, toolName: name, managedToolListed: folderless(), managedRoot: getManagedRoot(), defaultProblem: defaultWorkspaceProblem() }), true);
     }
     try {
       const callCtx = { ...ctx, figmaToken: getFigmaToken(), clientName: server.getClientVersion()?.name, rendersMcpApps: rendersMcpApps() };

@@ -48,6 +48,21 @@ export function getDefaultWorkspace(env: NodeJS.ProcessEnv = process.env): strin
   }
 }
 
+/**
+ * Why a set OPEN_DESIGN_DEFAULT_WORKSPACE wasn't used, for the startup log and
+ * the folder guard; undefined when it is unset or usable.
+ */
+export function defaultWorkspaceProblem(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const value = settingFromEnv(env.OPEN_DESIGN_DEFAULT_WORKSPACE);
+  if (!value) return undefined;
+  if (!path.isAbsolute(value)) return `the Default design folder setting, ${JSON.stringify(value)}, isn't an absolute path`;
+  try {
+    return statSync(value).isDirectory() ? undefined : `the Default design folder setting, ${value}, isn't a folder`;
+  } catch {
+    return `the Default design folder setting, ${value}, doesn't exist`;
+  }
+}
+
 /** Set by the desktop extension's manifest, so the server knows Desktop started it from the .mcpb. */
 export const DESKTOP_EXTENSION_HOST = 'claude-desktop-extension';
 
