@@ -58,8 +58,37 @@ export function isDesktopExtension(env: NodeJS.ProcessEnv = process.env): boolea
   return env.OPEN_DESIGN_HOST?.trim() === DESKTOP_EXTENSION_HOST;
 }
 
+/** Set by the ChatGPT desktop plugin's mcp.json (openspec add-chatgpt-desktop-plugin). */
+export const CHATGPT_PLUGIN_LAUNCHER = 'chatgpt-plugin';
+
+/**
+ * Started by the Claude plugin's launcher. Claude only: this is what hands the
+ * tools to the Claude Desktop extension when both run (extensionLock.ts).
+ */
 export function isPluginLaunched(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.OPEN_DESIGN_LAUNCHER?.trim() === PLUGIN_LAUNCHER;
+}
+
+/** Started by the ChatGPT desktop plugin. */
+export function isChatGptPlugin(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.OPEN_DESIGN_LAUNCHER?.trim() === CHATGPT_PLUGIN_LAUNCHER;
+}
+
+/** Which app's plugin started the server, when one did. */
+export function launcherHost(env: NodeJS.ProcessEnv = process.env): 'claude' | 'chatgpt' | undefined {
+  if (isPluginLaunched(env)) return 'claude';
+  if (isChatGptPlugin(env)) return 'chatgpt';
+  return undefined;
+}
+
+/**
+ * Started by a desktop app that gives the server no folder of its own: the
+ * Claude Desktop extension, or the ChatGPT desktop plugin (whose working
+ * folder is the plugin's own install folder). Without roots or an override,
+ * designs go to the managed folder, as in a Claude Desktop chat.
+ */
+export function isFolderlessAppHost(env: NodeJS.ProcessEnv = process.env): boolean {
+  return isDesktopExtension(env) || isChatGptPlugin(env);
 }
 
 /** $XDG_CONFIG_HOME/open-design, defaulting to ~/.config/open-design: the token file and the extension lock live here. */

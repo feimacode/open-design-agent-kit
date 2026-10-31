@@ -10,6 +10,7 @@ import { runCheck, type CheckCliOptions } from './checkCommand';
 import { runExport, runRenderVideo, type ExportCliOptions } from './exportCommand';
 import { runPreview, type PreviewCliOptions } from './previewCommand';
 import { cliHelpEpilogue } from './docsLinks';
+import { runInstallChatGpt, runUninstallChatGpt } from './chatgptCommand';
 
 async function resolveTools(toolsFlag: string | undefined): Promise<ToolId[]> {
   if (toolsFlag !== undefined) return parseToolsArg(toolsFlag);
@@ -78,6 +79,21 @@ program
       console.error(`Error: ${message}`);
       process.exitCode = 1;
     }
+  });
+
+program
+  .command('install <app>')
+  .description('Install Open Design into a desktop app outside any project. Only "chatgpt" for now: unpacks the ChatGPT desktop plugin into ~/.codex/plugins/open-design and lists it in ~/.agents/plugins/marketplace.json (writes in your home folder)')
+  .option('--from <file.zip>', 'Use this plugin zip instead of downloading the release that matches this CLI')
+  .action(async (app: string, options: { from?: string }) => {
+    process.exitCode = await runInstallChatGpt(app, options);
+  });
+
+program
+  .command('uninstall <app>')
+  .description('Remove what `install` added. Only "chatgpt": deletes ~/.codex/plugins/open-design and its entry in ~/.agents/plugins/marketplace.json, nothing else')
+  .action(async (app: string) => {
+    process.exitCode = await runUninstallChatGpt(app);
   });
 
 program

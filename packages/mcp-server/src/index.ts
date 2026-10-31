@@ -39,7 +39,7 @@ import {
   type DesignProfile,
   type ListSkillsInput,
 } from '@feimacode/open-design-agent-kit-core';
-import { getAssetsRoot, getDefaultWorkspace, getFigmaToken, getOutputDirectory, getWorkspaceRootOverride, isDesktopExtension, isPluginLaunched, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
+import { getAssetsRoot, getDefaultWorkspace, getFigmaToken, getOutputDirectory, getWorkspaceRootOverride, isDesktopExtension, isFolderlessAppHost, isPluginLaunched, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
 import { DEFERRED_TO_EXTENSION_MESSAGE, extensionLockPath, holdExtensionLock, readLiveExtensionLock, shouldDeferToExtension, watchExtensionLock } from './extensionLock';
 import { desktopLayout, type WorkspaceLayout } from './layout';
 import { getManagedRoot, openManagedWorkspace } from './managedWorkspace';
@@ -1580,6 +1580,8 @@ function textResult(text: string, isError = false) {
 
 async function main(): Promise<void> {
   const desktopExtension = isDesktopExtension();
+  // Folder rules follow the Claude Desktop extension for the ChatGPT desktop plugin too; the lock below stays the extension's own.
+  const folderlessAppHost = isFolderlessAppHost();
   const pluginLaunched = isPluginLaunched();
   const lockPath = extensionLockPath();
   if (desktopExtension) holdExtensionLock(lockPath, SERVER_VERSION);
@@ -1597,7 +1599,7 @@ async function main(): Promise<void> {
   const deferred = (): boolean =>
     shouldDeferToExtension({ pluginLaunched, clientName: server.getClientVersion()?.name, lockIsLive: pluginLaunched && readLiveExtensionLock(lockPath) !== undefined });
   // The managed-workspace tools are for a Claude Desktop chat with no folder (openspec add-folderless-chat-support).
-  const folderless = (): boolean => hasNoFolderOfItsOwn({ override: getWorkspaceRootOverride(), hadRoots, cwd: process.cwd(), desktopExtension });
+  const folderless = (): boolean => hasNoFolderOfItsOwn({ override: getWorkspaceRootOverride(), hadRoots, cwd: process.cwd(), desktopExtension: folderlessAppHost });
 
   // Workspace root precedence (workspace.ts): an agent-set folder, then
   // OPEN_DESIGN_WORKSPACE_ROOT, then the client's MCP roots, then
@@ -1706,7 +1708,7 @@ async function main(): Promise<void> {
     }
     const args = (request.params.arguments as Record<string, unknown>) ?? {};
     const catalogOnly = typeof def.catalogOnly === 'function' ? def.catalogOnly(args) : def.catalogOnly === true;
-    if (!catalogOnly && needsFolderFromAgent({ root: ctx.workspaceRoot, source, desktopExtension })) {
+    if (!catalogOnly && needsFolderFromAgent({ root: ctx.workspaceRoot, source, desktopExtension: folderlessAppHost })) {
       return textResult(workspaceGuardMessage({ root: ctx.workspaceRoot, source, toolName: name, managedToolListed: folderless(), managedRoot: getManagedRoot() }), true);
     }
     try {

@@ -661,6 +661,9 @@ describe('list_open_design_integrations (shipped registry)', () => {
     assert.match(desktop, /Settings > Connectors/);
     assert.ok(tools.isClaudeClient('local-agent-mode-plugin:open-design:open-design'));
     assert.ok(!tools.isClaudeClient('codex-mcp-client'));
+    // ChatGPT desktop (add-chatgpt-desktop-plugin): its clients aren't Claude, so Claude-only handoffs stay out.
+    assert.ok(!tools.isClaudeClient('openai-mcp'));
+    assert.ok(!tools.isClaudeClient('chatgpt'));
   });
 
   it('falls back to generic for an unknown client, and an explicit agent wins', async () => {
