@@ -13,12 +13,13 @@
       "onboardingSkill": "./skills/open-design/SKILL.md",
       "interface": {
         "displayName": "Open Design",
-        "shortDescription": "Posters, decks, pages and posts in real design systems",
+        "shortDescription": "Posters, decks, pages, posts",
         "longDescription": "Open Design gives ChatGPT design recipes, 198 design systems and remixable examples. Ask for a poster, a pitch deck, a landing page or an Instagram carousel: it's built as a real page in one consistent style, checked in a browser, and exported to PNG, PDF or PowerPoint. Designs are saved in your Documents/Open Design folder. Runs on your computer; needs Node.js 18 or later.",
         "developerName": "feimacode",
         "category": "Design",
         "capabilities": ["Read", "Write"],
         "websiteURL": "https://github.com/feimacode/open-design-agent-kit",
+        "supportURL": "https://github.com/feimacode/open-design-agent-kit/issues",
         "defaultPrompt": [
           "Make a poster for our café's Saturday jazz night",
           "Turn this report into a 10-slide deck",
