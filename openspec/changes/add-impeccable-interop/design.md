@@ -15,7 +15,9 @@ Impeccable's `init` writes `PRODUCT.md` (sections such as Users, Product Purpose
 
 ## Decisions
 
-**1. Root files only, read-only by default.** We look only at `<workspace>/PRODUCT.md` and `<workspace>/DESIGN.md`. A missing file is not an error. Task 1.1 confirms Impeccable's paths, and we follow them if they differ (for example, a dot folder).
+**1. Impeccable's places, read-only by default.** We look where Impeccable does: the project root, then `.agents/context/`, then `docs/`, using the first file found (confirmed 2026-10-31 from impeccable.style/docs/context). A missing file is not an error. A new `DESIGN.md` is only ever written at the root, and only when none of the three places has one.
+
+**1a. Front matter, not a heading map.** Impeccable's `DESIGN.md` starts with YAML front matter (`name`, `description`, `colors`, `typography`, `rounded`, `spacing`, `components`) that its detector checks. Ours have none, so the writer prepends front matter generated from the resolved tokens (plain colour values only), then the design system's text unchanged.
 
 **2. Product context is capped.** At most about 1,500 characters go into the brief. Headings are kept and the rest is trimmed, so a long `PRODUCT.md` doesn't crowd out the skill and design system.
 

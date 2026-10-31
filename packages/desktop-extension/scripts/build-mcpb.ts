@@ -1,10 +1,7 @@
 // Builds the Claude Desktop extension, open-design-<version>.mcpb
 // (openspec add-desktop-extension-bundle):
-//   1. the MCP server bundled with the same esbuild options as the npm
-//      package, except that @modelcontextprotocol/sdk is inlined (a .mcpb has
-//      no npm install step), plus the browser preview bundles;
-//   2. the content package, extracted from the content tarball built in the
-//      same release run (it isn't on npm yet then, and has no dependencies);
+//   1-2. the bundled MCP server and the content package (stageServer.ts,
+//      shared with the ChatGPT plugin: a .mcpb has no npm install step);
 //   3. the plugin's icon and manifest.json, rendered with the server's version;
 //   4. `mcpb validate` and `mcpb pack` from the pinned devDependency.
 // Nothing is fetched from the network.
@@ -18,12 +15,9 @@ import { execFileSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import * as esbuild from 'esbuild';
-import { buildPreviewBundles } from '../../core/build/previewBundles';
-import { CONTENT_PACKAGE, serverBuildOptions } from '../../mcp-server/serverBuild';
+import { repoRoot, serverVersion, stageBundledServer } from './stageServer';
 
 const packageRoot = path.resolve(__dirname, '..');
-const repoRoot = path.resolve(packageRoot, '..', '..');
 const mcpb = path.join(repoRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'mcpb.cmd' : 'mcpb');
 
 function parseArgs(argv) {
@@ -40,24 +34,11 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const { version } = JSON.parse(await fs.readFile(path.join(repoRoot, 'packages', 'mcp-server', 'package.json'), 'utf8'));
+  const version = await serverVersion();
   const out = args.out ?? path.join(repoRoot, 'release', `open-design-${version}.mcpb`);
   const stage = await fs.mkdtemp(path.join(os.tmpdir(), 'od-mcpb-'));
   try {
-    const serverOut = path.join(stage, 'server', 'out');
-    await esbuild.build(serverBuildOptions({ outfile: path.join(serverOut, 'index.js'), external: [CONTENT_PACKAGE] }));
-    await buildPreviewBundles(serverOut);
-
-    const unpacked = path.join(stage, '.content');
-    await fs.mkdir(unpacked);
-    execFileSync('tar', ['-xzf', args.content, '-C', unpacked], { stdio: 'inherit' });
-    const contentPackage = JSON.parse(await fs.readFile(path.join(unpacked, 'package', 'package.json'), 'utf8'));
-    if (contentPackage.name !== CONTENT_PACKAGE) throw new Error(`${args.content} is ${contentPackage.name}, not ${CONTENT_PACKAGE}`);
-    if (contentPackage.version !== version) throw new Error(`${args.content} is version ${contentPackage.version}; the server is ${version}`);
-    const contentDest = path.join(stage, 'server', 'node_modules', ...CONTENT_PACKAGE.split('/'));
-    await fs.mkdir(path.dirname(contentDest), { recursive: true });
-    await fs.rename(path.join(unpacked, 'package'), contentDest);
-    await fs.rm(unpacked, { recursive: true });
+    await stageBundledServer(stage, args.content, version);
 
     await fs.copyFile(path.join(repoRoot, 'packages', 'claude-plugin', '.claude-plugin', 'icon.png'), path.join(stage, 'icon.png'));
     const template = await fs.readFile(path.join(packageRoot, 'manifest.template.json'), 'utf8');

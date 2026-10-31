@@ -33,9 +33,29 @@ export const PREVIEW_APP_EXAMPLES_PAGE_SIZE = 24;
 export const PREVIEW_APP_MAX_TILE_IMAGE_BYTES = 1024 * 1024;
 
 /** `_meta` for a tool whose result the preview renders. */
-export function previewAppToolMeta(): Record<string, unknown> {
-  return { ui: { resourceUri: PREVIEW_APP_URI }, [MCP_APP_LEGACY_RESOURCE_KEY]: PREVIEW_APP_URI };
+export function previewAppToolMeta(status?: ToolStatusText): Record<string, unknown> {
+  return {
+    ui: { resourceUri: PREVIEW_APP_URI },
+    [MCP_APP_LEGACY_RESOURCE_KEY]: PREVIEW_APP_URI,
+    ...(status ? { [TOOL_INVOKING_KEY]: status.invoking, [TOOL_INVOKED_KEY]: status.invoked } : {}),
+  };
 }
+
+/** Status lines a host may show while a render tool runs and once it's done (ChatGPT reads these keys; others ignore them). */
+export interface ToolStatusText {
+  invoking: string;
+  invoked: string;
+}
+export const TOOL_INVOKING_KEY = 'openai/toolInvocation/invoking';
+export const TOOL_INVOKED_KEY = 'openai/toolInvocation/invoked';
+
+/** The render tools' status lines (openspec chatgpt-mcp-apps-compat), short and plain. */
+export const RENDER_TOOL_STATUS: Record<string, ToolStatusText> = {
+  show_open_design_artifact: { invoking: 'Opening the preview…', invoked: 'Preview ready' },
+  show_open_design_examples: { invoking: 'Finding examples…', invoked: 'Examples ready' },
+  show_open_design_design_systems: { invoking: 'Finding design systems…', invoked: 'Design systems ready' },
+  show_open_design_questions: { invoking: 'Preparing a few questions…', invoked: 'Questions ready' },
+};
 
 /** `_meta` for a tool only the preview page calls: hosts keep it out of the model's tool list. */
 export function appOnlyToolMeta(): Record<string, unknown> {

@@ -12,7 +12,7 @@ This change is **phase 1**. It makes the server able to run remotely and deploys
   - **Local-only tools are hidden.** Hidden tools: `open_open_design_preview`, `set_open_design_workspace`, `use_open_design_managed_workspace`, `set_up_open_design_browser_pane`, `port_open_design_artifact_to_app`, `read_open_design_source` for local paths, the recurring job tools, and Figma and Canva tools that need a local token. The list is in one place, with a unit test.
   - **Preview through MCP Apps only.** The view gets the design from `get_open_design_preview_state`. Where views don't render, the reply points at a temporary share link made by `publish_open_design_artifact`.
   - **Exports as links.** `export_open_design_artifact` stores PNG, PDF and PPTX files and returns HTTPS download links that expire.
-- **Storage behind one interface.** Workspace reads and writes go through a small `WorkspaceStore` (local folder today). Remote mode adds a store that keeps each session's files in object storage under an opaque session id, deleted after a fixed time.
+- **One folder per session.** Each session's files live in a folder named by an opaque session id under the server's data directory, deleted after a fixed time. Durable storage comes from mounting that directory on a volume (for example Cloud Storage FUSE on Cloud Run). A `WorkspaceStore` interface for object storage waits for phase 2.
 - **A deployable image.** A `Dockerfile` with Node, the bundled server and content, and Chromium for checks and exports. A `deploy/README.md` covers one host. Iven picks the host (see design.md). Health check at `/healthz`.
 - **Abuse limits from day one.** Per-session limits on file count, total bytes, export count and request rate. Clear errors when they're hit.
 - **Private test instance.** It's protected by a shared bearer token (ChatGPT's and Claude's custom connectors accept a URL; the token goes in the URL path or a header, whichever both hosts support). It's not listed anywhere.
@@ -30,6 +30,6 @@ None. Stdio behaviour is unchanged.
 ## Impact
 
 - `packages/mcp-server`: HTTP entry point, profile switch, tool filtering, export links, limits.
-- `packages/core`: `WorkspaceStore` interface, with the current file-system code as the first store.
+- `packages/core`: unchanged in phase 1 (no `WorkspaceStore` yet).
 - New `deploy/` (Dockerfile, README), and a manual GitHub Actions workflow that builds the image.
 - Costs: hosting, storage and Chromium CPU are paid by the project once deployed. Phase 1 is a single small instance.

@@ -19,7 +19,7 @@ With `OPEN_DESIGN_PROFILE=remote`, every session SHALL be folderless with its ow
 - **THEN** each SHALL read back only its own file
 
 ### Requirement: Session Storage and Expiry
-Under the remote profile, workspace files SHALL be stored through `WorkspaceStore` under an opaque session id and deleted 7 days after the session's last request. Export download links SHALL expire after 24 hours.
+Under the remote profile, each session's workspace files SHALL be kept in a folder of its own under the data directory, named by an opaque session id, and deleted 7 days after the session's last request. Export download links SHALL expire after 24 hours.
 
 #### Scenario: Expired session
 - **WHEN** a session has had no request for more than 7 days

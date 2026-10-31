@@ -525,6 +525,7 @@ Sets or clears the workspace's active design system, which `prepare_open_design_
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `designSystemId` | string | no | A design system id. Omit it or pass an empty string to clear the active system. |
+| `writeProjectDesignMd` | boolean | no | MCP only. Also writes the design system as `DESIGN.md` at the project root (design tokens in YAML front matter, then the system's text), for tools such as [Impeccable](../guides/impeccable.md) that read one. Never overwrites: if the project has a `DESIGN.md` at the root, in `.agents/context/` or in `docs/`, it is kept. Skipped in the managed designs folder. |
 
 The active system is stored in the [`openDesign.activeDesignSystemId`](settings-and-env.md#opendesignactivedesignsystemid) setting (VS Code) or `.open-design/config.json` (MCP).
 

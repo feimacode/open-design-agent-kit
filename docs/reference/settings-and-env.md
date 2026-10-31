@@ -101,7 +101,7 @@ MCP server. Set to `claude-desktop-extension` by the desktop extension's manifes
 
 ### OPEN_DESIGN_LAUNCHER
 
-MCP server. Set to `claude-plugin` by the Claude plugin's launcher. While a desktop extension holds its lock, a server started this way lists no tools to clients other than Claude Code, so Claude Desktop shows one set of Open Design tools. You don't set it yourself.
+MCP server. Set to `claude-plugin` by the Claude plugin's launcher. While a desktop extension holds its lock, a server started this way lists no tools to clients other than Claude Code, so Claude Desktop shows one set of Open Design tools. Set to `chatgpt-plugin` by the [ChatGPT desktop plugin](../getting-started/chatgpt-desktop.md)'s `mcp.json`: the server then follows the folder rules of a chat with no folder. You don't set it yourself.
 
 ### OPEN_DESIGN_PREVIEW
 
@@ -114,6 +114,50 @@ MCP server. When the [browser preview](../guides/browser-preview.md) opens:
 ### OPEN_DESIGN_PREVIEW_BROWSER
 
 MCP server and CLI. Set to `default` to open the [browser preview](../guides/browser-preview.md) in your default browser (with your own extensions and sign-ins) instead of an app window of Chrome, Edge or Chromium. Comment screenshots are then re-rendered headless rather than taken from the window, so they may not show a state you clicked into, such as an open tab.
+
+### OPEN_DESIGN_PROFILE
+
+MCP server. Set to `remote` to run as the [hosted server](remote-server.md): one folder per MCP session, tools that need your own computer hidden, limits and download links. Starting the server with `--http` sets it. You don't set it for a local server.
+
+### OPEN_DESIGN_REMOTE_TOKEN
+
+Hosted server, required. The shared secret clients present as `Authorization: Bearer <token>` or in the URL (`/mcp/<token>`). At least 16 characters. See [Hosted server](remote-server.md).
+
+### OPEN_DESIGN_REMOTE_SECRET
+
+Hosted server. Signs download links. Defaults to `OPEN_DESIGN_REMOTE_TOKEN`; set it separately so a rotated token doesn't break links already handed out.
+
+### OPEN_DESIGN_REMOTE_DATA_DIR
+
+Hosted server. Where session folders live (`<dir>/sessions/<id>`). Defaults to a folder in the system temp directory; the container image sets `/data`.
+
+### OPEN_DESIGN_PUBLIC_URL
+
+Hosted server. The server's public `https://` origin, used in download links. Defaults to the origin of the request (honouring `X-Forwarded-Proto` and `X-Forwarded-Host`).
+
+### OPEN_DESIGN_REMOTE_MAX_FILES
+
+Hosted server. Files a session may hold before tools that write are refused. Default `500`.
+
+### OPEN_DESIGN_REMOTE_MAX_MB
+
+Hosted server. Megabytes a session may hold before tools that write are refused. Default `200`.
+
+### OPEN_DESIGN_REMOTE_MAX_EXPORTS
+
+Hosted server. Exports a session may make. Default `50`.
+
+### OPEN_DESIGN_REMOTE_CALLS_PER_MINUTE
+
+Hosted server. Tool calls a session may make in a minute. Default `120`.
+
+### OPEN_DESIGN_REMOTE_SESSION_DAYS
+
+Hosted server. Days a session's folder is kept after its last request. Default `7`.
+
+### OPEN_DESIGN_REMOTE_LINK_HOURS
+
+Hosted server. Hours a download link stays valid. Default `24`.
 
 ## Contributor-only variables
 

@@ -60,6 +60,7 @@ export * from './workspace/artifactSync';
 export * from './workspace/collectionScan';
 export * from './workspace/critique';
 export * from './workspace/designHistory';
+export * from './workspace/projectContext';
 export * from './workspace/explorationCompare';
 export * from './workspace/explorationStore';
 export * from './workspace/shareRecords';

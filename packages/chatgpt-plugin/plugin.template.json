@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "open-design",
+  "version": "${VERSION}",
+  "description": "Design landing pages, decks, posters, social posts and more from 198 design systems, checked and exported to PNG, PDF and PowerPoint.",
+  "author": { "name": "feimacode", "url": "https://github.com/feimacode" },
+  "homepage": "https://github.com/feimacode/open-design-agent-kit",
+  "repository": "https://github.com/feimacode/open-design-agent-kit",
+  "license": "MIT",
+  "keywords": ["design", "landing page", "slides", "poster", "social post", "design systems"],
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/open-design/SKILL.md",
+      "interface": {
+        "displayName": "Open Design",
+        "shortDescription": "Posters, decks, pages, posts",
+        "longDescription": "Open Design gives ChatGPT design recipes, 198 design systems and remixable examples. Ask for a poster, a pitch deck, a landing page or an Instagram carousel: it's built as a real page in one consistent style, checked in a browser, and exported to PNG, PDF or PowerPoint. Designs are saved in your Documents/Open Design folder. Runs on your computer; needs Node.js 18 or later.",
+        "developerName": "feimacode",
+        "category": "Design",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://github.com/feimacode/open-design-agent-kit",
+        "supportURL": "https://github.com/feimacode/open-design-agent-kit/issues",
+        "defaultPrompt": [
+          "Make a poster for our café's Saturday jazz night",
+          "Turn this report into a 10-slide deck",
+          "Design an Instagram carousel announcing our spring sale"
+        ],
+        "brandColor": "#FF5A1F",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/icon.png"
+      }
+    }
+  }
+}

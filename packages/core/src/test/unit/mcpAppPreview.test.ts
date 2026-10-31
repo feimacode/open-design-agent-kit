@@ -12,6 +12,7 @@ import {
   pickDirectionMessage,
   PREVIEW_APP_URI,
   previewAppToolMeta,
+  RENDER_TOOL_STATUS,
   appOnlyToolMeta,
 } from '../../preview/mcpApp/protocol';
 import {
@@ -69,6 +70,14 @@ describe('preview MCP App', () => {
     it('links the show tool to the resource and hides app-only tools from the model', () => {
       assert.deepStrictEqual(previewAppToolMeta(), { ui: { resourceUri: PREVIEW_APP_URI }, 'ui/resourceUri': PREVIEW_APP_URI });
       assert.deepStrictEqual(appOnlyToolMeta(), { ui: { resourceUri: PREVIEW_APP_URI, visibility: ['app'] } });
+    });
+
+    it('adds the status lines ChatGPT shows while a render tool runs (chatgpt-mcp-apps-compat)', () => {
+      const meta = previewAppToolMeta(RENDER_TOOL_STATUS.show_open_design_artifact);
+      assert.strictEqual(meta['openai/toolInvocation/invoking'], 'Opening the preview…');
+      assert.strictEqual(meta['openai/toolInvocation/invoked'], 'Preview ready');
+      assert.deepStrictEqual(meta.ui, { resourceUri: PREVIEW_APP_URI });
+      for (const status of Object.values(RENDER_TOOL_STATUS)) assert.ok(status.invoking.length <= 40 && status.invoked.length <= 40);
     });
 
     it('writes chat messages that name the entry, the comment ids and the tools to call', () => {

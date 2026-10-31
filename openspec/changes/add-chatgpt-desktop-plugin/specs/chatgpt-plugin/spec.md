@@ -8,21 +8,21 @@ Each release SHALL build `open-design-chatgpt-plugin-<version>.zip` with a root 
 - **THEN** the zip's `plugin.json` SHALL have `name` `open-design` and `version` `0.4.0`
 
 ### Requirement: Bundled Stdio Server
-The zip's `mcp.json` SHALL declare one stdio server started as `node ${PLUGIN_ROOT}/server/index.js` with `OPEN_DESIGN_LAUNCHER=chatgpt-plugin`, and `server/` SHALL start without network access or installing packages.
+The zip's `mcp.json` SHALL declare one stdio server started as `node ${PLUGIN_ROOT}/server/out/index.js` with `OPEN_DESIGN_LAUNCHER=chatgpt-plugin`, and `server/` SHALL start without network access or installing packages.
 
 #### Scenario: Server starts from the unpacked zip
 - **WHEN** the zip is unpacked outside the repository and the `mcp.json` command is run with `${PLUGIN_ROOT}` set to that folder
 - **THEN** the server SHALL complete an MCP handshake and list its tools without downloading anything
 
 ### Requirement: Plugin Skills Match Codex
-Every file under the zip's `skills/` SHALL equal the file at the same path under the repo's generated `.agents/skills/`, and `npm run lint` SHALL fail when they differ.
+Every file under the zip's `skills/` SHALL equal the file at the same path under the repo's generated `.agents/skills/`, and the release smoke test SHALL fail when they differ.
 
 #### Scenario: Skills match Codex
 - **WHEN** the release is built
 - **THEN** the zip's `skills/` tree SHALL equal `.agents/skills/`
 
 ### Requirement: ChatGPT Install Command
-The CLI SHALL provide `install chatgpt`, which unpacks the plugin zip for its own version into `~/.open-design/chatgpt-plugin/<version>/`, points an `open-design` entry in `~/.agents/plugins/marketplace.json` at it, and prints every path it wrote plus the next steps (restart ChatGPT, turn on the plugin).
+The CLI SHALL provide `install chatgpt`, which unpacks the plugin zip for its own version into `~/.codex/plugins/open-design/`, points an `open-design` entry in `~/.agents/plugins/marketplace.json` at it (`source.path` `./.codex/plugins/open-design`), and prints every path it wrote plus the next steps (restart ChatGPT, turn on the plugin).
 
 #### Scenario: First install
 - **WHEN** a user with no `~/.agents/plugins/marketplace.json` runs `install chatgpt`
@@ -30,7 +30,7 @@ The CLI SHALL provide `install chatgpt`, which unpacks the plugin zip for its ow
 
 #### Scenario: Upgrade
 - **WHEN** version 0.4.0 is installed and the user runs the 0.5.0 CLI's `install chatgpt`
-- **THEN** the entry SHALL point at the 0.5.0 folder and the 0.4.0 folder SHALL be removed
+- **THEN** `~/.codex/plugins/open-design/plugin.json` SHALL say 0.5.0, files only 0.4.0 had SHALL be gone, and the entry SHALL be unchanged
 
 ### Requirement: Safe Marketplace Merge
 `install chatgpt` SHALL keep every other entry in the marketplace file, leave it unchanged when nothing would change, and refuse a malformed file without changing it, printing the entry to add instead. `uninstall chatgpt` SHALL remove only our entry and folders.

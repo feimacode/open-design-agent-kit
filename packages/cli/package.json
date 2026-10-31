@@ -48,6 +48,7 @@
     "@feimacode/open-design-agent-kit-content": "*"
   },
   "devDependencies": {
-    "@feimacode/open-design-agent-kit-core": "*"
+    "@feimacode/open-design-agent-kit-core": "*",
+    "fflate": "^0.8.3"
   }
 }
