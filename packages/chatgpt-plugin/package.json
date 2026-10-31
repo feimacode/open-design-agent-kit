@@ -1,0 +1,11 @@
+{
+  "name": "@feimacode/open-design-agent-kit-chatgpt-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Builds the Open Design ChatGPT desktop plugin (open-design-chatgpt-plugin-<version>.zip): OpenAI's portable plugin.json, the same skills as Codex's .agents/skills, a stdio mcp.json and the bundled server, run on plain node. Takes packages/mcp-server's version; never published to npm, attached to each GitHub release.",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsx ./scripts/build-chatgpt-plugin.ts",
+    "lint": "node ./scripts/check-plugin-template.mjs"
+  }
+}

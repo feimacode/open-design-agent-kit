@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { figmaTokenFilePath, getFigmaToken, isHomeFolder, workspaceRootFromArg, workspaceRootFromClientRoots } from '../../env';
+import { figmaTokenFilePath, getFigmaToken, isChatGptPlugin, isFolderlessAppHost, isHomeFolder, isPluginLaunched, launcherHost, workspaceRootFromArg, workspaceRootFromClientRoots } from '../../env';
 
 describe('workspaceRootFromClientRoots', () => {
   const project = path.resolve('/tmp/od-project');
@@ -59,5 +59,24 @@ describe('getFigmaToken', () => {
     await fs.writeFile(figmaTokenFilePath(env), 'figd_file\n');
     assert.strictEqual(getFigmaToken(env), 'figd_file');
     assert.strictEqual(getFigmaToken({ ...env, OPEN_DESIGN_FIGMA_TOKEN: ' figd_env ' }), 'figd_env');
+  });
+});
+
+describe('launcher host (add-chatgpt-desktop-plugin)', () => {
+  it('tells the Claude plugin, the ChatGPT plugin and neither apart', () => {
+    assert.strictEqual(launcherHost({ OPEN_DESIGN_LAUNCHER: 'claude-plugin' }), 'claude');
+    assert.strictEqual(launcherHost({ OPEN_DESIGN_LAUNCHER: ' chatgpt-plugin ' }), 'chatgpt');
+    assert.strictEqual(launcherHost({}), undefined);
+  });
+
+  it('keeps the Claude-only plugin check (desktop extension hand-off) off for ChatGPT', () => {
+    assert.strictEqual(isPluginLaunched({ OPEN_DESIGN_LAUNCHER: 'chatgpt-plugin' }), false);
+    assert.strictEqual(isChatGptPlugin({ OPEN_DESIGN_LAUNCHER: 'chatgpt-plugin' }), true);
+  });
+
+  it('treats the ChatGPT plugin and the desktop extension as hosts with no folder of their own', () => {
+    assert.strictEqual(isFolderlessAppHost({ OPEN_DESIGN_LAUNCHER: 'chatgpt-plugin' }), true);
+    assert.strictEqual(isFolderlessAppHost({ OPEN_DESIGN_HOST: 'claude-desktop-extension' }), true);
+    assert.strictEqual(isFolderlessAppHost({ OPEN_DESIGN_LAUNCHER: 'claude-plugin' }), false);
   });
 });

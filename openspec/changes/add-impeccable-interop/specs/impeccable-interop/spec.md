@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Product Context From PRODUCT.md
-When the workspace root has a `PRODUCT.md`, `prepare_open_design_brief` SHALL include a "Product context" section taken from it, at most about 1,500 characters, with its headings kept. When there is no `PRODUCT.md`, the brief SHALL be unchanged.
+When the workspace root has a `PRODUCT.md`, `prepare_open_design_brief` SHALL include a "Product context" section taken from it, at most about 1,500 characters, with its headings kept. It SHALL look at the root, then `.agents/context/`, then `docs/`. When there is no `PRODUCT.md`, the brief SHALL be unchanged.
 
 #### Scenario: Short PRODUCT.md
 - **WHEN** the workspace root has a 600-character `PRODUCT.md` and the agent prepares a brief

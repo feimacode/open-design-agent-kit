@@ -208,10 +208,27 @@ jobs:
           node_modules/.bin/mcpb info "release/open-design-${VERSION}.mcpb"
           node scripts/test-mcpb.mjs "release/open-design-${VERSION}.mcpb" --version "$VERSION"
 
-      - name: Generate SHA-256 checksums for npm packages and the .mcpb
+      # --- ChatGPT desktop plugin (openspec add-chatgpt-desktop-plugin) ---
+      # Same bundled server and content as the .mcpb, plus .agents/skills/.
+
+      - name: Build ChatGPT desktop plugin (.zip)
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          npm run build --workspace=packages/chatgpt-plugin -- \
+            --content "$GITHUB_WORKSPACE/release/feimacode-open-design-agent-kit-content-${VERSION}.tgz" \
+            --out "$GITHUB_WORKSPACE/release/open-design-chatgpt-plugin-${VERSION}.zip"
+
+      - name: Smoke-test the ChatGPT desktop plugin
+        # Unzips outside the checkout, checks plugin.json and skills/, starts the
+        # server the way mcp.json says and completes an MCP handshake.
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          node scripts/test-chatgpt-plugin.mjs "release/open-design-chatgpt-plugin-${VERSION}.zip" --version "$VERSION"
+
+      - name: Generate SHA-256 checksums for npm packages, the .mcpb and the ChatGPT plugin
         working-directory: release
         run: |
-          for f in *.tgz *.mcpb; do
+          for f in *.tgz *.mcpb *.zip; do
             sha256sum "$f" > "${f}.sha256"
           done
 
@@ -267,6 +284,7 @@ jobs:
             release/*.vsix
             release/*.tgz
             release/*.mcpb
+            release/*.zip
             release/*.sha256
 
   release:
@@ -312,6 +330,7 @@ jobs:
             release/*.vsix
             release/*.tgz
             release/*.mcpb
+            release/*.zip
             release/*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

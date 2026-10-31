@@ -1,6 +1,6 @@
 # CLI
 
-`@feimacode/open-design-agent-kit` is a small command-line tool with four commands: set up a project for Claude Code and/or Codex, export artifacts, check how artifacts render, and render HyperFrames videos. Run it with `npx`; there's nothing to install:
+`@feimacode/open-design-agent-kit` is a small command-line tool: set up a project for Claude Code and/or Codex, install the ChatGPT desktop plugin, export artifacts, check how artifacts render, and render HyperFrames videos. Run it with `npx`; there's nothing to install:
 
 ```bash
 npx @feimacode/open-design-agent-kit <command> [options]
@@ -38,6 +38,35 @@ What it writes:
 The MCP server in `.mcp.json` and `.codex/config.toml`, and the CLI in `.claude/launch.json`, are pinned to the version of the CLI that ran `init` (for example `@feimacode/open-design-agent-kit-mcp@0.3.0`), so the server always matches the skills written beside it. To upgrade, run `npx @feimacode/open-design-agent-kit@latest init` again: it rewrites the skills and the pins together.
 
 Safe to re-run: generated skills are refreshed, stale generated ones are removed, and skills you wrote yourself are never touched.
+
+### install
+
+Installs Open Design into a desktop app, outside any project. The only app so far is `chatgpt`: the [ChatGPT desktop plugin](../getting-started/chatgpt-desktop.md).
+
+```bash
+npx @feimacode/open-design-agent-kit install chatgpt [--from <file.zip>]
+```
+
+| Argument / option | Meaning |
+|---|---|
+| `app` | `chatgpt`. |
+| `--from <file.zip>` | Use this plugin zip instead of downloading the release that matches the CLI's version. |
+
+Unlike `init`, this writes in your home folder, and it prints every path it touches:
+
+- downloads `open-design-chatgpt-plugin-<version>.zip` from the GitHub release with the CLI's own version and checks it against the release's `.sha256` file (skipped with `--from`);
+- replaces `~/.codex/plugins/open-design/` with the zip's contents (unpacked beside it first, so a failed unpack never leaves half a plugin);
+- adds or updates one `open-design` entry in `~/.agents/plugins/marketplace.json`, the personal marketplace the ChatGPT desktop app reads, creating the file if needed. Other plugins and fields in it are kept; a file that isn't valid JSON is left unchanged and the entry to add is printed.
+
+Re-running the same version changes nothing. To upgrade, run `npx @feimacode/open-design-agent-kit@latest install chatgpt`. Then restart the ChatGPT desktop app.
+
+### uninstall
+
+```bash
+npx @feimacode/open-design-agent-kit uninstall chatgpt
+```
+
+Removes `~/.codex/plugins/open-design/` and the `open-design` entry in `~/.agents/plugins/marketplace.json`, and nothing else. Your designs are kept.
 
 ### export
 

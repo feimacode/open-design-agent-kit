@@ -22,6 +22,7 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [Inline preview in Claude Desktop Chat](inline-preview.md)
 - [Figma](figma.md)
 - [Promote to app code](promote-to-app-code.md)
+- [Works with Impeccable](impeccable.md)
 - [Social media posts](social-posts.md)
 - [HTML email](html-email.md)
 - [Paste into WeChat, Notion and newsletters](paste-html.md)
