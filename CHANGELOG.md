@@ -2,12 +2,18 @@
 
 One version covers the VS Code extension and the npm packages (`content`, `mcp-server`, `cli`). The release workflow uses the section for the tag being released as the GitHub Release notes (see [Releasing](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/contributing/releasing.md)).
 
-## Unreleased
+## [0.4.0-beta.2] - 2026-10-31
+
+A prerelease for testing: npm dist-tag `next`, and a GitHub pre-release with `open-design-0.4.0-beta.2.mcpb` and, new, `open-design-chatgpt-plugin-0.4.0-beta.2.zip`. The Claude plugin stays on 0.3.0.
+
+**ChatGPT desktop:** run `npx @feimacode/open-design-agent-kit@next install chatgpt`, or `install chatgpt --from` the zip from this release.
 
 - **ChatGPT desktop.** Each release now carries `open-design-chatgpt-plugin-<version>.zip`, a ChatGPT "Desktop only" plugin with the same skills as Codex and the server bundled in. `npx @feimacode/open-design-agent-kit install chatgpt` puts it in ChatGPT's personal plugin list (`uninstall chatgpt` removes it); it runs in the Work and Codex tabs and saves designs in Documents/Open Design. [ChatGPT desktop](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/chatgpt-desktop.md)
 - **Hosted server (preview).** `npx @feimacode/open-design-agent-kit-mcp --http` serves Open Design as a remote MCP server over streamable HTTP, for ChatGPT web and Claude web connectors: a shared access token, one folder per session, tools that need your own computer hidden, per-session limits, and signed download links for exports. `deploy/Dockerfile` builds a container with Chromium. There is no public endpoint yet. [Hosted server](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/remote-server.md)
 - **Inline preview in ChatGPT.** The preview view asks ChatGPT for fullscreen through its own API when the standard request isn't available, and the render tools carry ChatGPT's short status lines while they run. `scripts/probe-mcp-apps-host/` records what a host supports.
 - **Works with Impeccable.** Briefs include a short "Product context" from the project's `PRODUCT.md`, and note a project `DESIGN.md` when no design system is active. `set_active_design_system` takes `writeProjectDesignMd` to save the design system as the project's `DESIGN.md` (never overwriting one), and after porting to app code the agent suggests `/impeccable polish` when Impeccable is installed. [Works with Impeccable](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/impeccable.md)
+- **The inline preview doesn't ask Claude to show the design again** after "Ask Claude to apply" or "Fix this piece", since the shown design already updates in place.
+- **Why the default design folder wasn't used.** The desktop extension logs its folder on start, and the "no folder" message says why the Default design folder setting was skipped.
 
 ## [0.4.0-beta.1] - 2026-10-31
 
