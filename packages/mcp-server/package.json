@@ -1,6 +1,6 @@
 {
   "name": "@feimacode/open-design-agent-kit-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0-beta.1",
   "mcpName": "io.github.feimacode/open-design",
   "description": "Open Design as an MCP server — the same skill/design-system/artifact tools the VS Code extension exposes, usable from any MCP-capable coding agent (Claude Code, Codex, and others).",
   "license": "MIT",

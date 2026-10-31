@@ -60,7 +60,7 @@ MCP server. Default: the first workspace folder the client reports through MCP r
 
 ### OPEN_DESIGN_DEFAULT_WORKSPACE
 
-MCP server. A folder to use when nothing else names one: below a folder the agent sets, `OPEN_DESIGN_WORKSPACE_ROOT` and MCP roots, and in place of the working directory. It must exist. Unlike `OPEN_DESIGN_WORKSPACE_ROOT`, it doesn't switch off the home-folder check: tools wait until the agent calls [`set_open_design_workspace`](tools.md#set_open_design_workspace), so a chat with a different connected folder never writes into it by accident. The [desktop extension](../getting-started/claude-desktop.md#install-the-desktop-extension) sets it from its **Default design folder** setting, and chats with no folder keep their designs under it (see [`OPEN_DESIGN_MANAGED_ROOT`](#open_design_managed_root)).
+MCP server. A folder to use when nothing else names one: below a folder the agent sets, `OPEN_DESIGN_WORKSPACE_ROOT` and MCP roots, and in place of the working directory. It must exist. Unlike `OPEN_DESIGN_WORKSPACE_ROOT`, it doesn't switch off the home-folder check: tools wait until the agent calls [`set_open_design_workspace`](tools.md#set_open_design_workspace), so a chat with a different connected folder never writes into it by accident. The [desktop extension](../getting-started/claude-desktop.md#install-the-desktop-extension) sets it from its **Default design folder** setting, and chats with no folder keep their designs under it (see [`OPEN_DESIGN_MANAGED_ROOT`](#open_design_managed_root)). A value that isn't an absolute path to an existing folder is ignored; the server says why in its startup line on stderr (in Claude Desktop, `mcp-server-Open Design.log`) and in the tools' folder message.
 
 ### OPEN_DESIGN_MANAGED_ROOT
 

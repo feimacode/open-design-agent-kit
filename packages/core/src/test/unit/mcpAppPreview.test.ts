@@ -85,6 +85,7 @@ describe('preview MCP App', () => {
       assert.match(apply, /comment on the Open Design artifact "\.open-design\/poster\/index\.html"/);
       assert.match(apply, /- c-1: too dark/);
       assert.match(apply, /resolvedCommentIds/);
+      assert.match(apply, /updates by itself, so don't call show_open_design_artifact again/);
       assert.match(exportRequestMessage(ENTRY, 'png'), /export_open_design_artifact with format "png"/);
       const pick = pickDirectionMessage('pricing', { id: 'b', label: 'Bold' });
       assert.match(pick, /"Bold" \(b\)/);

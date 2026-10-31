@@ -232,7 +232,7 @@ export const PREVIEW_APP_VIEWS: readonly PreviewAppState['view'][] = ['artifact'
 /** The chat message "Ask Claude to apply" sends. */
 export function applyCommentsMessage(entryPath: string, comments: Pick<ArtifactComment, 'id' | 'note'>[]): string {
   const list = comments.map((c) => `- ${c.id}: ${c.note}`).join('\n');
-  return `Apply my ${comments.length === 1 ? 'comment' : `${comments.length} comments`} on the Open Design artifact "${entryPath}":\n${list}\n\nCall get_open_design_artifact for it, address each comment, pass their ids as resolvedCommentIds when you re-register it, then call ${SHOW_ARTIFACT_TOOL} to show me the result.`;
+  return `Apply my ${comments.length === 1 ? 'comment' : `${comments.length} comments`} on the Open Design artifact "${entryPath}":\n${list}\n\nCall get_open_design_artifact for it, address each comment, and pass their ids as resolvedCommentIds when you re-register it. The preview I commented in updates by itself, so don't call ${SHOW_ARTIFACT_TOOL} again.`;
 }
 
 /** The chat message an export button sends; the server tool writes the file, the page never downloads. */
@@ -267,7 +267,7 @@ export function saveTileMessage(explorationId: string, direction: Pick<PreviewAp
 export function fixCampaignPieceMessage(masterEntryPath: string, tile: Pick<PreviewAppCampaignTile, 'label' | 'shape' | 'entryPath' | 'errors'>): string {
   const piece = tile.entryPath ? `the piece "${tile.entryPath}"` : `the "${tile.shape ?? tile.label}" shape of "${masterEntryPath}"`;
   const errors = tile.errors.length ? `\n${tile.errors.map((e) => `- ${e.check}: ${e.message}`).join('\n')}` : ' It has no errors listed; ask me what to change.';
-  return `Fix ${piece} on the Open Design campaign sheet (${tile.label}).${errors}\n\nThen export the master again with campaignSheet: true and call ${SHOW_ARTIFACT_TOOL} with entryPath "${masterEntryPath}" and campaign: true to show me the sheet.`;
+  return `Fix ${piece} on the Open Design campaign sheet (${tile.label}).${errors}\n\nThen export the master again with campaignSheet: true (entryPath "${masterEntryPath}"). The sheet I clicked in updates by itself, so don't call ${SHOW_ARTIFACT_TOOL} again.`;
 }
 
 // ── The ask view (openspec add-mcp-app-ask-view) ──────────────────────────

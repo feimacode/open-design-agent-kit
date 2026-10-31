@@ -38,7 +38,8 @@ describe('preview MCP App pickers', () => {
       const banner = fixCampaignPieceMessage('.open-design/launch/launch.html', { label: 'Mobile banner', shape: 'banner-mobile', errors: [{ check: 'overflow', message: 'Text overflows.' }] });
       assert.match(banner, /"banner-mobile" shape of "\.open-design\/launch\/launch\.html"/);
       assert.match(banner, /- overflow: Text overflows\./);
-      assert.match(banner, /campaign: true/);
+      assert.match(banner, /campaignSheet: true \(entryPath "\.open-design\/launch\/launch\.html"\)/);
+      assert.match(banner, /don't call show_open_design_artifact again/);
       const landing = fixCampaignPieceMessage('m.html', { label: 'Landing', entryPath: 'landing.html', errors: [] });
       assert.match(landing, /the piece "landing\.html"/);
       assert.match(landing, /ask me what to change/);

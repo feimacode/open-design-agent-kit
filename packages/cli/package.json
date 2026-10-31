@@ -1,7 +1,7 @@
 {
   "name": "@feimacode/open-design-agent-kit",
-  "version": "0.3.0",
-  "description": "npx @feimacode/open-design-agent-kit init \u2014 sets up Open Design's Claude Code and/or Codex integration directly in your own project, no marketplace or manual copying required. Also `export` (artifact \u2192 upload-ready PNG/JPEG) and `render-video` (HyperFrames \u2192 MP4) for scripted social-post pipelines.",
+  "version": "0.4.0-beta.1",
+  "description": "npx @feimacode/open-design-agent-kit init — sets up Open Design's Claude Code and/or Codex integration directly in your own project, no marketplace or manual copying required. Also `export` (artifact → upload-ready PNG/JPEG) and `render-video` (HyperFrames → MP4) for scripted social-post pipelines.",
   "license": "MIT",
   "engines": {
     "node": ">=18"
