@@ -662,10 +662,15 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'string',
             description: 'A design system id from list_open_design_design_systems. Omit or pass an empty string to clear.',
           },
+          writeProjectDesignMd: {
+            type: 'boolean',
+            description:
+              "Also write the design system as DESIGN.md at the project root, for tools such as Impeccable that read one. Only when the user agrees. Never overwrites: if the project already has a DESIGN.md (root, .agents/context/ or docs/), it is kept unchanged.",
+          },
         },
       },
     },
-    handler: (ctx, args) => tools.setActiveDesignSystemTool(ctx, args as { designSystemId?: string }),
+    handler: (ctx, args) => tools.setActiveDesignSystemTool(ctx, args as { designSystemId?: string; writeProjectDesignMd?: boolean }),
   },
   {
     tool: {

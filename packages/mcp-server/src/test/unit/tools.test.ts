@@ -377,6 +377,31 @@ describe('mcp-server tools', () => {
     assert.match(await tools.setActiveDesignSystemTool(ctx, { designSystemId: 'nope' }), /Unknown designSystemId/);
   });
 
+  it('setActiveDesignSystemTool writes a project DESIGN.md only when asked and only once (add-impeccable-interop)', async () => {
+    const ctx = await makeContext();
+    const designMd = path.join(ctx.workspaceRoot, 'DESIGN.md');
+    await tools.setActiveDesignSystemTool(ctx, { designSystemId: 'acme' });
+    await assert.rejects(fs.access(designMd));
+    assert.match(await tools.setActiveDesignSystemTool(ctx, { designSystemId: 'acme', writeProjectDesignMd: true }), /Wrote DESIGN\.md/);
+    const first = await fs.readFile(designMd, 'utf8');
+    assert.match(first, /^---\nname: /);
+    assert.match(await tools.setActiveDesignSystemTool(ctx, { designSystemId: 'acme', writeProjectDesignMd: true }), /Kept your existing DESIGN\.md/);
+    assert.strictEqual(await fs.readFile(designMd, 'utf8'), first);
+    assert.match(await tools.setActiveDesignSystemTool({ ...ctx, managedWorkspace: true }, { designSystemId: 'acme', writeProjectDesignMd: true }), /managed designs folder/);
+  });
+
+  it('prepareBrief adds PRODUCT.md context and a project DESIGN.md notice (add-impeccable-interop)', async () => {
+    const ctx = await makeContext();
+    await fs.writeFile(path.join(ctx.workspaceRoot, 'PRODUCT.md'), '## Users\n\nNeighbourhood café regulars.\n');
+    await fs.writeFile(path.join(ctx.workspaceRoot, 'DESIGN.md'), '# Our look\n');
+    const skillId = (await ctx.contentIndex.listSkills())[0].id;
+    const payload = JSON.parse(await tools.prepareBrief(ctx, { skillId, brief: 'a poster' }));
+    assert.match(payload.instructions, /## Product context[\s\S]*Neighbourhood café regulars\./);
+    assert.match(payload.instructions, /## Project DESIGN\.md found/);
+    const managed = JSON.parse(await tools.prepareBrief({ ...ctx, managedWorkspace: true }, { skillId, brief: 'a poster' }));
+    assert.doesNotMatch(managed.instructions, /## Product context/);
+  });
+
   it('remixExample copies the example artifact and registers it', async () => {
     const ctx = await makeContext();
     const raw = await tools.remixExample(ctx, { skillId: 'od:prototype:holo-hero' });

@@ -35,6 +35,9 @@ import {
   prepareComponentLibrary as prepareComponentLibraryCore,
   copyExampleArtifact,
   detectExistingApp,
+  findProjectDesignMd,
+  readProductContext,
+  writeProjectDesignMd,
   addDiagramRuntime as addDiagramRuntimeCore,
   checkArtifact as checkArtifactCore,
   formatAddDiagramRuntimeResult,
@@ -345,6 +348,8 @@ export async function prepareBrief(
     fluid: canvas.fluid,
     decisions: decisions.decisions,
     recentDesigns,
+    productContext: ctx.managedWorkspace ? undefined : await readProductContext(ctx.workspaceRoot),
+    projectDesignMdPath: ctx.managedWorkspace || designSystem ? undefined : await findProjectDesignMd(ctx.workspaceRoot),
   });
 
   const payload = {
@@ -828,14 +833,24 @@ async function previewNoteAfterRegister(ctx: ToolContext, entryPath: string): Pr
   return ' Call open_open_design_preview to show it to the user in a live browser preview, where they can also leave comments.';
 }
 
-export async function setActiveDesignSystemTool(ctx: ToolContext, input: { designSystemId?: string }): Promise<string> {
+export async function setActiveDesignSystemTool(
+  ctx: ToolContext,
+  input: { designSystemId?: string; writeProjectDesignMd?: boolean },
+): Promise<string> {
   const result = await setActiveDesignSystem(input.designSystemId, ctx.store, (id) => ctx.contentIndex.getDesignSystem(id));
   if (result.outcome === 'cleared') return 'Cleared the active Open Design design system.';
   if (result.outcome === 'unknown') {
     const available = (await ctx.contentIndex.listDesignSystems()).map((d) => d.id).slice(0, 20);
     return `Unknown designSystemId "${result.unknownId}". Call list_open_design_design_systems to see available ids. A few available ids: ${available.join(', ')}`;
   }
-  return `Active Open Design design system set to "${input.designSystemId}" (${result.designSystem.name}).`;
+  const set = `Active Open Design design system set to "${input.designSystemId}" (${result.designSystem.name}).`;
+  if (!input.writeProjectDesignMd) return set;
+  // openspec add-impeccable-interop: a project DESIGN.md other tools (Impeccable) read, written only when none exists.
+  if (ctx.managedWorkspace) return `${set} Did not write a project DESIGN.md: this is the managed designs folder, not a code project.`;
+  const written = await writeProjectDesignMd(ctx.workspaceRoot, result.designSystem);
+  return written.outcome === 'written'
+    ? `${set} Wrote ${written.path} at the project root (design tokens in its front matter, then the design system's text). Open Design won't change it again.`
+    : `${set} Kept your existing ${written.path}; it was not changed.`;
 }
 
 export async function createCustomDesignSystem(

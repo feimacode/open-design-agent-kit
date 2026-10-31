@@ -183,6 +183,10 @@ export interface ComposeInstructionsInput {
   decisions?: BriefDecisions;
   /** Recent designs in the workspace to differ from or match — see ../workspace/designHistory.ts. */
   recentDesigns?: RecentDesignsContext;
+  /** The project's PRODUCT.md, already capped (openspec add-impeccable-interop). */
+  productContext?: { path: string; text: string };
+  /** A project DESIGN.md found while no design system is active (openspec add-impeccable-interop). */
+  projectDesignMdPath?: string;
 }
 
 /**
@@ -267,6 +271,17 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
 
   const recent = composeRecentDesignsSection(input.recentDesigns, Boolean(input.designSystemBody?.trim()));
   if (recent) parts.push(`\n\n${recent}`);
+
+  if (input.productContext) {
+    parts.push(
+      `\n\n## Product context\n\nFrom the project's \`${input.productContext.path}\` (who the product is for and why). Use it for audience, tone and constraints; the brief above wins where they differ.\n\n${input.productContext.text}`,
+    );
+  }
+  if (input.projectDesignMdPath && !input.designSystemBody?.trim()) {
+    parts.push(
+      `\n\n## Project DESIGN.md found\n\nThis project has \`${input.projectDesignMdPath}\` describing its visual system, and no Open Design design system is active. Before building, offer once to make it the active design system: call create_open_design_design_system with name and brief taken from that file (read it yourself), write the DESIGN.md and tokens.css it asks for, then set_active_design_system. Never edit \`${input.projectDesignMdPath}\` itself.`,
+    );
+  }
 
   if (input.sourceContext && input.sourceContext.sources.length > 0) {
     parts.push(`\n\n${composeSourceWorkflowSection(input.sourceContext)}`);
