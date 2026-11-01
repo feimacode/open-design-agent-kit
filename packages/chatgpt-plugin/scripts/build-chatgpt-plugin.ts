@@ -47,6 +47,17 @@ export function hostedMcpJson(url: string): string {
   return `${JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { 'open-design': { type: 'http', url } } }, null, 2)}\n`;
 }
 
+/** The hosted variant's long description: no local install, no Documents folder, no Node.js. */
+export const HOSTED_LONG_DESCRIPTION =
+  'Open Design gives ChatGPT design recipes, 198 design systems and remixable examples. Ask for a poster, a pitch deck, a landing page or an Instagram carousel: it\'s built as a real page in one consistent style, checked in a browser, and exported to PNG, PDF or PowerPoint with a download link. Nothing to install and no account needed; projects are kept for 7 days.';
+
+/** plugin.json for the directory-listing variant: the same manifest with the hosted description. */
+export function hostedManifest(rendered: string): string {
+  const manifest = JSON.parse(rendered);
+  manifest.extensions['com.openai'].interface.longDescription = HOSTED_LONG_DESCRIPTION;
+  return `${JSON.stringify(manifest, null, 2)}\n`;
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const version = await serverVersion();
@@ -58,7 +69,8 @@ async function main(): Promise<void> {
     await fs.mkdir(path.join(stage, 'assets'));
     await fs.copyFile(path.join(repoRoot, 'packages', 'claude-plugin', '.claude-plugin', 'icon.png'), path.join(stage, 'assets', 'icon.png'));
     const manifest = await fs.readFile(path.join(packageRoot, 'plugin.template.json'), 'utf8');
-    await fs.writeFile(path.join(stage, 'plugin.json'), manifest.replace('"${VERSION}"', JSON.stringify(version)));
+    const rendered = manifest.replace('"${VERSION}"', JSON.stringify(version));
+    await fs.writeFile(path.join(stage, 'plugin.json'), args.hosted ? hostedManifest(rendered) : rendered);
     if (args.hosted) await fs.writeFile(path.join(stage, 'mcp.json'), hostedMcpJson(args.hosted));
     else await fs.copyFile(path.join(packageRoot, 'mcp.template.json'), path.join(stage, 'mcp.json'));
 
