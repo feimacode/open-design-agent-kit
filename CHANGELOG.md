@@ -2,6 +2,19 @@
 
 One version covers the VS Code extension and the npm packages (`content`, `mcp-server`, `cli`). The release workflow uses the section for the tag being released as the GitHub Release notes (see [Releasing](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/contributing/releasing.md)).
 
+## [Unreleased]
+
+- **Hosted gateway for the directory listings.** A new `packages/mcp-gateway`, shipped as the `ghcr.io/feimacode/open-design-gateway` image, serves Open Design for the Claude connector directory and the ChatGPT plugin directory. Every other install keeps the local server. [Hosted server](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/remote-server.md)
+  - Projects with handles (`start_open_design_project`) instead of one folder per connection, kept 7 days without an account.
+  - Optional sign-in through feima-idp, with a project library (`list_open_design_projects`, `claim_open_design_project`).
+  - Read-only viewer and share links on a separate domain.
+  - Long exports run as jobs (`get_open_design_export_status`).
+  - OpenAI domain verification and a read-only maintenance switch.
+  - A privacy policy and terms that cover hosted data.
+  - **Breaking for the preview:** `open-design-agent-kit-mcp --http` and `OPEN_DESIGN_REMOTE_TOKEN` are gone.
+- **Every tool has a title**, as the Claude connector directory asks.
+- The ChatGPT plugin build takes `--hosted <url>` for the directory-listing variant. The zip people install themselves is unchanged.
+
 ## [0.4.0-beta.2] - 2026-10-31
 
 A prerelease for testing: npm dist-tag `next`, and a GitHub pre-release with `open-design-0.4.0-beta.2.mcpb` and, new, `open-design-chatgpt-plugin-0.4.0-beta.2.zip`. The Claude plugin stays on 0.3.0.

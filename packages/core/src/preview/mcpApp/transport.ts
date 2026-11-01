@@ -27,6 +27,8 @@ export interface McpAppTransport {
   canOpenLinks(): boolean;
   /** Asks the host to open an external link. */
   openLink(url: string): Promise<void>;
+  /** The hosted gateway's project handle (openspec add-mcp-gateway), passed on every tool call once known. */
+  setProject(project: string | undefined): void;
 }
 
 function resultText(result: CallToolResult): string {
@@ -36,8 +38,11 @@ function resultText(result: CallToolResult): string {
     .join('\n');
 }
 
+// The hosted gateway's project handle, from the show tool's arguments or result (openspec add-mcp-gateway).
+let projectHandle: string | undefined;
+
 async function callTool(app: App, name: string, args: Record<string, unknown>): Promise<CallToolResult> {
-  const result = await app.callServerTool({ name, arguments: args });
+  const result = await app.callServerTool({ name, arguments: projectHandle ? { project: projectHandle, ...args } : args });
   if (result.isError) throw new Error(resultText(result) || `${name} failed.`);
   return result;
 }
@@ -67,6 +72,9 @@ async function structured<T>(app: App, args: Record<string, unknown>): Promise<T
 
 export function createMcpAppTransport(app: App): McpAppTransport {
   return {
+    setProject(project) {
+      if (project) projectHandle = project;
+    },
     async loadState(target, cursor) {
       const state = await structured<PreviewAppState>(app, stateArgs(target, cursor));
       if (!state || !PREVIEW_APP_VIEWS.includes(state.view) || state.view !== target.view) throw new Error('The preview state was malformed.');

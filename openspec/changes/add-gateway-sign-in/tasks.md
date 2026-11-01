@@ -12,10 +12,10 @@
 
 ## 2. Gateway
 
-- [ ] 2.1 `/.well-known/oauth-protected-resource`; JWT verification (JWKS cache, issuer, expiry, audience); 401 with `WWW-Authenticate` on account tools; tests with a local key pair
-- [ ] 2.2 User projects under `data/users/<sub>/`; `start_open_design_project` uses them when signed in
-- [ ] 2.3 `list_open_design_projects`, `claim_open_design_project`, `delete_open_design_project` (destructive) with titles and annotations; tests
-- [ ] 2.4 Retention sweep for account projects using the 0.1 value
+- [x] 2.1 `/.well-known/oauth-protected-resource`; JWT verification (JWKS cache, issuer, expiry, audience); 401 with `WWW-Authenticate` on account tools; tests with a local key pair
+- [x] 2.2 User projects under `data/users/<sub>/`; `start_open_design_project` uses them when signed in
+- [x] 2.3 `list_open_design_projects`, `claim_open_design_project`, `delete_open_design_project` (destructive) with titles and annotations; tests
+- [x] 2.4 Retention sweep for account projects using the 0.1 value
 
 ## 3. Verification
 

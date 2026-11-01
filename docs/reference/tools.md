@@ -45,6 +45,11 @@ Two rules apply to every tool (and over MCP every tool declares `readOnlyHint`, 
 | [`use_open_design_managed_workspace`](#use_open_design_managed_workspace) | none | yes (MCP only, chats with no folder) | Open a folder the server keeps for a design, in a Claude Desktop chat with no folder |
 | [`write_open_design_file`](#write_open_design_file) | none | yes (MCP only, chats with no folder) | Save a design file Claude wrote into that folder |
 | [`set_up_open_design_browser_pane`](#set_up_open_design_browser_pane) | none | yes (MCP only) | Set up the live preview for Claude Desktop's Code tab Browser pane, in `.claude/launch.json` |
+| [`start_open_design_project`](#start_open_design_project) | none | hosted gateway only | Start a project and get the handle every later call passes |
+| [`get_open_design_export_status`](#get_open_design_export_status) | none | hosted gateway only | The state and download links of a long export |
+| [`list_open_design_projects`](#list_open_design_projects) | none | hosted gateway only, signed in | The signed-in user's projects |
+| [`claim_open_design_project`](#claim_open_design_project) | none | hosted gateway only, signed in | Keep an anonymous project in the user's library |
+| [`delete_open_design_project`](#delete_open_design_project) | none | hosted gateway only | Delete a project and its share links |
 
 ## Workspace
 
@@ -83,6 +88,47 @@ Limits: the path must be under the designs folder (the managed folder itself, or
 | `encoding` | no | `"base64"` for images and fonts. |
 
 In a managed folder, [`publish_open_design_artifact`](#publish_open_design_artifact) with `provider: "claude-artifact"` hands Claude the page itself (up to 2 MiB) instead of a path its Artifact tool can't read.
+
+## Hosted projects
+
+These tools exist only on the [hosted gateway](remote-server.md), where there is no folder on your computer. Every gateway tool that reads or writes a design also takes a `project` argument: the handle from `start_open_design_project`. Browsing tools (`list_open_design_skills`, `list_open_design_design_systems`, `recommend_open_design_design_systems` and the like) work without one.
+
+### start_open_design_project
+
+Starts a project and returns its handle (`odp_` and 32 hex characters) in the text and as `structuredContent.project`. The agent calls it once per conversation and passes the handle on every later call. Without sign-in, a project is kept for 7 days after its last use ([`OPEN_DESIGN_REMOTE_SESSION_DAYS`](settings-and-env.md#open_design_remote_session_days)), and one network may start 20 an hour ([`OPEN_DESIGN_REMOTE_PROJECTS_PER_HOUR`](settings-and-env.md#open_design_remote_projects_per_hour)). Signed in, it goes in the user's library.
+
+| Argument | Required | Description |
+|---|---|---|
+| `title` | no | A short name, e.g. "Café opening poster". |
+
+### get_open_design_export_status
+
+An export that doesn't finish within [`OPEN_DESIGN_EXPORT_WAIT_SECONDS`](settings-and-env.md#open_design_export_wait_seconds) (and every PowerPoint, video, GIF, data or multi-preset export) returns a job id instead of links. This tool returns the job's state, and the export's result with its download links once it's done.
+
+| Argument | Required | Description |
+|---|---|---|
+| `project` | yes | The project handle. |
+| `jobId` | yes | The job id (`odj_…`) from the export. |
+
+### list_open_design_projects
+
+Listed only when [sign-in](remote-server.md#sign-in) is on. Lists the signed-in user's projects, newest first, with their handles. Without a token the gateway answers HTTP 401 so the host asks the user to sign in.
+
+### claim_open_design_project
+
+Listed only when sign-in is on. Moves an anonymous project into the signed-in user's library. The handle stays the same, but it then works only for that user.
+
+| Argument | Required | Description |
+|---|---|---|
+| `project` | yes | The anonymous project's handle. |
+
+### delete_open_design_project
+
+Deletes a project with its designs, exports, download links and viewer links. Destructive.
+
+| Argument | Required | Description |
+|---|---|---|
+| `project` | yes | The project handle. |
 
 ## Catalog
 

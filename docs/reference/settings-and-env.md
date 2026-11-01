@@ -117,47 +117,87 @@ MCP server and CLI. Set to `default` to open the [browser preview](../guides/bro
 
 ### OPEN_DESIGN_PROFILE
 
-MCP server. Set to `remote` to run as the [hosted server](remote-server.md): one folder per MCP session, tools that need your own computer hidden, limits and download links. Starting the server with `--http` sets it. You don't set it for a local server.
+MCP server. `remote` marks a process as the [hosted gateway](remote-server.md); the gateway sets it itself. You don't set it for a local server.
 
-### OPEN_DESIGN_REMOTE_TOKEN
+### OPEN_DESIGN_LINK_SECRET
 
-Hosted server, required. The shared secret clients present as `Authorization: Bearer <token>` or in the URL (`/mcp/<token>`). At least 16 characters. See [Hosted server](remote-server.md).
-
-### OPEN_DESIGN_REMOTE_SECRET
-
-Hosted server. Signs download links. Defaults to `OPEN_DESIGN_REMOTE_TOKEN`; set it separately so a rotated token doesn't break links already handed out.
+Hosted gateway, required. Signs download links. At least 16 characters. Rotating it breaks links already handed out.
 
 ### OPEN_DESIGN_REMOTE_DATA_DIR
 
-Hosted server. Where session folders live (`<dir>/sessions/<id>`). Defaults to a folder in the system temp directory; the container image sets `/data`.
+Hosted gateway. Where projects, viewer copies and link refs live. Defaults to a folder in the system temp directory; the container image sets `/data`.
 
 ### OPEN_DESIGN_PUBLIC_URL
 
-Hosted server. The server's public `https://` origin, used in download links. Defaults to the origin of the request (honouring `X-Forwarded-Proto` and `X-Forwarded-Host`).
+Hosted gateway. Its public `https://` origin, e.g. `https://open-design.feimacode.com`, used in download links and as the sign-in resource (`<origin>/mcp`). Defaults to the origin of the request (honouring `X-Forwarded-Proto` and `X-Forwarded-Host`). Set it in production: tokens are checked against it.
+
+### OPEN_DESIGN_USERCONTENT_URL
+
+Hosted gateway. The origin of the read-only viewer, on a different registrable domain from `OPEN_DESIGN_PUBLIC_URL` (the gateway refuses to start otherwise). Requests for that host serve only `/v/<view id>/`. Unset, there are no viewer or share links.
+
+### OPEN_DESIGN_SUPPORT_EMAIL
+
+Hosted gateway. Where the viewer's "Report this page" link writes to. Default `support@feimacode.com`.
+
+### OPEN_DESIGN_OPENAI_CHALLENGE
+
+Hosted gateway. The value OpenAI's domain verification expects at `/.well-known/openai-apps-challenge`.
+
+### OPEN_DESIGN_AUTH_ISSUER
+
+Hosted gateway. The sign-in issuer (feima-idp), e.g. `https://auth.feimacode.com`. Unset, there is no sign-in and every project is anonymous. See [Sign-in](remote-server.md#sign-in).
+
+### OPEN_DESIGN_AUTH_JWKS_URL
+
+Hosted gateway. Where the issuer's signing keys are. Default `<issuer>/.well-known/jwks.json`.
+
+### OPEN_DESIGN_GATEWAY_READONLY
+
+Hosted gateway. `1` puts it in maintenance: every tool that writes answers with a notice, and browsing, downloads and viewer links keep working.
+
+### OPEN_DESIGN_TRUST_PROXY
+
+Hosted gateway. `1` takes the client's IP from `CF-Connecting-IP`, then `X-Forwarded-For`, for the per-network project limit. Set it only behind Cloudflare and Traefik, where clients can't set those headers themselves.
+
+### OPEN_DESIGN_EXPORT_CONCURRENCY
+
+Hosted gateway. Exports that run at once. Default `2`.
+
+### OPEN_DESIGN_EXPORT_WAIT_SECONDS
+
+Hosted gateway. How long an export call waits before it hands back a job id for [`get_open_design_export_status`](tools.md#get_open_design_export_status). Default `20`, well under Cloudflare's idle limit.
 
 ### OPEN_DESIGN_REMOTE_MAX_FILES
 
-Hosted server. Files a session may hold before tools that write are refused. Default `500`.
+Hosted gateway. Files a project may hold before tools that write are refused. Default `500`.
 
 ### OPEN_DESIGN_REMOTE_MAX_MB
 
-Hosted server. Megabytes a session may hold before tools that write are refused. Default `200`.
+Hosted gateway. Megabytes a project may hold before tools that write are refused. Default `200`.
 
 ### OPEN_DESIGN_REMOTE_MAX_EXPORTS
 
-Hosted server. Exports a session may make. Default `50`.
+Hosted gateway. Exports a project may make. Default `50`.
 
 ### OPEN_DESIGN_REMOTE_CALLS_PER_MINUTE
 
-Hosted server. Tool calls a session may make in a minute. Default `120`.
+Hosted gateway. Tool calls a project may make in a minute. Default `120`.
+
+### OPEN_DESIGN_REMOTE_PROJECTS_PER_HOUR
+
+Hosted gateway. Anonymous projects one client IP may start in an hour. Default `20`.
 
 ### OPEN_DESIGN_REMOTE_SESSION_DAYS
 
-Hosted server. Days a session's folder is kept after its last request. Default `7`.
+Hosted gateway. Days an anonymous project is kept after its last request. Default `7`.
+
+### OPEN_DESIGN_ACCOUNT_PROJECT_DAYS
+
+Hosted gateway. Days a signed-in user's project is kept after its last request. Default `180`.
 
 ### OPEN_DESIGN_REMOTE_LINK_HOURS
 
-Hosted server. Hours a download link stays valid. Default `24`.
+Hosted gateway. Hours a download link stays valid. Default `24`.
 
 ## Contributor-only variables
 

@@ -1,0 +1,23 @@
+{
+  "name": "@feimacode/open-design-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The hosted Open Design MCP gateway (openspec add-mcp-gateway): the kit's tools over HTTPS for the Claude connector and ChatGPT plugin directory listings, with project handles, optional sign-in through feima-idp, export links and read-only viewer links. Never published to npm; it ships as the open-design-gateway container image and takes packages/mcp-server's version.",
+  "license": "MIT",
+  "main": "out/index.js",
+  "scripts": {
+    "compile": "tsx build.ts",
+    "typecheck": "tsc -p . --noEmit",
+    "lint": "eslint src --ext ts",
+    "test:unit": "mocha --require tsx/cjs 'src/test/unit/**/*.test.ts' --timeout 10000",
+    "start": "node ./out/index.js"
+  },
+  "dependencies": {
+    "@feimacode/open-design-agent-kit-content": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  },
+  "devDependencies": {
+    "@feimacode/open-design-agent-kit-core": "*",
+    "@feimacode/open-design-agent-kit-mcp": "*"
+  }
+}
