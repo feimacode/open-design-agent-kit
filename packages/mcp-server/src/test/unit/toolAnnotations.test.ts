@@ -24,8 +24,9 @@ describe('tool annotations', function () {
     const names = [...source.matchAll(/^\s{6}name: '([a-z0-9_]+)',$/gm)].map((m) => m[1]);
     assert.deepStrictEqual(names.filter((n) => !TOOL_TITLES[n]?.trim()), [], 'tools without a title');
     assert.deepStrictEqual(Object.keys(TOOL_TITLES).filter((n) => !names.includes(n)), [], 'titles for no tool');
-    const noHint = names.filter((n) => TOOL_ANNOTATIONS[n]?.readOnlyHint !== true && typeof TOOL_ANNOTATIONS[n]?.destructiveHint !== 'boolean');
-    assert.deepStrictEqual(noHint, [], 'tools with neither readOnlyHint nor destructiveHint');
+    // The ChatGPT plugin portal wants both hints set explicitly on every tool, read-only ones included.
+    const noHint = names.filter((n) => typeof TOOL_ANNOTATIONS[n]?.readOnlyHint !== 'boolean' || typeof TOOL_ANNOTATIONS[n]?.destructiveHint !== 'boolean');
+    assert.deepStrictEqual(noHint, [], 'tools without both readOnlyHint and destructiveHint');
   });
 
   it('the listed tools carry them, with the expected hints', async () => {
@@ -42,6 +43,7 @@ describe('tool annotations', function () {
     try {
       const { tools } = await client.listTools();
       for (const t of tools) assert.strictEqual(typeof t.annotations?.readOnlyHint, 'boolean', `${t.name} has readOnlyHint`);
+      for (const t of tools) assert.strictEqual(typeof t.annotations?.destructiveHint, 'boolean', `${t.name} has destructiveHint`);
       for (const t of tools) assert.ok(t.title, `${t.name} has a title`);
       const byName = new Map(tools.map((t) => [t.name, t.annotations]));
       assert.strictEqual(byName.get('list_open_design_skills')?.readOnlyHint, true);
