@@ -925,11 +925,14 @@ showMessage('Loading…');
 app.ontoolinput = (params) => {
   // Shown before the result arrives; the result's target is the one the server checked.
   const args = params.arguments ?? {};
+  if (typeof args.project === 'string') transport.setProject(args.project);
   if (!target && typeof args.entryPath === 'string') {
     target = args.campaign === true ? { view: 'campaign', entryPath: args.entryPath, title: args.entryPath } : { view: 'artifact', entryPath: args.entryPath, title: args.entryPath };
   } else if (!target && typeof args.explorationId === 'string') target = { view: 'exploration', explorationId: args.explorationId, title: args.explorationId };
 };
 app.ontoolresult = (result) => {
+  const project = (result.structuredContent as { project?: unknown } | undefined)?.project;
+  if (typeof project === 'string') transport.setProject(project);
   const next = targetFrom(result.structuredContent);
   if (!next) {
     const text = (result.content ?? []).find((c) => c.type === 'text');

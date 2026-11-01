@@ -1,31 +1,56 @@
-# Builds and smoke-tests the hosted MCP server image (openspec add-remote-mcp-server,
-# phase 1). Manual only, and it pushes nowhere: the registry and host are
-# chosen later (deploy/README.md).
-name: Hosted server image
+# Builds, smoke-tests and publishes the hosted gateway image
+# (openspec add-mcp-gateway, deploy-hosted-gateway): ghcr.io/feimacode/open-design-gateway.
+# Runs by hand; pushing is opt-in so a dry run builds and tests only.
+# A release pushes <version> (and `latest` for a stable version).
+name: Gateway image
 
 on:
   workflow_dispatch:
+    inputs:
+      push:
+        description: Push the image to GHCR after the smoke test
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   image:
     runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/feimacode/open-design-gateway
     steps:
       - uses: actions/checkout@v4
 
+      - name: Version
+        id: version
+        run: |
+          v=$(node -p "require('./packages/mcp-server/package.json').version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          case "$v" in *-*) echo "stable=false" >> "$GITHUB_OUTPUT" ;; *) echo "stable=true" >> "$GITHUB_OUTPUT" ;; esac
+
       - name: Build the image
-        run: docker build -f deploy/Dockerfile -t open-design-remote:ci .
+        run: docker build -f deploy/Dockerfile -t "$IMAGE:${{ steps.version.outputs.version }}" .
 
       - name: Run and smoke-test it
         run: |
-          TOKEN="ci-$(openssl rand -hex 16)"
-          docker run -d --name od -p 8080:8080 -e OPEN_DESIGN_REMOTE_TOKEN="$TOKEN" open-design-remote:ci
+          docker run -d --name od -p 8080:8080 -e OPEN_DESIGN_LINK_SECRET="ci-$(openssl rand -hex 16)" "$IMAGE:${{ steps.version.outputs.version }}"
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8080/healthz && break; sleep 1; done
-          deploy/smoke-test.sh http://127.0.0.1:8080 "$TOKEN"
+          deploy/smoke-test.sh http://127.0.0.1:8080
           docker exec od /usr/local/bin/chromium-no-sandbox --headless --dump-dom about:blank > /dev/null
 
       - name: Server log
         if: always()
         run: docker logs od || true
+
+      - name: Push to GHCR
+        if: inputs.push
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push "$IMAGE:${{ steps.version.outputs.version }}"
+          if [ "${{ steps.version.outputs.stable }}" = true ]; then
+            docker tag "$IMAGE:${{ steps.version.outputs.version }}" "$IMAGE:latest"
+            docker push "$IMAGE:latest"
+          fi

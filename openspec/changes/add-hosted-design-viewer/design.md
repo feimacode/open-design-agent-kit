@@ -11,3 +11,8 @@
 ## Risks / Trade-offs
 
 - **Phishing pages on our domain.** A user could make the model build a fake login page and share the link. Mitigations: noindex, 7-day retention, a report link in a small footer bar, and Cloudflare's abuse controls. Revisit before any permanent links.
+
+## Changes while applying (2026-11-01)
+
+- **Copies, not revision pointers.** A view is a copy of the design's folder at the time the link was made (`<data>/views/<id>/site/`, without `exports/` and hidden files), with a global `view.json` pointing at its project. That pins the revision without the kit keeping old revisions, and the copy is deleted with its project.
+- **Configuration.** The viewer is on only when `OPEN_DESIGN_USERCONTENT_URL` is set. The gateway refuses to start when it shares a registrable domain with `OPEN_DESIGN_PUBLIC_URL` (last-two-labels check).

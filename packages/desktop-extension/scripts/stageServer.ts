@@ -18,10 +18,13 @@ export async function serverVersion(): Promise<string> {
   return JSON.parse(await fs.readFile(path.join(repoRoot, 'packages', 'mcp-server', 'package.json'), 'utf8')).version;
 }
 
-/** Writes <dest>/server/ (bundled server + content). `contentTgz` must be the content package at `version`. */
-export async function stageBundledServer(dest: string, contentTgz: string, version: string): Promise<void> {
+/**
+ * Writes <dest>/server/ (bundled server + content). `contentTgz` must be the content package at `version`.
+ * `entryPoint` swaps the stdio server for another entry, such as the hosted gateway (packages/mcp-gateway/src/main.ts).
+ */
+export async function stageBundledServer(dest: string, contentTgz: string, version: string, entryPoint?: string): Promise<void> {
   const serverOut = path.join(dest, 'server', 'out');
-  await esbuild.build(serverBuildOptions({ outfile: path.join(serverOut, 'index.js'), external: [CONTENT_PACKAGE] }));
+  await esbuild.build(serverBuildOptions({ outfile: path.join(serverOut, 'index.js'), external: [CONTENT_PACKAGE], entryPoint }));
   await buildPreviewBundles(serverOut);
 
   const unpacked = path.join(dest, '.content');

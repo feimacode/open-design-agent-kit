@@ -1,6 +1,6 @@
 ## 0. Decisions
 
-- [ ] 0.1 Iven picks the host, domain and budget cap (design.md, decision 5)
+- [x] 0.1 Iven picks the host, domain and budget cap (design.md, decision 5). Replaced by `deploy-hosted-gateway`: the Feima Azure VM, feimacode.com on Cloudflare
 
 ## 1. Storage
 
@@ -21,7 +21,7 @@
 
 - [x] 3.1 `deploy/Dockerfile` (Node, bundled server and content, Chromium, unprivileged user); `deploy/smoke-test.sh`
 - [x] 3.2 Manual workflow that builds and smoke-tests the image (`remote-image.yml`); `deploy/README.md`
-- [ ] 3.3 Push the image to the chosen registry and deploy the private instance (after 0.1)
+- [x] 3.3 Push the image to the chosen registry and deploy the private instance (after 0.1). Replaced by `deploy-hosted-gateway` (GHCR, feima-infra role)
 
 ## 4. Verification
 

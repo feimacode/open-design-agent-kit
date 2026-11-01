@@ -61,11 +61,13 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [CLI](reference/cli.md): `init`, `export`, `check`, `render-video`
 - [Settings and environment variables](reference/settings-and-env.md)
 - [Artifact manifest](reference/artifact-manifest.md): `.artifact.json` and the `exports/` folder
+- [Hosted server](reference/remote-server.md): the gateway behind the directory listings
 
 ## Help
 
 - [Troubleshooting](troubleshooting.md)
 - [Privacy policy](legal/privacy.md) and [terms of service](legal/terms.md)
+- [Directory listings kit](listing/directory-listings.md): what the Claude and ChatGPT directory submissions ask for
 
 ## Automation
 

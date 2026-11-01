@@ -11,9 +11,10 @@ export const MCP_SDK_PACKAGE = '@modelcontextprotocol/sdk';
  * (packages/desktop-extension/scripts/build-mcpb.ts), so the two can't drift.
  * `external` decides what stays a runtime dependency.
  */
-export function serverBuildOptions(input: { outfile: string; external: string[] }): esbuild.BuildOptions {
+export function serverBuildOptions(input: { outfile: string; external: string[]; entryPoint?: string }): esbuild.BuildOptions {
   return {
-    entryPoints: [path.join(__dirname, 'src', 'index.ts')],
+    // The hosted gateway (packages/mcp-gateway) passes its own entry point; everything else is the same.
+    entryPoints: [input.entryPoint ?? path.join(__dirname, 'src', 'index.ts')],
     bundle: true,
     platform: 'node',
     format: 'cjs',

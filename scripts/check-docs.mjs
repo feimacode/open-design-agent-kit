@@ -147,8 +147,11 @@ async function listFiles(dirRel, predicate) {
 async function collectCodeSurface() {
   const pkg = JSON.parse(await readText('packages/vscode/package.json'));
   const tools = new Map(pkg.contributes.languageModelTools.map((t) => [t.name, Object.keys(t.inputSchema?.properties ?? {})]));
-  const mcpSource = await readText('packages/mcp-server/src/index.ts');
+  const mcpSource = await readText('packages/mcp-server/src/session.ts');
   for (const m of mcpSource.matchAll(/tool:\s*\{\s*name:\s*'([a-z_]+)'/g)) if (!tools.has(m[1])) tools.set(m[1], []);
+  // The hosted gateway's own tools (packages/mcp-gateway).
+  const gatewaySource = await readText('packages/mcp-gateway/src/gatewayTools.ts');
+  for (const m of gatewaySource.matchAll(/export const [A-Z_]+_TOOL = '([a-z_]+)'/g)) if (!tools.has(m[1])) tools.set(m[1], []);
 
   const settings = Object.keys(pkg.contributes.configuration.properties);
   const commands = pkg.contributes.commands.map((c) => c.command);

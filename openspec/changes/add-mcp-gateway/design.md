@@ -35,3 +35,12 @@ All durable kit state is already files in a workspace: entry HTML and assets, `*
 - **Hosts that still use sessions.** Both protocol revisions are served. Tests cover both.
 - **Spec revision details.** The 2026-07-28 summary came from a third-party post. Read the normative spec before task 2.1.
 - **Single VM.** It's a single point of failure, which is acceptable for a directory listing at this stage. Backups are in `deploy-hosted-gateway`.
+
+## Changes while applying (2026-11-01)
+
+- **Protocol revision (task 2.1).** The 2026-07-28 changelog is confirmed on modelcontextprotocol.io: sessions, `initialize` and `Mcp-Session-Id` are gone, and `server/discover` is required. The newest MCP SDK (1.32.2) still speaks only up to 2025-11-25. So the gateway keeps 2025-11-25 sessions but **holds no durable state in them**: a session carries only the client's capabilities, which decide whether MCP Apps views are listed. Projects, the open design folder, usage and jobs all live in the project folder. Losing a session costs a re-`initialize` (404 on an unknown session id, as the spec asks), never a file. Moving to 2026-07-28 waits for SDK support, and the tool surface (handles in arguments) is already what that revision expects.
+- **Kit tools split into `session.ts`.** `packages/mcp-server/src/index.ts` is now only the stdio entry. `session.ts` exports `createSession(remote?)`, the `RemoteSession`/`RemoteProject` interfaces and `kitToolNames()`. The gateway imports them as `@feimacode/open-design-agent-kit-mcp/src/session` (workspace source, bundled by esbuild), so the npm package's public surface is unchanged.
+- **Guidance (task 3.2).** It is a hand-condensed text (`packages/mcp-gateway/src/guidance.ts`) rather than a build step. The overview skill is 45 KB, and a mechanical condensation would lose the flow. A unit test checks its size and that every tool it names exists on the gateway. The kit's existing MCP prompts (`listLocalPrompts`) are served as before.
+- **Export jobs (task 3.4).** Every export goes through the queue. A call waits up to 20 s and then hands back a job id. PowerPoint, video, GIF, data-row and multi-preset exports always become jobs.
+- **Download links** name the project by an opaque files ref (`odf_…`, `<data>/refs/`), not by its handle, so passing a link on doesn't open the project.
+- **The MCP App view** passes the project handle on its own tool calls: it reads it from the show tool's arguments or `structuredContent.project`.

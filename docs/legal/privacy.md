@@ -1,12 +1,14 @@
 # Privacy policy
 
-Last updated: 31 October 2026
+Last updated: 1 November 2026
 
-This policy covers Open Design Agent Kit (“Open Design”): the ChatGPT plugin, the Claude plugin and desktop extension, the VS Code extension, the npm packages and the CLI, published by feimacode at [github.com/feimacode/open-design-agent-kit](https://github.com/feimacode/open-design-agent-kit).
+This policy covers Open Design Agent Kit (“Open Design”): the ChatGPT plugin, the Claude plugin and desktop extension, the VS Code extension, the npm packages and the CLI, and the hosted Open Design server at `open-design.feimacode.com` (used by the Open Design connector in Claude's directory and the Open Design plugin in ChatGPT's directory), published by feimacode at [github.com/feimacode/open-design-agent-kit](https://github.com/feimacode/open-design-agent-kit).
 
 ## The short version
 
-Open Design runs on your own computer. We don't run a server that receives your designs, prompts or files, we don't ask for an account, and we don't collect analytics or telemetry.
+When you install Open Design yourself (the Claude plugin or desktop extension, Claude Code, Codex, VS Code, the ChatGPT desktop zip or the npm packages), it runs on your own computer. We don't receive your designs, prompts or files, and we don't collect analytics or telemetry.
+
+When you add Open Design from Claude's connector directory or ChatGPT's plugin directory, it runs on our hosted server instead, which keeps your designs for a limited time (see [The hosted server](#the-hosted-server)). An account is optional.
 
 ## What stays on your computer
 
@@ -26,9 +28,29 @@ Open Design sends data to another service only when you, through your assistant,
 
 Each of these services handles the data under its own policy.
 
+## The hosted server
+
+The connector in Claude's directory and the plugin in ChatGPT's directory use our hosted server, `open-design.feimacode.com`. It runs in Singapore, on Microsoft Azure, behind Cloudflare.
+
+**What it stores.** The tool requests your assistant sends it, and what they create: design files, the notes and comments saved with them, exports (PDFs, images, slides), and the read-only copies behind share links. Your conversation itself stays with your assistant's provider; the server sees only the tool requests.
+
+**Accounts.** You can use it without an account. If you sign in (through Feima's sign-in service, `auth.feimacode.com`, with GitHub, email or another listed provider), we store an account identifier so your projects are kept for you; your sign-in details are handled by that service and the provider you choose.
+
+**How long.**
+- Projects without an account are deleted 7 days after their last use.
+- Projects in an account are deleted 180 days after their last use, or when you delete them.
+- Download links stop working after 24 hours; share links when their project is deleted.
+- Backups are kept for 7 days.
+
+**Logs.** The server keeps technical logs (time, the tool called, errors and the network address used for rate limits) for up to 30 days to run and protect the service. They don't contain your designs.
+
+**Sharing.** We don't sell your data or use it for advertising or to train AI models. Cloudflare and Microsoft process it as our hosting providers. A share link shows that design to anyone who has the link.
+
+**Deleting your data.** Ask your assistant to delete a project, or email support@feimacode.com with the project or account to delete. We delete it within 30 days, including from backups as they expire.
+
 ## Data we receive
 
-None from the plugin itself. If you open an issue or a pull request on GitHub, or email us, we receive what you send, and GitHub's privacy policy applies to GitHub.
+From a copy of Open Design that runs on your own computer: none. If you open an issue or a pull request on GitHub, or email us, we receive what you send, and GitHub's privacy policy applies to GitHub.
 
 ## Children
 
@@ -40,4 +62,4 @@ We'll update this page when how Open Design handles data changes, and change the
 
 ## Contact
 
-Open an issue at [github.com/feimacode/open-design-agent-kit/issues](https://github.com/feimacode/open-design-agent-kit/issues).
+Email support@feimacode.com, or open an issue at [github.com/feimacode/open-design-agent-kit/issues](https://github.com/feimacode/open-design-agent-kit/issues).
