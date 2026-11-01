@@ -24,19 +24,20 @@ import { repoRoot, serverVersion, stageBundledServer } from '../../desktop-exten
 
 const packageRoot = path.resolve(__dirname, '..');
 
-export function parseArgs(argv: string[]): { content?: string; out?: string; hosted?: string } {
+export function parseArgs(argv: string[]): { content?: string; out?: string; hosted?: string; demo?: string } {
   const args: Record<string, string> = {};
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
-    if (flag !== '--content' && flag !== '--out' && flag !== '--hosted') throw new Error(`Unknown argument ${flag}`);
+    if (flag !== '--content' && flag !== '--out' && flag !== '--hosted' && flag !== '--demo') throw new Error(`Unknown argument ${flag}`);
     if (!argv[i + 1]) throw new Error(`${flag} needs a value`);
     const value = argv[++i];
-    args[flag.slice(2)] = flag === '--hosted' ? value : path.resolve(value);
+    args[flag.slice(2)] = flag === '--hosted' || flag === '--demo' ? value : path.resolve(value);
   }
   if (args.hosted) {
     const url = new URL(args.hosted);
     if (url.protocol !== 'https:' || !url.pathname.endsWith('/mcp')) throw new Error('--hosted needs the gateway\'s https URL ending in /mcp');
-    return { hosted: url.toString(), out: args.out };
+    if (args.demo && new URL(args.demo).protocol !== 'https:') throw new Error('--demo needs an https URL');
+    return { hosted: url.toString(), out: args.out, demo: args.demo };
   }
   if (!args.content) throw new Error('--content <tgz> is required: the content package tarball (npm pack --workspace=packages/content)');
   return { content: args.content, out: args.out };
@@ -51,10 +52,14 @@ export function hostedMcpJson(url: string): string {
 export const HOSTED_LONG_DESCRIPTION =
   'Open Design gives ChatGPT design recipes, 198 design systems and remixable examples. Ask for a poster, a pitch deck, a landing page or an Instagram carousel: it\'s built as a real page in one consistent style, checked in a browser, and exported to PNG, PDF or PowerPoint with a download link. Nothing to install and no account needed; projects are kept for 7 days.';
 
-/** plugin.json for the directory-listing variant: the same manifest with the hosted description. */
-export function hostedManifest(rendered: string): string {
+/** plugin.json for the directory-listing variant: the hosted description plus review.json (test cases, release notes). */
+export function hostedManifest(rendered: string, review: { review: unknown; publication: unknown }, demoUrl?: string): string {
   const manifest = JSON.parse(rendered);
-  manifest.extensions['com.openai'].interface.longDescription = HOSTED_LONG_DESCRIPTION;
+  const openai = manifest.extensions['com.openai'];
+  openai.interface.longDescription = HOSTED_LONG_DESCRIPTION;
+  // OpenAI's review metadata (test cases, commerce) and release notes, for remote MCP plugins only.
+  openai.review = demoUrl ? { ...(review.review as object), demo_recording_url: demoUrl } : review.review;
+  openai.publication = review.publication;
   return `${JSON.stringify(manifest, null, 2)}\n`;
 }
 
@@ -70,7 +75,8 @@ async function main(): Promise<void> {
     await fs.copyFile(path.join(repoRoot, 'packages', 'claude-plugin', '.claude-plugin', 'icon.png'), path.join(stage, 'assets', 'icon.png'));
     const manifest = await fs.readFile(path.join(packageRoot, 'plugin.template.json'), 'utf8');
     const rendered = manifest.replace('"${VERSION}"', JSON.stringify(version));
-    await fs.writeFile(path.join(stage, 'plugin.json'), args.hosted ? hostedManifest(rendered) : rendered);
+    const review = args.hosted ? JSON.parse(await fs.readFile(path.join(packageRoot, 'review.json'), 'utf8')) : undefined;
+    await fs.writeFile(path.join(stage, 'plugin.json'), args.hosted ? hostedManifest(rendered, review, args.demo) : rendered);
     if (args.hosted) await fs.writeFile(path.join(stage, 'mcp.json'), hostedMcpJson(args.hosted));
     else await fs.copyFile(path.join(packageRoot, 'mcp.template.json'), path.join(stage, 'mcp.json'));
 

@@ -47,6 +47,16 @@ else {
   if (server.env?.OPEN_DESIGN_LAUNCHER !== 'chatgpt-plugin') problems.push('mcp.template.json: env.OPEN_DESIGN_LAUNCHER must be chatgpt-plugin');
 }
 
+// review.json: OpenAI's review metadata for the hosted (directory) zip: 5 positive and 3 negative test cases, release notes.
+const review = read('review.json');
+const cases = review.review?.test_cases ?? {};
+if ((cases.positive ?? []).length < 5) problems.push('review.json: needs at least 5 positive test cases');
+if ((cases.negative ?? []).length < 3) problems.push('review.json: needs at least 3 negative test cases');
+for (const [i, c] of (cases.positive ?? []).entries()) for (const field of ['description', 'prompt', 'tools_triggered', 'expected_behavior']) if (!c[field]) problems.push(`review.json: positive[${i}] missing ${field}`);
+for (const [i, c] of (cases.negative ?? []).entries()) for (const field of ['description', 'prompt']) if (!c[field]) problems.push(`review.json: negative[${i}] missing ${field}`);
+if (typeof review.review?.commerce !== 'boolean') problems.push('review.json: review.commerce must be true or false');
+if (!review.publication?.release_notes) problems.push('review.json: missing publication.release_notes');
+
 if (problems.length) {
   for (const p of problems) console.error(`check-plugin-template: ${p}`);
   process.exit(1);
