@@ -2,13 +2,13 @@
 
 - [ ] 0.1 Iven: account retention, Google login, and whether ChatGPT launches with OAuth
 
-## 1. feima-idp (PR in feimacode/feima-idp)
+## 1. feima-idp (feimacode/feima-idp#6)
 
-- [ ] 1.1 Check Claude's and ChatGPT's current OAuth client requirements (pre-registered vs DCR/CIMD, callback URLs) and record them in design.md
-- [ ] 1.2 `resource` parameter on authorize and token; `aud` = resource when present; migration
-- [ ] 1.3 `/.well-known/oauth-authorization-server`, `iss` in authorization responses, S256 only
-- [ ] 1.4 Client rows for Claude and ChatGPT; scopes `open-design:projects`, `offline_access`; consent wording
-- [ ] 1.5 DCR or CIMD only if 1.1 says a host needs it
+- [x] 1.1 Check Claude's and ChatGPT's current OAuth client requirements (pre-registered vs DCR/CIMD, callback URLs) and record them in design.md
+- [x] 1.2 `resource` parameter on authorize and token; `aud` = resource when present; migration
+- [x] 1.3 `/.well-known/oauth-authorization-server`, `iss` in authorization responses, S256 only
+- [x] 1.4 Client rows for Claude and ChatGPT; scopes `open-design:projects`, `offline_access`; consent wording
+- [x] 1.5 DCR or CIMD only if 1.1 says a host needs it: not needed for the listings (see design.md)
 
 ## 2. Gateway
 

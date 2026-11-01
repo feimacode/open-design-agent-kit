@@ -6,12 +6,12 @@
 
 - [x] 1.1 `remote-image.yml` pushes `ghcr.io/feimacode/open-design-gateway:<version>` on release and on dispatch, after the smoke test
 
-## 2. Infrastructure (feimacode/feima-infra PR)
+## 2. Infrastructure (feimacode/feima-infra#3)
 
-- [ ] 2.1 `open-design-gateway` role: compose service, volume, limits, env, vault secrets
-- [ ] 2.2 Traefik routers for the gateway host and the user-content host
+- [x] 2.1 `open-design-gateway` role: compose service, volume, limits, env, vault secrets
+- [x] 2.2 Traefik routers for the gateway host and the user-content host
 - [ ] 2.3 Cloudflare: DNS, Tunnel or Full (strict), no challenges on `/mcp`, `/.well-known/*` and the viewer, rate-limit rule
-- [ ] 2.4 Nightly backup to R2/Blob, 7-day retention; one restore test
+- [ ] 2.4 Nightly backup to R2/Blob, 7-day retention; one restore test (cron and script in the role, off until the rclone config is in Vault)
 - [ ] 2.5 External health check, alert to Iven
 
 ## 3. Operations

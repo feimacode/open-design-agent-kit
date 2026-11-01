@@ -53,21 +53,24 @@ DNS for feimacode.com is on Cloudflare. Set it up like this:
 
 A nightly job copies `/opt/feima/prod/open-design/data` to Cloudflare R2 (or Azure Blob) and keeps 7 copies. Anonymous projects live 7 days, so older copies would hold nothing useful.
 
+The `open-design-gateway` role installs it as `/opt/feima/prod/open-design/backup.sh` with a root cron entry, once `open_design_backup_enabled` is on and the rclone config (a remote named `od-backup`) is in Vault. It runs rclone in a throwaway container:
+
 ```sh
-# the cron entry the Ansible role installs (rclone remote "od-backup" configured from Vault)
-rclone sync /opt/feima/prod/open-design/data od-backup:open-design-gateway/$(date +%a) --exclude 'views/**'
+docker run --rm -v /opt/feima/prod/open-design/data:/data:ro \
+  -v /opt/feima/prod/open-design/rclone.conf:/config/rclone/rclone.conf:ro \
+  rclone/rclone:1.68 sync /data od-backup:open-design-gateway/$(date +%a) --exclude 'views/**'
 ```
 
 Viewer copies are left out because they can be made again. Test a restore once before the first submission (below).
 
 ## Runbook
 
-- **Deploy.** Run the Gateway image workflow with `push`. Then set `open_design_gateway_version` in feima-infra and run `ansible-playbook playbooks/deploy-open-design-gateway.yml -l global_prod`.
-- **Roll back.** Set the previous version and run the playbook again. Data is unaffected.
+- **Deploy.** Run the Gateway image workflow with `push`. Then, in feima-infra, run `ansible-playbook playbooks/deploy-open-design-gateway.yml -l global_prod -e open_design_gateway_version=<version>`.
+- **Roll back.** Run the playbook again with the previous version. Data is unaffected.
 - **Maintenance.** Set `OPEN_DESIGN_GATEWAY_READONLY=1` and redeploy. Every tool that writes then answers with a notice, and browsing, downloads and viewer links keep working.
 - **Restore.**
   1. Stop the container.
-  2. `rclone sync od-backup:open-design-gateway/<day> /opt/feima/prod/open-design/data`.
+  2. Copy the day back with the same rclone container (`sync od-backup:open-design-gateway/<day> /data`, data mounted read-write; the steps are at the top of `backup.sh`), then `chown -R 10001` the data folder.
   3. Start the container and run `deploy/smoke-test.sh`.
 - **Health.** `GET /healthz` is watched from outside (Cloudflare health check or UptimeRobot). It reports the version, open sessions, and whether sign-in, the viewer and read-only mode are on.
 - **Logs.** The gateway logs to stderr: start-up and errors, never design content.
