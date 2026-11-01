@@ -44,7 +44,7 @@ export function parseArgs(argv: string[]): { content?: string; out?: string; hos
 
 /** mcp.json for the directory-listing variant: the hosted gateway over streamable HTTP. */
 export function hostedMcpJson(url: string): string {
-  return `${JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { 'open-design': { type: 'http', url } } }, null, 2)}\n`;
+  return `${JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { 'open-design': { type: 'streamable-http', url } } }, null, 2)}\n`;
 }
 
 async function main(): Promise<void> {
