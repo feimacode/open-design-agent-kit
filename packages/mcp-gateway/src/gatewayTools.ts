@@ -65,7 +65,7 @@ export function gatewayTools(deps: GatewayToolDeps): RemoteTool[] {
         title: 'Check an export',
         description: 'Returns the state of an export job that export_open_design_artifact handed back, and its download links once it is done.',
         inputSchema: { type: 'object', properties: { project: projectArg, jobId: { type: 'string', description: 'The job id (odj_…).' } }, required: ['project', 'jobId'] },
-        annotations: { title: 'Check an export', readOnlyHint: true, openWorldHint: false },
+        annotations: { title: 'Check an export', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
       },
       handler: async (args) => {
         const ref = await store.find(args.project, deps.caller().user);
@@ -100,7 +100,7 @@ export function gatewayTools(deps: GatewayToolDeps): RemoteTool[] {
           title: 'List my design projects',
           description: "Lists the signed-in user's Open Design projects, newest first, with their handles. Use when the user wants to continue an earlier design.",
           inputSchema: { type: 'object', properties: {} },
-          annotations: { title: 'List my design projects', readOnlyHint: true, openWorldHint: false },
+          annotations: { title: 'List my design projects', readOnlyHint: true, destructiveHint: false, openWorldHint: false },
         },
         handler: async () => {
           const { user } = deps.caller();

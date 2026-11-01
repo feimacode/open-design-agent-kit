@@ -23,5 +23,5 @@
 ## Changes while applying (2026-11-01)
 
 - **Image publishing.** Releases are created by `release.yml` with the workflow token, which can't trigger other workflows, so the image isn't pushed automatically on release. The Gateway image workflow is dispatched by hand with `push: true` after a release (`deploy/README.md`, runbook).
-- **ChatGPT listing variant.** `build-chatgpt-plugin.ts --hosted <url>` writes `mcp.json` with `{ "type": "http", "url": … }` and no `server/`. The exact remote entry format OpenAI's plugin portal accepts still has to be confirmed at submission (task 5.2).
+- **ChatGPT listing variant.** `build-chatgpt-plugin.ts --hosted <url>` writes `mcp.json` with `{ "type": "streamable-http", "url": … }`, the transport name in OpenAI's examples, and no `server/`. (A first upload with `"type": "http"` showed "This plugin does not reference any MCP server" in the portal.)
 - **Cross-repo work.** The Ansible role, Traefik routes and backup cron (tasks 2.1–2.4) are in a feimacode/feima-infra PR; Cloudflare settings (2.3) and the external health check (2.5) are manual steps listed in `deploy/README.md`.

@@ -1,0 +1,57 @@
+{
+  "review": {
+    "test_cases": {
+      "positive": [
+        {
+          "description": "Make a print poster from a short brief",
+          "prompt": "Make an A4 poster for a community seed swap this Saturday at 10am in Riverside Park.",
+          "tools_triggered": "start_open_design_project, list_open_design_skills, recommend_open_design_design_systems, prepare_open_design_brief, use_open_design_managed_workspace, write_open_design_file, register_open_design_artifact, check_open_design_artifact, show_open_design_artifact",
+          "expected_behavior": "Starts a project, picks a poster recipe and a style, writes the poster, checks it in a browser (fixing any errors), and shows the finished A4 poster inline with the event name, day, time and place."
+        },
+        {
+          "description": "Make a slide deck",
+          "prompt": "Design a 5-slide pitch deck for a dog-walking app called Pawpath.",
+          "tools_triggered": "start_open_design_project, list_open_design_skills, prepare_open_design_brief, use_open_design_managed_workspace, write_open_design_file, register_open_design_artifact, check_open_design_artifact, show_open_design_artifact",
+          "expected_behavior": "Builds a five-slide deck (title, problem, solution, market, ask) in one consistent style, checks it, and shows it inline."
+        },
+        {
+          "description": "Make a social carousel",
+          "prompt": "Turn this into an Instagram carousel: 3 tips for saving water at home.",
+          "tools_triggered": "start_open_design_project, list_open_design_skills, prepare_open_design_brief, use_open_design_managed_workspace, write_open_design_file, register_open_design_artifact, check_open_design_artifact, show_open_design_artifact",
+          "expected_behavior": "Builds a 1080x1350 carousel with a cover slide and one slide per tip, checks it, and shows it inline."
+        },
+        {
+          "description": "Recommend a style",
+          "prompt": "Which design style would suit a calm yoga studio?",
+          "tools_triggered": "recommend_open_design_design_systems",
+          "expected_behavior": "Returns a short list of design systems (colours, fonts, spacing) that fit a calm yoga studio, with one recommended first and a one-line reason for each. No design is built."
+        },
+        {
+          "description": "Export a design as a PDF",
+          "prompt": "Make a poster for our bakery's grand opening on 12 December, then save it as a PDF.",
+          "tools_triggered": "start_open_design_project, prepare_open_design_brief, write_open_design_file, register_open_design_artifact, check_open_design_artifact, export_open_design_artifact",
+          "expected_behavior": "Builds and checks the poster, exports it as a PDF and replies with a download link that opens the PDF (valid for 24 hours)."
+        }
+      ],
+      "negative": [
+        {
+          "description": "General knowledge question with nothing to design. ChatGPT answers directly; Open Design is not called.",
+          "prompt": "What's the capital of Australia?"
+        },
+        {
+          "description": "Code request with no design. ChatGPT writes the code itself; Open Design is not called.",
+          "prompt": "Write me a Python function that reverses a list."
+        },
+        {
+          "description": "Text summary with nothing to design. ChatGPT summarises the text; Open Design is not called.",
+          "prompt": "Summarise this article for me in three bullet points."
+        }
+      ]
+    },
+    "commerce": false,
+    "commerce_description": "Open Design is free. It sells nothing and takes no payments."
+  },
+  "publication": {
+    "release_notes": "First release in the ChatGPT directory: make posters, slide decks, social posts and landing pages in the chat from about 150 ready-made styles, checked in a real browser and saved as PDF, PNG or PowerPoint. Nothing to install and no account needed."
+  }
+}

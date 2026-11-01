@@ -63,7 +63,7 @@ describe('guidance', () => {
     const store = new ProjectStore(os.tmpdir(), remoteLimits({}));
     for (const { tool } of gatewayTools({ store, jobs: new ExportJobs(1, 10), signInEnabled: true, caller: () => ({ ip: 'x' }) })) {
       assert.ok(tool.title && tool.annotations?.title, `${tool.name} has a title`);
-      assert.ok(tool.annotations?.readOnlyHint === true || typeof tool.annotations?.destructiveHint === 'boolean', `${tool.name} has a hint`);
+      assert.ok(typeof tool.annotations?.readOnlyHint === 'boolean' && typeof tool.annotations?.destructiveHint === 'boolean', `${tool.name} has both hints`);
     }
   });
 });

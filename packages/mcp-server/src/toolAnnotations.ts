@@ -5,9 +5,9 @@ import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 // Every listed tool must have an entry; a unit test checks it.
 
 /** Only reads, or returns text such as instructions: changes nothing. */
-const READS: ToolAnnotations = { readOnlyHint: true, openWorldHint: false };
+const READS: ToolAnnotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
 /** Reads, and looks things up outside this machine. */
-const READS_ONLINE: ToolAnnotations = { readOnlyHint: true, openWorldHint: true };
+const READS_ONLINE: ToolAnnotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: true };
 /** Writes in the workspace (or the session's settings), adding or updating its own files. */
 const WRITES: ToolAnnotations = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
 /** Writes in the workspace and may replace a file's content. */
