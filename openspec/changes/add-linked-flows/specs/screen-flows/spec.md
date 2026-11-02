@@ -36,6 +36,10 @@ Preview SHALL follow links between screens of a collection in VS Code, the brows
 - **WHEN** the user clicks "Continue" on the welcome screen in the MCP App preview
 - **THEN** the preview shows the goals screen
 
+#### Scenario: Publishing a flow
+- **WHEN** the user publishes one screen of a three-screen flow to a static host
+- **THEN** the site holds all three screens with the shared navigation filled in and the flow map as its index, and every link between screens works at the published URL; published as a Claude artifact, it is the one-file prototype
+
 #### Scenario: One-file prototype
 - **WHEN** the user exports a five-screen collection as a single HTML file
 - **THEN** the file opens offline and its links move between all five screens

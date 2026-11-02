@@ -20,6 +20,10 @@ On the user's approval, the agent SHALL be able to save an app profile as a desi
 - **WHEN** the app's primary colour changes in its Tailwind config after the design system was saved
 - **THEN** a new scan reports that token as changed, with old and new values
 
+#### Scenario: Check notes a stale app design system
+- **WHEN** a design on the app design system is checked after a file its tokens or components were read from changed
+- **THEN** the check reports `app-design-system-stale` (info), naming the changed or removed files and offering a re-scan
+
 ### Requirement: Build From the App's Components
 
 When the active design system has a component vocabulary, the instructions SHALL list at most 60 components with purpose, variants and known props, and tell the agent to build each part from a listed component marked `data-od-component="<Name>"`, or mark a part with no match `new:<Name>` and list it in the reply.

@@ -6,7 +6,7 @@
 
 ## 2. App design system
 
-- [ ] 2.1 `appDesignSystem.ts`: DESIGN.md, tokens.css and `components.json` from the profile; source kind `app` in reconcile; re-scan diff (files and re-scan diff done; source kind `app` in reconcile not yet)
+- [x] 2.1 `appDesignSystem.ts`: DESIGN.md, tokens.css and `components.json` from the profile; re-scan diff; `app-design-system-stale` note when the app files it was read from change after the scan (replaces "source kind `app` in reconcile": reconcile fixes bundled systems whose two files disagree, and an app design system's files come from one scan, so drift from the code is the risk to catch)
 - [x] 2.2 Component vocabulary section and `data-od-component` rule in `composeInstructions.ts`
 - [x] 2.3 `baseScreen` on `prepare_open_design_brief` (image path or URL, captured to `.open-design/.bases/`); base beside new on the review sheet
 

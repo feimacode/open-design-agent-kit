@@ -831,6 +831,7 @@ On a design system [saved from an app](../guides/design-from-your-app.md), two m
 |---|---|
 | `token-undefined` | `var(--x)` with no fallback, defined neither in the page nor in the design system |
 | `token-hardcoded` | A raw colour equal to one of the app's tokens (warning), or a length equal to its radius or spacing token (info), naming the token and the file and line it comes from |
+| `app-design-system-stale` | Info: a file the app design system's tokens or components were read from changed or went away after it was saved; names the files and suggests a re-scan |
 
 When the brief had a [`baseScreen`](#prepare_open_design_brief), a **base vs new** sheet (the base on the left, the new design at the first viewport on the right) is attached second.
 

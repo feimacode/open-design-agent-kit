@@ -32,7 +32,7 @@ import { formatPreflight, runPreflight, type Finding } from '../poster/preflight
 import { renderShapeSheetHtml, type ShapeThumbnail } from '../poster/shapeSheet';
 import { isAppScreen, runScreenChecks } from './screenChecks';
 import { findBaseScreen } from '../generation/baseScreen';
-import { parseAppComponentsFile, tokenFindings } from '../generation/appDesignSystem';
+import { appDesignSystemStaleness, parseAppComponentsFile, tokenFindings } from '../generation/appDesignSystem';
 
 export interface CheckViewport {
   name: string;
@@ -411,7 +411,7 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
   }
 }
 
-/** token-undefined and token-hardcoded for a design on a user design system saved from an app. */
+/** token-undefined, token-hardcoded and app-design-system-stale for a design on a user design system saved from an app. */
 async function appTokenFindings(workspaceRoot: string, outputDir: string, manifest: JsonRecord, html: string): Promise<Finding[]> {
   const id = typeof manifest.designSystemId === 'string' ? manifest.designSystemId : undefined;
   if (!id?.startsWith('user:')) return [];
@@ -419,7 +419,7 @@ async function appTokenFindings(workspaceRoot: string, outputDir: string, manife
   const file = parseAppComponentsFile(await fs.readFile(path.join(dir, 'components.json'), 'utf8').catch(() => undefined));
   if (!file) return [];
   const tokensCss = await fs.readFile(path.join(dir, 'tokens.css'), 'utf8').catch(() => '');
-  return tokenFindings(html, file.tokens, tokensCss);
+  return [...tokenFindings(html, file.tokens, tokensCss), ...(await appDesignSystemStaleness(workspaceRoot, id, file))];
 }
 
 /** Captures the first viewport (or the card) at each time in `at` on the virtual clock, labelled t=<seconds>s. */

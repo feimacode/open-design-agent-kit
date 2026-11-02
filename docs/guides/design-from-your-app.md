@@ -16,7 +16,7 @@ When the workspace has an app already, designs for it should use its colours, ty
 2. The agent calls [`scan_open_design_app`](../reference/tools.md#scan_open_design_app) and tells you what it found: the framework and styling, the tokens (each with the file and line it comes from), the light and dark themes, the components most used across the app with their variants, and the app's screens.
 3. **You agree to save it.** The agent scans again with a name and writes a design system to `.open-design/design-systems/<name>/`: `DESIGN.md`, `tokens.css` (the app's own values, each with its source) and `components.json` (the component vocabulary). It makes it the active design system.
 4. Ask for a screen or a flow as usual ([App screens and flows](app-screens.md)). The brief lists up to 60 of your components with their variants, and the agent builds each part from one of them, marking it `data-od-component="Button"`. A part with no match is marked `new:Stepper`, and the reply lists it as a proposed component.
-5. The check reports a colour or radius pasted in that one of your tokens already has (`token-hardcoded`, naming the token and its file and line) and a `var(--x)` defined nowhere (`token-undefined`).
+5. The check reports a colour or radius pasted in that one of your tokens already has (`token-hardcoded`, naming the token and its file and line) and a `var(--x)` defined nowhere (`token-undefined`). If your app's token or component files changed after the design system was saved, the check says so (`app-design-system-stale`), and the agent offers to scan again and show what changed.
 
 ## Redesign a screen you have
 

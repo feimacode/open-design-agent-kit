@@ -52,6 +52,13 @@ function bundleSummary(input: ComposePublishInstructionsInput): string {
       ? `Footer badge: **included** — a small "Made with Open Design · Remix this" note in the bottom corner, which viewers can close. To leave it out, call \`${PUBLISH_TOOL_NAME}\` again with \`badge: false\`.`
       : 'Footer badge: not included.',
   ];
+  if (bundle.collection) {
+    const c = bundle.collection;
+    lines.push(
+      '',
+      `This design is one screen of the flow "${c.name}", so the site is the whole flow: ${c.screens.length} screens (${c.screens.join(', ')}) linked to each other, with the flow map at ${c.mapPath === 'index.html' ? 'the site\'s root' : c.mapPath}. When you give the user the link, say it opens on the flow map and each screen is clickable from there.`,
+    );
+  }
   if (bundle.preflight.length > 0) {
     lines.push('', 'Preflight findings (none block publishing; mention the relevant ones to the user):', ...bundle.preflight.map((w) => `- [${w.code}] ${w.message}`));
   }
@@ -200,6 +207,8 @@ export interface ComposeArtifactPublishInstructionsInput {
   /** Assets embedded in the page (embedAssets), with their sizes. */
   embedded?: Array<{ url: string; bytes: number }>;
   warnings?: string[];
+  /** A line about what the page is, shown after the file (a flow's clickable prototype). */
+  note?: string;
   sync?: ArtifactSyncSummary;
   /**
    * The file is out of the agent's reach (a managed workspace): 'page' when the
@@ -221,6 +230,7 @@ export function composeArtifactPublishInstructions(input: ComposeArtifactPublish
   parts.push(
     `# Publish ${name} as a Claude artifact\n\nThe design was exported as one self-contained page (a local export; nothing is online yet):\n\n- File: \`${input.filePath}\` (${kb(input.bytes)})\n- ${input.badge ? `Footer badge: **included**. To leave it out, call \`${PUBLISH_TOOL_NAME}\` again with \`badge: false\`.` : 'Footer badge: not included.'}\n\nA Claude artifact is private to the user until they share it from claude.ai, so there is no confirmation step: publish when ready.`,
   );
+  if (input.note) parts.push(`\n\n${input.note}`);
   if (input.embedded?.length) {
     parts.push(`\n\nEmbedded in the page, so the artifact needs no other site for them:\n${input.embedded.map((a) => `- ${a.url} (${kb(a.bytes)})`).join('\n')}`);
   }

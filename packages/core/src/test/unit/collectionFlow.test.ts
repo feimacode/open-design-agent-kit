@@ -10,6 +10,8 @@ import { exportCollectionPrototype, loadCollectionFlow, writeFlowMap } from '../
 import { flowColumns } from '../../export/flowMap';
 import { latestFlowPlan } from '../../workspace/collectionScan';
 import { writeArtifactManifest } from '../../vendored/artifactCreate';
+import { exportArtifact } from '../../export/exportArtifact';
+import { publishArtifact } from '../../generation/publishArtifact';
 
 const PLAN: FlowPlan = {
   screens: [
@@ -170,6 +172,65 @@ describe('flow map and prototype', () => {
     assert.match(html, /rebeccapurple/, 'stylesheets are inlined');
     assert.match(html, /Library/, 'the shared nav is resolved');
     assert.match(html, /odGoto/);
+  });
+});
+
+async function flowFixture(): Promise<{ root: string; dir: string }> {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'od-flow-site-'));
+  const dir = '.open-design/onboarding';
+  await fs.mkdir(path.join(root, dir, '_shared'), { recursive: true });
+  await fs.mkdir(path.join(root, dir, 'img'), { recursive: true });
+  await fs.writeFile(path.join(root, dir, '_shared', 'nav.html'), NAV);
+  await fs.writeFile(path.join(root, dir, 'app.css'), 'body{background:url(img/bg.png)}');
+  await fs.writeFile(path.join(root, dir, 'img', 'bg.png'), 'png');
+  const files: Record<string, string> = {
+    welcome: page('<link rel="stylesheet" href="app.css"><a href="goals.html" data-od-goto="goals">Continue</a>'),
+    goals: page('<link rel="stylesheet" href="app.css"><template data-od-include="_shared/nav.html"></template><h1>Goals</h1>', ' data-od-current="library"'),
+  };
+  for (const [i, [id, html]] of Object.entries(files).entries()) {
+    await fs.writeFile(path.join(root, dir, `${id}.html`), html);
+    await writeArtifactManifest({
+      workspaceRoot: root,
+      entryPath: `${dir}/${id}.html`,
+      artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: id, collectionId: 'onboarding', collectionName: 'Onboarding', screenIndex: i, screenRole: id, metadata: { flow: { plan: PLAN, screenId: id } } },
+    });
+  }
+  return { root, dir };
+}
+
+describe('publishing a flow', () => {
+  it('the site export of any screen holds every screen, the shared nav filled in, and the map as index.html', async () => {
+    const { root, dir } = await flowFixture();
+    const result = await exportArtifact({ workspaceRoot: root, entryPath: `${dir}/goals.html`, format: 'site', badge: false });
+    assert.ok(result.ok && result.mode === 'site', JSON.stringify(result));
+    const site = path.join(root, dir, 'exports', 'site');
+    const listed = (await fs.readdir(site, { recursive: true })).map(String).sort();
+    for (const f of ['index.html', 'welcome.html', 'goals.html', 'app.css', path.join('img', 'bg.png')]) assert.ok(listed.includes(f), `${f} in ${listed.join(', ')}`);
+    assert.ok(!listed.some((f) => f.startsWith('_shared')), 'the nav is inlined, not shipped');
+    const goals = await fs.readFile(path.join(site, 'goals.html'), 'utf8');
+    assert.match(goals, /data-od-goto="library" aria-current="page"/);
+    assert.match(goals, /href="saved.html"/);
+    const index = await fs.readFile(path.join(site, 'index.html'), 'utf8');
+    assert.match(index, /src="welcome.html"/, 'the map is the index');
+    assert.match(index, /og:title" content="Onboarding"/);
+    assert.ok(result.ok && 'collection' in result && result.collection?.screens.length === 2);
+  });
+
+  it('a lone screen keeps the one-page site', async () => {
+    const { root, dir } = await flowFixture();
+    await fs.rm(path.join(root, dir, 'goals.html'));
+    const result = await exportArtifact({ workspaceRoot: root, entryPath: `${dir}/welcome.html`, format: 'site', badge: false });
+    assert.ok(result.ok && result.mode === 'site' && !('collection' in result && result.collection));
+    const index = await fs.readFile(path.join(root, dir, 'exports', 'site', 'index.html'), 'utf8');
+    assert.match(index, /Continue/);
+  });
+
+  it('a Claude artifact of a screen is the clickable prototype of the whole flow', async () => {
+    const { root, dir } = await flowFixture();
+    const result = await publishArtifact({ workspaceRoot: root, entryPath: `${dir}/welcome.html`, provider: 'claude-artifact', inlinePage: true });
+    assert.ok(result.ok, result.text);
+    assert.match(result.text, /clickable prototype of all 2 screens \(welcome, goals\)/);
+    assert.match(result.page ?? '', /od-proto-screens/);
   });
 });
 

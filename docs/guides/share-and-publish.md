@@ -55,7 +55,7 @@ Name the host up front to skip the question:
 
 ### What happens
 
-1. **Package.** `exports/site/` gets the page as `index.html` plus every file it references: stylesheets (and what they import), images, fonts, scripts and the modules they import. The artifact's own files are never changed. A missing file stops here, naming it.
+1. **Package.** `exports/site/` gets the page as `index.html` plus every file it references: stylesheets (and what they import), images, fonts, scripts and the modules they import. The artifact's own files are never changed. A missing file stops here, naming it. For a screen of a [flow](app-screens.md#share-a-clickable-prototype), the folder holds every screen of the flow at its own name, with the shared navigation filled in, and the flow map as `index.html`, so links between screens work at the published link.
 2. **Check.** The agent runs the host's CLI through `npx` to confirm you're logged in. For temporary links, it confirms you're *not* logged in, because both hosts refuse anonymous deploys from a logged-in CLI.
 3. **Confirm.** The agent stops and tells you what's going out, who can see it, how long it lasts, and whether the badge is on. **Nothing goes online until you say yes.**
 4. **Deploy.** It runs the deploy from `exports/site/` only, never from your workspace root. If a command fails, you see the real error; the agent doesn't improvise other commands.
@@ -71,6 +71,7 @@ The agent calls [`publish_open_design_artifact`](../reference/tools.md#publish_o
 
 - **Private.** Only you can open it until you share it from claude.ai, so the agent doesn't stop to confirm first. The badge is off unless you ask for it.
 - **One artifact per design.** The link is recorded in the manifest. Publishing again updates the same artifact as a new version, and an open tab shows it.
+- **A flow is its clickable prototype.** For a screen of a flow, the page is the one-file prototype of every screen (`exports/<collection>-prototype.html`): links switch screens, and a corner menu jumps to any of them.
 - **Exports stay files.** PNG, PDF and PowerPoint exports are files on disk, not artifacts.
 - **Copilot, Codex, Cursor** and API-key sessions have no Artifact tool, so the agent doesn't offer this there.
 

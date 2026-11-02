@@ -3,6 +3,8 @@
 // component vocabulary and the scanned tokens (so a later scan can say what
 // changed), the vocabulary section of a brief, and the token findings. Pure:
 // the agent writes the files.
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
 import type { Finding } from '../poster/preflight';
 import type { AppComponent, AppProfile, AppToken } from '../workspace/appScan';
 
@@ -260,4 +262,41 @@ export function formatAppScanResult(profile: AppProfile, options: { outputDir: s
     lines.push(`\nTo build designs from this app, show the user what was found and, if they agree, call scan_open_design_app again with name (e.g. "${profile.root === '.' ? 'Our app' : profile.root}") to get the design system files to save.`);
   }
   return lines.join('\n');
+}
+
+const MAX_STALE_FILES = 200;
+
+/**
+ * app-design-system-stale: the app files a saved app design system was read
+ * from (token sources and component files) changed or went away after the
+ * scan, so its tokens and vocabulary may be out of date. Reconcile has
+ * nothing to do for it (DESIGN.md and tokens.css come from one scan); drift
+ * from the code is what goes wrong (openspec add-design-from-app).
+ */
+export async function appDesignSystemStaleness(workspaceRoot: string, designSystemId: string, file: AppComponentsFile): Promise<Finding[]> {
+  const scannedAt = Date.parse(file.scannedAt);
+  if (Number.isNaN(scannedAt)) return [];
+  const sources = new Set([...file.tokens.map((t) => t.source.replace(/:\d+$/, '')), ...file.components.map((c) => c.file)]);
+  const absRoot = path.resolve(workspaceRoot, file.root);
+  const changed: string[] = [];
+  const removed: string[] = [];
+  for (const rel of [...sources].slice(0, MAX_STALE_FILES)) {
+    try {
+      // A second of slack: the scan's timestamp is taken after it reads the files.
+      if ((await fs.stat(path.join(absRoot, rel))).mtimeMs > scannedAt + 1000) changed.push(rel);
+    } catch {
+      removed.push(rel);
+    }
+  }
+  if (changed.length === 0 && removed.length === 0) return [];
+  const show = (list: string[]) => list.slice(0, 5).join(', ') + (list.length > 5 ? ` and ${list.length - 5} more` : '');
+  const what = [changed.length ? `changed: ${show(changed)}` : '', removed.length ? `gone: ${show(removed)}` : ''].filter(Boolean).join('; ');
+  const root = file.root === '.' ? '' : ` with root "${file.root}"`;
+  return [
+    {
+      check: 'app-design-system-stale',
+      severity: 'info',
+      message: `The app's code moved on since ${designSystemId} was saved (${file.scannedAt}); ${what}. Its tokens and components may be out of date. Tell the user, and offer to run scan_open_design_app${root} to see what changed before saving it again.`,
+    },
+  ];
 }
