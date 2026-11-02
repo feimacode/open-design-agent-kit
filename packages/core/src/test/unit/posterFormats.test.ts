@@ -18,6 +18,7 @@ describe('poster formats', () => {
       ['story', 1080, 1920, 8_000_000, 'od:prototype:poster-hero'],
       ['xhs-card', 1080, 1440, undefined, 'od:prototype:card-xiaohongshu'],
       ['yt-thumbnail', 1280, 720, 2_000_000, 'od:prototype:social-youtube-thumbnail'],
+      ['facebook-event-cover', 1920, 1005, 8_000_000, 'od:prototype:poster-hero'],
     ];
     for (const [id, w, h, bytes, skill] of rows) {
       const f = FORMATS[id];
