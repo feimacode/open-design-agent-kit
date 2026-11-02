@@ -135,6 +135,8 @@ async function runBrief(brief, repeat, ctx) {
   const caseDir = path.join(ctx.runDir, `${brief.id}-${repeat}`);
   await fs.mkdir(caseDir, { recursive: true });
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), `od-eval-${brief.id}-`));
+  // A brief about an existing project (design from your app) starts from a copy of it.
+  if (brief.fixture) await fs.cp(path.join(EVALS_DIR, 'fixtures', brief.fixture), tmp, { recursive: true });
   const transcriptFile = path.join(caseDir, 'transcript.jsonl');
   const started = Date.now();
   let sessionId;

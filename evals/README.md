@@ -4,7 +4,7 @@ A fixed set of briefs, run the same way before and after a change that claims to
 
 ## Briefs
 
-`briefs/*.yaml`, one file per brief, the file name matching its `id`. Eight cover the main surfaces (poster, landing page, deck, shop pack, card set, dashboard, an app settings screen, a sign-in flow) and two are deliberately vague, to see whether the agent asks the right few questions.
+`briefs/*.yaml`, one file per brief, the file name matching its `id`. Nine cover the main surfaces (poster, landing page, deck, shop pack, card set, dashboard, an app settings screen, a sign-in flow, and a billing screen designed from a small Next.js + shadcn app in `fixtures/acme-billing`) and two are deliberately vague, to see whether the agent asks the right few questions.
 
 ```yaml
 id: gig-poster
@@ -15,6 +15,7 @@ expect:
   skills: [poster-hero, magazine-poster, image-poster]   # skills that count as the right route; others get a ⚠
   questions: { max: 1 }            # how many questions are reasonable; outside the range gets a ⚠
 designSystem: null                 # a design system id to name, or null to exercise the recommender
+fixture: acme-billing              # optional; a folder in evals/fixtures/ copied into the workspace first (an app to design from)
 answers:                           # what the "user" says when asked; anything else is "you pick"
   where: "Both: A3 print for the venue and a version for Instagram"
 must:                              # two or three things a reviewer ticks on the contact sheet
