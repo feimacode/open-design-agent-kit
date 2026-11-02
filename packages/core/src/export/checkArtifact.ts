@@ -31,6 +31,7 @@ import { applyShape, collectHorizontalScroll, collectRunningMotion, collectState
 import { formatPreflight, runPreflight, type Finding } from '../poster/preflight';
 import { renderShapeSheetHtml, type ShapeThumbnail } from '../poster/shapeSheet';
 import { isAppScreen, runScreenChecks } from './screenChecks';
+import { deviceViewports, drawsOwnFrame, parseDevice } from '../preview/deviceShell';
 import { findBaseScreen } from '../generation/baseScreen';
 import { appDesignSystemStaleness, parseAppComponentsFile, tokenFindings } from '../generation/appDesignSystem';
 
@@ -38,11 +39,19 @@ export interface CheckViewport {
   name: string;
   width: number;
   height: number;
+  /** Checked always, but its screenshot is attached only when it has findings (the tablet widths of app screens). */
+  captureOnFindings?: boolean;
 }
 
 export const DEFAULT_CHECK_VIEWPORTS: readonly CheckViewport[] = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'mobile', width: 390, height: 844 },
+];
+
+/** App screens with no device are also checked at tablet widths. */
+export const TABLET_CHECK_VIEWPORTS: readonly CheckViewport[] = [
+  { name: 'tablet-1024', width: 1024, height: 768, captureOnFindings: true },
+  { name: 'tablet-768', width: 768, height: 1024, captureOnFindings: true },
 ];
 
 export interface CheckArtifactOptions {
@@ -257,7 +266,26 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
   const sourceSkillId = typeof manifest.sourceSkillId === 'string' ? manifest.sourceSkillId : undefined;
   const maxImages = options.maxImages ?? DEFAULT_MAX_IMAGES;
   const isDiagram = renderer === 'diagram' || /\bdata-od-diagram\b/.test(artifact.entryContent);
-  const viewports = options.viewports ?? [...(isDiagram ? DIAGRAM_VIEWPORTS : DEFAULT_CHECK_VIEWPORTS)];
+  // A device screen is checked at its device's size; other app screens at tablet widths too (openspec add-platform-shells).
+  const device = isDiagram ? undefined : parseDevice(artifact.entryContent);
+  const viewports =
+    options.viewports ??
+    (isDiagram
+      ? [...DIAGRAM_VIEWPORTS]
+      : device
+        ? deviceViewports(device)
+        : isAppScreen(sourceSkillId, artifact.entryContent)
+          ? [...DEFAULT_CHECK_VIEWPORTS, ...TABLET_CHECK_VIEWPORTS]
+          : [...DEFAULT_CHECK_VIEWPORTS]);
+  const deviceFindings: Finding[] = drawsOwnFrame(artifact.entryContent)
+    ? [
+        {
+          check: 'device-double-frame',
+          severity: 'warning',
+          message: `The page sets data-od-device="${device?.device}", so the kit draws the frame, status bar and home indicator around it; the page draws its own too. Remove the page's frame, status bar, notch or title bar and keep only the app.`,
+        },
+      ]
+    : [];
   const recorded = recordedSources(manifest);
   const stale = recorded.length > 0 ? await findStaleSources(options.workspaceRoot, options.outputDir ?? '.open-design', recorded) : [];
   // Style tiles must declare the design-token contract, so a chosen tile saves as a design system with no loss.
@@ -311,7 +339,7 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
       viewports: mode === 'page' ? viewports : undefined,
       ok: true,
       mode,
-      findings: [...tileFindings, ...webgl, ...sceneSpecFindings(artifact.entryContent, sourceSkillId), ...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
+      findings: [...tileFindings, ...deviceFindings, ...webgl, ...sceneSpecFindings(artifact.entryContent, sourceSkillId), ...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
       images,
       omitted: [...out.omitted, ...dropped],
       slideCount: mode === 'deck' ? slideCount : undefined,
@@ -498,9 +526,10 @@ async function checkPage(
     const pageHeight = Number(await page.evaluate('Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0)'));
     const count = Math.min(1 + MAX_TILES_PER_VIEWPORT, Math.max(1, Math.ceil(pageHeight / v.height)));
     const tops = Array.from({ length: count }, (_, k) => Math.min(k * v.height, Math.max(0, pageHeight - v.height)));
-    screens.push({ viewport: v, tops });
-    if (images.length < maxImages) images.push(await toCheckImage(browser, label(v, 0, count), await shootAt(v, 0)));
-    else omitted.push(label(v, 0, count));
+    if (v.captureOnFindings && !findings.some((f) => f.viewport === v.name)) continue;
+    screens.push({ viewport: v, tops: v.captureOnFindings ? [0] : tops });
+    if (images.length < maxImages) images.push(await toCheckImage(browser, label(v, 0, v.captureOnFindings ? 1 : count), await shootAt(v, 0)));
+    else omitted.push(label(v, 0, v.captureOnFindings ? 1 : count));
   }
 
   let current: CheckViewport | undefined = viewports[viewports.length - 1];

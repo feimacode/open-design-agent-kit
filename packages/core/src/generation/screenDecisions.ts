@@ -29,35 +29,56 @@ export function parseDensity(answer: string | undefined): Density | undefined {
   return undefined;
 }
 
-export type ScreenPlatform = 'web' | 'iphone' | 'android' | 'tablet';
+export type ScreenPlatform = 'web' | 'iphone' | 'android' | 'tablet' | 'desktop-app';
 
 export interface PlatformSpec {
   platform: ScreenPlatform;
   width: string;
   touchTarget: string;
   navigation: string;
-  note?: string;
+  /** The body attributes that make the kit draw this platform's frame (openspec add-platform-shells). */
+  device?: string;
 }
 
 export const PLATFORM_SPECS: Record<ScreenPlatform, PlatformSpec> = {
-  web: { platform: 'web', width: 'fluid, checked at 1440 px and 390 px', touchTarget: '24 px minimum, 44 px on the phone layout', navigation: 'a sidebar or top bar that becomes a top bar or bottom tab bar on phones' },
-  iphone: { platform: 'iphone', width: '390 px (iPhone 15 and 16)', touchTarget: '44 by 44 px', navigation: 'a bottom tab bar of three to five items; inner screens get a top bar with the title and a back button' },
+  web: { platform: 'web', width: 'fluid, checked at 1440, 1024, 768 and 390 px', touchTarget: '24 px minimum, 44 px on the phone layout', navigation: 'a sidebar or top bar that becomes a top bar or bottom tab bar on phones' },
+  iphone: {
+    platform: 'iphone',
+    width: '390 by 763 px of app (iPhone 15 and 16, between the status bar and home indicator)',
+    touchTarget: '44 by 44 px',
+    navigation: 'a bottom tab bar of three to five items; inner screens get a top bar with the title and a back button',
+    device: 'data-od-device="iphone"',
+  },
   android: {
     platform: 'android',
-    width: '412 px (a common Android phone)',
+    width: '412 by 867 px of app (a common Android phone, between the status bar and gesture bar)',
     touchTarget: '48 by 48 dp',
     navigation: 'a Material 3 navigation bar at the bottom (three to five items) and a top app bar; a floating action button only for the one main create action',
-    note: 'The kit has no Android device frame yet. Do not use an iPhone frame, Dynamic Island or iOS status bar: draw a frameless 412 px wide screen with an Android status bar (time left, icons right) and gesture handle, and tell the user in one line that it is frameless.',
+    device: 'data-od-device="android"',
   },
-  tablet: { platform: 'tablet', width: '1024 px landscape and 768 px portrait', touchTarget: '44 by 44 px', navigation: 'an icon rail with labels (or a collapsible sidebar); a list and detail side by side in landscape' },
+  tablet: {
+    platform: 'tablet',
+    width: '1024 by 724 px landscape and 768 by 980 px portrait (it is checked in both)',
+    touchTarget: '44 by 44 px',
+    navigation: 'an icon rail with labels (or a collapsible sidebar); a list and detail side by side in landscape',
+    device: 'data-od-device="tablet" data-od-orientation="landscape"',
+  },
+  'desktop-app': {
+    platform: 'desktop-app',
+    width: '1280 by 800 px window content',
+    touchTarget: '24 px minimum (pointer)',
+    navigation: 'a sidebar with the app\'s sections, a toolbar for the current view, keyboard shortcuts shown in menus and tooltips',
+    device: 'data-od-device="desktop-app" data-od-window="mac"',
+  },
 };
 
-/** The platform named by an answer ("Android", "iPhone", "Web app", "Tablet"), or undefined (also for "Either"). */
+/** The platform named by an answer ("Android", "iPhone", "Web app", "Tablet", "Desktop app"), or undefined (also for "Either"). */
 export function parsePlatform(answer: string | undefined): ScreenPlatform | undefined {
   const a = answer?.toLowerCase() ?? '';
   if (/android|pixel|galaxy/.test(a)) return 'android';
   if (/ipad|tablet/.test(a)) return 'tablet';
   if (/iphone|\bios\b/.test(a)) return 'iphone';
+  if (/desktop app|electron|tauri|mac app|macos app|windows app|native app on (?:mac|windows)/.test(a)) return 'desktop-app';
   if (/\bweb\b|desktop|browser/.test(a)) return 'web';
   return undefined;
 }
@@ -72,7 +93,12 @@ export function composeScreenSpecSection(answers: Record<string, string> | undef
   if (platform) {
     const p = PLATFORM_SPECS[platform];
     lines.push(`- **Platform: ${answers.platform}.** Screen width ${p.width}; touch targets at least ${p.touchTarget}; navigation: ${p.navigation}.`);
-    if (p.note) lines.push(`- ${p.note}`);
+    if (p.device) {
+      const windowsNote = platform === 'desktop-app' ? ' (data-od-window="windows" for a Windows app)' : '';
+      lines.push(
+        `- **Frame: the kit draws it.** Put \`${p.device}\`${windowsNote} on \`<body>\`, on every screen. The previews draw the device frame, status bar, notch or window title bar around the page, and the check renders it at the size above. Don't draw any of those yourself: the page is only the app, filling the whole viewport.`,
+      );
+    }
   }
   if (density) {
     const d = DENSITY_SPECS[density];

@@ -5,6 +5,7 @@
 // the preview never touches its DOM: everything Comment, Edit and Figma
 // capture need goes through these messages. Every message carries
 // `od: 'bridge'`.
+import type { DeviceSpec } from './deviceShell';
 import type { ArtifactComment } from '../workspace/artifactCommentTypes';
 import type { ManualEditPatch } from './dom/sourcePatches';
 
@@ -80,7 +81,7 @@ export type ToBridge =
 
 /** Page → preview. */
 export type FromBridge =
-  | { od: typeof BRIDGE_TAG; type: 'ready'; title: string }
+  | { od: typeof BRIDGE_TAG; type: 'ready'; title: string; device?: DeviceSpec }
   | { od: typeof BRIDGE_TAG; type: 'select'; element: ElementSnapshot }
   | { od: typeof BRIDGE_TAG; type: 'rects'; hover: BridgeRect | null; selection: BridgeRect | null; pins: { commentId: string; rect: BridgeRect | null }[] }
   | { od: typeof BRIDGE_TAG; type: 'patched'; requestId: string; ok: boolean; newSource?: string }

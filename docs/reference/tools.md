@@ -811,6 +811,10 @@ Pages made from an [app-screens](../guides/app-screens.md) entry (or with `data-
 | `dead-control` | A toggle, tab, `aria-pressed`/`aria-expanded`/`aria-selected` control or sort header that changes nothing on the page when clicked (up to 40 are clicked) |
 | `stress-overflow` | With names 60 characters long, numbers like 9,999,999 and text 2.5 times as long swapped in: text pushed out of its box. Only problems the page didn't already have are reported |
 | `stress-truncation` | In the same pass: text cut with an ellipsis and no `title` or other way to read it in full |
+| `large-text-overflow` | With the root text size at 20 px (a larger system text setting): text pushed out of its box or overlapping. Only problems the page didn't already have are reported |
+| `device-double-frame` | A screen with `data-od-device` that also draws a status bar, notch, home indicator, device frame or title bar of its own, which the kit already draws |
+
+A screen with `data-od-device` (see [Device frames](../guides/app-screens.md#device-frames)) is checked at its device's screen size instead of the usual viewports: `iphone` 390 × 763, `android` 412 × 867, `tablet` 1024 × 724 and 768 × 980, `desktop-app` 1280 × 800. An app screen without a device is also checked at `tablet-1024` and `tablet-768`, whose screenshots are attached only when they have findings.
 
 `data-od-stress="off"` on an element leaves it out of the stress pass.
 
@@ -895,6 +899,7 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `fps` | integer 1–60 | no | `mp4`/`webm`/`gif` only: frames per second. Default 30 (15 for GIF). See [Export animations](../guides/export-animations.md). |
 | `duration` | number 0.5–60 | no | `mp4`/`webm`/`gif` only: length in seconds. Default: the sum of the frames' `data-duration`, else the longest CSS or Web animation, else 6. |
 | `loop` | boolean | no | `gif` only: loop forever. Default true. |
+| `shell` | boolean | no | Device screens (`data-od-device` on `<body>`): PNG and JPEG exports show the screen in the kit's device frame by default; `false` exports the bare screen at the device's screen size. Not for PDF or other formats. |
 | `transparent` | boolean | no | `png` only: capture without the page background, so whatever the design doesn't paint is transparent (cut-outs such as a [3D product shot](../guides/3d-objects.md)). The page, and a 3D scene's renderer, must have a transparent background; a warning says when every pixel came out opaque. Not re-encoded to fit `maxBytes`. |
 | `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. Next to it, `exports/campaign-sheet.json` lists each tile in order (label, shape preset or member entry path, exported file, image, error findings) and `exports/campaign-sheet-tiles/` holds each tile's image. See [Run a campaign](../guides/campaigns.md). |
 

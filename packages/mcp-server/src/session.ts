@@ -1060,6 +1060,11 @@ const TOOL_DEFS: ToolDef[] = [
             description:
               "png only: capture without the page background, so everything the design doesn't paint is transparent — for cut-outs such as a 3D product shot to place on slides or pages. The page (and a 3D scene's renderer) must have a transparent background; a warning says so when every pixel came out opaque. PNGs aren't re-encoded to fit maxBytes when transparent.",
           },
+          shell: {
+            type: 'boolean',
+            description:
+              'Device screens (data-od-device on <body>): PNG and JPEG exports show the screen inside the kit\'s generic device frame (status bar, cutout, home indicator, or a desktop title bar) by default. false exports the bare screen at the device\'s content size, for app store screenshots or handoff.',
+          },
           campaignSheet: {
             type: 'boolean',
             description:
@@ -1078,6 +1083,7 @@ const TOOL_DEFS: ToolDef[] = [
           target?: 'wechat' | 'notion' | 'newsletter' | 'generic';
           campaignSheet?: boolean;
           transparent?: boolean;
+          shell?: boolean;
           fps?: number;
           duration?: number;
           loop?: boolean;

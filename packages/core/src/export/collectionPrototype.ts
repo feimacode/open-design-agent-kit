@@ -2,6 +2,7 @@
 // add-linked-flows): every screen inlined, links switch screens.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { mountDeviceShell, parseDevice } from '../preview/deviceShell';
 import { bundleStandaloneHtml } from '../vendored/standaloneHtml';
 import { loadCollectionFlow } from './collectionFlow';
 import { resolveIncludes } from './flowIncludes';
@@ -16,18 +17,22 @@ function withNavScript(html: string): string {
 export function prototypeShellHtml(title: string, screens: Array<{ id: string; title: string; html: string }>, start: string): string {
   const data = JSON.stringify(Object.fromEntries(screens.map((s) => [s.id, s.html]))).replace(/</g, '\\u003c');
   const titles = JSON.stringify(Object.fromEntries(screens.map((s) => [s.id, s.title]))).replace(/</g, '\\u003c');
+  // Device screens get the same kit-drawn frame as the previews (openspec add-platform-shells).
+  const devices = JSON.stringify(Object.fromEntries(screens.flatMap((s) => { const d = parseDevice(s.html); return d ? [[s.id, d]] : []; }))).replace(/</g, '\\u003c');
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>
 <style>html,body{margin:0;height:100%;background:#111}iframe{display:block;border:0;width:100%;height:100%;background:#fff}
 #od-proto-bar{position:fixed;right:12px;bottom:12px;display:flex;gap:6px;font:12px system-ui,sans-serif;z-index:2}
 #od-proto-bar button,#od-proto-bar select{font:inherit;padding:4px 8px;border-radius:6px;border:1px solid #888;background:#fff;color:#111}</style></head>
-<body><iframe id="od-proto" title="${esc(title)}"></iframe>
+<body><div id="od-proto-stage" style="height:100%"><iframe id="od-proto" title="${esc(title)}"></iframe></div>
 <div id="od-proto-bar"><button type="button" id="od-proto-back" aria-label="Back">←</button><select id="od-proto-pick" aria-label="Screen"></select></div>
 <script type="application/json" id="od-proto-screens">${data}</script>
-<script>(function(){var screens=JSON.parse(document.getElementById('od-proto-screens').textContent);var titles=${titles};var frame=document.getElementById('od-proto');var pick=document.getElementById('od-proto-pick');var stack=[];var current=null;
+<script>(function(){var screens=JSON.parse(document.getElementById('od-proto-screens').textContent);var titles=${titles};var devices=${devices};${mountDeviceShell.toString()}
+var frame=document.getElementById('od-proto');var pick=document.getElementById('od-proto-pick');var stack=[];var current=null;
 Object.keys(screens).forEach(function(id){var o=document.createElement('option');o.value=id;o.textContent=titles[id]||id;pick.appendChild(o)});
-function show(id,push){if(!screens[id])return;if(push&&current)stack.push(current);current=id;frame.srcdoc=screens[id];pick.value=id;try{if(location.hash!=='#'+id)window.history.replaceState(null,'','#'+id)}catch(err){}}
+function show(id,push){if(!screens[id])return;if(push&&current)stack.push(current);current=id;mountDeviceShell(document,frame,devices[id],titles[id]);frame.srcdoc=screens[id];pick.value=id;try{if(location.hash!=='#'+id)window.history.replaceState(null,'','#'+id)}catch(err){}}
+frame.addEventListener('load',function(){var d=devices[current];if(!d)return;try{var b=frame.contentDocument.body;var bg=getComputedStyle(b).backgroundColor;if(/^(?:transparent|rgba\\(0, 0, 0, 0\\))$/.test(bg))bg=getComputedStyle(frame.contentDocument.documentElement).backgroundColor;mountDeviceShell(document,frame,Object.assign({},d,{background:bg}),titles[current])}catch(err){}});
 window.addEventListener('message',function(e){if(e.source===frame.contentWindow&&e.data&&typeof e.data.odGoto==='string')show(e.data.odGoto,true)});
 pick.addEventListener('change',function(){show(pick.value,true)});document.getElementById('od-proto-back').addEventListener('click',function(){var prev=stack.pop();if(prev)show(prev,false)});
 var first=location.hash.slice(1);show(screens[first]?first:${JSON.stringify(start)},false)})();</script>

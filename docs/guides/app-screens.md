@@ -14,11 +14,21 @@ Design the screens people use to get something done in your app: a settings page
    > Design the settings screen for our invoicing app.
 
    or start from the menu: `/open-design-new` (Copilot: `/open-design-new`) → **Build an app** → **App screens**.
-2. The agent asks what it doesn't know yet, at most three questions: what the screen is for, the **platform** (Web app, iPhone, Android or Tablet) and the **density** (Compact, Medium or Airy). The answers become exact numbers in the brief: compact controls are 32 to 36 px high with 13 to 14 px text, airy ones 48 px with 16 px text; iPhone is 390 px wide with 44 px tap targets, Android 412 px with 48 dp targets and no iPhone frame.
+2. The agent asks what it doesn't know yet, at most three questions: what the screen is for, the **platform** (Web app, iPhone, Android, Tablet or Desktop app) and the **density** (Compact, Medium or Airy). The answers become exact numbers in the brief: compact controls are 32 to 36 px high with 13 to 14 px text, airy ones 48 px with 16 px text; iPhone is 390 px wide with 44 px tap targets, Android 412 px with 48 dp targets.
 3. The agent picks a pattern (shell, form, table, detail, settings or search), writes the screen and checks it. Data surfaces get their states as frames: `<section data-od-state="default">`, `<section data-od-state="empty" hidden>` and so on.
 4. The check renders every state on its own and puts a **states board** with all of them second among its screenshots. It reports a table or form with no empty, loading or error state (`state-missing`), a toggle or tab that does nothing when clicked (`dead-control`), and, with very long names and numbers swapped in, text that spills or is cut with no way to read it (`stress-overflow`, `stress-truncation`). See [the checks](../reference/tools.md#app-screens-flows-and-app-tokens).
 
 > **In the preview:** a states bar above the design switches between its states, and **All states** lays them out side by side. Saving from the preview never writes the bar into your file.
+
+## Device frames
+
+A screen for a phone, tablet or desktop app says so on its `<body>`: `data-od-device="iphone"`, `"android"`, `"tablet"` (with `data-od-orientation="portrait"` or `"landscape"`) or `"desktop-app"` (with `data-od-window="mac"` or `"windows"`). The agent adds it from your platform answer. The kit then draws a plain device frame around the screen everywhere you see it: a status bar, the camera cutout and the home indicator for phones and tablets, a title bar with the app's name and window buttons for a desktop app. The design itself is only the app, so the frame never ends up in your code, and a tab bar fixed to the bottom sits right above the home indicator.
+
+- The previews (browser, VS Code, Claude and ChatGPT) and the clickable prototype show the frame. The bars take the screen's background colour.
+- The check renders the screen at the device's screen size (390 × 763 px for iPhone, 412 × 867 for Android, both orientations for a tablet, 1280 × 800 for a desktop app) and warns when the design also draws a status bar or frame of its own (`device-double-frame`).
+- PNG and JPEG exports include the frame. Ask for the screen without it (`shell: false`) for app store screenshots or handoff.
+
+Web app screens have no frame; the check adds tablet widths (1024 and 768 px) to the usual three and shows those screenshots only when something is wrong there. Every app screen also gets a **large-text pass**: the text size goes up to 20 px, as with a larger system text setting, and text that no longer fits its box is reported (`large-text-overflow`).
 
 ## Linked flows
 

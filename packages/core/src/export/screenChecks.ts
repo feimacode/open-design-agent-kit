@@ -366,6 +366,9 @@ export async function runScreenChecks(
     await setViewport(first);
   }
 
+  // Large text: the default state with a 20 px root font size, as a reader who set a larger font sees it (openspec add-platform-shells).
+  if (opts.appScreen) findings.push(...(await largeTextPass(page, first, deps, setViewport)));
+
   // Dead controls, on the default state; clicks may change the page, so only the stress pass comes after.
   findings.push(...(await deadControlPass(page, deps)));
 
@@ -399,6 +402,35 @@ export async function runScreenChecks(
     }
   }
   return { findings, shots, states };
+}
+
+/** Root font size for the large-text pass. */
+export const LARGE_TEXT_ROOT_PX = 20;
+
+async function largeTextPass(page: Page, first: ScreenCheckViewport, deps: ScreenCheckDeps, setViewport: (v: ScreenCheckViewport) => Promise<void>): Promise<Finding[]> {
+  await setViewport(first);
+  const key = (f: Finding) => f.selector ?? f.message;
+  const isLayout = (f: Finding) => f.check === 'overflow' || f.check === 'overlap';
+  const before = new Set((await deps.preflight(page, first.name)).filter(isLayout).map(key));
+  await page.evaluate(`document.documentElement.setAttribute('data-od-large-text', document.documentElement.style.fontSize || ''); document.documentElement.style.fontSize = '${LARGE_TEXT_ROOT_PX}px'`);
+  const findings: Finding[] = [];
+  try {
+    await deps.settle(page);
+    for (const f of await deps.preflight(page, first.name)) {
+      if (!isLayout(f) || before.has(key(f))) continue;
+      findings.push({
+        check: 'large-text-overflow',
+        severity: 'warning',
+        message: `With the reader's text size at ${LARGE_TEXT_ROOT_PX} px: ${f.message} Let it wrap or grow with the text (min-height instead of height, no fixed widths on labels).`,
+        selector: f.selector,
+        viewport: first.name,
+      });
+    }
+  } finally {
+    await page.evaluate("const r = document.documentElement; r.style.fontSize = r.getAttribute('data-od-large-text') || ''; r.removeAttribute('data-od-large-text')");
+    await deps.settle(page, 0);
+  }
+  return findings;
 }
 
 async function deadControlPass(page: Page, deps: ScreenCheckDeps): Promise<Finding[]> {
