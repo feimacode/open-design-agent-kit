@@ -7,7 +7,7 @@
 ## 2. Map, preview, export
 
 - [x] 2.1 `flowMap.ts`: `flow.html` with thumbnails and arrows from plan and found links
-- [ ] 2.2 Preview follows links (VS Code, browser preview, MCP App); Collections view opens the map (VS Code and the browser preview follow links; the MCP App preview does not yet)
+- [x] 2.2 Preview follows links (VS Code, browser preview, MCP App); Collections view opens the map
 - [ ] 2.3 Single-file clickable export and site bundle for a collection; publish of a collection (the single-file prototype is done; a site bundle and publish of a whole collection are not yet)
 
 ## 3. Check

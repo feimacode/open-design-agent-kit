@@ -172,3 +172,14 @@ describe('flow map and prototype', () => {
     assert.match(html, /odGoto/);
   });
 });
+
+describe('MCP App preview links', () => {
+  it('resolves a link to a sibling screen, and leaves anything else alone', async () => {
+    const { localLinkTarget } = await import('../../preview/localLink');
+    assert.strictEqual(localLinkTarget('.open-design/onboarding/welcome.html', 'goals.html#top'), '.open-design/onboarding/goals.html');
+    assert.strictEqual(localLinkTarget('.open-design/onboarding/welcome.html', '../other/x.html'), '.open-design/other/x.html');
+    assert.strictEqual(localLinkTarget('a.html', '../../x.html'), undefined);
+    assert.strictEqual(localLinkTarget('a/b.html', 'https://example.com/x.html'), undefined);
+    assert.strictEqual(localLinkTarget('a/b.html', 'styles.css'), undefined);
+  });
+});
