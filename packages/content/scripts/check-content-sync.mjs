@@ -16,6 +16,7 @@ import { checkPrintHouses } from './printHouses.mjs';
 import { checkIntegrations } from './integrations.mjs';
 import { checkPorts } from './ports.mjs';
 import { checkCraftRequires, checkSupersededQuotes } from './craftRequires.mjs';
+import { checkAppShellBlocks } from './appShell.mjs';
 import { checkDescriptors } from './designSystemDescriptors.mjs';
 import { checkGallerySite } from './gallerySite.mjs';
 import { SCAFFOLD_MARKERS, findUnreviewedScaffolds } from './scaffoldGuard.mjs';
@@ -175,7 +176,7 @@ async function checkPortProvenance() {
 // Kit craft: the requirements map names real skills and craft docs, and an
 // addendum still quotes the upstream line it supersedes (openspec add-states-and-microcopy-craft).
 async function checkLocalCraft() {
-  const problems = [...(await checkCraftRequires(assetsRoot)), ...(await checkSupersededQuotes(LOCAL_ROOT, assetsRoot))];
+  const problems = [...(await checkCraftRequires(assetsRoot)), ...(await checkSupersededQuotes(LOCAL_ROOT, assetsRoot)), ...(await checkAppShellBlocks(LOCAL_ROOT))];
   if (problems.length > 0) {
     console.error(`Local craft problems (packages/content/local/craft-requires.json, local/craft/):\n- ${problems.join('\n- ')}`);
     process.exit(1);

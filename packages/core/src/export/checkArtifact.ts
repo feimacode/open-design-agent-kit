@@ -29,6 +29,7 @@ import { getFormat, isFluidHtml } from '../poster/formats';
 import { applyShape, collectHorizontalScroll, collectRunningMotion, collectStateTargets, collectTapTargets, compareStateStyles, fitBoundText, type ShapeCss, type StateLook } from '../poster/pageScripts';
 import { formatPreflight, runPreflight, type Finding } from '../poster/preflight';
 import { renderShapeSheetHtml, type ShapeThumbnail } from '../poster/shapeSheet';
+import { isAppScreen, runScreenChecks } from './screenChecks';
 
 export interface CheckViewport {
   name: string;
@@ -69,6 +70,8 @@ export interface CheckArtifactOptions {
   saveRun?: boolean;
   /** Pages: also run the states pass (hover, focus), tap targets, reflow at 320 px and reduced motion (default true; openspec add-state-accessibility-checks). */
   states?: boolean;
+  /** App screens: also fill a copy with long and extreme content (stress-overflow, stress-truncation). Default true (openspec add-states-board). */
+  stress?: boolean;
 }
 
 export interface CheckImage {
@@ -331,8 +334,35 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
     }
     // The review sheet goes second, after the first viewport's first screen; other screens fill the rest of the budget.
     const sheetSlot = reviewable && maxImages > 0 ? 1 : 0;
+    // App screens with state frames get a states board, placed second (openspec add-states-board).
+    const appScreen = !isDiagram && isAppScreen(sourceSkillId, artifact.entryContent);
+    const stateFrameCount = (artifact.entryContent.match(/\bdata-od-state\s*=/g) ?? []).length;
+    const boardSlot = appScreen && stateFrameCount > 1 && maxImages - sheetSlot > 1 ? 1 : 0;
     const stateChecks = options.states !== false && !isDiagram ? { url: session.url, readyTimeoutMs: options.readyTimeoutMs ?? 15000, scripted: /requestAnimationFrame/.test(artifact.entryContent) } : undefined;
-    const result: { findings: Finding[]; images: CheckImage[]; omitted: string[]; scene3d?: SceneEvidence } = await checkPage(instance, page, viewports, maxImages - sheetSlot, isDiagram, stateChecks, warnings);
+    const result: { findings: Finding[]; images: CheckImage[]; omitted: string[]; scene3d?: SceneEvidence } = await checkPage(instance, page, viewports, maxImages - sheetSlot - boardSlot, isDiagram, stateChecks, warnings);
+    if (appScreen) {
+      await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
+      await page.evaluate('window.scrollTo(0, 0)');
+      await settle(page);
+      const screen = await runScreenChecks(
+        instance,
+        page,
+        viewports,
+        {
+          preflight: async (p, viewport) =>
+            (await runPreflight(p, { cardSelector: CARD_SELECTOR, viewport })).filter((f) => !(f.check === 'overflow' && / (extends outside|runs past the edge of) the card/.test(f.message))),
+          horizontalScroll: async (p) => (await p.evaluate(collectHorizontalScroll, PHONE_MAX_WIDTH)) as Finding[],
+          settle,
+        },
+        { appScreen, stress: options.stress !== false, baseline: result.findings },
+      );
+      result.findings.push(...mergeAcrossViewports(screen.findings));
+      if (screen.shots.length > 1) {
+        const label = `states: ${screen.states.join(', ')}`;
+        if (boardSlot > 0) result.images.splice(Math.min(1, result.images.length), 0, await toCheckImage(instance, label, await composeReviewSheet(instance, screen.shots)));
+        else result.omitted.push(label);
+      }
+    }
     if (probe && reviewable) {
       await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
       await page.evaluate('window.scrollTo(0, 0)');
@@ -598,7 +628,7 @@ function mergeAcrossViewports(findings: Finding[]): Finding[] {
   const byKey = new Map<string, Finding>();
   const out: Finding[] = [];
   for (const f of findings) {
-    const key = `${f.check}|${f.severity}|${f.message}`;
+    const key = `${f.check}|${f.severity}|${f.state ?? ''}|${f.message}`;
     const seen = byKey.get(key);
     if (seen && f.viewport && seen.viewport && !seen.viewport.split(', ').includes(f.viewport)) seen.viewport += `, ${f.viewport}`;
     else if (!seen) {

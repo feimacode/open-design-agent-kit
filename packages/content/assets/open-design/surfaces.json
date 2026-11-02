@@ -4,7 +4,7 @@
     {
       "id": "prototype",
       "label": "Prototype",
-      "description": "A web page or app screen: landing page, pricing, waitlist, dashboard.",
+      "description": "A web page: landing page, pricing, waitlist or a product site.",
       "icon": "browser",
       "status": "ready",
       "entries": [
@@ -12,7 +12,6 @@
         "saas-landing",
         "pricing-page",
         "waitlist-page",
-        "dashboard",
         "web-prototype-taste-editorial",
         "web-prototype-taste-soft",
         "web-prototype-taste-brutalist"
@@ -51,6 +50,66 @@
           ],
           "default": "A full landing page",
           "changes": "length and layout density"
+        }
+      ]
+    },
+    {
+      "id": "app-screens",
+      "label": "App screens",
+      "description": "Screens people use to get a task done in your app or web product: forms, tables, settings, sign-in and whole flows.",
+      "icon": "layout",
+      "status": "ready",
+      "entries": [
+        "app-shell",
+        "app-form",
+        "app-table",
+        "app-detail",
+        "app-settings",
+        "app-search",
+        "flow-sign-in",
+        "flow-onboarding",
+        "flow-paywall",
+        "flow-settings",
+        "flow-ai-chat",
+        "dashboard",
+        "kanban-board",
+        "login-flow"
+      ],
+      "questions": [
+        {
+          "id": "task",
+          "text": "What should someone get done on these screens?",
+          "options": [
+            "Sign in or sign up",
+            "Find and manage records",
+            "Change settings",
+            "A whole flow (several linked screens)"
+          ],
+          "default": "Find and manage records",
+          "changes": "which patterns and how many screens"
+        },
+        {
+          "id": "platform",
+          "text": "Where does the app run?",
+          "options": [
+            "Web app",
+            "iPhone",
+            "Android",
+            "Tablet"
+          ],
+          "default": "Web app",
+          "changes": "navigation, screen width and touch target size"
+        },
+        {
+          "id": "density",
+          "text": "How dense should it be?",
+          "options": [
+            "Compact",
+            "Medium",
+            "Airy"
+          ],
+          "default": "Medium",
+          "changes": "control height, text size and spacing"
         }
       ]
     },
@@ -822,6 +881,17 @@
         "prototype",
         "mobile",
         "slides"
+      ]
+    },
+    {
+      "id": "build-an-app",
+      "label": "Build an app",
+      "description": "The screens of an app or web product: sign-in, lists, forms, settings and whole flows you can click through.",
+      "icon": "layout",
+      "surfaces": [
+        "app-screens",
+        "mobile",
+        "wireframe"
       ]
     },
     {

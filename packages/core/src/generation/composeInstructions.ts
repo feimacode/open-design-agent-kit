@@ -6,6 +6,7 @@ import { composeCanvasSection, composeFluidCanvasSection, type CanvasFormat } fr
 import { composeSourceMaterialSection, composeSourceWorkflowSection, type SourceContext } from './sourceInstructions';
 import { composeDecisionsSection, composeRegisterBriefNote, type BriefDecisions } from './briefDecisions';
 import { composeRecentDesignsSection, type RecentDesignsContext } from '../workspace/designHistory';
+import { composeScreenSpecSection } from './screenDecisions';
 
 const CRAFT_SLUG = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -220,6 +221,8 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
 
   const decisions = composeDecisionsSection(input.decisions);
   if (decisions) parts.push(`\n\n${decisions}`);
+  const screenSpec = composeScreenSpecSection(input.decisions?.answers);
+  if (screenSpec) parts.push(`\n\n${screenSpec}`);
 
   if (input.sourceContext && input.sourceContext.sources.length > 0) {
     parts.push(`\n\n${composeSourceMaterialSection(input.sourceContext)}`);

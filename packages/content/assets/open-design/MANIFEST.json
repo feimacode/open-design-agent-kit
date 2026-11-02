@@ -13,10 +13,10 @@
     "examplesSkippedForSize": 2
   },
   "localOverlay": {
-    "skills": 18,
+    "skills": 29,
     "examples": 26,
     "prompts": 13,
-    "craft": 2,
+    "craft": 3,
     "designSystemOverrides": 57,
     "designSystemPackages": 46
   }
