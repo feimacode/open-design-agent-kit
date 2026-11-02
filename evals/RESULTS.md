@@ -169,3 +169,49 @@ Must notes (ticked by the reviewer from the contact sheet):
 - [ ] tablet-screen: data-od-device="tablet" on <body> with landscape orientation, and no frame or status bar drawn by the design
 - [ ] tablet-screen: List and detail side by side in landscape; still usable in portrait (checked at 768 × 980)
 - [ ] tablet-screen: Touch targets at least 44 px
+
+## 2026-11-02 — add-sample-data
+
+- Kit: 0.4.0-beta.2 (claude/project-thread-fldkhh 53438ce, local changes)
+- Mode: agent claude (2.1.316 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-02-23-03-53/`
+- Contact sheet: [runs/2026-11-02-23-03-53/contact-sheet.png](runs/2026-11-02-23-03-53/contact-sheet.png)
+
+- Designs: 1 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 1.
+- Critic: n/a (no critique recorded).
+- Agent cost: $0.72.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| orders-table | 1 | .open-design/orders-list/orders-list.html | od:prototype:app-table | 0 | — | 15 (stress-overflow×15) | n/a | 0 | 5 | 14 | 184s | #000000 / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] orders-table: Rows come from a data file (data-od-repeat), at least 12 orders
+- [ ] orders-table: One very long customer name, a £0.00 order and a very large total, shown without breaking the row
+- [ ] orders-table: Dates and money formatted for en-GB (4 Mar 2026, £1,240.00)
+
+## 2026-11-02 — add-sample-data (after wording fix)
+
+- Kit: 0.4.0-beta.2 (claude/project-thread-fldkhh 53438ce, local changes)
+- Mode: agent claude (2.1.316 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-02-23-12-34/`
+- Contact sheet: [runs/2026-11-02-23-12-34/contact-sheet.png](runs/2026-11-02-23-12-34/contact-sheet.png)
+
+- Designs: 1 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 1.
+- Critic: n/a (no critique recorded).
+- Agent cost: $0.72.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| orders-table | 1 | .open-design/orders-list/orders.html | od:prototype:app-table | 0 | — | 3 (stress-overflow×3) | n/a | 0 | 4 | 17 | 191s | #2f6feb / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] orders-table: Rows come from a data file (data-od-repeat), at least 12 orders
+- [ ] orders-table: One very long customer name, a £0.00 order and a very large total, shown without breaking the row
+- [ ] orders-table: Dates and money formatted for en-GB (4 Mar 2026, £1,240.00)

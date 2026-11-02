@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { getArtifact, getWorkspaceRoot } from '../workspace/artifactWriter';
-import { composePortToAppInstructions, suggestTargetComponentPath, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
+import { composePortToAppInstructions, sampleDataForEntry, suggestTargetComponentPath, type ContentIndex } from '@feimacode/open-design-agent-kit-core';
 
 interface PortToAppCodeInput {
   entryPath: string;
@@ -47,6 +47,7 @@ export class PortToAppCodeTool implements vscode.LanguageModelTool<PortToAppCode
         typeof artifact.manifest?.designSystemId === 'string' && this.contentIndex
           ? (await this.contentIndex.getDesignSystem(artifact.manifest.designSystemId))?.appComponents
           : undefined,
+      sampleData: await sampleDataForEntry(getWorkspaceRoot(), entryPath, artifact.entryContent),
     });
 
     return new vscode.LanguageModelToolResult([

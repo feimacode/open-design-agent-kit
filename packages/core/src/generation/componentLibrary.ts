@@ -6,6 +6,7 @@
 // element scan of the design, the token-to-theme mapping, the manifest
 // record) and the agent writes the components with its own file tools.
 
+import { composeMockDataSection, sampleDataForEntry, type SampleData } from '../export/sampleData';
 import { markedComponents } from './appDesignSystem';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
@@ -283,6 +284,8 @@ export interface ComposeComponentLibraryInput {
   themeSource: ThemeSource;
   existing?: ComponentLibraryRecord;
   otherLibraries: ComponentLibraryRecord[];
+  /** The sample data file the designs bind to (openspec add-sample-data). */
+  sampleData?: { path: string; data: SampleData };
 }
 
 const LIBRARY_LABEL: Record<ComponentLibrary, string> = {
@@ -427,6 +430,9 @@ export function composeComponentLibraryInstructions(input: ComposeComponentLibra
       ) +
       '\n```\n\nA later run reads this record and updates the set instead of starting over. Finally tell the user what was made, where, and how to view the gallery.',
   );
+
+  const mocks = input.sampleData ? composeMockDataSection(input.sampleData) : '';
+  if (mocks) parts.push(`\n\n${mocks}\n\nThe gallery and the components' examples use these mocks, so they show the same records as the designs.`);
 
   return parts.join('');
 }
@@ -578,6 +584,16 @@ export async function prepareComponentLibrary(options: PrepareComponentLibraryOp
     themeSource: await themeSourceFor(options, artifacts, choice.library),
     existing,
     otherLibraries,
+    sampleData: await firstSampleData(options.workspaceRoot, artifacts),
   });
   return { ok: true, text };
+}
+
+/** The data file the first design that binds to one reads; screens of a collection share it. */
+async function firstSampleData(workspaceRoot: string, artifacts: ReadonlyArray<{ entryPath: string; html: string }>): Promise<{ path: string; data: SampleData } | undefined> {
+  for (const a of artifacts) {
+    const found = await sampleDataForEntry(workspaceRoot, a.entryPath, a.html);
+    if (found) return found;
+  }
+  return undefined;
 }
