@@ -8,7 +8,7 @@
 
 - [x] 2.1 `flowMap.ts`: `flow.html` with thumbnails and arrows from plan and found links
 - [x] 2.2 Preview follows links (VS Code, browser preview, MCP App); Collections view opens the map
-- [ ] 2.3 Single-file clickable export and site bundle for a collection; publish of a collection (the single-file prototype is done; a site bundle and publish of a whole collection are not yet)
+- [x] 2.3 Single-file clickable export and site bundle for a collection; publish of a collection (the `site` export of any screen holds every screen with the shared nav filled in and the flow map as `index.html`; a Claude artifact of a screen is the one-file prototype)
 
 ## 3. Check
 

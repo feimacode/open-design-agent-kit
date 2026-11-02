@@ -10,6 +10,7 @@ import { bundleStandaloneHtml, StandaloneHtmlExportError } from '../vendored/sta
 import { embedDeclaredAssets, type AssetResolution, type BinaryFetch, type EmbeddedAsset, type NotEmbeddedAsset } from './embedAssets';
 import { EXPORTS_BY_KIND, PACKAGEABLE_KINDS } from './exportFormats';
 import { injectBadge, injectLinkPreviewTags, resolveBadge, type PackageFormat } from './shareDecorations';
+import { planCollectionSite, type CollectionSitePlan } from './collectionSite';
 import { analyzeSiteBundle, planSiteBundle, writeSiteBundle, type PreflightWarning, type SiteFile } from './siteBundle';
 import { OutsideWorkspaceError, workspaceAssetReader } from './workspaceAssets';
 
@@ -46,6 +47,8 @@ export type PackageExportResult =
       files: PackagedFile[];
       totalBytes: number;
       badge: boolean;
+      /** site of a flow: the collection's screens and where its map is (openspec add-linked-flows). */
+      collection?: { name: string; screens: string[]; mapPath: string };
       /** Whether the bundle carries og.png, and whether og:image was emitted (site only). */
       ogImage?: { file: boolean; tag: boolean };
       preflight: PreflightWarning[];
@@ -180,6 +183,11 @@ async function packageStandalone(input: PackageArtifactInput, badge: boolean): P
 }
 
 async function packageSite(input: PackageArtifactInput, badge: boolean): Promise<PackageExportResult> {
+  const collection = await planCollectionSite({ workspaceRoot: input.workspaceRoot, entryPath: input.entryPath, manifest: input.manifest });
+  if (collection.kind === 'collection') {
+    if (!collection.ok) return fail('missing-references', collection.error);
+    return packageCollectionSite(input, badge, collection.plan);
+  }
   const supportingFiles = Array.isArray(input.manifest.supportingFiles)
     ? (input.manifest.supportingFiles as unknown[]).filter((f): f is string => typeof f === 'string')
     : [];
@@ -242,6 +250,66 @@ async function packageSite(input: PackageArtifactInput, badge: boolean): Promise
   };
 }
 
+/** Every screen of the flow, with the shared navigation filled in, and the flow map. */
+async function packageCollectionSite(input: PackageArtifactInput, badge: boolean, plan: CollectionSitePlan): Promise<PackageExportResult> {
+  const exportsDir = exportsDirFor(input.entryPath);
+  const warnings = [...plan.warnings];
+  const screens = plan.pages.filter((p) => p.entryPath);
+  const extra = new Map<string, Buffer>();
+  let ogFile = false;
+  try {
+    // The first screen's PNG export, if any, is the link preview image.
+    const png = await fs.readFile(path.join(input.workspaceRoot, exportsDir, `${baseName(screens[0].entryPath!)}.png`));
+    if (!plan.files.some((f) => f.bundlePath === 'og.png')) {
+      extra.set('og.png', png);
+      ogFile = true;
+    }
+  } catch {
+    // No PNG export yet.
+  }
+  const baseUrl = input.baseUrl && /^https:\/\//i.test(input.baseUrl) ? input.baseUrl : undefined;
+  if (input.baseUrl && !baseUrl) warnings.push(`Ignored baseUrl "${input.baseUrl}": og:image needs an https URL.`);
+
+  let indexHtml = '';
+  const preflight: PreflightWarning[] = [];
+  const files: SiteFile[] = [];
+  for (const [i, page] of plan.pages.entries()) {
+    let html = page.html;
+    if (page.bundlePath === 'index.html') html = injectLinkPreviewTags(html, { title: plan.collectionName, description: manifestDescription(input.manifest), baseUrl, hasImage: ogFile });
+    if (badge && page.entryPath) html = injectBadge(html);
+    const bytes = Buffer.byteLength(html, 'utf8');
+    files.push({ bundlePath: page.bundlePath, bytes });
+    if (page.bundlePath === 'index.html') indexHtml = html;
+    else extra.set(page.bundlePath, Buffer.from(html, 'utf8'));
+    if (page.entryPath) {
+      // Size warnings once, over every file; page warnings for each screen.
+      const analyzed = analyzeSiteBundle({ entryPath: page.entryPath, html: page.html, files: i === 0 ? [...plan.files] : [] });
+      preflight.push(...analyzed.warnings.filter((w) => !preflight.some((p) => p.code === w.code && p.path === w.path && p.url === w.url)));
+    }
+  }
+  files.push(...plan.files, ...(ogFile ? [{ bundlePath: 'og.png', bytes: extra.get('og.png')!.length }] : []));
+  const totalBytes = files.reduce((n, f) => n + f.bytes, 0);
+  const output = path.posix.join(exportsDir, 'site');
+  try {
+    await writeSiteBundle({ workspaceRoot: input.workspaceRoot, outDir: output, indexHtml, files: plan.files, extra });
+  } catch (err) {
+    return fail('package-failed', `Couldn't write ${output}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  return {
+    ok: true,
+    mode: 'site',
+    output,
+    files: files.map((f) => ({ path: f.bundlePath, bytes: f.bytes })),
+    totalBytes,
+    badge,
+    collection: { name: plan.collectionName, screens: screens.map((p) => p.bundlePath), mapPath: plan.mapPath },
+    ogImage: { file: ogFile, tag: ogFile && baseUrl !== undefined },
+    preflight,
+    externalDependencies: [],
+    warnings,
+  };
+}
+
 /** Compact, model-friendly text for a packaging result. */
 export function formatPackageResult(result: PackageExportResult): string {
   if (!result.ok) return `Export failed (${result.code}): ${result.error}`;
@@ -257,6 +325,11 @@ export function formatPackageResult(result: PackageExportResult): string {
       : [
           `Exported a deploy-ready site folder: ${result.output}/ — ${result.files.length} file(s), ${kb(result.totalBytes)} total:`,
           ...result.files.map((f) => `- ${f.path} — ${kb(f.bytes)}`),
+          ...(result.collection
+            ? [
+                `This design is one screen of the flow "${result.collection.name}", so the site holds all ${result.collection.screens.length} screens (${result.collection.screens.join(', ')}) with the shared navigation filled in, and the flow map at ${result.collection.mapPath}. Links between screens work wherever the folder is hosted.`,
+              ]
+            : []),
         ];
   lines.push(result.badge ? 'Footer badge: included ("Made with Open Design"; pass badge: false to leave it out).' : 'Footer badge: not included.');
   if (result.ogImage) {

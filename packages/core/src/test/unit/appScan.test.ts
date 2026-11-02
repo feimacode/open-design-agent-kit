@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { scanApp } from '../../workspace/appScan';
 import {
   appComponentsFile,
+  appDesignSystemStaleness,
   appTokensCss,
   composeComponentVocabularySection,
   diffAppProfile,
@@ -142,6 +143,20 @@ describe('app design system', () => {
     assert.ok(f.some((x) => x.check === 'token-hardcoded' && /--radius-card/.test(x.message)));
     const undef = f.filter((x) => x.check === 'token-undefined');
     assert.deepStrictEqual(undef.map((x) => /var\((--[\w-]+)\)/.exec(x.message)?.[1]), ['--nope'], 'a fallback or a local definition is fine');
+  });
+
+  it('notes when the app files it was read from changed after the scan', async () => {
+    const root = await fixture(NEXT_TAILWIND);
+    const file = appComponentsFile(await scanApp(root));
+    assert.deepStrictEqual(await appDesignSystemStaleness(root, 'user:acme', file), []);
+    const later = new Date(Date.now() + 60_000);
+    await fs.utimes(path.join(root, 'tailwind.config.ts'), later, later);
+    await fs.rm(path.join(root, 'components/stat-card.tsx'));
+    const [f] = await appDesignSystemStaleness(root, 'user:acme', file);
+    assert.strictEqual(f.check, 'app-design-system-stale');
+    assert.strictEqual(f.severity, 'info');
+    assert.match(f.message, /changed: tailwind\.config\.ts; gone: components\/stat-card\.tsx/);
+    assert.match(f.message, /scan_open_design_app/);
   });
 
   it('promote imports marked components and creates only new: ones', async () => {

@@ -13,6 +13,7 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { ARTIFACT_MAX_BYTES, artifactPreflight } from '../export/artifactPreflight';
 import { declaredRemoteAssets, type BinaryFetch } from '../export/embedAssets';
+import { exportCollectionPrototype } from '../export/collectionPrototype';
 import { exportArtifact, formatExportResult, isExportOfEntry } from '../export/exportArtifact';
 import { readArtifact, writeArtifactManifest } from '../vendored/artifactCreate';
 import type { JsonRecord } from '../vendored/artifactManifest';
@@ -190,6 +191,39 @@ async function prepareArtifact(
       });
     } catch (err) {
       return { ok: false, text: `Couldn't store the sync setting in the manifest: ${err instanceof Error ? err.message : String(err)}\n\nNothing was published.` };
+    }
+  }
+  // One screen of a flow: the artifact is the clickable prototype of the whole flow (one page, links switch screens).
+  if (typeof manifest.collectionId === 'string') {
+    const proto = await exportCollectionPrototype(options.workspaceRoot, path.posix.dirname(options.entryPath), manifest.collectionId);
+    if (proto.ok && proto.screens.length >= 2) {
+      const filePath = path.join(options.workspaceRoot, proto.output);
+      const html = await fs.readFile(filePath, 'utf8');
+      const sync: ArtifactSyncSummary | undefined = syncOn
+        ? { state: 'skipped', first: !wasSynced, pageBytes: proto.bytes, reason: 'a flow is published as its clickable prototype, which carries no working files' }
+        : undefined;
+      const externalDependencies = proto.warnings.flatMap((w) => /still loads (\S+) at view time/.exec(w)?.[1] ?? []);
+      const preflight = artifactPreflight({ html, bytes: proto.bytes, externalDependencies });
+      if (preflight.blocking) {
+        const tooLarge = preflight.findings.find((f) => f.code === 'artifact-too-large');
+        return { ok: false, text: `Can't publish as a Claude artifact (artifact-too-large): ${tooLarge?.message ?? ''}\n\nNothing was published. The file is at ${proto.output}.` };
+      }
+      const inline = options.inlinePage ? (proto.bytes <= MAX_INLINE_PAGE_BYTES ? 'page' : 'too-large') : undefined;
+      const text = composeArtifactPublishInstructions({
+        inline,
+        entryPath: options.entryPath,
+        title,
+        filePath,
+        bytes: proto.bytes,
+        badge: false,
+        sync,
+        records,
+        findings: preflight.findings,
+        note: `This design is one screen of a flow, so the page is the clickable prototype of all ${proto.screens.length} screens (${proto.screens.join(', ')}): links switch screens and the corner menu jumps to any of them. Tell the user so.`,
+        warnings: proto.warnings.filter((w) => !/still loads \S+ at view time/.test(w)),
+      });
+      if (inline === 'too-large') return { ok: false, text };
+      return { ok: true, text, ...(inline === 'page' ? { page: html } : {}) };
     }
   }
   // A page that declares remote assets (a 3D scene's HDRI, textures, models) gets them embedded:

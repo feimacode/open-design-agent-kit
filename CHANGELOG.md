@@ -4,6 +4,8 @@ One version covers the VS Code extension and the npm packages (`content`, `mcp-s
 
 ## [Unreleased]
 
+- **Publish a whole flow.** Publishing (or the `site` export of) any screen of a flow now publishes every screen, with the shared navigation filled in and the flow map as the home page, so links between screens work at the published URL. As a Claude artifact, a flow is its one-file clickable prototype.
+- **Stale app design system note.** The check notes `app-design-system-stale` when the app files a saved app design system was read from changed after the scan, and suggests a re-scan.
 - **Click through flows in Claude Desktop.** In the inline preview, a link to another screen of a flow opens that screen in the same view (Back returns), and the shared navigation is filled in.
 - **App screens.** A new "App screens" surface (under the new "Build an app" goal) for product screens: shell, form, table, detail, settings and search templates, and flow packs for sign-in, onboarding, paywall, settings and AI chat. Density and platform answers become exact sizes in the brief (Android gets a frameless 412 px screen). A new `product-ui` craft doc. Dashboard moved here from Prototype. [App screens and flows](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/app-screens.md)
 - **States in the check.** App screens keep each state in a `data-od-state` frame. The check renders every frame (findings name the state), attaches a states board, and reports `state-missing`, `dead-control`, `stress-overflow` and `stress-truncation`. The preview has a states bar, and the critic judges every frame.

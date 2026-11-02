@@ -48,6 +48,10 @@ Each check writes the **flow map**, `flow.html` in the collection's folder: ever
 
 You get one HTML file, `exports/<collection>-prototype.html`, with every screen, its styles and images inside it and the shared navigation filled in. Open it in any browser, offline too: links move between the screens, and a small menu in the corner jumps to any screen or back.
 
+> Publish the onboarding flow.
+
+Publishing any screen of a flow publishes the whole flow ([Share and publish](share-and-publish.md)). On Netlify, Vercel, Cloudflare Pages or GitHub Pages, the site holds every screen, with the shared navigation filled in, and the flow map as its home page, so each screen is one click away and links between screens work. As a Claude artifact, which is one page, it is the clickable prototype above.
+
 ## What you get
 
 ```
