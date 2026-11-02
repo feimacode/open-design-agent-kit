@@ -39,4 +39,4 @@ Designs are saved in **Documents/Open Design** (or **Open Design** in your home 
 - **In-chat previews.** Whether ChatGPT shows Open Design's inline preview, pickers and question cards for a desktop plugin is still being checked. Until then, the agent describes the design and gives you its file path; open it in a browser, or ask for a PNG or PDF export.
 - **Claude-only features** (Claude Design systems, Claude artifacts) aren't offered in ChatGPT.
 - **Open Design's tools don't appear** after turning the plugin on: ChatGPT most likely couldn't start `node`. Install Node.js 18 or later, then restart ChatGPT.
-- **ChatGPT on the web** needs a hosted server, which isn't available yet.
+- **ChatGPT on the web** uses the hosted connector instead. See [Claude and ChatGPT on the web](claude-and-chatgpt-web.md).

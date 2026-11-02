@@ -14,6 +14,7 @@ One version covers the VS Code extension and the npm packages (`content`, `mcp-s
   - **Breaking for the preview:** `open-design-agent-kit-mcp --http` and `OPEN_DESIGN_REMOTE_TOKEN` are gone.
 - **Every tool has a title**, as the Claude connector directory asks.
 - The ChatGPT plugin build takes `--hosted <url>` for the directory-listing variant. The zip people install themselves is unchanged.
+- **Docs:** a getting-started page for the hosted connector in [Claude and ChatGPT on the web](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/getting-started/claude-and-chatgpt-web.md), the online gallery in the remix and design-system guides, and an architecture page that covers every package (desktop extension, ChatGPT plugin, hosted gateway), the hosts, the previews and the design-quality loop.
 
 ## [0.4.0-beta.2] - 2026-10-31
 

@@ -28,12 +28,16 @@ Open Design itself is a full local-first desktop app with its own daemon, projec
 - **Remix, don't start blank.** Start from any of 193 real rendered examples, plus a growing community catalog, and let the model adapt one instead of inventing from scratch.
 - **Brand-consistent by default.** Pick a design system once (bundled, invented from a brief, or imported from your own) and every generation after that uses it.
 - **Grounded in your codebase, and headed there.** Generation looks at your real components first. When the prototype is right, one tool call ports it into your app as idiomatic production code.
+- **Checked before it's done.** The agent renders every design in a real browser, fixes what the checks find (clipped text, low contrast, missing focus states, print bleed, a generic "AI" look), then asks a critic with fresh eyes for a verdict. It asks at most three questions up front, and keeps new designs from all looking alike.
 - **Everything is a file.** Artifacts, manifests, comments, and custom design systems are plain files in your workspace. There's no database, no lock-in, and nothing to export.
 
 Ways in:
 
 - **[VS Code extension](packages/vscode/README.md)**: native tools for GitHub Copilot Chat, plus a gallery, a live artifact preview with comments, WYSIWYG editing and a Tweaks panel, multi-screen collections and explorations, and an Integrations view.
 - **[Claude Code plugin](docs/getting-started/claude-code.md)**: `/plugin install open-design` gives you skills that trigger on design requests (including social posts, posters, campaigns, explorations and decks from documents), 27 curated `/open-design:*` commands, and the MCP server, registered automatically.
+- **[Claude Desktop](docs/getting-started/claude-desktop.md)**: the same plugin in the Code tab, Chat and Cowork, with designs shown inline in the conversation. An optional desktop extension (`.mcpb`) needs no Node.js and works in a Chat with no folder.
+- **[ChatGPT desktop](docs/getting-started/chatgpt-desktop.md)**: a desktop plugin for the Work and Codex tabs, installed with one `npx` command.
+- **[Claude and ChatGPT on the web](docs/getting-started/claude-and-chatgpt-web.md)**: a hosted connector, nothing to install, for when you can't run anything locally.
 - **[Codex CLI](docs/getting-started/codex.md)**: the same skills in Codex's own `.agents/skills` format, plus the MCP server.
 - **[One-command project setup](packages/cli/README.md)**: `npx @feimacode/open-design-agent-kit init` wires Claude Code and/or Codex into your project.
 - **[MCP server](packages/mcp-server/README.md)**: `npx @feimacode/open-design-agent-kit-mcp` for Cursor or any other MCP-capable agent.
@@ -86,6 +90,7 @@ Every one of these started from `remix_open_design_example` (copy a real example
 - **Claude Code:** `/plugin marketplace add feimacode/open-design-agent-kit`, then `/plugin install open-design`. Or run `npx @feimacode/open-design-agent-kit init --tools claude` in your project. See the [getting-started guide](docs/getting-started/claude-code.md).
 - **Claude Desktop:** install the same plugin from **Customize → Plugins**, then use it in the Code tab or in a Chat with a folder. Optionally add the desktop extension (`open-design-<version>.mcpb` from the [releases](https://github.com/feimacode/open-design-agent-kit/releases/latest)) for the tools without Node.js, a Figma token form, and Chat without a folder. See the [getting-started guide](docs/getting-started/claude-desktop.md).
 - **ChatGPT desktop (macOS, Windows):** `npx @feimacode/open-design-agent-kit install chatgpt`, restart ChatGPT, and turn on Open Design under **Plugins → Personal**. Works in the Work and Codex tabs; needs Node.js. See the [getting-started guide](docs/getting-started/chatgpt-desktop.md).
+- **Claude or ChatGPT on the web, or your phone:** add the hosted connector `https://open-design.feimacode.com/mcp`. See the [getting-started guide](docs/getting-started/claude-and-chatgpt-web.md).
 - **Codex CLI:** `npx @feimacode/open-design-agent-kit init --tools codex`. See the [getting-started guide](docs/getting-started/codex.md).
 - **Any MCP agent (Cursor and others):** register `npx -y @feimacode/open-design-agent-kit-mcp` as a stdio MCP server. See the [MCP server README](packages/mcp-server/README.md).
 - **Any of the [75+ agents `skills` supports](https://github.com/vercel-labs/skills):** `npx skills add https://github.com/feimacode/open-design-agent-kit/tree/main/packages/claude-plugin/skills/open-design` (add `--agent <name>` to target one directly). The skill wires up the MCP server on its own the first time it runs.
@@ -113,20 +118,21 @@ When your agent is connected to one of these services' official MCP servers, Ope
 
 Everything lives in [`docs/`](docs/README.md):
 
+- **Getting started:** [VS Code](docs/getting-started/vscode.md), [Claude Code](docs/getting-started/claude-code.md), [Claude Desktop](docs/getting-started/claude-desktop.md), [ChatGPT desktop](docs/getting-started/chatgpt-desktop.md), [Claude and ChatGPT on the web](docs/getting-started/claude-and-chatgpt-web.md), [Codex](docs/getting-started/codex.md), [command line](docs/getting-started/cli.md).
 - **Guides:**
-  - [generate a design](docs/guides/generate-a-design.md), [explore design directions](docs/guides/explore-directions.md), [turn a document into a deck](docs/guides/deck-from-a-document.md), [diagrams of your code](docs/guides/diagrams.md), [3D objects](docs/guides/3d-objects.md), [engineering documents](docs/guides/engineering-docs.md);
+  - [generate a design](docs/guides/generate-a-design.md), [explore design directions](docs/guides/explore-directions.md), [turn a document into a deck](docs/guides/deck-from-a-document.md), [diagrams of your code](docs/guides/diagrams.md), [3D objects](docs/guides/3d-objects.md), [3D scenes](docs/guides/3d-scenes.md), [engineering documents](docs/guides/engineering-docs.md);
   - [design systems](docs/guides/design-systems.md), [remix and the gallery](docs/guides/remix-and-gallery.md), [community designs](docs/guides/community-designs.md);
-  - [preview, comment and edit](docs/guides/preview-comments-edit.md), [Figma](docs/guides/figma.md), [promote to app code](docs/guides/promote-to-app-code.md), [build a component set](docs/guides/component-library.md), [connect other services](docs/guides/integrations.md);
+  - [preview, comment and edit](docs/guides/preview-comments-edit.md) (VS Code), [browser preview](docs/guides/browser-preview.md), [inline preview in Claude Desktop](docs/guides/inline-preview.md), [Figma](docs/guides/figma.md), [promote to app code](docs/guides/promote-to-app-code.md), [build a component set](docs/guides/component-library.md), [work with Impeccable](docs/guides/impeccable.md), [connect other services](docs/guides/integrations.md);
   - [social media posts](docs/guides/social-posts.md), [HTML email](docs/guides/html-email.md), [paste into WeChat, Notion and newsletters](docs/guides/paste-html.md), [posters and print](docs/guides/posters.md), [sell what you make](docs/guides/sell-what-you-make.md), [run a campaign](docs/guides/campaigns.md), [YouTube videos](docs/guides/youtube-video.md);
-  - [export images](docs/guides/export-images.md), [export decks and PDFs](docs/guides/export-decks.md), [export animations](docs/guides/export-animations.md), [share and publish](docs/guides/share-and-publish.md).
-- **Reference:** [tools](docs/reference/tools.md), [prompts and commands](docs/reference/prompts-and-commands.md), [CLI](docs/reference/cli.md), [settings and environment variables](docs/reference/settings-and-env.md), [artifact manifest](docs/reference/artifact-manifest.md).
-- **Help:** [troubleshooting](docs/troubleshooting.md).
+  - [export images](docs/guides/export-images.md), [export decks and PDFs](docs/guides/export-decks.md), [export animations](docs/guides/export-animations.md), [share and publish](docs/guides/share-and-publish.md), [recurring design jobs](docs/guides/recurring-jobs.md).
+- **Reference:** [tools](docs/reference/tools.md), [prompts and commands](docs/reference/prompts-and-commands.md), [CLI](docs/reference/cli.md), [settings and environment variables](docs/reference/settings-and-env.md), [artifact manifest](docs/reference/artifact-manifest.md), [hosted server](docs/reference/remote-server.md).
+- **Help:** [troubleshooting](docs/troubleshooting.md), [privacy policy](docs/legal/privacy.md), [terms](docs/legal/terms.md).
 - **Automation:** [social media pipeline](docs/automation/social-pipeline.md).
-- **Contributing:** [architecture](docs/contributing/architecture.md), [content sync](docs/contributing/content-sync.md), [adding a skill or prompt](docs/contributing/adding-a-skill-or-prompt.md), [upstream ports](docs/contributing/upstream-ports.md), [releasing](docs/contributing/releasing.md).
+- **Contributing:** [architecture](docs/contributing/architecture.md), [content sync](docs/contributing/content-sync.md), [adding a skill or prompt](docs/contributing/adding-a-skill-or-prompt.md), [upstream ports](docs/contributing/upstream-ports.md), [releasing](docs/contributing/releasing.md), [evals](docs/contributing/README.md#evals).
 
 ## Community
 
-- **Gallery:** remixable designs from the community live in [awesome-open-design](https://github.com/feimacode/awesome-open-design). Made something good? Add it there.
+- **Gallery:** browse every bundled example and design system in the [online gallery](https://feimacode.github.io/open-design-agent-kit/), with prompts to remix one or add a design system to Claude Design. Remixable designs from the community live in [awesome-open-design](https://github.com/feimacode/awesome-open-design). Made something good? Add it there.
 - **Questions and show-and-tell:** [GitHub Discussions](https://github.com/feimacode/open-design-agent-kit/discussions).
 - **Bugs and requests:** [open an issue](https://github.com/feimacode/open-design-agent-kit/issues/new/choose).
 - **Contributing:** start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [`good first issue`](https://github.com/feimacode/open-design-agent-kit/labels/good%20first%20issue) label.

@@ -1,12 +1,13 @@
 # Open Design Agent Kit documentation
 
-Open Design Agent Kit brings [Open Design](https://github.com/nexu-io/open-design)'s design skills, brand design systems and remixable examples into the coding agent you already use: GitHub Copilot Chat in VS Code, Claude Code, Codex, or any MCP-capable agent. Your agent's own model writes the design as plain files in your repo.
+Open Design Agent Kit brings [Open Design](https://github.com/nexu-io/open-design)'s design skills, brand design systems and remixable examples into the agent you already use: GitHub Copilot Chat in VS Code, Claude Code, Claude Desktop, Codex, ChatGPT, or any MCP-capable agent. Your agent's own model writes the design as plain files, checks how it renders, and exports it.
 
 ## Key concepts
 
 - **Skills:** recipes for a kind of design (a deck, a dashboard, a social card). The agent picks one, or you name it. See [Generate a design](guides/generate-a-design.md).
 - **Design systems:** a brand's visual language (colors, type, spacing, components). One is **active per workspace**, and every new design follows it until you switch. See [Design systems](guides/design-systems.md), especially [Specify and switch](guides/design-systems.md#specify-and-switch).
 - **Artifacts:** the designs themselves: plain files in your repo, each with a small manifest. See [Artifact manifest](reference/artifact-manifest.md).
+- **Checks:** before the agent calls a design done, it renders it in a real browser, fixes what the checks find (clipped text, contrast, focus states, a generic "AI" look), and gets a second opinion from a critic that hasn't seen the conversation. See [Generate a design](guides/generate-a-design.md#second-opinion).
 
 ## Start here
 
@@ -15,6 +16,8 @@ Pick the place you work ([all getting-started pages](getting-started/README.md))
 - [VS Code (GitHub Copilot Chat)](getting-started/vscode.md)
 - [Claude Code](getting-started/claude-code.md)
 - [Claude Desktop](getting-started/claude-desktop.md): the Code tab, Chat with a folder, the desktop extension and Chat without a folder
+- [ChatGPT desktop](getting-started/chatgpt-desktop.md): the Work and Codex tabs, through a desktop plugin
+- [Claude and ChatGPT on the web](getting-started/claude-and-chatgpt-web.md): the hosted connector, with nothing to install
 - [Codex CLI](getting-started/codex.md)
 - [Command line and scripts](getting-started/cli.md): `init`, and exporting or rendering without an agent
 
@@ -37,6 +40,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [Inline preview in Claude Desktop Chat](guides/inline-preview.md)
 - [Figma](guides/figma.md): frame to code, and artifact to Figma layers
 - [Promote to app code](guides/promote-to-app-code.md): turn a prototype into real components
+- [Works with Impeccable](guides/impeccable.md): Open Design for the design, Impeccable for polishing the app code, sharing `PRODUCT.md` and `DESIGN.md`
 - [Build a component set](guides/component-library.md): reusable MUI (Material 3) or shadcn/ui components and a theme from a design
 - [Social media posts](guides/social-posts.md): X, Instagram, LinkedIn, Xiaohongshu, Stories, YouTube thumbnails
 - [HTML email](guides/html-email.md): newsletters and launch emails that render in real inboxes, ready to paste into your email tool
