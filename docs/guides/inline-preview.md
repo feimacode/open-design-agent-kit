@@ -20,6 +20,8 @@ The first time, Claude Desktop asks you to allow the preview. The design renders
 
 Click **Fullscreen** for more room. The reload button fetches the latest version at once, which helps for an older copy further up the conversation that has stopped following.
 
+A link to another screen of a [flow](app-screens.md#linked-flows) (or any other design next to it) opens that screen in the same view, and the back button returns. A screen's shared navigation is filled in.
+
 Under the design are three quick replies: **Looks good**, **Change something** and **Try another direction**. Each posts a message so Claude knows what to do next (offer an export, ask what to change, or suggest other directions), for when you don't know what to type. They're hidden in fullscreen.
 
 ## Comments
@@ -69,7 +71,7 @@ Every button that changes something (Remix this, Use this design system, Use as 
 ## Limits
 
 - Only Chat (and Cowork) render the inline pages, and only where the server runs (see the table above). The Code tab shows the text result; use the [browser preview](browser-preview.md) there.
-- Links in the design open in your system browser after a confirmation, not in Claude's built-in browser.
+- Links to websites open in your system browser after a confirmation, not in Claude's built-in browser. Links to other designs next to it open in the view.
 - Designs larger than 5 MiB once inlined, and kinds that aren't HTML (Markdown, React components), show their latest check screenshot instead.
 
 See [`show_open_design_artifact`](../reference/tools.md#show_open_design_artifact), [`show_open_design_examples`](../reference/tools.md#show_open_design_examples), [`show_open_design_design_systems`](../reference/tools.md#show_open_design_design_systems) and [`show_open_design_questions`](../reference/tools.md#show_open_design_questions) for the tools themselves.

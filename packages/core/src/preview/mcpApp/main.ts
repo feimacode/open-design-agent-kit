@@ -11,6 +11,7 @@
 // comment controller over the MCP Apps transport. Exports and "Ask Claude to
 // apply" post chat messages: the host refuses downloads. Bundled by the MCP
 // server's build as mcp-app.js and inlined into the `ui://` resource.
+import { localLinkTarget } from '../localLink';
 import { App } from '@modelcontextprotocol/ext-apps';
 import { createCommentController } from '../commentController';
 import { icon } from '../dom/icons';
@@ -348,9 +349,13 @@ function renderArtifact(state: PreviewAppArtifactState, reload: () => void): voi
         pinRects = Array.isArray(message.pins) ? message.pins : [];
         renderOverlays();
         break;
-      case 'open-local-link':
-        toast('Links to other files open in the browser preview (open_open_design_preview).');
+      case 'open-local-link': {
+        // A link to another screen of a flow (openspec add-linked-flows) opens it here; Back returns.
+        const next = localLinkTarget(entryPath, String(message.href ?? ''));
+        if (next) navigate({ view: 'artifact', entryPath: next, title: next });
+        else toast('Links to other files open in the browser preview (open_open_design_preview).');
         break;
+      }
     }
   });
   iframe.addEventListener('load', () => {

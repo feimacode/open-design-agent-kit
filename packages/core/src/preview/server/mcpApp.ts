@@ -4,7 +4,9 @@
 // check screenshots), comment writes from the page, and the text every host
 // gets from show_open_design_artifact.
 import type { JsonRecord } from '../../vendored/artifactManifest';
+import * as path from 'node:path';
 import { readArtifact } from '../../vendored/artifactCreate';
+import { hasIncludes, resolveIncludes } from '../../export/flowIncludes';
 import { bundleStandaloneHtml } from '../../vendored/standaloneHtml';
 import { injectPreviewBridge, injectPreviewErrorReporter } from '../../content/exampleHtml';
 import { listCheckRuns, readCheckRunImage } from '../../export/checkHistory';
@@ -94,7 +96,10 @@ type Packed = { ok: true; html: string; externalDependencies: string[] } | { ok:
 async function packForPreview(workspaceRoot: string, entryPath: string, entryContent: string, kind: string | undefined): Promise<Packed> {
   if (kind && !PACKAGEABLE_KINDS.has(kind)) return { ok: false, reason: `A ${kind} artifact isn't shown inline; this is its latest check screenshot.` };
   try {
-    const bundled = await bundleStandaloneHtml({ entryPath, html: entryContent, readAsset: workspaceAssetReader(workspaceRoot) });
+    // A flow screen's shared navigation (openspec add-linked-flows) is filled in before inlining.
+    const root = path.resolve(workspaceRoot);
+    const html = hasIncludes(entryContent) ? (await resolveIncludes(entryContent, path.join(root, entryPath), root)).html : entryContent;
+    const bundled = await bundleStandaloneHtml({ entryPath, html, readAsset: workspaceAssetReader(workspaceRoot) });
     const bytes = Buffer.byteLength(bundled.html, 'utf8');
     if (bytes > PREVIEW_APP_MAX_HTML_BYTES) {
       return { ok: false, reason: `The design is ${(bytes / (1024 * 1024)).toFixed(1)} MiB once its files are inlined, too large to show here; this is its latest check screenshot.` };

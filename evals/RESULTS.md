@@ -66,3 +66,56 @@ Must notes (ticked by the reviewer from the contact sheet):
 - [ ] vague-bakery: Asked at most three questions, in one message
 - [ ] vague-launch: Asked what is launching and what to make
 - [ ] vague-launch: Stated its assumptions once before or after building
+
+## 2026-11-02 — app screens first live run
+
+- Kit: 0.4.0-beta.2 (claude/project-thread-fldkhh 5a2dd5a, local changes)
+- Mode: agent claude (2.1.316 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-02-21-20-56/`
+- Contact sheet: [runs/2026-11-02-21-20-56/contact-sheet.png](runs/2026-11-02-21-20-56/contact-sheet.png)
+
+- Designs: 5 from 2 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 2 of 5.
+- Critic: n/a (no critique recorded).
+- Agent cost: $1.24.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| settings-screen | 1 | .open-design/notification-settings/notification-settings.html | od:prototype:web-prototype ⚠ | 0 | — | 1 (overlap) | n/a | 0 | 5 | 14 | 122s | #2f6feb / - / - / light |
+| sign-in-flow | 1 | .open-design/habit-sign-in-flow/check-email.html | od:prototype:flow-sign-in | 0 | — | 0 (—) | n/a | 0 | 1 | 21 | 182s | - / - / - / - |
+| sign-in-flow | 1 | .open-design/habit-sign-in-flow/forgot-password.html | od:prototype:flow-sign-in | 0 | — | 2 (intent×2) | n/a | 0 | 1 | 21 | 182s | - / - / - / - |
+| sign-in-flow | 1 | .open-design/habit-sign-in-flow/home.html | od:prototype:flow-sign-in | 0 | — | 4 (stress-overflow×4) | n/a | 0 | 1 | 21 | 182s | - / - / - / - |
+| sign-in-flow | 1 | .open-design/habit-sign-in-flow/sign-in.html | od:prototype:flow-sign-in | 0 | — | 0 (—) | n/a | 0 | 4 | 21 | 182s | - / - / - / - |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] settings-screen: No hero, tagline or marketing copy: the first thing is the settings
+- [ ] settings-screen: Settings are grouped under short headings, each with a label and a one-line explanation
+- [ ] settings-screen: Has a saved, a saving and an error state for the save action
+- [ ] sign-in-flow: Four screens in one collection, planned as a flow, that link to each other with real links
+- [ ] sign-in-flow: The collection check reports no flow-broken-link or flow-dead-end
+- [ ] sign-in-flow: Sign in shows its error state (wrong password) and a way to reset it
+
+## 2026-11-02 — after routing fix
+
+- Kit: 0.4.0-beta.2 (claude/project-thread-fldkhh 5a2dd5a, local changes)
+- Mode: agent claude (2.1.316 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-02-21-27-38/`
+- Contact sheet: [runs/2026-11-02-21-27-38/contact-sheet.png](runs/2026-11-02-21-27-38/contact-sheet.png)
+
+- Designs: 1 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 1.
+- Critic: n/a (no critique recorded).
+- Agent cost: $0.41.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| settings-screen | 1 | .open-design/notification-settings/notification-settings.html | od:prototype:app-settings | 0 | — | 0 (—) | n/a | 0 | 5 | 12 | 110s | #2f6feb / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] settings-screen: No hero, tagline or marketing copy: the first thing is the settings
+- [ ] settings-screen: Settings are grouped under short headings, each with a label and a one-line explanation
+- [ ] settings-screen: Has a saved, a saving and an error state for the save action
