@@ -192,6 +192,12 @@ The agent uses `/open-design-design-system-from-url` (in VS Code, also **Open De
 
 For a reference site, the design system is named "<Name>-inspired" and no logos or images are copied. Dark values are only measured when the site has a dark theme. A page behind a bot check or login comes back as blocked, with its screenshot; give the agent the CSS or a screenshot instead. Without a browser, the agent gets candidate colours and fonts from the page source only, and asks you to confirm them.
 
+### Take one from your app
+
+> Scan our app so designs match it.
+
+The agent reads your app's tokens (Tailwind theme, CSS variables, MUI theme, each with its file and line), its themes and its components with their variants, shows you what it found, and on your OK saves them as `user:<name>` with a `components.json` vocabulary. Briefs on it then build from your components, and the check flags values pasted in instead of your tokens. Scanning again reports what changed in the app since. See [Design from your app](design-from-your-app.md).
+
 ### Pick one from style tiles
 
 Not sure what the brand should look like? Ask for options:

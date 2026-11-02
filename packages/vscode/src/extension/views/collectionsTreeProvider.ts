@@ -4,6 +4,8 @@ import {
   directionArtifactMap,
   listCollections,
   listExplorations,
+  loadCollectionFlow,
+  writeFlowMap,
   type Collection,
   type CollectionScreen,
   type ExplorationSummary,
@@ -36,6 +38,8 @@ interface ExplorationChildNode {
   entryPath?: string;
   /** Opens in the system browser when set. */
   externalPath?: string;
+  /** Writes this collection's flow map, then opens it in the system browser. */
+  flowMapCollectionId?: string;
 }
 
 type CollectionsTreeNode = CollectionNode | ScreenNode | ExplorationNode | ExplorationChildNode;
@@ -90,6 +94,8 @@ export class CollectionsTreeProvider implements vscode.TreeDataProvider<Collecti
       if (workspaceRoot && node.entryPath) {
         const uri = vscode.Uri.file(path.join(workspaceRoot, node.entryPath));
         item.command = { command: 'openDesign.openArtifactPreview', title: 'Open Artifact Preview', arguments: [uri] };
+      } else if (node.flowMapCollectionId) {
+        item.command = { command: 'openDesign.openFlowMap', title: 'Open Flow Map in Browser', arguments: [node.flowMapCollectionId] };
       } else if (workspaceRoot && node.externalPath) {
         // The comparison page frames sibling files by relative path, which the
         // preview's srcdoc iframe can't resolve, so it opens in the system browser.
@@ -154,7 +160,12 @@ export class CollectionsTreeProvider implements vscode.TreeDataProvider<Collecti
       return children;
     }
     if (node.kind === 'collection') {
-      return node.collection.screens.map((screen) => ({ kind: 'screen', screen }));
+      const screens: CollectionsTreeNode[] = node.collection.screens.map((screen) => ({ kind: 'screen', screen }));
+      if (node.collection.screens.length > 1 || node.collection.screens.some((s) => s.flow)) {
+        // The flow map frames the screens by relative path, so like the comparison page it opens in the system browser.
+        screens.push({ kind: 'exploration-child', label: 'Open flow map in browser', tooltip: 'Every screen with the links between them', icon: 'type-hierarchy-sub', flowMapCollectionId: node.collection.collectionId });
+      }
+      return screens;
     }
     return [];
   }
@@ -181,6 +192,17 @@ export function registerCollectionsTreeView(context: vscode.ExtensionContext): v
   context.subscriptions.push(
     vscode.commands.registerCommand('openDesign.openExplorationComparison', (uri?: vscode.Uri) => {
       if (uri) void vscode.env.openExternal(uri);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('openDesign.openFlowMap', async (collectionId?: string) => {
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!workspaceRoot || !collectionId) return;
+      const flow = await loadCollectionFlow(workspaceRoot, getOutputDirectory(), collectionId);
+      if (!flow) return;
+      const { mapPath } = await writeFlowMap(workspaceRoot, flow);
+      void vscode.env.openExternal(vscode.Uri.file(path.join(workspaceRoot, mapPath)));
     }),
   );
 

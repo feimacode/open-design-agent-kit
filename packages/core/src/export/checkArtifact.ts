@@ -5,6 +5,7 @@
 // checked at several viewports, card designs at their format size, and decks
 // slide by slide. Host-agnostic: the VS Code tool, the MCP tool and the CLI
 // all call checkArtifact().
+import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { Browser, Page } from 'puppeteer-core';
 import { readArtifact } from '../vendored/artifactCreate';
@@ -30,6 +31,8 @@ import { applyShape, collectHorizontalScroll, collectRunningMotion, collectState
 import { formatPreflight, runPreflight, type Finding } from '../poster/preflight';
 import { renderShapeSheetHtml, type ShapeThumbnail } from '../poster/shapeSheet';
 import { isAppScreen, runScreenChecks } from './screenChecks';
+import { findBaseScreen } from '../generation/baseScreen';
+import { parseAppComponentsFile, tokenFindings } from '../generation/appDesignSystem';
 
 export interface CheckViewport {
   name: string;
@@ -381,6 +384,20 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
     } else if (probe) {
       result.scene3d = { views: [], note: reviewUnavailableNote(probe), tier: probe.tier };
     }
+    // Designs on a design system saved from an app: token findings (openspec add-design-from-app).
+    result.findings.push(...(await appTokenFindings(options.workspaceRoot, options.outputDir ?? '.open-design', manifest, artifact.entryContent)));
+    // A redesign's base screen, beside the new design, second (openspec add-design-from-app).
+    const basePath = maxImages > 0 ? await findBaseScreen(options.workspaceRoot, options.outputDir ?? '.open-design', options.entryPath) : undefined;
+    if (basePath) {
+      await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
+      await page.evaluate('window.scrollTo(0, 0)');
+      await settle(page);
+      const now = Buffer.from(await page.screenshot({ type: 'png' }));
+      const before = await fs.readFile(path.join(options.workspaceRoot, basePath));
+      const label = `base vs new (${basePath})`;
+      result.images.splice(Math.min(1, result.images.length), 0, await toCheckImage(instance, label, await composeReviewSheet(instance, [{ label: 'base (now)', png: before }, { label: 'new', png: now }])));
+      while (result.images.length > maxImages) result.omitted.push(result.images.pop()!.label);
+    }
     if (/\bdata-od-email\b/.test(artifact.entryContent)) {
       // Email artifacts (a [data-od-email] column root): the email rules too, measured at a wide client width (local images are a note here; export enforces baseUrl).
       await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 1 });
@@ -392,6 +409,17 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
   } finally {
     await session?.close();
   }
+}
+
+/** token-undefined and token-hardcoded for a design on a user design system saved from an app. */
+async function appTokenFindings(workspaceRoot: string, outputDir: string, manifest: JsonRecord, html: string): Promise<Finding[]> {
+  const id = typeof manifest.designSystemId === 'string' ? manifest.designSystemId : undefined;
+  if (!id?.startsWith('user:')) return [];
+  const dir = path.join(workspaceRoot, outputDir, 'design-systems', id.slice('user:'.length));
+  const file = parseAppComponentsFile(await fs.readFile(path.join(dir, 'components.json'), 'utf8').catch(() => undefined));
+  if (!file) return [];
+  const tokensCss = await fs.readFile(path.join(dir, 'tokens.css'), 'utf8').catch(() => '');
+  return tokenFindings(html, file.tokens, tokensCss);
 }
 
 /** Captures the first viewport (or the card) at each time in `at` on the virtual clock, labelled t=<seconds>s. */

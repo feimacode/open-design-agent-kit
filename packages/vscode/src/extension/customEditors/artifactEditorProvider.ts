@@ -21,6 +21,7 @@ import {
   isContractToken,
   injectPreviewBase,
   injectPreviewBridge,
+  resolveIncludes,
   injectPreviewErrorReporter,
   localRelativePath,
   injectScriptNonce,
@@ -246,7 +247,7 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         injectPreviewErrorReporter(
           injectPreviewBridge(
             prepareHtml(
-              await inlineLocalFrames(await inlineLocalImages(document.getText(), readImage), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
+              await inlineLocalFrames(await inlineLocalImages(location ? (await resolveIncludes(document.getText(), document.uri.fsPath, location.workspaceRoot)).html : document.getText(), readImage), readFramed, (html, resolved) => prepareHtml(html, vscode.Uri.joinPath(vscode.Uri.parse(resolved), '..'))),
               documentDir,
             ),
             bridgeCode,

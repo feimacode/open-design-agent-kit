@@ -2,6 +2,10 @@ import * as vscode from 'vscode';
 import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import {
   composeInstructions,
+  latestFlowPlan,
+  resolveBriefFlow,
+  prepareBaseScreen,
+  composeComponentVocabularySection,
   findCollectionArtifacts,
   resolveBriefCanvas,
   hostOverrideFor,
@@ -24,6 +28,8 @@ interface PrepareBriefInput {
   collectionId?: string;
   collectionName?: string;
   screenRole?: string;
+  flow?: unknown;
+  baseScreen?: string;
   screenTotal?: number;
   sources?: string[];
   format?: string;
@@ -38,7 +44,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<PrepareBriefInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, sources: sourcePaths, format, fluid, answers, assumptions } = options.input;
+    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, flow, baseScreen: baseScreenInput, sources: sourcePaths, format, fluid, answers, assumptions } = options.input;
 
     const decisions = validateBriefDecisions(answers, assumptions);
     if (!decisions.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(decisions.error)]);
@@ -89,6 +95,11 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
 
     let suggestedEntryPath: string;
     let collectionContext: Parameters<typeof composeInstructions>[0]['collectionContext'];
+    let flowContext: Parameters<typeof composeInstructions>[0]['flowContext'];
+    let flowNote: string | undefined;
+    if (flow !== undefined && !collectionId) {
+      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart('flow needs collectionId: a flow plan belongs to a collection of screens.')]);
+    }
     if (collectionId) {
       if (!screenRole) {
         return new vscode.LanguageModelToolResult([
@@ -111,6 +122,10 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
         role: screenRole,
         siblingScreens: siblings.map((s) => ({ role: s.screenRole ?? '?', title: s.title })),
       };
+      const resolvedFlow = resolveBriefFlow(flow, latestFlowPlan(siblings), screenRole, suggestedEntryPath);
+      if (!resolvedFlow.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resolvedFlow.error)]);
+      flowContext = resolvedFlow.context;
+      flowNote = resolvedFlow.note;
     } else {
       suggestedEntryPath = suggestEntryPath(brief, skill.name);
     }
@@ -125,6 +140,14 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
     });
     if (!sources.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(sources.error)]);
 
+    let baseScreen: { path: string; from: string } | undefined;
+    if (baseScreenInput) {
+      if (!vscode.workspace.workspaceFolders?.[0]) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart('baseScreen needs an open workspace folder.')]);
+      const browserPath = vscode.workspace.getConfiguration('openDesign').get<string>('export.browserPath', '') || undefined;
+      const base = await prepareBaseScreen({ workspaceRoot: getWorkspaceRoot(), outputDir: getOutputDirectory(), entryPath: suggestedEntryPath, baseScreen: baseScreenInput, browserPath });
+      if (!base.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(base.error)]);
+      baseScreen = base;
+    }
     const recentDesigns = await loadRecentDesigns(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath, { collectionId, entryPath: suggestedEntryPath });
     const instructions = composeInstructions({
       skillName: skill.name,
@@ -136,6 +159,9 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       suggestedEntryPath,
       existingAppFrameworks,
       collectionContext,
+      flowContext,
+      componentVocabulary: designSystem?.appComponents ? composeComponentVocabularySection(designSystem.appComponents) : undefined,
+      baseScreen,
       hostOverride: hostOverrideFor(skill.id, skill.body),
       sourceContext: sources.context,
       canvasFormat,
@@ -157,6 +183,9 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
         : "No design system was used. If the user wants a look but hasn't named one, call recommend_open_design_design_systems with what you know about the design, then prepare the brief again with the chosen designSystemId.",
       outlinePath: sources.context?.outlinePath,
       sources: sources.context?.sources.map((s) => ({ path: s.path, markdownPath: s.markdownPath, kind: s.kind })),
+      flowScreenId: flowContext?.screenId,
+      flowNote,
+      baseScreenPath: baseScreen?.path,
     };
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(JSON.stringify(payload, null, 2))]);

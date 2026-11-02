@@ -6,6 +6,7 @@
 // element scan of the design, the token-to-theme mapping, the manifest
 // record) and the agent writes the components with its own file tools.
 
+import { markedComponents } from './appDesignSystem';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { load } from 'cheerio';
@@ -346,6 +347,15 @@ export function composeComponentLibraryInstructions(input: ComposeComponentLibra
 
   parts.push(`\n\n## The design${artifacts.length === 1 ? '' : 's'}`);
   for (const a of artifacts) parts.push(`\n\n### ${a.title}\n\nEntry file: \`${a.entryPath}\`\n\n\`\`\`html\n${trimHtmlForInstructions(a.html).trim()}\n\`\`\``);
+
+  const marked = artifacts.map((a) => markedComponents(a.html));
+  const reused = [...new Set(marked.flatMap((m) => m.reused))];
+  const proposed = [...new Set(marked.flatMap((m) => m.proposed))];
+  if (reused.length > 0) {
+    parts.push(
+      `\n\n## The app's own components\n\nThe design marks parts with \`data-od-component\` as components the app already has: ${reused.map((n) => `\`${n}\``).join(', ')}. Don't create components for them; the set imports the app's own. Build components only for parts marked \`new:\`${proposed.length ? ` (${proposed.join(', ')})` : ''} and unmarked parts.`,
+    );
+  }
 
   parts.push(
     `\n\n## Stage 1 — inventory, then stop\n\nThese repeated elements and controls were found in the design (selector, count, where). They are a starting point: merge, split, rename or drop them.\n\n` +

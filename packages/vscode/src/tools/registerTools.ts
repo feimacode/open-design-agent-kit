@@ -4,6 +4,7 @@ import type { ILogService } from '../extension/log/logService';
 import { ListSkillsTool } from './listSkillsTool';
 import { ListDesignSystemsTool } from './listDesignSystemsTool';
 import { RecommendDesignSystemsTool } from './recommendDesignSystemsTool';
+import { ScanAppTool } from './scanAppTool';
 import { PrepareBriefTool } from './prepareBriefTool';
 import { RegisterArtifactTool } from './registerArtifactTool';
 import { GetArtifactTool } from './getArtifactTool';
@@ -42,6 +43,7 @@ export function registerTools(
     ['list_open_design_skills', new ListSkillsTool(contentIndex)],
     ['list_open_design_design_systems', new ListDesignSystemsTool(contentIndex)],
     ['recommend_open_design_design_systems', new RecommendDesignSystemsTool(contentIndex)],
+    ['scan_open_design_app', new ScanAppTool(contentIndex)],
     ['read_open_design_source', new ReadSourceTool()],
     ['prepare_open_design_brief', new PrepareBriefTool(contentIndex)],
     ['prepare_open_design_exploration', new PrepareExplorationTool(contentIndex)],
@@ -53,7 +55,7 @@ export function registerTools(
     ['remix_open_design_example', new RemixExampleTool(contentIndex, assetsRoot, communityContentDir)],
     ['create_open_design_design_system', new CreateCustomDesignSystemTool(contentIndex)],
     ['extract_open_design_design_system', new ExtractDesignSystemTool()],
-    ['port_open_design_artifact_to_app', new PortToAppCodeTool()],
+    ['port_open_design_artifact_to_app', new PortToAppCodeTool(contentIndex)],
     ['prepare_open_design_component_library', new PrepareComponentLibraryTool(contentIndex)],
     ['share_open_design_artifact_to_community', new ShareToCommunityTool()],
     ['publish_open_design_artifact_to_canva', new PublishCanvaTemplateTool()],

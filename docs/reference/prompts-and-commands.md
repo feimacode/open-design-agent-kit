@@ -70,6 +70,7 @@ Copilot also receives Open Design's chat instructions on every request, so a pla
 | Open Design: Refresh Integrations | `openDesign.refreshIntegrations` | Re-check which [integrations](../guides/integrations.md#see-whats-connected) are connected (Integrations view). |
 | Open Design: Show Integration Setup | `openDesign.showIntegration` | Open an integration's setup view (from the Integrations view). |
 | Open Design: Open Comparison in Browser | `openDesign.openExplorationComparison` | Open an [exploration's](../guides/explore-directions.md) comparison page in your browser (from the Collections view). |
+| Open Design: Open Flow Map in Browser | `openDesign.openFlowMap` | Write a collection's [flow map](../guides/app-screens.md#check-a-flow) and open it in your browser (from the Collections view). |
 | Open Design: Sync Community Designs | `openDesign.syncCommunityContent` | Fetch the community catalog at [`openDesign.communityContentRef`](settings-and-env.md#opendesigncommunitycontentref). |
 | Open Design: Open Docs | `openDesign.openDocs` | Open this documentation in the browser. |
 

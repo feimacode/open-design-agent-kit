@@ -20,6 +20,8 @@ This guide ports one page into one component. For a reusable set of components a
    - `targetComponentPath`: where the new code goes. A path is suggested if you don't give one.
 3. The agent writes the new component with its own tools. It rebuilds the design in your app's styling system rather than copying the prototype's CSS.
 
+When the design was built on a design system [taken from your app](design-from-your-app.md), its parts are marked with your components (`data-od-component="Button"`): the agent imports those from where the scan found them and writes new components only for parts marked `new:` and unmarked ones.
+
 > **In VS Code:** the **Promote to code** button in the [preview](preview-comments-edit.md) toolbar asks **One component** or **A component set** and prefills the matching request.
 
 ## What you get

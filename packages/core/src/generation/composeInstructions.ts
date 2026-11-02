@@ -7,6 +7,8 @@ import { composeSourceMaterialSection, composeSourceWorkflowSection, type Source
 import { composeDecisionsSection, composeRegisterBriefNote, type BriefDecisions } from './briefDecisions';
 import { composeRecentDesignsSection, type RecentDesignsContext } from '../workspace/designHistory';
 import { composeScreenSpecSection } from './screenDecisions';
+import { composeFlowSection, type FlowPlan } from './flowPlan';
+import { composeBaseScreenSection } from './baseScreen';
 
 const CRAFT_SLUG = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -188,6 +190,12 @@ export interface ComposeInstructionsInput {
   productContext?: { path: string; text: string };
   /** A project DESIGN.md found while no design system is active (openspec add-impeccable-interop). */
   projectDesignMdPath?: string;
+  /** The collection's flow plan and this screen's place in it (openspec add-linked-flows). */
+  flowContext?: { plan: FlowPlan; screenId: string; collectionDir: string };
+  /** The app's component vocabulary, already composed (openspec add-design-from-app). */
+  componentVocabulary?: string;
+  /** A redesign's base screen, stored under .bases/ (openspec add-design-from-app). */
+  baseScreen?: { path: string; from: string };
 }
 
 /**
@@ -207,6 +215,11 @@ export function checkedInThisKitNote(craftIds: readonly string[]): string | unde
       '- **accessibility-baseline.** On pages, `check_open_design_artifact` also forces hover and keyboard focus on up to 60 interactive elements (`state-contrast` for text below 4.5:1 in those states, `focus-visible` as an error when focus shows no visible change), measures tap targets on the phone viewport (`tap-target`, WCAG 2.2 target size: under 24×24 px with no room around them), renders at 320 px wide (`reflow`, an error when the page scrolls sideways or clips text) and with reduced motion (`reduced-motion`, animations still running). Default-state `contrast` is checked too. Screen-reader naming, ARIA and keyboard traps are not checked.',
     );
   }
+  if (craftIds.includes('product-ui') || craftIds.includes('state-coverage')) {
+    lines.push(
+      '- **product-ui and state-coverage.** On app screens, `check_open_design_artifact` renders each `data-od-state` frame on its own (findings name the state), reports a table, list, fetched panel or form designed only populated (`state-missing`), a toggle, tab or sort control that changes nothing when clicked (`dead-control`), and, with long names and large numbers swapped in, text pushed out of its box (`stress-overflow`) or cut with no way to read it (`stress-truncation`). `data-od-stress="off"` on an element skips it in the stress pass. On a collection, it also reports links to missing screens (`flow-broken-link`), screens with no way forward (`flow-dead-end`, unless `data-od-end`), planned links not built (`flow-unfilled`), a navigation that differs from the shared one (`flow-nav-drift`) and screens nothing links to (`flow-unlinked`).',
+    );
+  }
   return lines.length > 0 ? `### Checked in this kit\n\n${lines.join('\n')}` : undefined;
 }
 
@@ -223,6 +236,7 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
   if (decisions) parts.push(`\n\n${decisions}`);
   const screenSpec = composeScreenSpecSection(input.decisions?.answers);
   if (screenSpec) parts.push(`\n\n${screenSpec}`);
+  if (input.baseScreen) parts.push(`\n\n${composeBaseScreenSection(input.baseScreen)}`);
 
   if (input.sourceContext && input.sourceContext.sources.length > 0) {
     parts.push(`\n\n${composeSourceMaterialSection(input.sourceContext)}`);
@@ -271,6 +285,11 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
       `\n\n## Part of a design collection\n\nThis artifact is screen ${index} of ${total} in the design collection "${collectionName}" — this screen's role: **${role}**. The other screens in this collection so far:\n\n${siblingsText}\n\nKeep this screen visually and stylistically consistent with the others (same design system, same header/nav treatment, same component style) without re-reading their HTML — you already have their role and title above as context. Do not duplicate content that belongs on a different screen.`,
     );
   }
+
+  if (input.flowContext) {
+    parts.push(`\n\n${composeFlowSection(input.flowContext.plan, input.flowContext.screenId, input.flowContext.collectionDir)}`);
+  }
+  if (input.componentVocabulary) parts.push(`\n\n${input.componentVocabulary}`);
 
   const recent = composeRecentDesignsSection(input.recentDesigns, Boolean(input.designSystemBody?.trim()));
   if (recent) parts.push(`\n\n${recent}`);

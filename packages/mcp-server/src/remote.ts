@@ -56,6 +56,7 @@ export const REMOTE_HIDDEN_TOOLS: Record<string, string> = {
   set_up_open_design_browser_pane: "Claude Desktop's Code tab on the user's computer",
   open_open_design_preview: "a browser window on the user's computer",
   port_open_design_artifact_to_app: "the user's code project",
+  scan_open_design_app: "the user's code project",
   prepare_open_design_component_library: "the user's code project",
   read_open_design_source: "documents on the user's computer",
   start_open_design_job_run: 'scheduled jobs on the user’s computer',

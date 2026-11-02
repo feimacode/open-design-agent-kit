@@ -15,6 +15,8 @@ import {
   resolveArtifactComments,
   validateRegisteredBrief,
   withBriefMetadata,
+  registeredFlow,
+  withFlowMetadata,
   withCritique,
 } from '@feimacode/open-design-agent-kit-core';
 import { COMPARE_PAGE_NOTE } from './explorationTools';
@@ -30,6 +32,7 @@ interface RegisterArtifactInput {
   collectionName?: string;
   screenIndex?: number;
   screenRole?: string;
+  flow?: unknown;
   explorationId?: string;
   directionId?: string;
   sources?: string[];
@@ -63,13 +66,15 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<RegisterArtifactInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, explorationId, directionId, sources, format, resolvedCommentIds, brief, critique } =
+    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, flow, explorationId, directionId, sources, format, resolvedCommentIds, brief, critique } =
       options.input;
 
     if (format !== undefined && !getFormat(format)) {
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(unknownFormatError(format))]);
     }
 
+    const registered = registeredFlow(flow, collectionId, screenRole);
+    if (!registered.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(registered.error)]);
     const registeredBrief = validateRegisteredBrief(brief);
     if (!registeredBrief.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(registeredBrief.error)]);
 
@@ -90,7 +95,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
       const sourceRegistration = sources?.length
         ? await prepareSourceRegistration({ workspaceRoot: getWorkspaceRoot(), outputDir: getOutputDirectory(), entryPath, sourcePaths: sources })
         : undefined;
-      const metadata = withBriefMetadata(await posterRegistrationMetadata(getWorkspaceRoot(), entryPath, format), registeredBrief.brief);
+      const metadata = withFlowMetadata(withBriefMetadata(await posterRegistrationMetadata(getWorkspaceRoot(), entryPath, format), registeredBrief.brief), registered.record);
       const manifest = await registerArtifact({
         entryPath,
         artifactManifest: {
@@ -138,6 +143,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
         commentsNote = `\n\nMarked ${resolved.length} comment(s) resolved.${unknown.length ? ` No comment with id ${unknown.join(', ')}.` : ''}`;
       }
 
+      const flowNote = registered.note ? `\n\n${registered.note}` : '';
       const critiqueNote = critiqueRecord?.ok ? `\n\nRecorded the critique (${critiqueSummary(critiqueRecord.record)}) as metadata.critique.` : '';
 
       let explorationNote = '';
@@ -150,7 +156,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `Artifact registered at ${entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}${openNote}${commentsNote}${critiqueNote}${explorationNote}${sourceNote}`,
+          `Artifact registered at ${entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}${openNote}${flowNote}${commentsNote}${critiqueNote}${explorationNote}${sourceNote}`,
         ),
       ]);
     } catch (err) {

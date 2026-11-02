@@ -56,7 +56,7 @@ The critic judges only what is in `critiqueInput` and the screenshots, never wha
 | `colour-contrast` | The accent used for meaning, not decoration; contrast findings from the check. |
 | `layout-rhythm` | Spacing on the design system's steps, alignment, crowded or dead areas. |
 | `copy` | Filler, invented numbers, vague buttons ("Submit", "Learn more"). |
-| `states` | Empty, loading and error states present where the design shows data. |
+| `states` | Empty, loading and error states present where the design shows data. When a screenshot is labelled `states: …` (the states board), judge every frame on it: each says why it is in that state and offers a next action, and none is a blank panel or a near-copy of the default. |
 | `fit` | Matches the design system's `DESIGN.md` and the brief, not a generic look. |
 
 **The brief wins.** When the brief or the design system asks for the look a finding objects to (all caps, one colour, a dense layout), drop the finding. Don't flag what the check already reported as an error unless it is still visible in the screenshots.

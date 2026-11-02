@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import { APP_COMPONENTS_FILE, parseAppComponentsFile, type AppComponentsFile } from '../generation/appDesignSystem';
 import * as path from 'node:path';
 import matter from 'gray-matter';
 import { loadIntegrationRegistry, type IntegrationRegistry } from '../integrations/registry';
@@ -117,6 +118,8 @@ export interface DesignSystemDetail extends DesignSystemSummary {
   craftExemptions: string[];
   /** The design system's `tokens.css`, when it has one. */
   tokensCss?: string;
+  /** User systems saved from an app: its component vocabulary and scanned tokens (openspec add-design-from-app). */
+  appComponents?: AppComponentsFile;
   /** Built-in only: the extension's additive local override (content overlay `tokens.override.css`), applied on top of `tokensCss`. */
   tokensOverrideCss?: string;
 }
@@ -528,6 +531,7 @@ async function loadUserDesignSystems(dir: string | undefined): Promise<Map<strin
     const fallback = parseDesignSystemMarkdown(id, raw);
     // Never an override for custom systems: the user owns tokens.css directly.
     const tokensCss = await readOptional(path.join(dir, entry.name, 'tokens.css'));
+    const appComponents = parseAppComponentsFile(await readOptional(path.join(dir, entry.name, APP_COMPONENTS_FILE)));
     result.set(id, {
       id,
       name: fallback.name,
@@ -540,6 +544,7 @@ async function loadUserDesignSystems(dir: string | undefined): Promise<Map<strin
       body: raw.trim(),
       hasTokens: tokensCss !== undefined,
       tokensCss,
+      ...(appComponents ? { appComponents } : {}),
     });
   }
   return result;

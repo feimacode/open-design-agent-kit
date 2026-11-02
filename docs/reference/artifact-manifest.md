@@ -49,7 +49,7 @@ Sidecars are named after the entry file (`<entry>.artifact.json`, and so on), so
 | `collectionId`, `collectionName`, `screenRole`, `screenIndex` | string / number | Collection membership. See [Collections](../guides/generate-a-design.md#collections). |
 | `sources` | `{ path, sha256 }[]` | The documents the design was [built from](../guides/deck-from-a-document.md), with their hashes at registration, so [`get_open_design_artifact`](tools.md#get_open_design_artifact) can report sources that changed since. At most 10. |
 | `explorationId`, `directionId` | string | Exploration membership: a sketch carries both; a built-out or merged version carries only `explorationId`. See [Explore design directions](../guides/explore-directions.md). |
-| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format`, `metadata.fluid`, `metadata.shares`, `metadata.sync`, `metadata.componentLibrary` and `metadata.critique` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
+| `metadata` | object | Free-form, at most 16 KB. Uses so far: `metadata.exports`, `metadata.format`, `metadata.fluid`, `metadata.shares`, `metadata.sync`, `metadata.componentLibrary`, `metadata.critique` and `metadata.flow` (below), `metadata.remixedFrom` (the example a remix came from) and `metadata.description` (used for link previews when present). |
 
 ### metadata.exports
 
@@ -133,6 +133,21 @@ The design critic's latest opinion on the design (a [second opinion](../guides/g
 
 ```json
 "metadata": { "critique": { "verdict": "polish", "findings": [{ "area": "copy", "where": "hero button", "problem": "\"Learn more\" doesn't say what happens.", "fix": "Say \"Start your free trial\"." }], "checkRunId": "2026-10-24T12-00-00", "at": "2026-10-24T12:01:10.000Z" } }
+```
+
+### metadata.flow
+
+A collection screen's [flow plan](../guides/app-screens.md#linked-flows), written when the agent passes `flow` to [`register_open_design_artifact`](tools.md#register_open_design_artifact). Every screen keeps the plan it was built to; the most recently registered one is the collection's plan.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `plan.screens` | `{ id, title, role?, end? }`[] | At most 20. `id` is a slug and the screen's file name in the collection. |
+| `plan.links` | `{ from, trigger, to }`[] | At most 80: the label the user taps on `from` and the screen it opens. |
+| `plan.nav` | `{ label, to }`[] | The shared navigation (at most 7 items), written once to `<collection>/_shared/nav.html`. |
+| `screenId` | string | Which planned screen this artifact is. |
+
+```json
+"metadata": { "flow": { "screenId": "welcome", "plan": { "screens": [{ "id": "welcome", "title": "Welcome" }, { "id": "goals", "title": "Goals" }], "links": [{ "from": "welcome", "trigger": "Continue", "to": "goals" }] } } }
 ```
 
 ## Exports by kind

@@ -240,6 +240,17 @@ Recommends 3 to 5 design systems for a design, from a short profile the agent fi
 - `questions`: only when the profile has fewer than two fields and confidence is low. Up to three multiple-choice questions (what it's for, how it should feel, light or dark) plus an optional free-text one (a product it should feel like). The agent asks them once and accepts "you pick". With an empty profile the list starts with `default`.
 - `ignored`: values outside the lists above, which were skipped.
 
+### scan_open_design_app
+
+Reads the app in the workspace and reports what a design for it should reuse. **It never changes a file**, never reads `.env*` files, and stops after 2,000 files or 1 MB of reads. Not offered by the hosted server. See [Design from your app](../guides/design-from-your-app.md).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `root` | string | no | Workspace-relative folder of the app, for a monorepo. Default the workspace root. |
+| `name` | string | no | A name for a design system saved from the app. Only after the user agrees. |
+
+**Result:** text listing the framework and styling (Next.js, Vite, Expo; Tailwind, MUI, shadcn/ui, NativeWind…), the tokens by kind with the file and line each comes from (Tailwind `theme`/`theme.extend`, CSS variables in `:root`, `@theme`, `.dark` and `[data-theme]` blocks, MUI `createTheme`), the themes, the exported components with their variant props (union types and `cva` variants) and import counts, most imported first, and the screens (Next.js app and pages routes, Expo Router, React Router `path`s). When a design system was already saved from the same `root`, it adds what changed since: tokens added, removed or changed (old and new value), components added, removed or with changed variants. With `name`, it adds the three files to write under `<output>/design-systems/<slug>/`: `DESIGN.md`, `tokens.css` (each value with its source in a comment; dark values under `[data-theme="dark"], .dark`) and `components.json` (the vocabulary and the scanned tokens), then `set_active_design_system` with `user:<slug>`.
+
 ## Generating
 
 ### read_open_design_source
@@ -275,17 +286,19 @@ Composes the instructions for a new design. It combines the skill's workflow, th
 | `collectionName` | string | no | Display name of the collection. Required with `collectionId`. |
 | `screenRole` | string | no | This screen's role, e.g. `splash`, `checkout`. Required with `collectionId`. |
 | `screenTotal` | number | no | Planned number of screens, for "screen N of M" framing. |
+| `flow` | `{ screens, links?, nav? }` | no | A [flow plan](../guides/app-screens.md#linked-flows) for the collection: `screens` (≤ 20) of `{ id, title, role?, end? }`, `links` (≤ 80) of `{ from, trigger, to }` and an optional shared `nav` (≤ 7) of `{ label, to }`. Needs `collectionId`; `screenRole` names this screen's id. The instructions list every screen, this screen's links as `<a href="<id>.html" data-od-goto="<id>">` and the shared-navigation include. Left out, the most recently registered plan of the collection is used. |
+| `baseScreen` | string | no | For a [redesign](../guides/design-from-your-app.md#redesign-a-screen-you-have): a workspace image (PNG, JPEG, WebP) of the screen as it is, or its URL (captured in a browser). Copied or captured to `.open-design/.bases/` (never published); the instructions treat it as the screen to change, and the check shows it beside the new design. |
 | `sources` | string[] (1–10) | no | Workspace paths of documents to [build from](../guides/deck-from-a-document.md). Each is extracted with [`read_open_design_source`](#read_open_design_source), and the instructions add the material, an outline-first workflow (write `outline.md`, get approval, then build) and accuracy rules. |
 | `format` | [format id](#canvas-formats) | no | A canvas format. The instructions gain a **Canvas** section with the exact size, units, safe area and, for print, the bleed and minimum type size, which takes precedence over any size the skill names. See [Posters and print](../guides/posters.md). |
 | `fluid` | boolean | no | Build a **fluid** design that [reflows to any shape](../guides/posters.md#change-the-shape): the format becomes the default shape, and the Canvas section teaches container-unit sizing with wide and tall layout rules. Default: `true` for print formats, `false` for screen formats. `fluid: true` without `format` uses A3. |
 | `answers` | object | no | The user's answers to the surface's [questions](../guides/generate-a-design.md#a-few-questions-first) (and the design-system recommender's), by question id, e.g. `{ "where": "Printed" }`. |
 | `assumptions` | string[] (≤ 6, ≤ 160 characters each) | no | What the agent decided without asking, e.g. `["dark theme"]`. Answers and assumptions together are at most 2 KB. Both go into a **Build to these decisions** section, and the Output section asks the agent to pass them to `register_open_design_artifact` as `brief`. |
 
-**Result:** `{ instructions, suggestedEntryPath, suggestedKind, format?, fluid?, designSystemId?, designSystemName?, designSystemHint?, outlinePath?, sources? }`. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given. `designSystemHint` is present when no design system was used, and points at [`recommend_open_design_design_systems`](#recommend_open_design_design_systems).
+**Result:** `{ instructions, suggestedEntryPath, suggestedKind, format?, fluid?, designSystemId?, designSystemName?, designSystemHint?, outlinePath?, sources?, flowScreenId?, flowNote?, baseScreenPath? }`. `flowNote` says when this screen wasn't in the plan and was added to it. When the design system was [saved from an app](../guides/design-from-your-app.md), the instructions also list up to 60 of its components (most imported first, with their variants) and ask for each part to be marked `data-od-component="<Name>"`, or `new:<Name>` when nothing fits. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given. `designSystemHint` is present when no design system was used, and points at [`recommend_open_design_design_systems`](#recommend_open_design_design_systems).
 
 When `.open-design/history.json` lists earlier designs, the instructions also get a **Recent designs** section: up to five recent unrelated designs (theme, hero layout, display font, accent), with the rule to look recognisably different in at least two of those unless the user asked for the same look or the design system fixes it. For a [collection](../guides/generate-a-design.md#collections) screen, its earlier screens are listed under **Keep consistent with** instead. Exploration sketches are left out. `"variety": false` in `.open-design/config.json` turns the section off. See [Why designs vary](../guides/generate-a-design.md#why-designs-vary).
 
-**Errors:** unknown `skillId`, `designSystemId` or `format` (the message lists valid ids), `screenRole` missing with `collectionId`, a source that can't be read (the message names it), and `answers` or `assumptions` over their limits (the message names the limit; no brief is prepared).
+**Errors:** unknown `skillId`, `designSystemId` or `format` (the message lists valid ids), `screenRole` missing with `collectionId`, `flow` without `collectionId` or over its limits (the message names the limit), a `baseScreen` that can't be read or captured, a source that can't be read (the message names it), and `answers` or `assumptions` over their limits (the message names the limit; no brief is prepared).
 
 #### Canvas formats
 
@@ -347,6 +360,7 @@ Call after the entry file (and any supporting files) is written. Validates the a
 | `collectionName` | string | no | Same as passed to `prepare_open_design_brief`. |
 | `screenIndex` | number | no | 0-based position in the collection. |
 | `screenRole` | string | no | Same as passed to `prepare_open_design_brief`. |
+| `flow` | object | no | The same flow plan passed to `prepare_open_design_brief`. Stored as [`metadata.flow`](artifact-manifest.md#metadataflow) with this screen's id (`screenRole`); a screen that isn't in the plan is added to it, with a note. Needs `collectionId` and `screenRole`. |
 | `explorationId` | string | no | The [exploration](#exploring-directions) this artifact belongs to. Registering refreshes its comparison page. |
 | `directionId` | string | no | The direction this sketch is. Leave it out for a built-out or merged version registered against the exploration. |
 | `sources` | string[] | no | The same source paths passed to `prepare_open_design_brief`. Each source's hash is recorded in the manifest. |
@@ -744,7 +758,8 @@ What it renders depends on the artifact:
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `entryPath` | string | yes | The registered artifact's entry file. |
+| `entryPath` | string | one of these two | The registered artifact's entry file. |
+| `collectionId` | string | one of these two | Check a whole [collection](../guides/app-screens.md#check-a-flow) instead: every registered screen (findings tagged with the screen; `maxImages` shared across them, default 6), the [flow findings](#app-screens-flows-and-app-tokens) and store-rules notes, and the flow map `<collection>/flow.html`, rewritten each time. |
 | `viewports` | `{ name, width, height }`[] (1–4) | no | Pages only: the viewports to check instead of desktop and mobile. Ignored (with a warning) for card designs. |
 | `slides` | integer[] | no | Decks only: 1-based slide numbers to check. Default: every slide; the contact sheet shows the first 12 of them. |
 | `maxImages` | integer 0–6 | no | How many screenshots to attach. Default 3. `0` returns findings only. |
@@ -786,6 +801,39 @@ For a deliberate exception (a brand that really is purple, three equal pricing t
 
 Hover and focus are forced through the Chrome DevTools Protocol, so effects run by scripts (`mouseenter`) aren't seen. Several elements failing the same check are reported as one finding listing five of them and the count. These checks add no screenshots unless they find an error; then a crop of the first element with no focus indicator (`focus: …`) and the 320 px render (`reflow 320px`) come after each viewport's first screen, within `maxImages`. They add about half a second to a typical page check.
 
+#### App screens, flows and app tokens
+
+Pages made from an [app-screens](../guides/app-screens.md) entry (or with `data-od-state` frames) get the **states pass**. Each `data-od-state` frame is shown on its own and checked at every viewport; findings in a frame other than `default` carry its name (`empty state: …`). With two or more frames, a **states board** (every frame side by side) is attached second.
+
+| Check | Finds |
+|---|---|
+| `state-missing` | A table, list, fetched panel or form designed only populated: no `empty`, `loading` or `error` frame |
+| `dead-control` | A toggle, tab, `aria-pressed`/`aria-expanded`/`aria-selected` control or sort header that changes nothing on the page when clicked (up to 40 are clicked) |
+| `stress-overflow` | With names 60 characters long, numbers like 9,999,999 and text 2.5 times as long swapped in: text pushed out of its box. Only problems the page didn't already have are reported |
+| `stress-truncation` | In the same pass: text cut with an ellipsis and no `title` or other way to read it in full |
+
+`data-od-stress="off"` on an element leaves it out of the stress pass.
+
+With `collectionId`, the check also reads the links between screens:
+
+| Check | Finds |
+|---|---|
+| `flow-broken-link` | An error: a link to a `.html` file or `data-od-goto` screen that isn't in the collection |
+| `flow-dead-end` | A screen that links nowhere (the shared navigation counts), unless its `<body>` has `data-od-end` or the plan marks it `end` |
+| `flow-unfilled` | A planned screen that isn't registered, or is empty |
+| `flow-unlinked` | A planned link (`from`, `trigger`, `to`) that its screen doesn't have |
+| `flow-nav-drift` | A screen that writes its own navigation (with different labels) instead of including `_shared/nav.html`, a missing shared navigation, or one without the plan's items |
+| `store-rules` | In a collection with sign-up or paywall screens: no reachable account deletion, a paywall without restore, terms, privacy or the price and period, and a permission request with no reason. Info notes, or warnings when the brief says the app ships to the App Store or Play |
+
+On a design system [saved from an app](../guides/design-from-your-app.md), two more:
+
+| Check | Finds |
+|---|---|
+| `token-undefined` | `var(--x)` with no fallback, defined neither in the page nor in the design system |
+| `token-hardcoded` | A raw colour equal to one of the app's tokens (warning), or a length equal to its radius or spacing token (info), naming the token and the file and line it comes from |
+
+When the brief had a [`baseScreen`](#prepare_open_design_brief), a **base vs new** sheet (the base on the left, the new design at the first viewport on the right) is attached second.
+
 #### Saved check runs
 
 Each check that renders saves its screenshots and a findings summary to `.open-design/.checks/<entry>/<time>/`, keeping the last 5 runs per artifact. The result lists the saved image paths and, when there's an earlier run, its folder and how the error and warning counts changed (for example `errors 2 → 0`). Terminal agents such as Claude Code and Codex CLI don't show tool images to you, so this is how you see them: in the [browser preview's](../guides/browser-preview.md#checks) Checks panel, before and after side by side, or by opening the files. Add `.open-design/.checks/` to `.gitignore` if you don't want them committed.
@@ -816,7 +864,8 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `entryPath` | string | yes | The registered artifact's entry file. |
+| `entryPath` | string | one of these two | The registered artifact's entry file. |
+| `collectionId` | string | one of these two | Export a whole collection as one [clickable prototype](../guides/app-screens.md#share-a-clickable-prototype): `<collection>/exports/<collectionId>-prototype.html`, one self-contained file (assets inlined, shared navigation included) in which links switch screens, with a corner menu to jump to any screen. Other arguments are ignored. |
 | `format` | `png` · `jpeg` · `pdf` · `pptx` · `standalone` · `site` · `email` · `paste` · `mp4` · `webm` · `gif` | no | Default `png`. `pdf` works for decks (one page per slide) and pages (printed, vector). `pptx` is for decks only. `standalone` writes one self-contained `exports/<name>.html`. `site` writes a deploy-ready `exports/site/` folder. See [Share and publish](../guides/share-and-publish.md). `email` writes an inbox-ready `exports/<name>.email.html` and `.email.txt` ([HTML email](../guides/html-email.md)). `paste` writes `exports/<name>.<target>.html` for pasting into another editor. `mp4`, `webm` and `gif` [render an animation frame by frame](../guides/export-animations.md) and need an installed ffmpeg. |
 | `quality` | integer 1–100 | no | JPEG quality. Default 90. |
 | `width`, `height` | integer 16–8192 | no | CSS pixels, given together. They override the skill's size for images, the measured slide size for decks, or the page size for page PDFs. |
