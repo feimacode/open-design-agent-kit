@@ -69,6 +69,8 @@ The 198 bundled systems fall into these categories:
 
 Some ids you might reach for: `apple`, `stripe`, `linear-app`, `notion`, `vercel`, `airbnb`, `starbucks`, `claude`, `xiaohongshu`, `wechat`, and `default` ("Neutral Modern", a safe starter).
 
+To look through them yourself, open the [online gallery](https://feimacode.github.io/open-design-agent-kit/design-systems/): every system with a preview, its tokens and a prompt to copy. In Claude Desktop Chat you can also ask Claude to show the design systems; a picker appears in the conversation ([Inline preview](inline-preview.md#pick-a-design-system)).
+
 ## Not sure which one?
 
 You don't have to know the names. When you ask for a new design, haven't named a look, and nothing is active yet, the agent recommends one:
@@ -256,9 +258,10 @@ A custom design system is just Markdown, so you can write it or refine a generat
 
 ### Use one in Claude Design
 
-Claude Design keeps design systems as "Design System" artifacts in Claude (Settings > Design systems). Every built-in system is prebuilt in that format in [`claude-design-systems/`](../../claude-design-systems/README.md), one folder per system, with this kit's local fixes applied. Each folder holds a `project/` tree: `design-system.json`, `tokens.json`, `README.md` and a cover. Pick one of three routes:
+Claude Design keeps design systems as "Design System" artifacts in Claude (Settings > Design systems). Every built-in system is prebuilt in that format in [`claude-design-systems/`](../../claude-design-systems/README.md), one folder per system, with this kit's local fixes applied. Each folder holds a `project/` tree: `design-system.json`, `tokens.json`, `README.md` and a cover. Pick one of four routes:
 
-- **From a GitHub repo.** In Claude's **Add design system**, choose the GitHub repo starting point and give `feimacode/open-design-agent-kit` with the system's folder, for example `claude-design-systems/kami`. The importer copies a `tokens.json` that is already in Claude's format as is. One import makes one design system.
+- **From the online gallery.** Open the system in the [gallery](https://feimacode.github.io/open-design-agent-kit/design-systems/) and switch to its **Claude Design** view to see what you'll get: the cover, the tokens by family and the README. Under **Add it to Claude Design**, **Open in Claude** starts a new chat with a prompt that asks Claude to build the Design System artifact from the folder's files (or copy the prompt into a chat yourself).
+- **From a GitHub repo.** In Claude, go to **Settings → Design systems → New design system**, choose **Using Claude**, then **Sync from my GitHub repository**. Give `feimacode/open-design-agent-kit` and pick one system's folder, for example `claude-design-systems/kami`. Claude needs access to your GitHub account for this. The importer copies a `tokens.json` that is already in Claude's format as is. One import makes one design system.
 - **Upload from files.** Choose the upload starting point and drop the files of the folder's `project/`.
 - **Several at once, from Claude Code.** In a checkout of this repository, ask:
 

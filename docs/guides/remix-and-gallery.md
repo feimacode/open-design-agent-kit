@@ -10,6 +10,15 @@ The agent finds remixable entries with [`list_open_design_skills`](../reference/
 
 > **In Claude Code / Codex:** the overview skill ships `references/remixable-examples.md`, a list of every example grouped by mode, which the agent can read without a tool call. Each example is also an MCP prompt named `od-<mode>-<id>` (in Claude Code, `/mcp__open-design__od-…`). Selecting one prefills a remix request for you to edit and send.
 
+## The online gallery
+
+The [Open Design gallery](https://feimacode.github.io/open-design-agent-kit/) shows every example and design system as a web page, with no install. Search or filter by tag (a link can carry the filter, such as `examples/#tag=poster`), open one full size, and download its files. Each page hands the next step to your agent:
+
+- **An example** gives the remix prompt ("Remix the Open Design example …") and the brief it was made from. Paste it into any agent with Open Design.
+- **A design system** gives a prompt to use it with Open Design, and one to add it to Claude Design, with **Open in Claude** to start that chat. See [Use one in Claude Design](design-systems.md#use-one-in-claude-design).
+
+Agents can read the same list as data from `gallery.json` at the site root. How the site is built: [gallery/README.md](../../gallery/README.md).
+
 ## Browse the gallery in Claude Desktop Chat
 
 Where the inline preview shows (see [Inline preview](inline-preview.md#pick-an-example)), ask Claude to show you the examples. A gallery of live previews appears in the conversation, filterable by mode; **Remix this** sends your pick to Claude, which remixes it.
