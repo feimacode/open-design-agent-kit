@@ -119,3 +119,26 @@ Must notes (ticked by the reviewer from the contact sheet):
 - [ ] settings-screen: No hero, tagline or marketing copy: the first thing is the settings
 - [ ] settings-screen: Settings are grouped under short headings, each with a label and a one-line explanation
 - [ ] settings-screen: Has a saved, a saving and an error state for the save action
+
+## 2026-11-02 — design from app first live run
+
+- Kit: 0.4.0-beta.2 (claude/project-thread-fldkhh d1e5bd3)
+- Mode: agent claude (2.1.316 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-02-22-01-24/`
+- Contact sheet: [runs/2026-11-02-22-01-24/contact-sheet.png](runs/2026-11-02-22-01-24/contact-sheet.png)
+
+- Designs: 1 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 1.
+- Critic: n/a (no critique recorded).
+- Agent cost: $0.62.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| billing-from-app | 1 | Open Design/billing-settings-screen-for-our-app-current-plan-with-usage-/billing-settings.html | od:prototype:app-settings | 0 | — | 1 (stress-overflow) | n/a | 0 | 3 | 23 | 165s | - / - / - / - |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] billing-from-app: Uses the app's green brand colour and IBM Plex Sans, not the kit's defaults
+- [ ] billing-from-app: Parts built from the app's components carry data-od-component marks (Button, Card, Badge, Switch, Input); anything new is marked new:<Name>
+- [ ] billing-from-app: No raw hex colours where the app has a token (no token-hardcoded warnings)

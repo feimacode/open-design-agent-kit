@@ -1,7 +1,7 @@
 // The pure parts of the evals (openspec add-output-quality-evals): brief
 // loading, transcript parsing, look signatures and the results table. No
 // TypeScript imports, so scripts/test can run them with plain node.
-import { promises as fs } from 'node:fs';
+import { existsSync, promises as fs } from 'node:fs';
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -56,6 +56,7 @@ export function briefProblem(brief, fileName) {
   if (!brief.expect || typeof brief.expect.surface !== 'string') return 'expect.surface is missing';
   if (brief.answers !== undefined && (typeof brief.answers !== 'object' || Array.isArray(brief.answers))) return 'answers must be a mapping';
   if (!Array.isArray(brief.must) || brief.must.length === 0) return 'must needs at least one note';
+  if (brief.fixture !== undefined && (typeof brief.fixture !== 'string' || !/^[a-z0-9-]+$/.test(brief.fixture) || !existsSync(path.join(EVALS_DIR, 'fixtures', brief.fixture)))) return `fixture must name a folder in evals/fixtures/ (got ${JSON.stringify(brief.fixture)})`;
   return undefined;
 }
 

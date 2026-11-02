@@ -1,0 +1,16 @@
+id: billing-from-app
+request: "Design the billing settings screen for our app (plan, payment method, invoices). Make it match our app: same colours, fonts and components."
+fixture: acme-billing              # a small Next.js + Tailwind + shadcn app, copied into the workspace
+expect:
+  surface: app-screens
+  skills: [app-settings, app-detail, app-shell]
+  questions: { max: 2 }
+designSystem: null
+answers:
+  save: "Yes, save it as our design system"
+  platform: "Web app"
+  density: "Medium"
+must:
+  - "Uses the app's green brand colour and IBM Plex Sans, not the kit's defaults"
+  - "Parts built from the app's components carry data-od-component marks (Button, Card, Badge, Switch, Input); anything new is marked new:<Name>"
+  - "No raw hex colours where the app has a token (no token-hardcoded warnings)"

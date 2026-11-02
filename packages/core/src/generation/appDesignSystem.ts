@@ -259,7 +259,7 @@ export function formatAppScanResult(profile: AppProfile, options: { outputDir: s
       `\n## Save as a design system\n\nWrite these three files exactly (with your file tools), then call set_active_design_system with id \`user:${dir.split('/').pop()}\`. Briefs on it then list the app's components and the check reports token-undefined and token-hardcoded.\n\n### ${dir}/DESIGN.md\n\n\`\`\`markdown\n${appDesignMd(options.name, profile)}\`\`\`\n\n### ${dir}/tokens.css\n\n\`\`\`css\n${appTokensCss(profile)}\`\`\`\n\n### ${dir}/${APP_COMPONENTS_FILE}\n\n\`\`\`json\n${JSON.stringify(appComponentsFile(profile), null, 2)}\n\`\`\``,
     );
   } else {
-    lines.push(`\nTo build designs from this app, show the user what was found and, if they agree, call scan_open_design_app again with name (e.g. "${profile.root === '.' ? 'Our app' : profile.root}") to get the design system files to save.`);
+    lines.push(`\nTo build designs from this app, show the user what was found and, if they agree (a request to make a design match the app already counts), call scan_open_design_app again with name (e.g. "${profile.root === '.' ? 'Our app' : profile.root}") to get the design system files to save.`);
   }
   return lines.join('\n');
 }
