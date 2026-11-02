@@ -28,6 +28,10 @@ export interface Finding {
   viewport?: string;
   /** 1-based slide number, for visual checks of decks. */
   slide?: number;
+  /** The state frame ([data-od-state]) the finding is in, for app screens (openspec add-states-board). */
+  state?: string;
+  /** The screen of a collection the finding is on (openspec add-linked-flows). */
+  screen?: string;
 }
 
 export interface PreflightOptions {
@@ -212,7 +216,7 @@ export function sortFindings(findings: Finding[]): Finding[] {
 }
 
 export function formatFinding(f: Finding): string {
-  const where = [f.viewport ? f.viewport : '', f.slide !== undefined ? `slide ${f.slide}` : '', f.shape ? `shape ${f.shape}` : '', f.row !== undefined ? `row ${f.row}${f.rowName ? ` (${f.rowName})` : ''}` : '', f.card !== undefined ? `card ${f.card}` : '', f.face ? `${f.face}` : ''].filter(Boolean).join(', ');
+  const where = [f.screen ? `screen ${f.screen}` : '', f.state ? `${f.state} state` : '', f.viewport ? f.viewport : '', f.slide !== undefined ? `slide ${f.slide}` : '', f.shape ? `shape ${f.shape}` : '', f.row !== undefined ? `row ${f.row}${f.rowName ? ` (${f.rowName})` : ''}` : '', f.card !== undefined ? `card ${f.card}` : '', f.face ? `${f.face}` : ''].filter(Boolean).join(', ');
   return `- ${f.severity.toUpperCase()} [${f.check}]${where ? ` ${where}:` : ''} ${f.message}`;
 }
 

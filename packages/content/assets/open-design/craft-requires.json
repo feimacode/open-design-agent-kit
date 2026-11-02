@@ -38,7 +38,8 @@
   "dashboard": [
     "state-coverage",
     "ux-writing",
-    "action-states"
+    "action-states",
+    "product-ui"
   ],
   "mobile-app": [
     "state-coverage",
@@ -51,6 +52,18 @@
     "action-states"
   ],
   "gamified-app": [
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "kanban-board": [
+    "product-ui",
+    "state-coverage",
+    "ux-writing",
+    "action-states"
+  ],
+  "login-flow": [
+    "product-ui",
     "state-coverage",
     "ux-writing",
     "action-states"

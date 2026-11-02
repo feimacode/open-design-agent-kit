@@ -20,6 +20,12 @@ The agent calls [`export_open_design_artifact`](../reference/tools.md#export_ope
 
 > **From the CLI:** `npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format standalone` ([options](../reference/cli.md#export)).
 
+### A clickable prototype of a flow
+
+> Export the onboarding flow as a clickable prototype.
+
+For a [collection](app-screens.md#linked-flows) of linked screens, `export_open_design_artifact` with `collectionId` writes one file, `exports/<collection>-prototype.html`, holding every screen. Its links move between the screens, offline too. See [Share a clickable prototype](app-screens.md#share-a-clickable-prototype).
+
 ## A live link
 
 Ask:

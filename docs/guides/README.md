@@ -9,6 +9,8 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 > **From the CLI:** the scripted equivalent, where there is one.
 
 - [Generate a design](generate-a-design.md)
+- [App screens and flows](app-screens.md)
+- [Design from your app](design-from-your-app.md)
 - [Explore design directions](explore-directions.md)
 - [Turn a document into a deck](deck-from-a-document.md)
 - [Diagrams of your code](diagrams.md)

@@ -253,6 +253,28 @@
         }
       },
       {
+        "name": "scan_open_design_app",
+        "displayName": "Scan the App for Open Design",
+        "userDescription": "Read your app's tokens, components and screens so designs reuse them",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-scan-app",
+        "icon": "$(search)",
+        "modelDescription": "Reads the app in this workspace (never changes a file) and reports what a design for it should reuse: framework and styling, its tokens with the file and line each comes from (Tailwind theme, CSS variables including dark and [data-theme] blocks, MUI theme), its light and dark themes, its exported components with their variant props (most imported first), and its screens (Next.js, Expo Router and React Router routes). Use it before designing a screen, flow or redesign for an app that already exists, then show the user what was found. With name (after the user agrees), it also returns a DESIGN.md, tokens.css and components.json to save as a design system, so briefs list the app's components and the check flags hard-coded and undefined tokens. When a design system was already saved from the same app, it reports what changed since. Bounded to 2,000 files and 1 MB; never reads .env files.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "root": {
+              "type": "string",
+              "description": "Workspace-relative folder of the app, for a monorepo (default the workspace root)."
+            },
+            "name": {
+              "type": "string",
+              "description": "A name for the design system to save from the app, e.g. \"Acme app\". Only after the user agrees to save one."
+            }
+          }
+        }
+      },
+      {
         "name": "read_open_design_source",
         "displayName": "Read Open Design Source",
         "modelDescription": "Converts a workspace document (DOCX, PPTX, XLSX, PDF, Markdown, text or CSV) into Markdown under the output directory's sources/ folder, extracts its embedded images, and returns an outline (headings with line ranges and sizes), never the full text. Read the returned markdownPath yourself, by line range, for the sections you need. Cached by content hash. Use it to look into a source before deciding how to use it; prepare_open_design_brief with `sources` calls it for you. PDFs need `pdftotext` (poppler); without it the result says to read the PDF with your own tools.",
@@ -307,6 +329,91 @@
             "screenRole": {
               "type": "string",
               "description": "Required together with collectionId — this screen's short role label, e.g. \"splash\", \"value-prop\", \"checkout\"."
+            },
+            "flow": {
+              "type": "object",
+              "properties": {
+                "screens": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "A short slug, also the screen's screenRole and file name, e.g. \"sign-in\"."
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "role": {
+                        "type": "string",
+                        "description": "One line on what the screen is for."
+                      },
+                      "end": {
+                        "type": "boolean",
+                        "description": "True when the flow ends on this screen."
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title"
+                    ]
+                  }
+                },
+                "links": {
+                  "type": "array",
+                  "maxItems": 80,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string"
+                      },
+                      "trigger": {
+                        "type": "string",
+                        "description": "The label the user taps, e.g. \"Continue\"."
+                      },
+                      "to": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "from",
+                      "trigger",
+                      "to"
+                    ]
+                  }
+                },
+                "nav": {
+                  "type": "array",
+                  "maxItems": 7,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "to": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "label",
+                      "to"
+                    ]
+                  },
+                  "description": "The navigation every screen shares (tab bar or sidebar), if any. Written once to _shared/nav.html and included by each screen."
+                }
+              },
+              "required": [
+                "screens"
+              ],
+              "description": "The flow plan of a multi-screen collection: its screens (at most 20), the links between them (at most 80) and the shared navigation. Plan it once before the first screen and pass the same plan on every screen's brief and registration; the latest registered plan wins. Needs collectionId; screenRole names this screen's id in the plan."
+            },
+            "baseScreen": {
+              "type": "string",
+              "description": "For a redesign of a screen that exists: a workspace image (PNG, JPEG, WebP) of it, or its URL (e.g. the app's dev server page, captured in a browser). Stored under .open-design/.bases/ (never published); the instructions treat it as the screen to change, and the check shows it beside the new design."
             },
             "screenTotal": {
               "type": "number",
@@ -610,6 +717,87 @@
             "screenRole": {
               "type": "string",
               "description": "The same screenRole passed to prepare_open_design_brief, if this screen is part of a design collection."
+            },
+            "flow": {
+              "type": "object",
+              "properties": {
+                "screens": {
+                  "type": "array",
+                  "maxItems": 20,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "A short slug, also the screen's screenRole and file name, e.g. \"sign-in\"."
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "role": {
+                        "type": "string",
+                        "description": "One line on what the screen is for."
+                      },
+                      "end": {
+                        "type": "boolean",
+                        "description": "True when the flow ends on this screen."
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title"
+                    ]
+                  }
+                },
+                "links": {
+                  "type": "array",
+                  "maxItems": 80,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string"
+                      },
+                      "trigger": {
+                        "type": "string",
+                        "description": "The label the user taps, e.g. \"Continue\"."
+                      },
+                      "to": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "from",
+                      "trigger",
+                      "to"
+                    ]
+                  }
+                },
+                "nav": {
+                  "type": "array",
+                  "maxItems": 7,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "to": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "label",
+                      "to"
+                    ]
+                  },
+                  "description": "The navigation every screen shares (tab bar or sidebar), if any. Written once to _shared/nav.html and included by each screen."
+                }
+              },
+              "required": [
+                "screens"
+              ],
+              "description": "The same flow plan passed to prepare_open_design_brief, for a screen of a planned flow. Stored as the manifest's metadata.flow with this screen's id (its screenRole)."
             },
             "explorationId": {
               "type": "string",
@@ -1188,7 +1376,11 @@
           "properties": {
             "entryPath": {
               "type": "string",
-              "description": "Workspace-relative path to the registered artifact's entry file."
+              "description": "Workspace-relative path to the registered artifact's entry file. Leave it out when collectionId is given."
+            },
+            "collectionId": {
+              "type": "string",
+              "description": "Export a whole collection as one clickable prototype: a single self-contained HTML file (assets inlined, shared navigation included) where the screens' links switch screens, written to <collection>/exports/<collectionId>-prototype.html. Other options are ignored."
             },
             "format": {
               "type": "string",
@@ -1441,9 +1633,7 @@
               "description": "png only: capture without the page background, so everything the design doesn't paint is transparent — for cut-outs such as a 3D product shot to place on slides or pages. The page (and a 3D scene's renderer) must have a transparent background; a warning says so when every pixel came out opaque. PNGs aren't re-encoded to fit maxBytes when transparent."
             }
           },
-          "required": [
-            "entryPath"
-          ]
+          "required": []
         }
       },
       {
@@ -1459,7 +1649,11 @@
           "properties": {
             "entryPath": {
               "type": "string",
-              "description": "Workspace-relative path to the registered artifact's entry file."
+              "description": "Workspace-relative path to the registered artifact's entry file. Leave it out when collectionId is given."
+            },
+            "collectionId": {
+              "type": "string",
+              "description": "Check a whole collection instead of one file: every registered screen (maxImages shared across them, default 6, findings tagged with the screen), the links between them (flow-broken-link, flow-dead-end, flow-unfilled, flow-nav-drift, flow-unlinked), store-rules notes for sign-up and paywall screens, and a rewritten flow map (<collection>/flow.html)."
             },
             "views": {
               "anyOf": [
@@ -1542,9 +1736,7 @@
               "description": "Animations: up to 6 times in seconds. Also captures the artifact at those moments on a virtual clock (labelled t=<seconds>s), so you can see the start, middle and end of an animation. They share maxImages with the regular screenshots."
             }
           },
-          "required": [
-            "entryPath"
-          ]
+          "required": []
         }
       },
       {
@@ -2110,6 +2302,12 @@
         "icon": "$(link-external)"
       },
       {
+        "command": "openDesign.openFlowMap",
+        "title": "Open Flow Map in Browser",
+        "category": "Open Design",
+        "icon": "$(type-hierarchy-sub)"
+      },
+      {
         "command": "openDesign.syncCommunityContent",
         "title": "Sync Community Designs",
         "category": "Open Design",
@@ -2208,6 +2406,10 @@
         },
         {
           "command": "openDesign.openExplorationComparison",
+          "when": "false"
+        },
+        {
+          "command": "openDesign.openFlowMap",
           "when": "false"
         },
         {

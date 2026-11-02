@@ -78,7 +78,7 @@ The last opinion is kept in the design's manifest ([`metadata.critique`](../refe
 
 ## Grounded in your app
 
-If the workspace's `package.json` shows a React, Vue, Next.js, Nuxt, Svelte, Angular, Astro or Solid app, the instructions ask the agent to look at a few of your real components first, so the prototype matches your app's look. The artifact is still a standalone file; [promoting it](promote-to-app-code.md) is a separate step.
+If the workspace's `package.json` shows a React, Vue, Next.js, Nuxt, Svelte, Angular, Astro or Solid app, the instructions ask the agent to look at a few of your real components first, so the prototype matches your app's look. For a closer match, [scan the app](design-from-your-app.md) and save its tokens and components as a design system. The artifact is still a standalone file; [promoting it](promote-to-app-code.md) is a separate step.
 
 ## Collections
 
@@ -88,7 +88,9 @@ For a multi-screen flow (onboarding, checkout, a set of app screens), ask for se
 
 The agent generates each screen as its own artifact with a shared `collectionId`. Each screen's instructions list the other screens (role and title), so they stay consistent, and the design system chosen for the first screen carries through to the rest.
 
-> **In VS Code:** the **Collections** view (Open Design activity-bar icon) lists each collection's screens, and the preview gets previous and next buttons.
+For screens that link to each other, the agent plans the flow first (screens, links and a shared navigation) and the screens link with real links, so you can click through them, check the whole flow at once and export it as one clickable prototype. See [App screens and flows](app-screens.md#linked-flows).
+
+> **In VS Code:** the **Collections** view (Open Design activity-bar icon) lists each collection's screens and its flow map, and the preview gets previous and next buttons.
 
 ## What you get
 

@@ -66,6 +66,18 @@ The taste checks in `collectPreflight` (`packages/core/src/poster/pageScripts.ts
 | `type-scale`, `intent` | [ux-ui-agent-skills](https://github.com/plugin87/ux-ui-agent-skills) (XIAS) `lint_intent.mjs`, `slop_tells.mjs`, `taste_audit.mjs` | Same: rendered DOM instead of source files, warnings only. The destructive-words list is English; other languages use `data-intent`. |
 | `state-contrast`, `focus-visible`, `tap-target`, `reflow`, `reduced-motion` | XIAS `verify_states`, `verify_target_size`, `verify_overflow`, `verify_reduced_motion` | One pass inside `check_open_design_artifact` instead of separate scripts; states forced through CDP `CSS.forcePseudoState`; reflow at 320 px (WCAG 1.4.10), not 280. |
 
+## App screens, states and flows from OpenPencil, XIAS and OpenUI
+
+The app-screens surface, the states checks and linked flows (openspec `add-app-screens`, `add-states-board`, `add-linked-flows`, `add-design-from-app`) take ideas, not text or code, from three MIT-licensed projects. The rules, templates, checks and fixtures are the kit's own, so there is no `ports.json` entry or notice file; `product-ui.md` names its sources in its header comment.
+
+| Ours | Idea from | Divergences |
+|---|---|---|
+| `local/craft/product-ui.md` (one work area, records with name, status, key fields and one action, the density table) | [OpenPencil](https://github.com/ZSeven-W/openpencil) web-app, form-ui and dashboard domain skills | A craft doc pasted into briefs; densities are numbers the brief sets from the user's answer. |
+| `app-*` pattern templates and `flow-*` packs | [ux-ui-agent-skills](https://github.com/plugin87/ux-ui-agent-skills) (XIAS) app templates | Plain HTML seeds with `data-od-state` frames and `data-od-goto` links, one shared shell checked identical across templates by `check-content-sync`. |
+| `state-missing`, `stress-overflow`, `stress-truncation`, `dead-control` | XIAS state and content-stress audits | Run in the rendered page inside `check_open_design_artifact`, per state frame; stress compares against the page's own baseline. |
+| Flow plan, shared `_shared/nav.html`, `flow-*` findings | OpenPencil's screen route inventory and shared-nav unification | Plain links and a `data-od-include` template resolved when served; the plan lives on each screen's manifest. |
+| Component vocabulary and `data-od-component` marks | [OpenUI](https://github.com/thesysdev/openui) component-constrained generation | HTML stays the output, constrained by the brief and a checkable mark instead of a DSL and renderer. |
+
 ## Rules for porting
 
 1. Start every ported file with a header naming the upstream file and commit, and the license.

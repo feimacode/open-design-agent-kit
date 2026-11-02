@@ -1,0 +1,14 @@
+id: settings-screen
+request: "Design the notification settings screen for our invoicing web app"
+expect:
+  surface: app-screens
+  skills: [app-settings]
+  questions: { max: 1 }
+designSystem: null
+answers:
+  platform: "Web app"
+  density: "Medium"
+must:
+  - "No hero, tagline or marketing copy: the first thing is the settings"
+  - "Settings are grouped under short headings, each with a label and a one-line explanation"
+  - "Has a saved, a saving and an error state for the save action"

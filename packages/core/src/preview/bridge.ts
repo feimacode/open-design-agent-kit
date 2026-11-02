@@ -11,6 +11,7 @@ import { resolveCommentAnchor } from './dom/commentAnchors';
 import { commentTextExcerpt } from '../workspace/artifactCommentTypes';
 import { ensureDataOdId, htmlHintFor, selectorFor, sourceDataOdId } from './dom/elementTargeting';
 import { applyPatch, PREVIEW_ONLY_ATTR, PREVIEW_SRC_ATTR, serializeDocument } from './dom/sourcePatches';
+import { installStateSwitcher } from './stateSwitcher';
 import { BRIDGE_TAG, isBridgeMessage, type BridgeMode, type BridgeRect, type ElementSnapshot, type FromBridge, type ToBridge, type Untagged } from './protocol';
 
 declare global {
@@ -30,6 +31,8 @@ function install(): void {
   let selected: Element | null = null;
   let comments: Extract<ToBridge, { type: 'set-comments' }>['comments'] = [];
   let frame = 0;
+  // The states board (openspec add-states-board): restores the frames' own hidden flags before a save.
+  let restoreStates: (() => void) | undefined;
 
   const post = (message: Untagged<FromBridge>): void => {
     window.parent.postMessage({ od: BRIDGE_TAG, ...message }, '*');
@@ -239,6 +242,7 @@ function install(): void {
           // A later patch threw; whatever already applied is still saved.
         }
         if (selected && !selected.isConnected) selected = null;
+        restoreStates?.();
         post({ type: 'patched', requestId: message.requestId, ok, newSource: ok ? serializeDocument(document) : undefined });
         scheduleRects();
         break;
@@ -258,6 +262,7 @@ function install(): void {
   // style goes into) exist; the preview also asks with `hello` on load.
   const announce = (): void => {
     updatePickStyle();
+    restoreStates ??= installStateSwitcher(document);
     post({ type: 'ready', title: document.title });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', announce);

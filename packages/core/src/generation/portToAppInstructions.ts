@@ -8,6 +8,7 @@
 // its own file-editing tools. No bespoke "apply" step, no live/continuous
 // sync with the prototype afterward — a deliberate one-time action.
 
+import { markedComponents, type AppComponentsFile } from './appDesignSystem';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 
@@ -65,6 +66,20 @@ export interface ComposePortToAppInstructionsInput {
   artifactContent: string;
   targetComponentPath?: string;
   referenceComponentPath?: string;
+  /** The component vocabulary of the app design system the design was built on (openspec add-design-from-app). */
+  appComponents?: AppComponentsFile;
+}
+
+/** "Reuse the app's components": the marked parts to import, and the new: parts to create. */
+export function composeComponentReuseSection(html: string, file: AppComponentsFile | undefined): string | undefined {
+  const { reused, proposed } = markedComponents(html);
+  if (reused.length === 0 && proposed.length === 0) return undefined;
+  const known = new Map((file?.components ?? []).map((c) => [c.name, c]));
+  const lines = reused.map((n) => {
+    const c = known.get(n);
+    return c ? `- **${n}**: import it from \`${c.file}\`; pass the variant the design's \`data-variant\` (or classes) shows${Object.keys(c.variants).length ? ` (${Object.entries(c.variants).map(([k, v]) => `${k}: ${v.join(' | ')}`).join('; ')})` : ''}.` : `- **${n}**: find the app's ${n} component and import it; don't write a new one.`;
+  });
+  return `## Reuse the app's components\n\nThe design marks its parts with \`data-od-component\`. Every part marked with an existing component is that component: import and use it, and create no new component for it.\n\n${lines.join('\n') || '- (none)'}\n\n${proposed.length ? `Create new components only for the parts marked \`new:\` (${proposed.join(', ')}) and for unmarked parts, in the app's own style and next to its other components.` : 'Create new components only for unmarked parts.'}`;
 }
 
 export function composePortToAppInstructions(input: ComposePortToAppInstructionsInput): string {
@@ -88,6 +103,9 @@ export function composePortToAppInstructions(input: ComposePortToAppInstructions
       ? `\n\n## Match the app's real conventions\n\nRead \`${referenceComponentPath}\` first — treat it as the authoritative pattern for imports, prop/typing style, file organization, and how this app actually handles styling (Tailwind utilities, CSS Modules, styled-components, plain CSS, design tokens as CSS variables, or whatever it genuinely uses).`
       : `\n\n## Match the app's real conventions\n\nBefore writing anything, find one or two existing components in this workspace that are structurally similar to the artifact (a card, a hero section, a form — whatever it most resembles) and read them as your pattern reference for imports, prop/typing style, file organization, and the app's actual styling approach. Do not guess at the app's conventions — verify them from real files.`,
   );
+
+  const reuse = composeComponentReuseSection(artifactContent, input.appComponents);
+  if (reuse) parts.push(`\n\n${reuse}`);
 
   parts.push(
     `\n\n## Styling and content\n\nDo NOT copy the artifact's inline CSS verbatim into the new component unless the app's own components genuinely use inline styles — translate to whatever styling approach the reference component(s) actually use. Use the artifact's own text/images as static content, unless the reference component's pattern clearly shows data arriving via props, in which case shape the new component the same way.`,

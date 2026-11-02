@@ -138,6 +138,19 @@ import {
   prepareCritiqueRecord,
   readCheckRunImage,
   withCritique,
+  latestFlowPlan,
+  checkCollection,
+  exportCollectionPrototype,
+  formatCollectionCheckResult,
+  formatCollectionPrototypeResult,
+  registeredFlow,
+  resolveBriefFlow,
+  prepareBaseScreen,
+  composeComponentVocabularySection,
+  formatAppScanResult,
+  scanApp as scanAppCore,
+  type AppComponentsFile,
+  withFlowMetadata,
 } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
 import type { DesignLayout } from './layout';
@@ -259,6 +272,18 @@ export async function recommendDesignSystems(ctx: ToolContext, input: DesignProf
   return { ...result, activeDesignSystemId: activeId };
 }
 
+/** scan_open_design_app: the app's tokens, components and screens; with name, the design system files to save. Writes nothing. */
+export async function scanApp(ctx: ToolContext, input: { root?: string; name?: string }): Promise<string> {
+  const profile = await scanAppCore(ctx.workspaceRoot, input.root ?? '.');
+  let saved: { id: string; file: AppComponentsFile } | undefined;
+  for (const summary of await ctx.contentIndex.listDesignSystems()) {
+    if (!summary.id.startsWith('user:')) continue;
+    const file = (await ctx.contentIndex.getDesignSystem(summary.id))?.appComponents;
+    if (file && file.root === profile.root) saved = { id: summary.id, file };
+  }
+  return formatAppScanResult(profile, { outputDir: ctx.outputDir, name: input.name, saved });
+}
+
 /** Shown on a brief made with no design system, so an agent that skipped the overview skill still learns it can recommend one. */
 export const NO_DESIGN_SYSTEM_HINT =
   'No design system was used. If the user wants a look but hasn\'t named one, call recommend_open_design_design_systems with what you know about the design, then prepare the brief again with the chosen designSystemId.';
@@ -273,6 +298,8 @@ export async function prepareBrief(
     collectionName?: string;
     screenRole?: string;
     screenTotal?: number;
+    flow?: unknown;
+    baseScreen?: string;
     sources?: string[];
     format?: string;
     fluid?: boolean;
@@ -304,12 +331,19 @@ export async function prepareBrief(
 
   let suggestedEntryPath: string;
   let collectionContext: Parameters<typeof composeInstructions>[0]['collectionContext'];
+  let flowContext: Parameters<typeof composeInstructions>[0]['flowContext'];
+  let flowNote: string | undefined;
+  if (input.flow !== undefined && !input.collectionId) return 'flow needs collectionId: a flow plan belongs to a collection of screens.';
   if (input.collectionId) {
     if (!input.screenRole) {
       return 'screenRole is required when collectionId is given — a short label for this screen\'s role in the flow, e.g. "splash", "value-prop", "checkout".';
     }
     const siblings = await findCollectionArtifacts(ctx.workspaceRoot, ctx.outputDir, input.collectionId);
     suggestedEntryPath = suggestCollectionScreenEntryPath(ctx.outputDir, input.collectionId, slugify(input.screenRole));
+    const flow = resolveBriefFlow(input.flow, latestFlowPlan(siblings), input.screenRole, suggestedEntryPath);
+    if (!flow.ok) return flow.error;
+    flowContext = flow.context;
+    flowNote = flow.note;
     collectionContext = {
       collectionName: input.collectionName ?? input.collectionId,
       index: siblings.length + 1,
@@ -331,6 +365,12 @@ export async function prepareBrief(
   });
   if (!sources.ok) return sources.error;
 
+  let baseScreen: { path: string; from: string } | undefined;
+  if (input.baseScreen) {
+    const base = await prepareBaseScreen({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: suggestedEntryPath, baseScreen: input.baseScreen });
+    if (!base.ok) return base.error;
+    baseScreen = base;
+  }
   const recentDesigns = await loadRecentDesigns(ctx.workspaceRoot, { collectionId: input.collectionId, entryPath: suggestedEntryPath });
   const instructions = composeInstructions({
     skillName: skill.name,
@@ -342,6 +382,9 @@ export async function prepareBrief(
     suggestedEntryPath,
     existingAppFrameworks,
     collectionContext,
+    flowContext,
+    componentVocabulary: designSystem?.appComponents ? composeComponentVocabularySection(designSystem.appComponents) : undefined,
+    baseScreen,
     hostOverride: hostOverrideFor(skill.id, skill.body),
     sourceContext: sources.context,
     canvasFormat,
@@ -363,6 +406,9 @@ export async function prepareBrief(
     designSystemHint: designSystem ? undefined : NO_DESIGN_SYSTEM_HINT,
     outlinePath: sources.context?.outlinePath,
     sources: sources.context?.sources.map((s) => ({ path: s.path, markdownPath: s.markdownPath, kind: s.kind })),
+    flowScreenId: flowContext?.screenId,
+    flowNote,
+    baseScreenPath: baseScreen?.path,
   };
   return JSON.stringify(payload, null, 2);
 }
@@ -380,6 +426,7 @@ export async function registerArtifact(
     collectionName?: string;
     screenIndex?: number;
     screenRole?: string;
+    flow?: unknown;
     explorationId?: string;
     directionId?: string;
     sources?: string[];
@@ -390,6 +437,8 @@ export async function registerArtifact(
   },
 ): Promise<string> {
   if (input.format !== undefined && !getFormat(input.format)) return unknownFormatError(input.format);
+  const flow = registeredFlow(input.flow, input.collectionId, input.screenRole);
+  if (!flow.ok) return flow.error;
   const brief = validateRegisteredBrief(input.brief);
   if (!brief.ok) return brief.error;
   const renderer = KIND_TO_RENDERER[input.kind];
@@ -405,7 +454,7 @@ export async function registerArtifact(
     const sourceRegistration = input.sources?.length
       ? await prepareSourceRegistration({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: input.entryPath, sourcePaths: input.sources })
       : undefined;
-    const metadata = withBriefMetadata(await posterRegistrationMetadata(ctx.workspaceRoot, input.entryPath, input.format), brief.brief);
+    const metadata = withFlowMetadata(withBriefMetadata(await posterRegistrationMetadata(ctx.workspaceRoot, input.entryPath, input.format), brief.brief), flow.record);
     const manifest = await writeArtifactManifest({
       workspaceRoot: ctx.workspaceRoot,
       entryPath: input.entryPath,
@@ -454,7 +503,8 @@ export async function registerArtifact(
 
     const critiqueNote = critique?.ok ? `\n\nRecorded the critique (${critiqueSummary(critique.record)}) as metadata.critique.` : '';
 
-    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}.${await previewNoteAfterRegister(ctx, input.entryPath)}${artifactPreviewHint(ctx, manifest)}${commentsNote}${critiqueNote}${explorationNote}${sourceNote}${await designSystemGalleryNote(ctx, input.designSystemId)}`;
+    const flowNote = flow.note ? `\n\n${flow.note}` : '';
+    return `Artifact registered at ${input.entryPath}.artifact.json\n\n${JSON.stringify(manifest, null, 2)}\n\nWritten to ${path.join(ctx.workspaceRoot, input.entryPath)}.${await previewNoteAfterRegister(ctx, input.entryPath)}${artifactPreviewHint(ctx, manifest)}${flowNote}${commentsNote}${critiqueNote}${explorationNote}${sourceNote}${await designSystemGalleryNote(ctx, input.designSystemId)}`;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return `Failed to register artifact: ${message}`;
@@ -901,6 +951,10 @@ export async function extractDesignSystemFromSite(
   return { text: formatExtractSiteResult(result), images: image ? [{ data: image, mime: 'image/png' }] : [] };
 }
 
+async function appComponentsFor(contentIndex: ToolContext['contentIndex'], designSystemId: unknown): Promise<AppComponentsFile | undefined> {
+  return typeof designSystemId === 'string' ? (await contentIndex.getDesignSystem(designSystemId))?.appComponents : undefined;
+}
+
 export async function portToAppCode(
   ctx: ToolContext,
   input: { entryPath: string; targetComponentPath?: string; referenceComponentPath?: string },
@@ -917,6 +971,7 @@ export async function portToAppCode(
     artifactContent: artifact.entryContent,
     targetComponentPath,
     referenceComponentPath: input.referenceComponentPath,
+    appComponents: await appComponentsFor(ctx.contentIndex, artifact.manifest?.designSystemId),
   });
   return JSON.stringify({ instructions, suggestedTargetComponentPath: targetComponentPath }, null, 2);
 }
@@ -995,6 +1050,7 @@ export async function exportArtifact(
   ctx: ToolContext,
   input: {
     entryPath: string;
+    collectionId?: string;
     format?: ExportFormat;
     quality?: number;
     width?: number;
@@ -1030,7 +1086,10 @@ export async function exportArtifact(
 ): Promise<string> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself;
   // OPEN_DESIGN_SHARE_BADGE by core's badge resolution.
+  if (input.collectionId) return formatCollectionPrototypeResult(await exportCollectionPrototype(ctx.workspaceRoot, ctx.outputDir, input.collectionId));
+  if (!input.entryPath) return 'Pass entryPath, or collectionId to export a collection as a clickable prototype.';
   const { printHouse: printHouseId, ...rest } = input;
+  delete rest.collectionId;
   let printHouse: PrintHouse | undefined;
   if (printHouseId !== undefined) {
     const resolved = await resolvePrintHouse(ctx.contentIndex, printHouseId);
@@ -1084,14 +1143,24 @@ export async function listIntegrations(ctx: ToolContext, input: ListIntegrations
 /** check_open_design_artifact: renders the artifact and returns findings plus screenshots; writes nothing. */
 export async function checkArtifact(
   ctx: ToolContext,
-  input: { entryPath: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number; at?: number[]; views?: ReviewView[] | false; states?: boolean },
+  input: { entryPath?: string; collectionId?: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number; at?: number[]; views?: ReviewView[] | false; states?: boolean },
 ): Promise<ToolOutput> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
+  const lookupAspectHint = async (id: string) => (await ctx.contentIndex.getSkill(id))?.aspectHint;
+  if (input.collectionId) {
+    const rest = { ...input };
+    delete rest.entryPath;
+    const result = await checkCollection({ ...rest, collectionId: input.collectionId, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, lookupAspectHint });
+    return { text: formatCollectionCheckResult(result), images: result.ok ? result.images : [] };
+  }
+  if (!input.entryPath) return { text: 'Pass entryPath, or collectionId to check every screen of a collection and the links between them.' };
+  const entryPath = input.entryPath;
   const result = await checkArtifactCore({
     ...input,
+    entryPath,
     workspaceRoot: ctx.workspaceRoot,
     outputDir: ctx.outputDir,
-    lookupAspectHint: async (id) => (await ctx.contentIndex.getSkill(id))?.aspectHint,
+    lookupAspectHint,
   });
   return { text: formatCheckResult(result), images: result.ok ? result.images : [] };
 }

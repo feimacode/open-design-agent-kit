@@ -71,7 +71,9 @@ If the design fails to load a file (a script from a CDN address that doesn't exi
 
 ## Links and frames
 
-Relative paths (`<img src="assets/x.png">`, stylesheets, scripts) load from the design's own folder. A frame showing a neighbouring design (like the thumbnails on an [exploration comparison page](explore-directions.md)) shows that design. A link to a neighbouring file, such as **Open full size**, opens it in its own tab, and `#section` links scroll the page.
+Relative paths (`<img src="assets/x.png">`, stylesheets, scripts) load from the design's own folder. A frame showing a neighbouring design (like the thumbnails on an [exploration comparison page](explore-directions.md)) shows that design. A link to a neighbouring file, such as **Open full size** or the next screen of a [flow](app-screens.md#linked-flows), opens it in its own tab, and `#section` links scroll the page. A screen's shared navigation (`<template data-od-include="_shared/nav.html">`) is filled in, and saving keeps the include rather than a copy.
+
+App screens with [state frames](app-screens.md) show a states bar above the design: switch between default, empty, loading and error, or see **All states** side by side. The bar is never saved into the file.
 
 ## Related
 

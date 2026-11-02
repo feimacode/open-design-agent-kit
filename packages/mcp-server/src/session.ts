@@ -76,6 +76,44 @@ interface ToolDef {
 const SKILL_MODES = ['prototype', 'deck', 'design-system', 'image', 'video', 'template', 'utility', 'audio', 'other'];
 
 // register_open_design_artifact's `critique` (openspec add-design-critic); validated again on write.
+const FLOW_INPUT_SCHEMA = {
+  type: 'object',
+  properties: {
+    screens: {
+      type: 'array',
+      maxItems: 20,
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'A short slug, also the screen\'s screenRole and file name, e.g. "sign-in".' },
+          title: { type: 'string' },
+          role: { type: 'string', description: 'One line on what the screen is for.' },
+          end: { type: 'boolean', description: 'True when the flow ends on this screen.' },
+        },
+        required: ['id', 'title'],
+      },
+    },
+    links: {
+      type: 'array',
+      maxItems: 80,
+      items: {
+        type: 'object',
+        properties: { from: { type: 'string' }, trigger: { type: 'string', description: 'The label the user taps, e.g. "Continue".' }, to: { type: 'string' } },
+        required: ['from', 'trigger', 'to'],
+      },
+    },
+    nav: {
+      type: 'array',
+      maxItems: 7,
+      items: { type: 'object', properties: { label: { type: 'string' }, to: { type: 'string' } }, required: ['label', 'to'] },
+      description: 'The navigation every screen shares (tab bar or sidebar), if any. Written once to _shared/nav.html and included by each screen.',
+    },
+  },
+  required: ['screens'],
+  description:
+    'The flow plan of a multi-screen collection: its screens (at most 20), the links between them (at most 80) and the shared navigation. Plan it once before the first screen and pass the same plan on every screen\'s brief and registration; the latest registered plan wins. Needs collectionId; screenRole names this screen\'s id in the plan.',
+};
+
 const CRITIQUE_INPUT_SCHEMA = {
   type: 'object',
   description:
@@ -190,6 +228,21 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'scan_open_design_app',
+      description:
+        "Reads the app in this workspace (never changes a file) and reports what a design for it should reuse: framework and styling, its tokens with the file and line each comes from (Tailwind theme, CSS variables including dark and [data-theme] blocks, MUI theme), its light and dark themes, its exported components with their variant props (most imported first), and its screens (Next.js, Expo Router and React Router routes). Use it before designing a screen, flow or redesign for an app that already exists, then show the user what was found. With name (after the user agrees), it also returns a DESIGN.md, tokens.css and components.json to save as a design system, so briefs list the app's components and the check flags hard-coded and undefined tokens. When a design system was already saved from the same app, it reports what changed since. Bounded to 2,000 files and 1 MB; never reads .env files.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          root: { type: 'string', description: 'Workspace-relative folder of the app, for a monorepo (default the workspace root).' },
+          name: { type: 'string', description: 'A name for the design system to save from the app, e.g. "Acme app". Only after the user agrees to save one.' },
+        },
+      },
+    },
+    handler: (ctx, args) => tools.scanApp(ctx, args as { root?: string; name?: string }),
+  },
+  {
+    tool: {
       name: 'read_open_design_source',
       description:
         "Converts a workspace document (DOCX, PPTX, XLSX, PDF, Markdown, text or CSV) into Markdown under the output directory's sources/ folder, extracts its embedded images, and returns an outline (headings with line ranges and sizes), never the full text. Read the returned markdownPath yourself, by line range, for the sections you need. Cached by content hash. Use it to look into a source before deciding how to use it; prepare_open_design_brief with `sources` calls it for you. PDFs need `pdftotext` (poppler); without it the result says to read the PDF with your own tools.",
@@ -230,6 +283,12 @@ const TOOL_DEFS: ToolDef[] = [
           screenRole: {
             type: 'string',
             description: 'Required together with collectionId — this screen\'s short role label, e.g. "splash", "value-prop", "checkout".',
+          },
+          flow: FLOW_INPUT_SCHEMA,
+          baseScreen: {
+            type: 'string',
+            description:
+              "For a redesign of a screen that exists: a workspace image (PNG, JPEG, WebP) of it, or its URL (e.g. the app's dev server page, captured in a browser). Stored under .open-design/.bases/ (never published); the instructions treat it as the screen to change, and the check shows it beside the new design.",
           },
           screenTotal: {
             type: 'number',
@@ -280,6 +339,8 @@ const TOOL_DEFS: ToolDef[] = [
           collectionName?: string;
           screenRole?: string;
           screenTotal?: number;
+          flow?: unknown;
+          baseScreen?: string;
           sources?: string[];
           format?: string;
           fluid?: boolean;
@@ -399,6 +460,7 @@ const TOOL_DEFS: ToolDef[] = [
           collectionName: { type: 'string', description: 'The same collectionName passed to prepare_open_design_brief, if this screen is part of a design collection.' },
           screenIndex: { type: 'number', description: '0-based position of this screen within its collection (0 for the first screen, 1 for the second, ...).' },
           screenRole: { type: 'string', description: 'The same screenRole passed to prepare_open_design_brief, if this screen is part of a design collection.' },
+          flow: { ...FLOW_INPUT_SCHEMA, description: "The same flow plan passed to prepare_open_design_brief, for a screen of a planned flow. Stored as the manifest's metadata.flow with this screen's id (its screenRole)." },
           explorationId: { type: 'string', description: 'The explorationId from prepare_open_design_exploration, if this artifact belongs to a design exploration. Updates its comparison page.' },
           directionId: {
             type: 'string',
@@ -448,6 +510,7 @@ const TOOL_DEFS: ToolDef[] = [
           collectionName?: string;
           screenIndex?: number;
           screenRole?: string;
+          flow?: unknown;
           explorationId?: string;
           directionId?: string;
           sources?: string[];
@@ -834,7 +897,12 @@ const TOOL_DEFS: ToolDef[] = [
         properties: {
           entryPath: {
             type: 'string',
-            description: "Workspace-relative path to the registered artifact's entry file.",
+            description: "Workspace-relative path to the registered artifact's entry file. Leave it out when collectionId is given.",
+          },
+          collectionId: {
+            type: 'string',
+            description:
+              'Export a whole collection as one clickable prototype: a single self-contained HTML file (assets inlined, shared navigation included) where the screens\' links switch screens, written to <collection>/exports/<collectionId>-prototype.html. Other options are ignored.',
           },
           format: {
             type: 'string',
@@ -998,7 +1066,7 @@ const TOOL_DEFS: ToolDef[] = [
               "Fluid designs: also write exports/campaign-sheet.png — the master at every shape in presets (default: the usual poster and social shapes), plus the first screen of every other piece registered in the master's collection (landing page, email…), each labelled and marked when it has preflight errors. Use it to show the user a whole campaign at a glance. With checkOnly: true it is the only file written.",
           },
         },
-        required: ['entryPath'],
+        required: [],
       },
     },
     handler: (ctx, args) =>
@@ -1151,7 +1219,12 @@ const TOOL_DEFS: ToolDef[] = [
         properties: {
           entryPath: {
             type: 'string',
-            description: "Workspace-relative path to the registered artifact's entry file.",
+            description: "Workspace-relative path to the registered artifact's entry file. Leave it out when collectionId is given.",
+          },
+          collectionId: {
+            type: 'string',
+            description:
+              'Check a whole collection instead of one file: every registered screen (maxImages shared across them, default 6, findings tagged with the screen), the links between them (flow-broken-link, flow-dead-end, flow-unfilled, flow-nav-drift, flow-unlinked), store-rules notes for sign-up and paywall screens, and a rewritten flow map (<collection>/flow.html).',
           },
           views: {
             anyOf: [
@@ -1196,7 +1269,7 @@ const TOOL_DEFS: ToolDef[] = [
             description: 'How many screenshots to attach (default 3). 0 returns findings only.',
           },
         },
-        required: ['entryPath'],
+        required: [],
       },
     },
     handler: (ctx, args) => tools.checkArtifact(ctx, args as unknown as Parameters<typeof tools.checkArtifact>[1]),

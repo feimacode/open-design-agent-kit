@@ -1,0 +1,13 @@
+id: sign-in-flow
+request: "Design the sign-in flow for our habit tracker iPhone app: sign in, forgot password, check your email, and the home screen after"
+expect:
+  surface: app-screens
+  skills: [flow-sign-in]
+  questions: { max: 1 }
+designSystem: null
+answers:
+  platform: "iPhone"
+must:
+  - "Four screens in one collection, planned as a flow, that link to each other with real links"
+  - "The collection check reports no flow-broken-link or flow-dead-end"
+  - "Sign in shows its error state (wrong password) and a way to reset it"

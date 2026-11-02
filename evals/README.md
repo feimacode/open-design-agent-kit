@@ -4,7 +4,7 @@ A fixed set of briefs, run the same way before and after a change that claims to
 
 ## Briefs
 
-`briefs/*.yaml`, one file per brief, the file name matching its `id`. Six cover the main surfaces (poster, landing page, deck, shop pack, card set, dashboard) and two are deliberately vague, to see whether the agent asks the right few questions.
+`briefs/*.yaml`, one file per brief, the file name matching its `id`. Eight cover the main surfaces (poster, landing page, deck, shop pack, card set, dashboard, an app settings screen, a sign-in flow) and two are deliberately vague, to see whether the agent asks the right few questions.
 
 ```yaml
 id: gig-poster
@@ -26,7 +26,7 @@ When a surface is added, add or update a brief for it.
 ## Running
 
 ```bash
-npm run evals                                    # every brief, twice (16 agent runs)
+npm run evals                                    # every brief, twice (20 agent runs)
 npm run evals -- --only gig-poster --repeat 1    # one quick look
 npm run evals -- --label "before add-taste-checks"
 npm run evals -- --score-only ~/designs          # score designs made in Desktop or Codex

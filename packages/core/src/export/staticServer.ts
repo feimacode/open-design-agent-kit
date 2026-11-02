@@ -9,6 +9,7 @@ import { promises as fs } from 'node:fs';
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import * as path from 'node:path';
+import { hasIncludes, resolveIncludes } from './flowIncludes';
 
 const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -91,6 +92,7 @@ export async function startStaticServer(root: string, options: StaticServerOptio
       const file = stat.isDirectory() ? path.join(abs, 'index.html') : abs;
       let body = await fs.readFile(file);
       if (options.transformEntry && file === absEntry) body = Buffer.from(options.transformEntry(body.toString('utf8')), 'utf8');
+      if (/\.html?$/i.test(file) && hasIncludes(body.toString('utf8'))) body = Buffer.from((await resolveIncludes(body.toString('utf8'), file, absRoot)).html, 'utf8');
       if (options.transformHtml && /\.html?$/i.test(file)) body = Buffer.from(options.transformHtml(body.toString('utf8'), path.relative(absRoot, file).split(path.sep).join('/')), 'utf8');
       res.writeHead(200, {
         'Content-Type': CONTENT_TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream',

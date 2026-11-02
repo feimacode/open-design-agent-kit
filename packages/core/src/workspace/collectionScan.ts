@@ -12,6 +12,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { parsePersistedManifest, type JsonRecord } from '../vendored/artifactManifest';
+import { flowRecordOf, type FlowPlan, type FlowRecord } from '../generation/flowPlan';
 
 const ARTIFACT_SIDECAR_SUFFIX = '.artifact.json';
 
@@ -20,6 +21,9 @@ export interface CollectionScreen {
   title: string;
   screenIndex?: number;
   screenRole?: string;
+  /** The flow plan this screen was registered with (openspec add-linked-flows). */
+  flow?: FlowRecord;
+  updatedAt?: string;
 }
 
 export interface Collection {
@@ -76,7 +80,19 @@ function toScreen(entryPath: string, manifest: JsonRecord): CollectionScreen {
     title: typeof manifest.title === 'string' && manifest.title ? manifest.title : entryPath,
     screenIndex: typeof manifest.screenIndex === 'number' ? manifest.screenIndex : undefined,
     screenRole: typeof manifest.screenRole === 'string' ? manifest.screenRole : undefined,
+    flow: flowRecordOf(manifest.metadata),
+    updatedAt: typeof manifest.updatedAt === 'string' ? manifest.updatedAt : undefined,
   };
+}
+
+/** The most recently registered flow plan among a collection's screens: the latest plan wins. */
+export function latestFlowPlan(screens: readonly CollectionScreen[]): FlowPlan | undefined {
+  let best: CollectionScreen | undefined;
+  for (const s of screens) {
+    if (!s.flow) continue;
+    if (!best || (s.updatedAt ?? '') >= (best.updatedAt ?? '')) best = s;
+  }
+  return best?.flow?.plan;
 }
 
 function sortScreens(screens: CollectionScreen[]): CollectionScreen[] {
