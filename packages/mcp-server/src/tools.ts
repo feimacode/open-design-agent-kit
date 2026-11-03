@@ -33,6 +33,7 @@ import {
   composeInstructions,
   composePortToAppInstructions,
   sampleDataForEntry,
+  nativePromoteContext,
   prepareComponentLibrary as prepareComponentLibraryCore,
   copyExampleArtifact,
   detectExistingApp,
@@ -974,6 +975,7 @@ export async function portToAppCode(
     referenceComponentPath: input.referenceComponentPath,
     appComponents: await appComponentsFor(ctx.contentIndex, artifact.manifest?.designSystemId),
     sampleData: await sampleDataForEntry(ctx.workspaceRoot, input.entryPath, artifact.entryContent),
+    ...(await nativePromoteContext(ctx.workspaceRoot, artifact.manifest?.metadata)),
   });
   return JSON.stringify({ instructions, suggestedTargetComponentPath: targetComponentPath }, null, 2);
 }

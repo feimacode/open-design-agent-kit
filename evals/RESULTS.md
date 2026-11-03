@@ -243,3 +243,27 @@ Must notes (ticked by the reviewer from the contact sheet):
 - [ ] sign-in-flow: The collection check reports no flow-broken-link or flow-dead-end
 - [ ] sign-in-flow: The plan names the task "reset a forgotten password" from sign-in to home, and the check finds a path for it (no task-unreachable)
 - [ ] sign-in-flow: Sign in shows its error state (wrong password) and a way to reset it
+
+## 2026-11-03 — add-expo-nativewind-target
+
+- Kit: 0.4.0-beta.2 (local/nativewind d506529)
+- Mode: agent claude (2.1.317 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-03-02-40-36/`
+- Contact sheet: [runs/2026-11-03-02-40-36/contact-sheet.png](runs/2026-11-03-02-40-36/contact-sheet.png)
+
+- Designs: 2 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 2.
+- Critic: n/a (no critique recorded).
+- Agent cost: $0.74.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| habits-expo | 1 | Open Design/the-today-screen-for-our-expo-habit-tracker-today-s-habits-w/today-android.html | od:prototype:app-shell | 0 | — | 10 (stress-overflow×9, overlap) | n/a | 0 | 0 | 27 | 199s | - / - / - / - |
+| habits-expo | 1 | Open Design/the-today-screen-for-our-expo-habit-tracker-today-s-habits-w/today-iphone.html | od:prototype:app-shell | 0 | — | 10 (stress-overflow×9, overlap) | n/a | 0 | 4 | 27 | 199s | - / - / - / - |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] habits-expo: Uses the app's green primary and warm off-white background from global.css, not the kit's defaults
+- [ ] habits-expo: The component set targets NativeWind: Pressable-based components with pressed and disabled states, 44 pt targets, no web-only CSS
+- [ ] habits-expo: The theme lands in global.css and tailwind.config.js, and a gallery screen lists the components

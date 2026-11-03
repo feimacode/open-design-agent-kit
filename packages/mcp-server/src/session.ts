@@ -810,7 +810,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'prepare_open_design_component_library',
       description:
-        "Composes staged instructions for turning reviewed Open Design artifacts into a reusable component set on a named React library: Material UI themed to Material 3 (`mui`) or shadcn/ui (`shadcn`). Use it when the user asks for components, a component library or a component set from a design (\"make Material 3 components for my React app from this\"); for putting one page into the app, use port_open_design_artifact_to_app instead. Returns a repeated-element inventory to turn into components.md (then stop for the user's approval), a ready theme generated from the design system's tokens, component and gallery rules, and how to record the set. Does NOT write app code. Call it again with `record` after the set builds: that writes metadata.componentLibrary on the artifacts' manifests so a later run updates the same set.",
+        "Composes staged instructions for turning reviewed Open Design artifacts into a reusable component set on a named React library: Material UI themed to Material 3 (`mui`), shadcn/ui (`shadcn`), or React Native components styled with NativeWind for Expo apps (`nativewind`). Use it when the user asks for components, a component library or a component set from a design (\"make Material 3 components for my React app from this\"); for putting one page into the app, use port_open_design_artifact_to_app instead. Returns a repeated-element inventory to turn into components.md (then stop for the user's approval), a ready theme generated from the design system's tokens, component and gallery rules, and how to record the set. Does NOT write app code. Call it again with `record` after the set builds: that writes metadata.componentLibrary on the artifacts' manifests so a later run updates the same set.",
       inputSchema: {
         type: 'object',
         properties: {
@@ -824,8 +824,8 @@ const TOOL_DEFS: ToolDef[] = [
           collectionId: { type: 'string', description: 'Instead of entryPaths: every screen of this collection.' },
           library: {
             type: 'string',
-            enum: ['auto', 'mui', 'shadcn'],
-            description: '"mui" (Material UI, themed to Material 3), "shadcn" (shadcn/ui), or "auto" (default) to pick from the app\'s package.json.',
+            enum: ['auto', 'mui', 'shadcn', 'nativewind'],
+            description: '"mui" (Material UI, themed to Material 3), "shadcn" (shadcn/ui), "nativewind" (React Native components styled with NativeWind, for Expo and React Native apps), or "auto" (default) to pick from the app\'s package.json (an Expo or React Native app always gets "nativewind").',
           },
           outputDir: {
             type: 'string',
@@ -835,7 +835,7 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'object',
             description: 'Stage 5 only: the finished set, written to the artifacts\' manifests instead of returning instructions.',
             properties: {
-              library: { type: 'string', enum: ['mui', 'shadcn'] },
+              library: { type: 'string', enum: ['mui', 'shadcn', 'nativewind'] },
               outputDir: { type: 'string' },
               themePath: { type: 'string' },
               components: {

@@ -2,7 +2,7 @@
 
 ### Requirement: NativeWind Target
 
-`prepare_open_design_component_library` SHALL accept `library: "nativewind"`, and `auto` SHALL pick it when the app's `package.json` has `expo` or `react-native` together with `nativewind`; components SHALL wrap `react-native-reusables` primitives when that package is installed and React Native core components otherwise.
+`prepare_open_design_component_library` SHALL accept `library: "nativewind"`, and `auto` SHALL pick it when the app's `package.json` has `expo` or `react-native` (with setup steps first when `nativewind` is not installed yet); `mui` or `shadcn` on a React Native app, and `nativewind` on a web app, SHALL be refused with a message naming the mismatch; components SHALL wrap `react-native-reusables` primitives (`@rn-primitives/*`) when they are installed and React Native core components otherwise.
 
 #### Scenario: Expo app picked automatically
 - **WHEN** the workspace app depends on `expo`, `react-native` and `nativewind` and the agent calls the tool with `library: "auto"`
@@ -10,7 +10,7 @@
 
 ### Requirement: NativeWind Theme
 
-Core SHALL map the design system's tokens to a Tailwind theme extension and light and dark CSS variables for NativeWind, list tokens with no slot, and derive a dark set when the design system has none, marking it as derived in the instructions and the record.
+Core SHALL map the design system's tokens to a Tailwind theme extension and light and dark CSS variables for NativeWind, list tokens with no slot, use the design system's own dark tokens (a `prefers-color-scheme: dark` block, a `.dark` block or a `data-mode="dark"` block in `tokens.css`) when it has them, and otherwise derive a dark set by mirroring the neutrals, marking it as derived in `global.css` and the instructions.
 
 #### Scenario: Light-only design system
 - **WHEN** the design system defines only light colours

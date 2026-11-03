@@ -1,0 +1,16 @@
+id: habits-expo
+request: "Design the Today screen for our Expo habit tracker (in this folder): today's habits with streaks and a way to add one. It runs on iPhone and Android. Then turn the design into NativeWind components for the app."
+fixture: habit-expo                # a small Expo Router + NativeWind app, copied into the workspace
+expect:
+  surface: app-screens
+  skills: [mobile-app, app-shell, app-detail]
+  questions: { max: 2 }
+designSystem: null
+answers:
+  save: "Yes, save it as our design system"
+  platform: "iPhone"
+  density: "Medium"
+must:
+  - "Uses the app's green primary and warm off-white background from global.css, not the kit's defaults"
+  - "The component set targets NativeWind: Pressable-based components with pressed and disabled states, 44 pt targets, no web-only CSS"
+  - "The theme lands in global.css and tailwind.config.js, and a gallery screen lists the components"
