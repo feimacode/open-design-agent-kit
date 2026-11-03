@@ -15,6 +15,7 @@ The agent uses the `open-design-redesign` skill. In VS Code it's the `/open-desi
 3. **One question.** Keep the brand (colours, fonts, logo) or refresh it? Everything else comes from the site.
 4. **The pages.** A home page and up to 3 inner pages, planned as one [linked flow](app-screens.md#linked-flows) with the site's navigation. Each page's old screenshot is kept as its [base screen](design-from-your-app.md#redesign-a-screen-you-have), so the check shows old and new side by side.
 5. **Check and critique.** The check runs as usual, and the [design critic](generate-a-design.md#second-opinion) also checks that each audit problem is gone (the booking button on the first phone screen, readable text, nothing scrolling sideways).
+6. **Before and after.** A page that puts the site as it is beside the new design, for the call with the owner (below).
 
 ## The site's own words
 
@@ -42,8 +43,20 @@ It protects you and the business when a link gets forwarded. The check reports `
 
 Tell the agent "it's my site" or "they've hired me" and it removes the ribbon and marks the page `data-od-owned`. For your own site, extraction can also copy the images into the project (`localizeImages: true`); otherwise they load from the site.
 
+## Show the owner before and after
+
+In the meeting, don't make the owner compare from memory. The agent calls `compare_open_design_before_after` and writes `before-after.html` beside the pages:
+
+- each page's old and new versions at desktop and phone sizes, with a slider to drag across and a side-by-side view;
+- every problem the audit found on that page, run again on the new design with the same check at the same size. It says **Fixed** only when the check passes there ("Book a table" 1.43:1 → 6.84:1), and **Still open** otherwise. Nothing is hidden;
+- the copy edits, original beside new;
+- up to three summary lines at the top. Each one has to cite the fixed problems it's based on, so the summary can't promise more than the page shows. "Loads twice as fast" with nothing behind it is left out.
+
+It's one file that works offline. Export it as a PDF to email (one page per screen), or publish the redesign: the published site links to the before/after page from its index. The concept band shows on it too, and the "before" screenshots are the owner's site as it is.
+
 ## Limits
 
 - The same limits as the [audit](site-audit.md#limits): public pages only, at most 4 pages, no logins or forms, and not on the hosted server.
+- The before/after page compares screenshots, not live pages, and doesn't measure speed, search ranking or sales.
 - A home page and up to 3 inner pages. Not a full site migration, a blog with hundreds of posts or a shop catalogue.
 - Using a business's own words and photos to pitch to that business is common practice; publishing them is not the kit's call. Keep the ribbon on until the owner agrees.

@@ -216,6 +216,17 @@ describe('publishing a flow', () => {
     assert.ok(result.ok && 'collection' in result && result.collection?.screens.length === 2);
   });
 
+  it('puts a redesign\'s before/after page on the site, linked from the map', async () => {
+    const { root, dir } = await flowFixture();
+    await fs.writeFile(path.join(root, dir, 'before-after.html'), '<!doctype html><html><body><h1>Before and after</h1></body></html>');
+    const result = await exportArtifact({ workspaceRoot: root, entryPath: `${dir}/goals.html`, format: 'site', badge: false });
+    assert.ok(result.ok && result.mode === 'site', JSON.stringify(result));
+    const site = path.join(root, dir, 'exports', 'site');
+    assert.match(await fs.readFile(path.join(site, 'before-after.html'), 'utf8'), /Before and after/);
+    assert.match(await fs.readFile(path.join(site, 'index.html'), 'utf8'), /<a href="before-after.html">Before and after/);
+    assert.ok(result.ok && 'collection' in result && result.collection?.screens.length === 2, 'not counted as a screen');
+  });
+
   it('a lone screen keeps the one-page site', async () => {
     const { root, dir } = await flowFixture();
     await fs.rm(path.join(root, dir, 'goals.html'));

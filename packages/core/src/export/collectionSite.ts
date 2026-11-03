@@ -3,7 +3,9 @@
 // shared navigation filled in, and the flow map, so the links between screens
 // work at the published URL. The map is the bundle's index.html unless a
 // screen is itself named index.html; then the map is flow.html.
+import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { BEFORE_AFTER_FILE } from './beforeAfter';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { flowMapFor, loadCollectionFlow } from './collectionFlow';
 import { resolveIncludes } from './flowIncludes';
@@ -13,7 +15,7 @@ import { planSiteBundle, type SiteFile } from './siteBundle';
 export interface CollectionSitePage {
   /** Path inside the bundle. */
   bundlePath: string;
-  /** Workspace path of the screen; undefined for the flow map. */
+  /** Workspace path of the screen; undefined for the flow map and the before/after page. */
   entryPath?: string;
   html: string;
 }
@@ -87,6 +89,15 @@ export async function planCollectionSite(input: { workspaceRoot: string; entryPa
   const mapPath = screenPaths.has('index.html') ? FLOW_MAP_FILE : 'index.html';
   if (screenPaths.has(mapPath)) return { kind: 'collection', ok: false, error: `A screen is named ${mapPath}, which the flow map needs; rename that screen.` };
   files.delete(mapPath);
-  pages.push({ bundlePath: mapPath, html: flowMapFor(flow).html });
+  // A redesign's before/after page (openspec add-before-after) goes on the site too, linked from the map.
+  let mapHtml = flowMapFor(flow).html;
+  const comparison = await fs.readFile(path.join(absRoot, collectionDir, BEFORE_AFTER_FILE), 'utf8').catch(() => undefined);
+  if (comparison !== undefined && !screenPaths.has(BEFORE_AFTER_FILE)) {
+    pages.push({ bundlePath: BEFORE_AFTER_FILE, html: comparison });
+    files.delete(BEFORE_AFTER_FILE);
+    const link = `<p data-od-before-after style="margin:24px;font:600 15px/1.4 system-ui,sans-serif"><a href="${BEFORE_AFTER_FILE}">Before and after: the site today beside the new design</a></p>`;
+    mapHtml = /<\/body>/i.test(mapHtml) ? mapHtml.replace(/<\/body>/i, `${link}\n</body>`) : mapHtml + link;
+  }
+  pages.push({ bundlePath: mapPath, html: mapHtml });
   return { kind: 'collection', ok: true, plan: { collectionId, collectionName: flow.collectionName, collectionDir, pages, mapPath, files: [...files.values()], warnings } };
 }

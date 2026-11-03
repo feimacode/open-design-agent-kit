@@ -1185,6 +1185,53 @@
         }
       },
       {
+        "name": "compare_open_design_before_after",
+        "displayName": "Compare Before and After",
+        "modelDescription": "For a redesign with a base screen (the page as it was): writes a before/after page beside the design (one section per page of a collection) with the old and new pages at desktop and phone sizes, a drag slider, a side-by-side view and capture times. When the site was audited (#od-audit-site), each problem for that page is re-checked on the design with the same check at the same size and shown as fixed only if it passes, otherwise as still open. Lists every copy edit (data-od-copy-edit) with its original. Optional summary lines must each cite fixed findings by id; a line that cites nothing or an open finding is left out and reported. One self-contained HTML file, registered as its own design, so preview, PDF export and publish work on it.",
+        "userDescription": "Put a redesign beside the site as it is, with the audit's problems re-checked",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-before-after",
+        "icon": "$(split-horizontal)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryPath": {
+              "type": "string",
+              "description": "One redesigned page. Give this or collectionId."
+            },
+            "collectionId": {
+              "type": "string",
+              "description": "Every page of a redesign planned as a flow. Give this or entryPath."
+            },
+            "summary": {
+              "type": "array",
+              "maxItems": 3,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "One short line for the client, at most 160 characters."
+                  },
+                  "cites": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Ids of the fixed findings the line rests on, e.g. [\"F1\"]."
+                  }
+                },
+                "required": [
+                  "text",
+                  "cites"
+                ]
+              },
+              "description": "Optional: up to 3 summary lines, each citing fixed findings."
+            }
+          }
+        }
+      },
+      {
         "name": "audit_open_design_site",
         "displayName": "Audit Website",
         "modelDescription": "Audits a live website with Open Design's own checks, for a redesign pitch or an owner's own site. Renders each page in an installed Chrome, Edge or Chromium at desktop (1440×900) and phone (390×844) sizes and reports what a visitor runs into: text contrast, tap targets, sideways scrolling, 320 px reflow, layout with larger text, overflowing or covered text, the first phone screen with nothing to tap, broken images, styles or scripts, images without alt text, a missing viewport tag, download size and request count, and default-template looks. Checks that need Open Design markup (states, flows, sample data, tokens) don't run. Writes <output folder>/.audits/<site>/: audit.json with every finding, screenshots, crops of the top problems and index.html, a short plain-language report with the 5 biggest problems ranked by what they cost a visitor and a statement of what wasn't measured. Gives no score and makes no speed or SEO claims. Only public http(s) pages; at most 4 pages on one site, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot.",

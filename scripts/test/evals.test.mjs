@@ -80,3 +80,9 @@ test('summary totals errors per repeat and counts distinct signatures', () => {
   assert.match(text, /runs with no design: 1/);
   assert.match(text, /Critic: n\/a/);
 });
+
+test('summary counts before/after pages and their re-checked findings', () => {
+  const text = summary([{ repeat: 1, designs: [], beforeAfter: [{ entryPath: 'a/before-after.html', fixed: 3, open: 1, summary: 2 }] }]);
+  assert.match(text, /Before\/after pages: 1; audit findings re-checked as fixed 3, still open 1; cited summary lines 2/);
+  assert.doesNotMatch(summary([{ repeat: 1, designs: [] }]), /Before\/after/);
+});

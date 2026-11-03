@@ -315,3 +315,29 @@ Must notes (ticked by the reviewer from the contact sheet):
 - [ ] redesign-trattoria: The home page binds the site's own heading, hours, address and phone from content.json (data-od-bind), not retyped or invented
 - [ ] redesign-trattoria: The audit's top problems are fixed: the booking button is readable and on the first phone screen, and nothing scrolls sideways on a phone
 - [ ] redesign-trattoria: Every page shows the concept ribbon (data-od-concept), and any rewritten text has data-od-copy-edit with its original
+
+## 2026-11-03 — add-before-after
+
+- Kit: 0.4.0-beta.2 (local/before-after 7ec3f02, local changes)
+- Mode: agent claude (2.1.317 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-03-11-48-08/`
+- Contact sheet: [runs/2026-11-03-11-48-08/contact-sheet.png](runs/2026-11-03-11-48-08/contact-sheet.png)
+
+- Designs: 2 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 2.
+- Critic: n/a (no critique recorded).
+- Before/after pages: 1; audit findings re-checked as fixed 6, still open 0; cited summary lines 3.
+- Agent cost: $0.68.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| redesign-trattoria | 1 | .open-design/rosas-trattoria-redesign/home.html | od:prototype:web-prototype | 0 | — | 0 (—) | n/a | 0 | 3 | 26 | 139s | #a85a22 / - / - / light |
+| redesign-trattoria | 1 | .open-design/rosas-trattoria-redesign/menu.html | od:prototype:web-prototype | 0 | — | 0 (—) | n/a | 0 | 0 | 26 | 139s | #a85a22 / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] redesign-trattoria: The home page binds the site's own heading, hours, address and phone from content.json (data-od-bind), not retyped or invented
+- [ ] redesign-trattoria: The audit's top problems are fixed: the booking button is readable and on the first phone screen, and nothing scrolls sideways on a phone
+- [ ] redesign-trattoria: Every page shows the concept ribbon (data-od-concept), and any rewritten text has data-od-copy-edit with its original
+- [ ] redesign-trattoria: A before/after page compares old and new at desktop and phone sizes; its fixed findings are re-checked, and every summary line cites a fixed finding

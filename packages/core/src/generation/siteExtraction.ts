@@ -516,6 +516,8 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   const marks: string[] = [];
   let dark: SiteEvidence['dark'];
   const contentPages: PageContent[] = [];
+  /** Each measured page's screenshots, so a redesign's base screen can be traced back to its page. */
+  const pageShots: Array<{ url: string; desktop: string; mobile: string }> = [];
   const robots = input.content ? await fetchRobots(main.origin, input.fetchImpl) : undefined;
   try {
     live = await launchLiveBrowser(browserPath, input.allowHostsForTesting ?? [], 'od-extract-profile-');
@@ -632,6 +634,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
       const mobileShot = `${prefix}mobile.png`;
       await page.screenshot({ path: path.join(bundleDir, mobileShot) }).catch(() => undefined);
       screenshots.push(rel(mobileShot));
+      pageShots.push({ url: url.toString(), desktop: rel(desktopShot), mobile: rel(mobileShot) });
     }
   } catch (err) {
     notes.push(`The browser stopped early: ${err instanceof Error ? err.message.split('\n')[0] : String(err)}`);
@@ -655,7 +658,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   }
   await fs.writeFile(
     path.join(bundleDir, 'evidence.json'),
-    JSON.stringify({ status, url: main.toString(), theme, measuredAt: new Date().toISOString(), ...siteEvidence, blocked, marks, notes, draft }, null, 2) + '\n',
+    JSON.stringify({ status, url: main.toString(), theme, measuredAt: new Date().toISOString(), ...siteEvidence, pageShots, blocked, marks, notes, draft }, null, 2) + '\n',
   );
   return {
     status,

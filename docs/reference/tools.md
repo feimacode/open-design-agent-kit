@@ -24,6 +24,7 @@ Two rules apply to every tool (and over MCP every tool declares `readOnlyHint`, 
 | [`create_open_design_design_system`](#create_open_design_design_system) | `#od-create-design-system` | yes | Instructions for a custom design system |
 | [`extract_open_design_design_system`](#extract_open_design_design_system) | `#od-extract-design-system` | yes | Measure a website's colours, fonts and spacing as a draft design system |
 | [`audit_open_design_site`](#audit_open_design_site) | `#od-audit-site` | yes | Check a live website for design and accessibility problems, with a plain-language report |
+| [`compare_open_design_before_after`](#compare_open_design_before_after) | `#od-before-after` | yes | Put a redesign beside the site as it is, with the audit's problems re-checked |
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
 | [`publish_open_design_artifact_to_canva`](#publish_open_design_artifact_to_canva) | `#od-publish-to-canva` | yes | Get a design into Canva: through your Canva connector when it's connected, otherwise a file to import |
@@ -638,6 +639,25 @@ What it checks: text contrast, overflowing and covered text, and the default-tem
 Limits: the same as `extract_open_design_design_system`. Hidden on the hosted server. See [Audit a website](../guides/site-audit.md).
 
 ## Beyond the prototype
+
+
+### compare_open_design_before_after
+
+Writes a before/after page for a [redesign](../guides/redesign-a-website.md#show-the-owner-before-and-after) with a base screen. **It changes nothing in the design.** Hidden on the hosted server. Hidden on the hosted server.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | one of | One redesigned page. Writes `<name>.before-after.html` beside it. |
+| `collectionId` | string | one of | Every page of a redesign planned as a flow, one section each. Writes `before-after.html` in the collection's folder. |
+| `summary` | `{ text, cites }[]` (≤ 3) | no | Lines for the top of the page, each at most 160 characters and citing the ids of the fixed findings it rests on. A line that cites nothing, an unknown id or a finding that isn't fixed is left out and returned in `rejectedSummary` with the reason. |
+
+For each page with a base screen it shows the old page and a fresh capture of the design at desktop (1440×900) and phone (390×844) sizes, with a drag slider, a side-by-side view, both full pages and both capture times. The phone "before" is the audit's phone screenshot (or the extraction's) when there is one.
+
+When the site was [audited](#audit_open_design_site), each problem the audit found on that page is run again on the design with the same check at the same size: **fixed** only when it passes, otherwise **still open**. Contrast shows the old and new ratio of the same text when it is still on the page (`"Book a table" 1.43:1 → 6.84:1`). Page weight is **not re-checked**, since the design isn't served the way the site is. When the site wasn't audited, the page wasn't part of the audit or the audit found nothing there, the page says which, and lists the checks that find nothing on the new design. Every `data-od-copy-edit` element is listed with its original.
+
+The base screen is traced to its old page through the origin recorded beside it in `.open-design/.bases/` (base screens stored before this was recorded can't be paired, and the page says so). A base screen older than 30 days gets a note.
+
+**Result:** `status` (`ok`, `no-base` with how to store one, `no-browser` or `invalid-args`), `page`, per page the findings with `status`, `before` and `after`, the copy edit count and notes, `summary`, `rejectedSummary` and `next`. The page is one self-contained HTML file, registered as its own design (`metadata.beforeAfter`), so [`export_open_design_artifact`](#export_open_design_artifact) makes a PDF with one page per screen and [`publish_open_design_artifact`](#publish_open_design_artifact) publishes it. A flow's [site export](../guides/share-and-publish.md) includes `before-after.html` and links to it from the map. A redesign with the concept band carries it on this page too.
 
 ### port_open_design_artifact_to_app
 

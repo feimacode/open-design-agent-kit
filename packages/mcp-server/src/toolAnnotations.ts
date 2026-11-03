@@ -54,6 +54,7 @@ export const TOOL_ANNOTATIONS: Record<string, ToolAnnotations> = {
   set_open_design_workspace: WRITES,
   use_open_design_managed_workspace: WRITES,
   set_up_open_design_browser_pane: WRITES,
+  compare_open_design_before_after: WRITES,
 
   write_open_design_file: OVERWRITES,
 
@@ -110,6 +111,7 @@ export const TOOL_TITLES: Record<string, string> = {
   write_open_design_file: 'Write a design file',
   extract_open_design_design_system: 'Extract a design system from a website',
   audit_open_design_site: 'Audit a website',
+  compare_open_design_before_after: 'Compare a redesign before and after',
   publish_open_design_artifact: 'Publish a design',
   publish_open_design_artifact_to_canva: 'Send a design to Canva',
   publish_open_design_artifact_to_shop: 'Send designs to a shop',

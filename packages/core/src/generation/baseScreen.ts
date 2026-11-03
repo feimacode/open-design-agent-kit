@@ -32,6 +32,26 @@ export async function findBaseScreen(workspaceRoot: string, outputDir: string, e
   return undefined;
 }
 
+/** Where a base screen came from (a URL, or the workspace image it was copied from) and when it was taken. */
+export interface BaseScreenOrigin {
+  from: string;
+  capturedAt: string;
+}
+
+async function writeBaseScreenOrigin(workspaceRoot: string, stem: string, origin: BaseScreenOrigin): Promise<void> {
+  await fs.writeFile(path.join(workspaceRoot, `${stem}.json`), JSON.stringify(origin, null, 2) + '\n').catch(() => undefined);
+}
+
+/** The origin recorded beside a design's base screen, if any (base screens stored before it was recorded have none). */
+export async function readBaseScreenOrigin(workspaceRoot: string, outputDir: string, entryPath: string): Promise<BaseScreenOrigin | undefined> {
+  try {
+    const o = JSON.parse(await fs.readFile(path.join(workspaceRoot, `${baseScreenStem(outputDir, entryPath)}.json`), 'utf8')) as Partial<BaseScreenOrigin>;
+    return typeof o.from === 'string' && typeof o.capturedAt === 'string' ? { from: o.from, capturedAt: o.capturedAt } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export type BaseScreenResult = { ok: true; path: string; from: string } | { ok: false; error: string };
 
 export async function prepareBaseScreen(input: { workspaceRoot: string; outputDir: string; entryPath: string; baseScreen: string; browserPath?: string }): Promise<BaseScreenResult> {
@@ -55,6 +75,7 @@ export async function prepareBaseScreen(input: { workspaceRoot: string; outputDi
       await page.setViewport({ width: 1440, height: 900 });
       await page.goto(base, { waitUntil: 'networkidle2', timeout: 30_000 });
       await page.screenshot({ path: path.join(input.workspaceRoot, out), type: 'png' });
+      await writeBaseScreenOrigin(input.workspaceRoot, stem, { from: base, capturedAt: new Date().toISOString() });
       return { ok: true, path: out, from: base };
     } catch (err) {
       return { ok: false, error: `Couldn't capture ${base}: ${err instanceof Error ? err.message.split('\n')[0] : String(err)}. Is the app running? Pass a screenshot instead.` };
@@ -67,14 +88,17 @@ export async function prepareBaseScreen(input: { workspaceRoot: string; outputDi
   const within = path.relative(path.resolve(input.workspaceRoot), abs);
   if (within.startsWith('..') || path.isAbsolute(within)) return { ok: false, error: `baseScreen ${base} is outside the workspace.` };
   if (!IMAGE.test(abs)) return { ok: false, error: 'baseScreen must be a PNG, JPEG or WebP image in the workspace, or an http(s) URL.' };
+  let capturedAt: string;
   try {
     const stat = await fs.stat(abs);
     if (stat.size > MAX_BASE_BYTES) return { ok: false, error: `baseScreen ${base} is over 15 MB.` };
+    capturedAt = stat.mtime.toISOString();
   } catch {
     return { ok: false, error: `baseScreen ${base} doesn't exist.` };
   }
   const out = stem + path.extname(abs).toLowerCase();
   await fs.copyFile(abs, path.join(input.workspaceRoot, out));
+  await writeBaseScreenOrigin(input.workspaceRoot, stem, { from: within.split(path.sep).join('/'), capturedAt });
   return { ok: true, path: out, from: base };
 }
 
