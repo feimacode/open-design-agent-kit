@@ -114,7 +114,7 @@ The component set built from this design with [`prepare_open_design_component_li
 
 | Field | Type | Meaning |
 |---|---|---|
-| `library` | string | `mui` or `shadcn`. |
+| `library` | string | `mui`, `shadcn` or `nativewind`. |
 | `outputDir` | string | Workspace-relative folder of the components. |
 | `themePath` | string | The theme file. |
 | `components` | `{ name, path, sourceSelectors? }`[] | Each component, its file, and the design selectors it came from (up to 10). |

@@ -1,0 +1,16 @@
+{
+  "name": "habit-expo",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": { "start": "expo start", "typecheck": "tsc --noEmit" },
+  "dependencies": {
+    "expo": "~53.0.0",
+    "expo-router": "~5.0.0",
+    "nativewind": "^4.1.23",
+    "react": "19.0.0",
+    "react-native": "0.79.0",
+    "react-native-reanimated": "~3.17.0",
+    "react-native-safe-area-context": "5.4.0"
+  },
+  "devDependencies": { "tailwindcss": "^3.4.0", "typescript": "5.8.0" }
+}

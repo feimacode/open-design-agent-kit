@@ -24,6 +24,8 @@ When the design was built on a design system [taken from your app](design-from-y
 
 When the design binds to [sample data](app-screens.md#sample-data), the agent keeps it: each list becomes `mocks/<list>.ts` with its records and a TypeScript type inferred from them, and one data module (such as `src/lib/data.ts`) returns them, with `// TODO(data): replace with your API` where real data plugs in. Components read records through that module, so the promoted screens run on the same data the design showed. Component sets do the same.
 
+In an **Expo or React Native app**, the agent rebuilds the design with React Native components (and NativeWind classes when the app has it), following the native rules above. With Expo Router, a screen of a flow becomes `app/<screen>.tsx` (or `app/(tabs)/<screen>.tsx` when it is in the shared tab bar), each link in the flow becomes `router.push('/<screen>')`, and the shared navigation becomes one `app/(tabs)/_layout.tsx`, so the promoted screens click through like the prototype. The kit's device frame is never part of the code.
+
 > **In VS Code:** the **Promote to code** button in the [preview](preview-comments-edit.md) toolbar asks **One component** or **A component set** and prefills the matching request.
 
 ## What you get

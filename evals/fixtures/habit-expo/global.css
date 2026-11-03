@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 40 33% 98%;
+  --foreground: 160 20% 12%;
+  --primary: 162 63% 32%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 40 20% 93%;
+  --muted-foreground: 160 8% 40%;
+  --border: 40 15% 86%;
+  --radius: 14px;
+}
+
+.dark:root {
+  --background: 160 18% 8%;
+  --foreground: 40 20% 94%;
+  --primary: 160 55% 45%;
+  --primary-foreground: 160 30% 8%;
+  --muted: 160 12% 16%;
+  --muted-foreground: 40 8% 65%;
+  --border: 160 10% 22%;
+}

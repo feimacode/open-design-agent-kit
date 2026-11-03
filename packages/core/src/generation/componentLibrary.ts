@@ -16,7 +16,7 @@ import { readArtifact, writeArtifactManifest } from '../vendored/artifactCreate'
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { findCollectionArtifacts } from '../workspace/collectionScan';
 import { resolveDesignSystemDetailTokens } from './designSystemPreview';
-import { buildLibraryTheme, COMPONENT_LIBRARIES, hasThemeTokens, type ComponentLibrary, type LibraryTheme } from './libraryThemes';
+import { buildLibraryTheme, COMPONENT_LIBRARIES, darkTokensOf, hasThemeTokens, type ComponentLibrary, type LibraryTheme } from './libraryThemes';
 import { extractRootTokens } from './styleTiles';
 
 export const COMPONENT_LIBRARY_TOOL_NAME = 'prepare_open_design_component_library';
@@ -49,6 +49,13 @@ export interface AppInfo {
   hasComponentsJson: boolean;
   hasStorybook: boolean;
   hasSrcDir: boolean;
+  /** The NativeWind version range from package.json, when it is a dependency (openspec add-expo-nativewind-target). */
+  nativewindVersion?: string;
+}
+
+/** True for an Expo or React Native app. */
+export function isNativeApp(app: AppInfo): boolean {
+  return app.dependencies.has('react-native') || app.dependencies.has('expo');
 }
 
 async function exists(p: string): Promise<boolean> {
@@ -88,6 +95,9 @@ export async function detectApp(workspaceRoot: string, startDir = ''): Promise<A
         hasComponentsJson: await exists(path.join(dir, 'components.json')),
         hasStorybook: (await exists(path.join(dir, '.storybook'))) || [...dependencies].some((d) => d === 'storybook' || d.startsWith('@storybook/')),
         hasSrcDir: await exists(path.join(dir, 'src')),
+        ...(typeof (pkg.dependencies ?? {}).nativewind === 'string' || typeof (pkg.devDependencies ?? {}).nativewind === 'string'
+          ? { nativewindVersion: String((pkg.dependencies ?? {}).nativewind ?? (pkg.devDependencies ?? {}).nativewind) }
+          : {}),
       };
     }
     if (path.resolve(dir) === root) return undefined;
@@ -116,6 +126,12 @@ export type LibraryChoice = { library: ComponentLibrary; installed: boolean } | 
 export function chooseLibrary(app: AppInfo, requested: ComponentLibrary | 'auto'): LibraryChoice {
   const deps = app.dependencies;
   if (!deps.has('react')) return { error: 'unsupported-framework', found: OTHER_FRAMEWORKS.filter((f) => deps.has(f)) };
+  // Expo and React Native apps get NativeWind: MUI and shadcn/ui are web libraries (openspec add-expo-nativewind-target).
+  if (isNativeApp(app)) {
+    if (requested === 'mui' || requested === 'shadcn') return { error: 'unsupported-framework', found: ['react-native'] };
+    return { library: 'nativewind', installed: deps.has('nativewind') };
+  }
+  if (requested === 'nativewind') return { error: 'unsupported-framework', found: ['react (web)'] };
   const hasMui = deps.has('@mui/material');
   const hasShadcn = app.hasComponentsJson || ([...deps].some((d) => d.startsWith('@radix-ui/')) && deps.has('tailwindcss'));
   if (requested === 'mui') return { library: 'mui', installed: hasMui };
@@ -126,6 +142,10 @@ export function chooseLibrary(app: AppInfo, requested: ComponentLibrary | 'auto'
 }
 
 export function installCommand(library: ComponentLibrary, pm: PackageManager): string {
+  if (library === 'nativewind') {
+    const pkgs = 'nativewind tailwindcss@^3.4 react-native-reanimated react-native-safe-area-context';
+    return `${pm === 'bun' ? 'bunx' : 'npx'} expo install ${pkgs}`;
+  }
   if (library === 'mui') {
     const pkgs = '@mui/material @emotion/react @emotion/styled';
     return pm === 'npm' ? `npm install ${pkgs}` : `${pm} add ${pkgs}`;
@@ -291,9 +311,33 @@ export interface ComposeComponentLibraryInput {
 const LIBRARY_LABEL: Record<ComponentLibrary, string> = {
   mui: 'Material UI (MUI), themed to Material 3',
   shadcn: 'shadcn/ui (Radix + Tailwind)',
+  nativewind: 'React Native component set styled with NativeWind (Expo)',
 };
 
-function themeFilePath(library: ComponentLibrary, componentsDir: string): string {
+/** The NativeWind major version from a package.json range; undefined when it can't be read. */
+export function nativewindMajor(range: string | undefined): number | undefined {
+  const m = range ? /(\d+)/.exec(range) : null;
+  return m ? Number(m[1]) : undefined;
+}
+
+/** The native rules for React Native components (touch, safe area, platform shadows, no web-only CSS, accessibility). */
+export function composeNativeRulesSection(): string {
+  return [
+    '## Native rules',
+    '',
+    '- **Touch targets:** at least 44 points on iOS and 48 on Android (`min-h-11` / `min-h-12`, or `hitSlop` on a small icon).',
+    '- **States:** `Pressable` with `active:` classes (or its `pressed` render prop) for pressed, and `disabled` with a quieter style; no hover. Loading keeps full strength with an `ActivityIndicator`.',
+    '- **Safe area:** screens use `SafeAreaView` (or `useSafeAreaInsets`) from `react-native-safe-area-context`, never fixed padding for the notch or home indicator.',
+    '- **Shadows:** `shadow-*` classes on iOS and `elevation-*` on Android (use `Platform.select` or both).',
+    '- **No web-only CSS:** no grid, `position: fixed`, `:hover`, `vh`/`vw`, CSS transitions or pseudo-elements. Use flexbox, `absolute` inside a relative parent, and `react-native-reanimated` for motion.',
+    '- **Text:** every string sits inside `<Text>`; fonts are the loaded family names from the theme (`font-sans`, `font-display`), loaded with `expo-font`.',
+    '- **Accessibility:** every control has `accessibilityRole` and an `accessibilityLabel` when its text doesn\'t say what it does; toggles set `accessibilityState`.',
+    '- **Lists:** long lists use `FlatList` (or `FlashList` when installed), not `map` in a `ScrollView`.',
+  ].join('\n');
+}
+
+function themeFilePath(library: ComponentLibrary, componentsDir: string, appDir = ''): string {
+  if (library === 'nativewind') return path.posix.join(appDir, 'global.css');
   return path.posix.join(componentsDir, library === 'mui' ? 'theme.ts' : 'theme.css');
 }
 
@@ -311,12 +355,14 @@ function groupUnmapped(unmapped: LibraryTheme['unmapped']): string[] {
 export function composeComponentLibraryInstructions(input: ComposeComponentLibraryInput): string {
   const { library, app, componentsDir, artifacts, candidates, themeSource, existing } = input;
   const inventoryPath = path.posix.join(path.posix.dirname(artifacts[0].entryPath), 'components.md');
-  const themePath = existing?.themePath ?? themeFilePath(library, componentsDir);
+  const themePath = existing?.themePath ?? themeFilePath(library, componentsDir, app.appDir);
+  const native = library === 'nativewind';
+  const reusables = native && [...app.dependencies].some((d) => d.startsWith('@rn-primitives/'));
   const parts: string[] = [];
 
   parts.push(
     `# Build a ${LIBRARY_LABEL[library]} component set from ${artifacts.length === 1 ? 'this design' : `these ${artifacts.length} designs`}\n\n` +
-      `You are turning reviewed Open Design artifacts into a reusable component set in this workspace's React app${app.appDir ? ` (\`${app.appDir}\`)` : ''}. ` +
+      `You are turning reviewed Open Design artifacts into a reusable component set in this workspace's ${native ? 'Expo / React Native' : 'React'} app${app.appDir ? ` (\`${app.appDir}\`)` : ''}. ` +
       `Work through the stages in order. Stage 1 ends with a question to the user; do not write any app code before they agree. ` +
       `This tool wrote nothing; you write every file with your own tools.`,
   );
@@ -341,7 +387,21 @@ export function composeComponentLibraryInstructions(input: ComposeComponentLibra
     parts.push(`\n\nNote: a ${other.library} set was also built from this design, in \`${other.outputDir}\`. Leave it as it is; this set goes in \`${componentsDir}\`.`);
   }
 
-  if (!input.installed) {
+  if (!input.installed && native) {
+    parts.push(
+      `\n\n## Before you start: set up NativeWind\n\nThe app doesn't have NativeWind yet. Ask the user before running:\n\n\`\`\`sh\n${app.appDir ? `cd ${app.appDir}\n` : ''}${installCommand(library, app.packageManager)}\n\`\`\`\n\n` +
+        'Then follow the NativeWind v4 setup: `npx tailwindcss init`, `presets: [require("nativewind/preset")]` and the content globs in `tailwind.config.js`, `jsxImportSource: "nativewind"` with `nativewind/babel` in `babel.config.js`, `withNativeWind(config, { input: "./global.css" })` in `metro.config.js`, `import "../global.css"` in the root layout, and `nativewind-env.d.ts` for TypeScript.',
+    );
+  } else if (native) {
+    const major = nativewindMajor(app.nativewindVersion);
+    parts.push(
+      `\n\n## NativeWind ${major ?? '(version unknown)'}\n\n` +
+        (major === undefined || major === 4
+          ? `The app has NativeWind${major === undefined ? ' at a version the kit couldn\'t read; the steps below are for v4' : ' v4'}: the theme goes in \`global.css\` (CSS variables) and \`tailwind.config.js\` (\`theme.extend\`), and \`darkMode\` follows the system with \`useColorScheme\` from \`nativewind\`.`
+          : `The app has NativeWind v${major}. Its setup differs from v4 (the version these steps are written for): read the app's existing \`global.css\` and config first and put the variables and theme where v${major} expects them.`),
+    );
+  }
+  if (!input.installed && !native) {
     parts.push(
       `\n\n## Before you start: install ${library === 'mui' ? 'MUI' : 'shadcn/ui'}\n\nThe app doesn't have it yet. Ask the user before running:\n\n\`\`\`sh\n${app.appDir ? `cd ${app.appDir}\n` : ''}${installCommand(library, app.packageManager)}\n\`\`\`` +
         (library === 'shadcn' ? `\n\nThen add the primitives the inventory needs with \`shadcn add <name>\` (for example \`button card input\`).` : ''),
@@ -366,8 +426,18 @@ export function composeComponentLibraryInstructions(input: ComposeComponentLibra
         ? candidates.map((c) => `- \`${c.selector}\` ×${c.count}${artifacts.length > 1 ? ` — ${c.artifacts.length} of ${artifacts.length} designs` : ''}`).join('\n')
         : '- (nothing repeated was found; read the HTML for the parts)') +
       `\n\nWrite \`${inventoryPath}\` with one section per component: its name (PascalCase), the source selectors it comes from, its variants, its props, and its states. ` +
-      `Every interactive component lists default, hover, focus-visible, active and disabled; buttons also list loading, inputs also list error, lists and tables also list empty. ` +
-      `Prefer the library's own components (${library === 'mui' ? 'Button, Card, TextField, AppBar, Chip, …' : 'button, card, input, navigation-menu, badge, …'}) and say which one each component wraps.\n\n` +
+      (native
+        ? `Every interactive component lists default, pressed and disabled (and focused for inputs); buttons also list loading, inputs also list error, lists also list empty. `
+        : `Every interactive component lists default, hover, focus-visible, active and disabled; buttons also list loading, inputs also list error, lists and tables also list empty. `) +
+      `Prefer the library's own components (${
+        library === 'mui'
+          ? 'Button, Card, TextField, AppBar, Chip, …'
+          : native
+            ? reusables
+              ? 'the app\'s react-native-reusables primitives in `components/ui` (Button, Card, Input, Text, …)'
+              : 'React Native core: Pressable, Text, TextInput, View, FlatList, …; don\'t install a UI library without asking'
+            : 'button, card, input, navigation-menu, badge, …'
+      }) and say which one each component wraps.\n\n` +
       `Then show the user the list in a few lines and ask whether to go ahead. Stop here until they answer.`,
   );
 
@@ -377,8 +447,11 @@ export function composeComponentLibraryInstructions(input: ComposeComponentLibra
       `\n\n## Stage 2 — the theme\n\nGenerated from ${themeSource.label} (a ${t.mode} theme). Write it to \`${themePath}\` as is, then ` +
         (library === 'mui'
           ? 'wrap the app (or the gallery) in `<ThemeProvider theme={theme}>` with `<CssBaseline />`.'
-          : "import it from the app's global stylesheet in place of the `:root` block shadcn init wrote (keep any `.dark` block the app has, or derive one only if the user asks).") +
-        `\n\n\`\`\`${library === 'mui' ? 'ts' : 'css'}\n${t.code.trim()}\n\`\`\``,
+          : native
+            ? `make sure the root layout imports it. Both colour schemes are in it${t.otherScheme?.derived ? `; the ${t.otherScheme.mode} one is derived by the kit (neutrals mirrored), so tell the user it is a starting point to replace with designed values` : ''}.`
+            : "import it from the app's global stylesheet in place of the `:root` block shadcn init wrote (keep any `.dark` block the app has, or derive one only if the user asks).") +
+        `\n\n\`\`\`${library === 'mui' ? 'ts' : 'css'}\n${t.code.trim()}\n\`\`\`` +
+        (native && t.tailwindExtend ? `\n\nThen merge this into \`tailwind.config.js\` (keep its \`content\` globs and the \`nativewind/preset\`):\n\n\`\`\`js\nmodule.exports = {\n${t.tailwindExtend}\n};\n\`\`\`` : ''),
     );
     if (t.unmapped.length) {
       parts.push(
@@ -397,20 +470,27 @@ export function composeComponentLibraryInstructions(input: ComposeComponentLibra
     `\n\n## Stage 3 — the components\n\nWrite each component from the inventory in \`${componentsDir}\`, one file each, in TypeScript if the app uses it.\n\n` +
       (library === 'mui'
         ? '- Build on the MUI component it names (`@mui/material`), and express variants with MUI props (`variant`, `color`, `size`) or a `variants` entry in the theme\'s `components` section, not with new CSS.\n'
-        : '- Build on the generated `components/ui/*` file it names and add variants with `cva` in your component, not by editing the generated file.\n') +
+        : native
+          ? reusables
+            ? '- Build on the react-native-reusables primitive it names and add variants with `cva` in your component, not by editing the primitive.\n'
+            : '- Build on React Native core components with NativeWind `className`s, and express variants with `cva` (or a small variant map) in the component.\n'
+          : '- Build on the generated `components/ui/*` file it names and add variants with `cva` in your component, not by editing the generated file.\n') +
       '- Take content (text, images, links, items) through typed props; the design\'s copy can be the story or gallery data.\n' +
       `- Read every colour, radius, font, size and spacing from the theme (${library === 'mui' ? '`theme.palette`, `theme.spacing()`, `sx` theme keys' : 'Tailwind classes bound to the theme variables'}). No hex, rgb or px literals for these in component files.\n` +
       '- Loading is not disabled: keep full strength and show a spinner. A destructive action uses the danger colour (' +
       (library === 'mui' ? '`color="error"`' : '`variant="destructive"`') +
       ').\n- Keep the app\'s own conventions for imports, file names and exports; read one existing component first if there is one.',
   );
+  if (native) parts.push(`\n\n${composeNativeRulesSection()}`);
 
   parts.push(
     `\n\n## Stage 4 — the gallery\n\n` +
       (app.hasStorybook
-        ? 'The app has Storybook: write one `<Name>.stories.tsx` per component next to it, with a story for every variant and every state in the inventory.'
-        : `Write \`${path.posix.join(componentsDir, 'ComponentGallery.tsx')}\`: one component that renders every component in every variant and state from the inventory, with a label for each.`) +
-      ' Do not add it to routes or navigation; tell the user how to view it.',
+        ? `The app has Storybook${native ? ' for React Native' : ''}: write one \`<Name>.stories.tsx\` per component next to it, with a story for every variant and every state in the inventory.`
+        : `Write \`${path.posix.join(componentsDir, 'ComponentGallery.tsx')}\`: one ${native ? 'screen component (a ScrollView inside a SafeAreaView)' : 'component'} that renders every component in every variant and state from the inventory, with a label for each${native ? ', in both colour schemes' : ''}.`) +
+      (native
+        ? ' Do not add it to the app\'s routes (in Expo Router a file under `app/` is a route); tell the user they can show it from a dev-only route such as `app/gallery.tsx` if they want. The kit can\'t render React Native, so the type check and the gallery on a device are the verification.'
+        : ' Do not add it to routes or navigation; tell the user how to view it.'),
   );
 
   parts.push(
@@ -510,7 +590,8 @@ async function themeSourceFor(options: PrepareComponentLibraryOptions, artifacts
     if (!detail) continue;
     const resolved = resolveDesignSystemDetailTokens(detail);
     const note = ids.length > 1 ? ` (the designs use ${ids.length} design systems: ${ids.join(', ')}; this one is first)` : '';
-    return { label: `the \`${detail.id}\` design system${note}`, theme: buildLibraryTheme(resolved.tokens, library) };
+    const dark = library === 'nativewind' ? darkTokensOf(detail.tokensCss, resolved.tokens) : undefined;
+    return { label: `the \`${detail.id}\` design system${note}`, theme: buildLibraryTheme(resolved.tokens, library, dark) };
   }
   for (const a of artifacts) {
     const tokens = extractRootTokens(a.html);
@@ -554,6 +635,12 @@ export async function prepareComponentLibrary(options: PrepareComponentLibraryOp
   }
   const choice = chooseLibrary(app, requested as ComponentLibrary | 'auto');
   if ('error' in choice) {
+    if (choice.error === 'unsupported-framework' && choice.found.includes('react-native')) {
+      return { ok: false, code: 'unsupported-framework', text: `${app.appDir ? `\`${app.appDir}\`` : 'This app'} is an Expo / React Native app, where MUI and shadcn/ui (web libraries) don't run. Use library "nativewind" (or "auto").` };
+    }
+    if (choice.error === 'unsupported-framework' && choice.found.includes('react (web)')) {
+      return { ok: false, code: 'unsupported-framework', text: `"nativewind" is for Expo and React Native apps, and ${app.appDir ? `\`${app.appDir}\`` : 'this app'} depends on neither expo nor react-native. Use "mui" or "shadcn" for a web app.` };
+    }
     if (choice.error === 'unsupported-framework') {
       return {
         ok: false,

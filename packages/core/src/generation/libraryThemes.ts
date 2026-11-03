@@ -7,7 +7,7 @@
 import { formatColor, parseColor, relativeLuminance, resolveColorValue } from './colorMix';
 import { resolveTokenValue } from './designSystemTokens';
 
-export const COMPONENT_LIBRARIES = ['mui', 'shadcn'] as const;
+export const COMPONENT_LIBRARIES = ['mui', 'shadcn', 'nativewind'] as const;
 export type ComponentLibrary = (typeof COMPONENT_LIBRARIES)[number];
 
 export interface UnmappedToken {
@@ -33,6 +33,10 @@ export interface LibraryTheme {
   cssVars?: Record<string, string>;
   /** shadcn only: the same colours as bare HSL triplets, for apps whose globals.css uses `hsl(var(--x))`. */
   cssVarsHsl?: Record<string, string>;
+  /** nativewind only: the other colour scheme's HSL triplets, and whether the kit derived them (openspec add-expo-nativewind-target). */
+  otherScheme?: { mode: 'light' | 'dark'; cssVarsHsl: Record<string, string>; derived: boolean };
+  /** nativewind only: the tailwind.config.js `theme.extend` source. */
+  tailwindExtend?: string;
   /** Ready-to-paste source for the theme file. */
   code: string;
   /** Contract tokens the library has no slot for, with where they could go. */
@@ -111,6 +115,11 @@ const MUI_BODY: ReadonlyArray<[string, string]> = [
 ];
 
 function unmappedSuggestion(library: ComponentLibrary, token: string): string {
+  if (library === 'nativewind') {
+    if (token.startsWith('--elev-')) return '`shadow-*` (iOS) and `elevation-*` (Android) utilities in the theme extension';
+    if (token.startsWith('--motion-') || token.startsWith('--ease-')) return 'react-native-reanimated durations and easings (NativeWind transitions are limited)';
+    if (token === '--focus-ring') return 'a focused border colour on TextInput (no focus rings on touch)';
+  }
   if (token.startsWith('--elev-')) return library === 'mui' ? 'MUI `shadows` (e.g. index 1 to 3) or a `boxShadow` in component styleOverrides' : 'Tailwind `boxShadow` in the theme extension';
   if (token.startsWith('--motion-') || token.startsWith('--ease-')) return library === 'mui' ? 'MUI `transitions.duration` / `transitions.easing`' : 'Tailwind `transitionDuration` / `transitionTimingFunction`';
   if (token === '--focus-ring') return library === 'mui' ? 'a `:focus-visible` box-shadow in `MuiButtonBase` styleOverrides' : 'a `focus-visible:shadow-[…]` utility or the `ring` utilities';
@@ -320,8 +329,108 @@ function shadcnTheme(tokens: Tokens): LibraryTheme {
   return { library: 'shadcn', mode, cssVars, cssVarsHsl, code, unmapped: collectUnmapped(tokens, used, 'shadcn') };
 }
 
-/** The library theme for a resolved token set (`--name → value`, as `resolveDesignSystemTokens` returns). */
-export function buildLibraryTheme(tokens: Tokens, library: ComponentLibrary): LibraryTheme {
+/** Variables whose lightness flips between schemes; the brand colours keep theirs. */
+const NEUTRAL_VARS = new Set(['--background', '--foreground', '--card', '--card-foreground', '--popover', '--popover-foreground', '--secondary', '--secondary-foreground', '--muted', '--muted-foreground', '--accent', '--accent-foreground', '--border', '--input']);
+
+/** The other colour scheme from one HSL set: neutrals mirror their lightness, brand colours stay. Deterministic. */
+export function deriveOtherScheme(hsl: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(hsl)) {
+    const m = /^([\d.]+) ([\d.]+)% ([\d.]+)%$/.exec(v);
+    if (!m || !NEUTRAL_VARS.has(k)) {
+      out[k] = v;
+      continue;
+    }
+    const l = Number(m[3]);
+    // Mirror, then pull towards the middle a little so dark backgrounds aren't pure black.
+    const mirrored = Math.round((100 - l) * 10) / 10;
+    const softened = k === '--background' || k === '--card' || k === '--popover' ? Math.max(mirrored, 6) : mirrored;
+    out[k] = `${m[1]} ${m[2]}% ${softened}%`;
+  }
+  return out;
+}
+
+// NativeWind's Tailwind theme: the shadcn variable names (react-native-reusables uses them too), read as hsl(var(--x)).
+const NATIVEWIND_COLOR_KEYS: ReadonlyArray<[string, string]> = [
+  ['background', '--background'],
+  ['foreground', '--foreground'],
+  ['card', '--card'],
+  ['card-foreground', '--card-foreground'],
+  ['popover', '--popover'],
+  ['popover-foreground', '--popover-foreground'],
+  ['primary', '--primary'],
+  ['primary-foreground', '--primary-foreground'],
+  ['secondary', '--secondary'],
+  ['secondary-foreground', '--secondary-foreground'],
+  ['muted', '--muted'],
+  ['muted-foreground', '--muted-foreground'],
+  ['accent', '--accent'],
+  ['accent-foreground', '--accent-foreground'],
+  ['destructive', '--destructive'],
+  ['border', '--border'],
+  ['input', '--input'],
+  ['ring', '--ring'],
+];
+
+function nativewindTheme(tokens: Tokens, dark?: Tokens): LibraryTheme {
+  const base = shadcnTheme(tokens);
+  const used = new Set<string>(tokens.keys());
+  for (const u of base.unmapped) used.delete(u.token);
+  const hsl = { ...base.cssVarsHsl! };
+  const radius = hsl['--radius'];
+  delete hsl['--radius'];
+  const darkHsl = dark && hasThemeTokens(dark) ? Object.fromEntries(Object.entries(shadcnTheme(dark).cssVarsHsl!).filter(([k]) => k !== '--radius')) : undefined;
+  const otherMode = base.mode === 'light' ? 'dark' : 'light';
+  const other = { mode: otherMode as 'light' | 'dark', cssVarsHsl: darkHsl ?? deriveOtherScheme(hsl), derived: !darkHsl };
+  const colors = NATIVEWIND_COLOR_KEYS.filter(([, v]) => hsl[v] !== undefined).map(([k, v]) => `        '${k}': 'hsl(var(${v}))',`);
+  const fonts: string[] = [];
+  for (const [key, token] of [['sans', '--font-body'], ['display', '--font-display'], ['mono', '--font-mono']] as const) {
+    const v = plainValue(tokens, token);
+    if (!v) continue;
+    // React Native takes one loaded family name, not a CSS stack: the first family.
+    const family = v.split(',')[0].trim().replace(/^["']|["']$/g, '');
+    fonts.push(`        ${key}: ['${family.replace(/'/g, "\\'")}'],`);
+    used.add(token);
+  }
+  const tailwindExtend = [
+    '  theme: {',
+    '    extend: {',
+    '      colors: {',
+    ...colors,
+    '      },',
+    ...(radius ? ["      borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },"] : []),
+    ...(fonts.length ? ['      fontFamily: {', ...fonts, '      },'] : []),
+    '    },',
+    '  },',
+  ].join('\n');
+  const block = (vars: Record<string, string>) => Object.entries(vars).map(([k, v]) => `    ${k}: ${v};`).join('\n');
+  const lightVars = base.mode === 'light' ? hsl : other.cssVarsHsl;
+  const darkVars = base.mode === 'dark' ? hsl : other.cssVarsHsl;
+  const code = [
+    '/* global.css: generated from the Open Design design system tokens (NativeWind reads these variables).',
+    other.derived ? `   The ${otherMode} scheme is DERIVED by the kit (neutrals mirrored); replace it with designed values when you have them. */` : '   Both schemes come from the design system. */',
+    '@tailwind base;',
+    '@tailwind components;',
+    '@tailwind utilities;',
+    '',
+    '@layer base {',
+    '  :root {',
+    block(lightVars),
+    ...(radius ? [`    --radius: ${radius};`] : []),
+    '  }',
+    '',
+    '  .dark:root {',
+    block(darkVars),
+    '  }',
+    '}',
+    '',
+  ].join('\n');
+  return { library: 'nativewind', mode: base.mode, cssVars: base.cssVars, cssVarsHsl: base.cssVarsHsl, otherScheme: other, tailwindExtend, code, unmapped: collectUnmapped(tokens, used, 'nativewind') };
+}
+
+/** The library theme for a resolved token set (`--name → value`, as `resolveDesignSystemTokens` returns). `dark` is the design system's dark tokens, when it has them (NativeWind only). */
+export function buildLibraryTheme(tokens: Tokens, library: ComponentLibrary, dark?: Tokens): LibraryTheme {
+  if (library === 'nativewind') return nativewindTheme(tokens, dark);
   return library === 'mui' ? muiTheme(tokens) : shadcnTheme(tokens);
 }
 
@@ -330,4 +439,23 @@ const CONTRACT_COLOR_NAMES = ['--bg', '--fg', '--accent'];
 /** Whether a token map (e.g. a page's own `:root`) uses enough of the contract names to theme from. */
 export function hasThemeTokens(tokens: Tokens): boolean {
   return CONTRACT_COLOR_NAMES.every((name) => colorOf(tokens, name) !== undefined);
+}
+
+/** The dark tokens in a tokens.css (a `.dark`, `[data-mode="dark"]` or `[data-theme="dark"]` block, or a prefers-color-scheme: dark media block) over `base`; undefined when it has none. */
+export function darkTokensOf(tokensCss: string | undefined, base: Tokens): Tokens | undefined {
+  if (!tokensCss) return undefined;
+  const css = tokensCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  const bodies: string[] = [];
+  for (const m of css.matchAll(/@media[^{]*prefers-color-scheme\s*:\s*dark[^{]*\{\s*[^{}]*\{([^{}]*)\}/gi)) bodies.push(m[1]);
+  for (const m of css.matchAll(/(?:^|\})\s*([^{}@]*(?:\.dark\b|data-(?:mode|theme|color-scheme)\s*=\s*["']?dark)[^{}]*)\{([^{}]*)\}/gi)) bodies.push(m[2]);
+  if (bodies.length === 0) return undefined;
+  const out = new Map(base);
+  let found = false;
+  for (const body of bodies) {
+    for (const d of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);?/g)) {
+      out.set(d[1], d[2].trim());
+      found = true;
+    }
+  }
+  return found ? out : undefined;
 }

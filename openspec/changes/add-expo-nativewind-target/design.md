@@ -20,7 +20,7 @@ It is the shadcn/ui counterpart for React Native, with the same component names 
 
 ### Dark theme is derived only when missing
 
-Mobile apps are expected to follow the system theme. When the design system has dark tokens they are used as is; when it doesn't, the theme derives them with the same OKLCH steps the kit uses elsewhere and says so in the instructions and the record, so a designer can replace them.
+Mobile apps are expected to follow the system theme. When the design system has dark tokens in `tokens.css` (a `prefers-color-scheme: dark` media block, a `.dark` block or a `data-mode="dark"` block) they are used as is, falling back to the light value for any token the dark block doesn't set. When it has none, the theme mirrors the lightness of the neutral slots (background, foreground, card, muted, border and so on) and keeps brand colours as they are; `global.css` carries a DERIVED comment and the instructions tell the agent to say so to the user, so a designer can replace them.
 
 ### Promote writes routes from the flow
 

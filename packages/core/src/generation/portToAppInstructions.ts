@@ -10,6 +10,8 @@
 
 import { markedComponents, type AppComponentsFile } from './appDesignSystem';
 import { composeMockDataSection, type SampleData } from '../export/sampleData';
+import { flowRecordOf, type FlowPlan } from './flowPlan';
+import { detectApp, isNativeApp } from './componentLibrary';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 
@@ -71,6 +73,45 @@ export interface ComposePortToAppInstructionsInput {
   appComponents?: AppComponentsFile;
   /** The sample data file the design binds to (openspec add-sample-data). */
   sampleData?: { path: string; data: SampleData };
+  /** The workspace app is Expo / React Native (openspec add-expo-nativewind-target). */
+  nativeApp?: { expoRouter: boolean; appDir: string; nativewind: boolean };
+  /** The design's flow plan and its screen id, when it is a screen of a flow. */
+  flow?: { plan: FlowPlan; screenId: string };
+}
+
+/** "Port into the Expo app": React Native rules, and Expo Router screens, links and tabs from the flow. */
+export function composeExpoSection(native: NonNullable<ComposePortToAppInstructionsInput['nativeApp']>, flow: ComposePortToAppInstructionsInput['flow']): string {
+  const appDir = native.appDir ? `${native.appDir}/` : '';
+  const lines = [
+    '## This is an Expo / React Native app',
+    '',
+    `Rebuild the design with React Native components (View, Text, Pressable, TextInput, FlatList, SafeAreaView), not HTML elements${native.nativewind ? ', styled with NativeWind `className`s bound to the theme' : ', styled the way the app\'s existing screens are'}. Follow the native rules: 44/48-point touch targets, pressed and disabled states instead of hover, safe-area insets instead of fixed padding, platform shadows, no web-only CSS (grid, fixed position, hover), and accessibility roles and labels on every control. The kit drew the device frame in its previews; it is not part of the screen.`,
+  ];
+  if (native.expoRouter) {
+    if (flow) {
+      const tabIds = new Set((flow.plan.nav ?? []).map((n) => n.to));
+      const route = (id: string) => (tabIds.has(id) ? `${appDir}app/(tabs)/${id}.tsx` : `${appDir}app/${id}.tsx`);
+      lines.push(
+        '',
+        '### Screens and links (Expo Router)',
+        '',
+        `This design is the \`${flow.screenId}\` screen of a flow. Write it as \`${route(flow.screenId)}\` (keep a route the app already has for it). Each link in the flow becomes \`router.push('/<screen>')\` (or \`<Link href="/<screen>">\`), so the app is clickable like the prototype:`,
+        '',
+        ...flow.plan.links.filter((l) => l.from === flow.screenId).map((l) => `- "${l.trigger}" → \`router.push('/${l.to}')\``),
+        ...(flow.plan.links.some((l) => l.from === flow.screenId) ? [] : ['- (this screen has no planned links)']),
+      );
+      if (flow.plan.nav && flow.plan.nav.length > 0) {
+        lines.push(
+          '',
+          `The shared navigation is a tab bar: \`${appDir}app/(tabs)/_layout.tsx\` with \`<Tabs>\` and one \`<Tabs.Screen>\` per item (${flow.plan.nav.map((n) => `${n.label} → \`${n.to}\``).join(', ')}). Write the layout once if it doesn't exist; don't repeat the tab bar inside the screen.`,
+        );
+      }
+      lines.push('', 'Promote the other screens of the flow the same way, one at a time, so every link has a route to go to.');
+    } else {
+      lines.push('', `Put the screen under \`${appDir}app/\` following the app's existing routes; a link to another screen is \`router.push('/<route>')\`.`);
+    }
+  }
+  return lines.join('\n');
 }
 
 /** "Reuse the app's components": the marked parts to import, and the new: parts to create. */
@@ -114,6 +155,8 @@ export function composePortToAppInstructions(input: ComposePortToAppInstructions
     `\n\n## Styling and content\n\nDo NOT copy the artifact's inline CSS verbatim into the new component unless the app's own components genuinely use inline styles — translate to whatever styling approach the reference component(s) actually use. Use the artifact's own text/images as static content${input.sampleData ? ' (except the records bound to the data file: see below)' : ''}, unless the reference component's pattern clearly shows data arriving via props, in which case shape the new component the same way.`,
   );
 
+  if (input.nativeApp) parts.push(`\n\n${composeExpoSection(input.nativeApp, input.flow)}`);
+
   const mocks = input.sampleData ? composeMockDataSection(input.sampleData) : '';
   if (mocks) parts.push(`\n\n${mocks}`);
 
@@ -122,4 +165,15 @@ export function composePortToAppInstructions(input: ComposePortToAppInstructions
   );
 
   return parts.join('');
+}
+
+/** The Expo context for promote: the workspace's app when it is Expo / React Native, and the design's flow plan. */
+export async function nativePromoteContext(workspaceRoot: string, metadata: unknown): Promise<Pick<ComposePortToAppInstructionsInput, 'nativeApp' | 'flow'>> {
+  const app = await detectApp(workspaceRoot);
+  const record = flowRecordOf(metadata);
+  if (!app || !isNativeApp(app)) return {};
+  return {
+    nativeApp: { expoRouter: app.dependencies.has('expo-router'), appDir: app.appDir, nativewind: app.dependencies.has('nativewind') },
+    ...(record ? { flow: { plan: record.plan, screenId: record.screenId } } : {}),
+  };
 }

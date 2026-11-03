@@ -634,13 +634,13 @@ Composes instructions to rebuild a finished artifact as real, idiomatic code in 
 
 ### prepare_open_design_component_library
 
-Composes staged instructions to turn one or more reviewed artifacts into a reusable component set in the workspace's React app, on **Material UI themed to Material 3** (`mui`) or **shadcn/ui** (`shadcn`). **It writes no app code.** The only file it changes is the artifacts' manifests, on the `record` call. See [Build a component set](../guides/component-library.md).
+Composes staged instructions to turn one or more reviewed artifacts into a reusable component set in the workspace's React app, on **Material UI themed to Material 3** (`mui`) or **shadcn/ui** (`shadcn`), or in an Expo / React Native app as **React Native components styled with NativeWind** (`nativewind`). **It writes no app code.** The only file it changes is the artifacts' manifests, on the `record` call. See [Build a component set](../guides/component-library.md).
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `entryPaths` | string[] (1–10) | one of these two | Registered artifacts to build the set from. |
 | `collectionId` | string | one of these two | Instead of `entryPaths`: every screen of this [collection](../guides/generate-a-design.md#collections). |
-| `library` | `auto` · `mui` · `shadcn` | no | Default `auto`: `mui` when the app depends on `@mui/material`, `shadcn` when it has a `components.json` (or Radix and Tailwind). When it can't tell, the result is `needs-choice` and the agent asks once. A library the app doesn't have yet gets an install step the agent asks about first. |
+| `library` | `auto` · `mui` · `shadcn` · `nativewind` | no | Default `auto`: `nativewind` for any app that depends on `expo` or `react-native` (MUI and shadcn are refused there), else `mui` when the app depends on `@mui/material`, `shadcn` when it has a `components.json` (or Radix and Tailwind). When it can't tell, the result is `needs-choice` and the agent asks once. A library the app doesn't have yet gets an install step the agent asks about first. |
 | `outputDir` | string | no | Workspace-relative folder for the components, inside the app. Default: `<app>/src/components/<DesignName>` (`components/` when the app has no `src/`), or the folder an earlier record names. The app is the nearest `package.json` from this folder up. |
 | `record` | object | no | Stage 5 only: `{ library, outputDir, themePath, components: [{ name, path, sourceSelectors? }] }`. Writes it as [`metadata.componentLibrary`](artifact-manifest.md#metadatacomponentlibrary) on each artifact and returns a confirmation instead of instructions. At most 60 components and 4 KB. |
 
