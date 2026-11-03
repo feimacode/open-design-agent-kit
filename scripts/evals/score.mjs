@@ -60,8 +60,13 @@ function countCodes(findings, severity) {
  * agent run knows (transcript, rounds, wall time); without it those columns are n/a.
  */
 export async function scoreWorkspace({ workspaceRoot, shotsDir, brief, run, env }) {
-  const manifests = await registeredDesigns(workspaceRoot);
-  const entries = new Set(manifests.map((m) => m.entryPath));
+  const registered = await registeredDesigns(workspaceRoot);
+  // A redesign's before/after page is evidence about the designs, not a design (openspec add-before-after).
+  const manifests = registered.filter((m) => !m.manifest.metadata?.beforeAfter);
+  const beforeAfter = registered
+    .filter((m) => m.manifest.metadata?.beforeAfter)
+    .map(({ entryPath, manifest }) => ({ entryPath, fixed: manifest.metadata.beforeAfter.fixed?.length ?? 0, open: manifest.metadata.beforeAfter.open?.length ?? 0, summary: manifest.metadata.beforeAfter.summary ?? 0 }));
+  const entries = new Set(registered.map((m) => m.entryPath));
   const transcript = run?.transcript;
   const designs = [];
   for (const { entryPath, manifest } of manifests) {
@@ -90,6 +95,7 @@ export async function scoreWorkspace({ workspaceRoot, shotsDir, brief, run, env 
     repeat: run?.repeat,
     workspace: workspaceRoot,
     designs,
+    beforeAfter,
     questions: run?.questions,
     rounds: run?.rounds,
     toolCalls: transcript?.toolUses.length,

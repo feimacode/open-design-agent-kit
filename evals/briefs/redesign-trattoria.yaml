@@ -12,3 +12,4 @@ must:
   - "The home page binds the site's own heading, hours, address and phone from content.json (data-od-bind), not retyped or invented"
   - "The audit's top problems are fixed: the booking button is readable and on the first phone screen, and nothing scrolls sideways on a phone"
   - "Every page shows the concept ribbon (data-od-concept), and any rewritten text has data-od-copy-edit with its original"
+  - "A before/after page compares old and new at desktop and phone sizes; its fixed findings are re-checked, and every summary line cites a fixed finding"

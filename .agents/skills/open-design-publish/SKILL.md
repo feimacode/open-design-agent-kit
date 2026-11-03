@@ -53,3 +53,5 @@ They check the host's CLI, then **stop for the user's explicit yes** before anyt
 ## 5. Finish
 
 Give the user the link. For a temporary link, also give the claim URL and when it expires, for them only. Then record it by calling `publish_open_design_artifact` again with `published`, as the instructions show, so a later publish updates the same site.
+
+For a redesign with a base screen, offer a before/after page for the client (`compare_open_design_before_after`). On a flow, run it before publishing: the published site links to it from the map. Otherwise publish the before/after page itself like any design.

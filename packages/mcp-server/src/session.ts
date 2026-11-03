@@ -796,6 +796,34 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'compare_open_design_before_after',
+      description:
+        "For a redesign with a base screen (the page as it was): writes a before/after page beside the design (one section per page of a collection) with the old and new pages at desktop (1440×900) and phone (390×844) sizes, a drag slider and side-by-side view, and capture times. When the site was audited (audit_open_design_site), each audit problem for that page is re-checked on the design with the same check at the same size and shown as fixed only if it passes, otherwise as still open (page weight isn't re-checked). Lists every copy edit (data-od-copy-edit) with its original. Optional summary lines must each cite fixed findings by id; a line that cites nothing or an open finding is left out and reported. The page is one self-contained HTML file, registered as its own design, so preview, PDF export (one page per screen) and publish work on it; a flow's published site links to it from the map. Needs a browser to capture the design.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: { type: 'string', description: 'One redesigned page. Give this or collectionId.' },
+          collectionId: { type: 'string', description: 'Every page of a redesign planned as a flow. Give this or entryPath.' },
+          summary: {
+            type: 'array',
+            maxItems: 3,
+            items: {
+              type: 'object',
+              properties: {
+                text: { type: 'string', description: 'One short line for the client (at most 160 characters), e.g. "The booking button is now readable and on the first phone screen."' },
+                cites: { type: 'array', items: { type: 'string' }, description: 'The ids of the fixed findings the line rests on, e.g. ["F1", "F3"].' },
+              },
+              required: ['text', 'cites'],
+            },
+            description: 'Optional: up to 3 summary lines for the top of the page. Run once without it to see which findings are fixed, then again with lines that cite them.',
+          },
+        },
+      },
+    },
+    handler: (ctx, args) => tools.compareBeforeAfter(ctx, args as { entryPath?: string; collectionId?: string; summary?: unknown }),
+  },
+  {
+    tool: {
       name: 'extract_open_design_design_system',
       description:
         "Renders a website in an installed Chrome, Edge or Chromium and measures its design system: colour roles from the elements that carry them (page background, cards, text, borders, the primary button and its forced :hover/:active states), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url skill has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and marks the result partial.",

@@ -50,9 +50,15 @@ Follow the brief's redesign section: bind the site's own words from `content.jso
 
 Call `check_open_design_artifact` on each page and fix what it reports, including `copy-edit-original-missing` and `concept-unmarked`. Then get a second opinion with `open-design-critique`: the critic checks that the audit's problems are gone.
 
-## 7. Hand it over
+## 7. Before and after
 
-Show the user the new home page beside the old one, and list the copy edits. Offer next:
+Call `compare_open_design_before_after` with the `collectionId` (or the `entryPath` for a single page). It puts each old page beside the new one, re-checks every audit problem on the new design and lists the copy edits.
 
-- **A before/after page** to send to the business, comparing the audit with the new design.
-- **Publish** with `open-design-publish`. A page with the concept ribbon gets a warning: send the link to the business rather than posting it publicly.
+- Problems marked **still open** aren't fixed: fix them and run it again, or tell the user plainly which remain.
+- Then run it once more with up to 3 `summary` lines for the client, each citing the fixed findings it rests on (`{ "text": "The booking button is readable and on the first phone screen.", "cites": ["F1", "F2"] }`). Lines that cite nothing or an open finding are left out. Don't claim anything the page doesn't show (speed, search ranking, sales).
+
+## 8. Hand it over
+
+Show the user the before/after page and list the copy edits. Offer next:
+
+- **Send it**: export the before/after page as a PDF (one page per screen) for email, or publish the redesign with `open-design-publish`; a flow's published site links to the before/after page from its map. A page with the concept band gets a warning: send the link to the business rather than posting it publicly.

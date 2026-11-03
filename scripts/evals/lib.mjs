@@ -318,6 +318,11 @@ export function summary(scores) {
     `- Distinct look signatures: ${signatures.size} of ${designs.length}${designs.some((d) => d.signature.source === 'html') ? ' (read from the HTML; variety memory not recorded)' : ''}.`,
     `- Critic: ${critic ? 'verdicts from metadata.critique' : 'n/a (no critique recorded)'}.`,
   ];
+  const comparisons = scores.flatMap((s) => s.beforeAfter ?? []);
+  if (comparisons.length > 0) {
+    const sum = (k) => comparisons.reduce((a, c) => a + c[k], 0);
+    lines.push(`- Before/after pages: ${comparisons.length}; audit findings re-checked as fixed ${sum('fixed')}, still open ${sum('open')}; cited summary lines ${sum('summary')}.`);
+  }
   const cost = scores.reduce((a, s) => a + (s.costUsd ?? 0), 0);
   if (cost > 0) lines.push(`- Agent cost: $${cost.toFixed(2)}.`);
   return lines.join('\n');

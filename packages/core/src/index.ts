@@ -90,6 +90,7 @@ export * from './export/screenChecks';
 export * from './export/flowIncludes';
 export * from './export/sampleData';
 export * from './export/redesignChecks';
+export * from './export/beforeAfter';
 export * from './export/flowCheck';
 export * from './export/flowMap';
 export * from './export/collectionCheck';

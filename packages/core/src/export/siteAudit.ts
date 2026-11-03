@@ -232,6 +232,15 @@ export interface AuditBlockedPage {
   screenshot?: string;
 }
 
+/** One audited page's screenshots, workspace-relative. */
+export interface AuditPageShots {
+  page: string;
+  desktop: string;
+  phone: string;
+  desktopFull: string;
+  phoneFull: string;
+}
+
 export interface AuditPageWeight {
   page: string;
   bytes: number;
@@ -291,7 +300,7 @@ function readLivePageFacts(): { viewportMeta: boolean; missingAlt: Array<{ name:
 }
 
 /** Finds the elements the findings name (`tag#id "text"` or `tag.class "text"`), returning rects in document coordinates. Self-contained. */
-function locateDescribed(descriptions: string[]): Array<{ rect?: { x: number; y: number; width: number; height: number }; region: 'header' | 'main' | 'footer' | 'page'; aboveFold: boolean }> {
+export function locateDescribed(descriptions: string[]): Array<{ rect?: { x: number; y: number; width: number; height: number }; region: 'header' | 'main' | 'footer' | 'page'; aboveFold: boolean }> {
   const fold = window.innerHeight;
   return descriptions.map((d) => {
     const m = /^([a-z][a-z0-9-]*)(#[^\s"(]+|\.[^\s"(]+)?(?:\s+\(.*\))?(?:\s+"(.*)")?/i.exec(String(d || '').trim());
@@ -482,6 +491,53 @@ export function groupFindings(findings: AuditFinding[]): AuditGroup[] {
 }
 
 /** Runs the audit. Never throws for a site problem; reports it. */
+export const MISSING_VIEWPORT_MESSAGE = 'The page has no <meta name="viewport" content="width=device-width">, so phones render it at desktop width and zoom out.';
+
+/** The desktop pass on a loaded page: the preflight checks that need no kit markup. */
+export async function desktopPasses(page: Page): Promise<Finding[]> {
+  return liveOnly(await runPreflight(page, { cardSelector: CARD_SELECTOR }));
+}
+
+/**
+ * The phone passes on a page loaded at the phone size: image alt text, the
+ * preflight, sideways scroll, tap targets, the first screen and larger text.
+ * Shared by the audit and the before/after re-check, so both measure the same way.
+ */
+export async function phonePasses(page: Page): Promise<{ viewportMeta: boolean; phone: Finding[]; scrollsSideways: boolean }> {
+  const phone: Finding[] = [];
+  const facts = (await page.evaluate(readLivePageFacts)) as ReturnType<typeof readLivePageFacts>;
+  phone.push(...facts.missingAlt.map((m) => ({ check: 'missing-alt', severity: 'warning' as const, message: `${m.name} has no alt attribute.`, selector: m.name.replace(/ \(.*\)$/, '') })));
+  const phonePreflight = liveOnly(await runPreflight(page, { cardSelector: CARD_SELECTOR }));
+  phone.push(...phonePreflight);
+  const sideways = (await page.evaluate(collectHorizontalScroll, PHONE_MAX_WIDTH)) as Finding[];
+  phone.push(...sideways);
+  phone.push(...((await page.evaluate(collectTapTargets)) as Finding[]));
+  const economy = (await page.evaluate(SCREEN_ECONOMY_SCRIPT)) as { exempt: boolean; actions: number };
+  if (!economy.exempt && economy.actions === 0) {
+    phone.push({ check: 'screen-economy', severity: 'warning', message: `The first phone screen (${MOBILE_VIEWPORT.width}×${MOBILE_VIEWPORT.height}) has no button, link or field; visitors have to scroll to do anything.` });
+  }
+
+  // Larger text on the phone: only layout problems it newly causes.
+  const key = (f: Finding) => f.selector ?? f.message;
+  const isLayout = (f: Finding) => f.check === 'overflow' || f.check === 'overlap';
+  const before = new Set(phonePreflight.filter(isLayout).map(key));
+  await page.evaluate(`document.documentElement.setAttribute('data-od-large-text', document.documentElement.style.fontSize || ''); document.documentElement.style.fontSize = '${LARGE_TEXT_ROOT_PX}px'`);
+  await settle(page);
+  const larger = (await runPreflight(page, { cardSelector: CARD_SELECTOR })).filter((f) => isLayout(f) && !before.has(key(f)) && !/ (extends outside|runs past the edge of) the card/.test(f.message));
+  phone.push(...larger.map((f) => ({ ...f, check: 'large-text-overflow', severity: 'warning' as const, message: `With the reader's text size at ${LARGE_TEXT_ROOT_PX} px: ${f.message}` })));
+  await page.evaluate("const r = document.documentElement; r.style.fontSize = r.getAttribute('data-od-large-text') || ''; r.removeAttribute('data-od-large-text')");
+
+  return { viewportMeta: facts.viewportMeta, phone, scrollsSideways: sideways.some((f) => f.severity === 'error') };
+}
+
+/** Reflow at 320 px wide (WCAG 1.4.10). Leaves the viewport at 320 px. */
+export async function reflowPass(page: Page): Promise<Finding[]> {
+  await page.setViewport({ width: REFLOW_WIDTH, height: REFLOW_HEIGHT, hasTouch: true, deviceScaleFactor: 1 });
+  await settle(page);
+  const narrow = (await page.evaluate(collectHorizontalScroll, PHONE_MAX_WIDTH)) as Finding[];
+  return narrow.map((f) => ({ ...f, check: 'reflow', severity: 'error' as const, message: `At ${REFLOW_WIDTH}px wide: ${f.message}` }));
+}
+
 export async function auditSite(input: AuditSiteInput): Promise<AuditSiteResult> {
   const valid = await validateLiveUrls(input.url, input.extraUrls ?? [], input.resolveHost, input.allowHostsForTesting);
   if (!valid.ok) return { status: 'invalid-args', error: valid.error };
@@ -503,6 +559,7 @@ export async function auditSite(input: AuditSiteInput): Promise<AuditSiteResult>
   const pageWeight: AuditPageWeight[] = [];
   const notes: string[] = [];
   const audited: string[] = [];
+  const pageShots: AuditPageShots[] = [];
   /** Full-page shots by `<page>|<viewport>`, for crops. */
   const shots = new Map<string, string>();
   let live: LiveBrowser | undefined;
@@ -548,7 +605,7 @@ export async function auditSite(input: AuditSiteInput): Promise<AuditSiteResult>
       const desktopFull = `${prefix}desktop-full.png`;
       await fullShot(page, path.join(auditDir, desktopFull));
       shots.set(`${pageUrl}|desktop`, desktopFull);
-      await add(liveOnly(await runPreflight(page, { cardSelector: CARD_SELECTOR })), 'desktop');
+      await add(await desktopPasses(page), 'desktop');
 
       // Phone: a fresh load, measured for weight.
       // Not isMobile: mobile emulation zooms out to fit overflowing content, which hides sideways scroll. The viewport meta is checked from the DOM.
@@ -565,12 +622,10 @@ export async function auditSite(input: AuditSiteInput): Promise<AuditSiteResult>
       const phoneFull = `${prefix}phone-full.png`;
       await fullShot(page, path.join(auditDir, phoneFull));
       shots.set(`${pageUrl}|phone`, phoneFull);
+      pageShots.push({ page: pageUrl, desktop: rel(desktopShot), phone: rel(phoneShot), desktopFull: rel(desktopFull), phoneFull: rel(phoneFull) });
 
-      const facts = (await page.evaluate(readLivePageFacts)) as ReturnType<typeof readLivePageFacts>;
-      const pageLevel: Finding[] = [];
-      if (!facts.viewportMeta) {
-        pageLevel.push({ check: 'missing-viewport', severity: 'error', message: 'The page has no <meta name="viewport" content="width=device-width">, so phones render it at desktop width and zoom out.' });
-      }
+      const passes = await phonePasses(page);
+      const pageLevel: Finding[] = passes.viewportMeta ? [] : [{ check: 'missing-viewport', severity: 'error', message: MISSING_VIEWPORT_MESSAGE }];
       if (weight.bytes > PAGE_WEIGHT_BUDGET_BYTES) {
         pageLevel.push({ check: 'page-weight', severity: 'warning', message: `The phone load downloads ${(weight.bytes / 1024 / 1024).toFixed(1)} MB (budget ${(PAGE_WEIGHT_BUDGET_BYTES / 1024 / 1024).toFixed(0)} MB).` });
       }
@@ -578,46 +633,16 @@ export async function auditSite(input: AuditSiteInput): Promise<AuditSiteResult>
         pageLevel.push({ check: 'page-weight', severity: 'warning', message: `The phone load makes ${weight.requests} requests (budget ${REQUEST_BUDGET}).` });
       }
       for (const b of broken.slice(0, 20)) pageLevel.push({ check: 'broken-asset', severity: 'warning', message: `${b.url} failed to load (${b.status}).` });
-      const missingAlt: Finding[] = facts.missingAlt.map((m) => ({ check: 'missing-alt', severity: 'warning', message: `${m.name} has no alt attribute.`, selector: m.name.replace(/ \(.*\)$/, '') }));
       await add(pageLevel, 'phone');
-      await add(missingAlt, 'phone');
-
-      const phonePreflight = liveOnly(await runPreflight(page, { cardSelector: CARD_SELECTOR }));
-      await add(phonePreflight, 'phone');
-      const sideways = (await page.evaluate(collectHorizontalScroll, PHONE_MAX_WIDTH)) as Finding[];
-      await add(sideways, 'phone');
-      await add((await page.evaluate(collectTapTargets)) as Finding[], 'phone');
-      const economy = (await page.evaluate(SCREEN_ECONOMY_SCRIPT)) as { exempt: boolean; actions: number };
-      if (!economy.exempt && economy.actions === 0) {
-        await add([{ check: 'screen-economy', severity: 'warning', message: `The first phone screen (${MOBILE_VIEWPORT.width}×${MOBILE_VIEWPORT.height}) has no button, link or field; visitors have to scroll to do anything.` }], 'phone');
-      }
-
-      // Larger text on the phone: only layout problems it newly causes.
-      const key = (f: Finding) => f.selector ?? f.message;
-      const isLayout = (f: Finding) => f.check === 'overflow' || f.check === 'overlap';
-      const before = new Set(phonePreflight.filter(isLayout).map(key));
-      await page.evaluate(`document.documentElement.setAttribute('data-od-large-text', document.documentElement.style.fontSize || ''); document.documentElement.style.fontSize = '${LARGE_TEXT_ROOT_PX}px'`);
-      await settle(page);
-      const larger = (await runPreflight(page, { cardSelector: CARD_SELECTOR })).filter((f) => isLayout(f) && !before.has(key(f)) && !/ (extends outside|runs past the edge of) the card/.test(f.message));
-      await add(
-        larger.map((f) => ({ ...f, check: 'large-text-overflow', severity: 'warning' as const, message: `With the reader's text size at ${LARGE_TEXT_ROOT_PX} px: ${f.message}` })),
-        'phone',
-      );
-      await page.evaluate("const r = document.documentElement; r.style.fontSize = r.getAttribute('data-od-large-text') || ''; r.removeAttribute('data-od-large-text')");
-
+      await add(passes.phone, 'phone');
       // Reflow at 320 px, unless the phone already scrolls sideways.
-      if (!sideways.some((f) => f.severity === 'error')) {
-        await page.setViewport({ width: REFLOW_WIDTH, height: REFLOW_HEIGHT, hasTouch: true, deviceScaleFactor: 1 });
-        await settle(page);
-        const narrow = (await page.evaluate(collectHorizontalScroll, PHONE_MAX_WIDTH)) as Finding[];
-        if (narrow.length > 0) {
+      if (!passes.scrollsSideways) {
+        const reflow = await reflowPass(page);
+        if (reflow.length > 0) {
           const reflowFull = `${prefix}reflow-full.png`;
           await fullShot(page, path.join(auditDir, reflowFull));
           shots.set(`${pageUrl}|${REFLOW_WIDTH}px`, reflowFull);
-          await add(
-            narrow.map((f) => ({ ...f, check: 'reflow', severity: 'error' as const, message: `At ${REFLOW_WIDTH}px wide: ${f.message}` })),
-            `${REFLOW_WIDTH}px`,
-          );
+          await add(reflow, `${REFLOW_WIDTH}px`);
         }
       }
     }
@@ -648,7 +673,7 @@ export async function auditSite(input: AuditSiteInput): Promise<AuditSiteResult>
   const result = { status, slug, auditDir: auditRel, report: reportRel, capturedAt, pages: audited, groups, findings, screenshots, blocked, pageWeight, notes } as const;
   await fs.writeFile(
     path.join(auditDir, 'audit.json'),
-    JSON.stringify({ url: main.toString(), capturedAt, status, pages: audited, pageWeight, blocked, notes, checks: AUDIT_CHECKS.map((c) => c.check), notMeasured: NOT_MEASURED, groups, findings }, null, 2) + '\n',
+    JSON.stringify({ url: main.toString(), capturedAt, status, pages: audited, pageShots, pageWeight, blocked, notes, checks: AUDIT_CHECKS.map((c) => c.check), notMeasured: NOT_MEASURED, groups, findings }, null, 2) + '\n',
   );
   await fs.writeFile(path.join(auditDir, 'index.html'), renderAuditReport({ ...result, url: main.toString() }, auditRel));
   return result;

@@ -28,6 +28,8 @@ import {
   composeCustomDesignSystemInstructions,
   extractSite,
   auditSite as auditLiveSite,
+  compareBeforeAfter as compareLiveBeforeAfter,
+  formatBeforeAfterResult,
   formatAuditSiteResult,
   formatExtractSiteResult,
   type ExtractionTheme,
@@ -981,6 +983,13 @@ export async function auditSite(ctx: ToolContext, input: { url?: string; extraUr
   const shot = crop ?? result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
   const image = shot ? await fs.readFile(path.join(ctx.workspaceRoot, shot)).catch(() => undefined) : undefined;
   return { text: formatAuditSiteResult(result), images: image ? [{ data: image, mime: 'image/png' }] : [] };
+}
+
+export async function compareBeforeAfter(ctx: ToolContext, input: { entryPath?: string; collectionId?: string; summary?: unknown }): Promise<ToolOutput> {
+  const entryPath = typeof input.entryPath === 'string' && input.entryPath.trim() ? input.entryPath.trim() : undefined;
+  const collectionId = typeof input.collectionId === 'string' && input.collectionId.trim() ? input.collectionId.trim() : undefined;
+  const result = await compareLiveBeforeAfter({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath, collectionId, summary: input.summary });
+  return { text: formatBeforeAfterResult(result), images: [] };
 }
 
 /** Hosts the eval runner serves fixture sites from; honoured only when OPEN_DESIGN_EVALS=1. */
