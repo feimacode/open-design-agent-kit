@@ -8,6 +8,8 @@ interface ExtractDesignSystemInput {
   url: string;
   extraUrls?: string[];
   theme?: ExtractionTheme;
+  content?: boolean;
+  localizeImages?: boolean;
 }
 
 // Renders the site and measures it (core siteExtraction.ts); writes only the
@@ -21,7 +23,7 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
       invocationMessage: `Measuring the design system of ${options.input.url}`,
       confirmationMessages: {
         title: 'Open a website',
-        message: new vscode.MarkdownString(`Open **${options.input.url}**${options.input.extraUrls?.length ? ` and ${options.input.extraUrls.length} more page(s)` : ''} in a headless browser to measure its colours, fonts and spacing?`),
+        message: new vscode.MarkdownString(`Open **${options.input.url}**${options.input.extraUrls?.length ? ` and ${options.input.extraUrls.length} more page(s)` : ''} in a headless browser to measure its colours, fonts and spacing${options.input.content ? ' and copy its content' : ''}?`),
       },
     };
   }
@@ -32,7 +34,9 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
   ): Promise<vscode.LanguageModelToolResult> {
     const browserPath = vscode.workspace.getConfiguration('openDesign').get<string>('export.browserPath', '') || undefined;
     const workspaceRoot = getWorkspaceRoot();
-    const result = await extractSite({ ...options.input, workspaceRoot, outputDir: getOutputDirectory(), browserPath });
+    const { url, extraUrls, theme, content, localizeImages } = options.input;
+    if (localizeImages && !content) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart('Invalid arguments: localizeImages needs content: true.')]);
+    const result = await extractSite({ url, extraUrls, theme, content: content === true, localizeImages: localizeImages === true, workspaceRoot, outputDir: getOutputDirectory(), browserPath });
     if (token.isCancellationRequested) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart('Extraction cancelled.')]);
     if (result.status === 'invalid-args') return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(`Invalid arguments: ${result.error}`)]);
     const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.blocked.find((b) => b.screenshot)?.screenshot;

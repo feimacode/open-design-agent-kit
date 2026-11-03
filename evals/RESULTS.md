@@ -267,3 +267,51 @@ Must notes (ticked by the reviewer from the contact sheet):
 - [ ] habits-expo: Uses the app's green primary and warm off-white background from global.css, not the kit's defaults
 - [ ] habits-expo: The component set targets NativeWind: Pressable-based components with pressed and disabled states, 44 pt targets, no web-only CSS
 - [ ] habits-expo: The theme lands in global.css and tailwind.config.js, and a gallery screen lists the components
+
+## 2026-11-03 — add-redesign-from-url
+
+- Kit: 0.4.0-beta.2 (local/redesign 527e2f6, local changes)
+- Mode: agent claude (2.1.317 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-03-11-27-51/`
+- Contact sheet: [runs/2026-11-03-11-27-51/contact-sheet.png](runs/2026-11-03-11-27-51/contact-sheet.png)
+
+- Designs: 2 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 2.
+- Critic: n/a (no critique recorded).
+- Agent cost: $0.82.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| redesign-trattoria | 1 | .open-design/rosas-trattoria-site/home.html | od:prototype:web-prototype | 0 | — | 2 (broken-asset, overlap) | n/a | 0 | 3 | 31 | 150s | #a34f1f / - / - / light |
+| redesign-trattoria | 1 | .open-design/rosas-trattoria-site/menu.html | od:prototype:web-prototype | 0 | — | 0 (—) | n/a | 0 | 0 | 31 | 150s | #a34f1f / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] redesign-trattoria: The home page binds the site's own heading, hours, address and phone from content.json (data-od-bind), not retyped or invented
+- [ ] redesign-trattoria: The audit's top problems are fixed: the booking button is readable and on the first phone screen, and nothing scrolls sideways on a phone
+- [ ] redesign-trattoria: Every page shows the concept ribbon (data-od-concept), and any rewritten text has data-od-copy-edit with its original
+
+## 2026-11-03 — add-redesign-from-url, static ribbon
+
+- Kit: 0.4.0-beta.2 (local/redesign 527e2f6, local changes)
+- Mode: agent claude (2.1.317 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-03-11-31-18/`
+- Contact sheet: [runs/2026-11-03-11-31-18/contact-sheet.png](runs/2026-11-03-11-31-18/contact-sheet.png)
+
+- Designs: 2 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 2.
+- Critic: n/a (no critique recorded).
+- Agent cost: $0.64.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| redesign-trattoria | 1 | .open-design/rosas-trattoria-redesign/home.html | od:prototype:web-prototype | 0 | — | 1 (sample-data-thin) | n/a | 0 | 0 | 24 | 135s | #9a4a1c / - / - / light |
+| redesign-trattoria | 1 | .open-design/rosas-trattoria-redesign/menu.html | od:prototype:web-prototype | 0 | — | 0 (—) | n/a | 0 | 0 | 24 | 135s | #9a4a1c / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] redesign-trattoria: The home page binds the site's own heading, hours, address and phone from content.json (data-od-bind), not retyped or invented
+- [ ] redesign-trattoria: The audit's top problems are fixed: the booking button is readable and on the first phone screen, and nothing scrolls sideways on a phone
+- [ ] redesign-trattoria: Every page shows the concept ribbon (data-od-concept), and any rewritten text has data-od-copy-edit with its original

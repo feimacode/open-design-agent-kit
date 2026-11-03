@@ -9,6 +9,7 @@
 //    deploy and stores it in the manifest's `metadata.shares`.
 // Never runs a provider command, never makes a network request.
 // openspec: add-artifact-sharing.
+import { hasConceptRibbon } from '../export/redesignChecks';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { ARTIFACT_MAX_BYTES, artifactPreflight } from '../export/artifactPreflight';
@@ -74,7 +75,18 @@ export type PublishArtifactResult = { ok: boolean; text: string; page?: string }
 /** The largest page handed to the agent as text (inlinePage). */
 export const MAX_INLINE_PAGE_BYTES = 2 * 1024 * 1024;
 
+/** The publish result's note for a concept of a third party's site (openspec add-redesign-from-url). */
+export const CONCEPT_PUBLISH_WARNING =
+  "Warning: this page is a concept of someone else's site (it carries the data-od-concept ribbon). The ribbon stays on the published page. Tell the user that anyone with the link sees the business's own words and photos under a concept they haven't commissioned, so send it to the business itself rather than posting it publicly. Remove the ribbon only if the user says the site is theirs or the work is commissioned.";
+
 export async function publishArtifact(options: PublishArtifactOptions): Promise<PublishArtifactResult> {
+  const result = await publishArtifactInner(options);
+  if (!result.ok || options.published) return result;
+  const html = await fs.readFile(path.join(options.workspaceRoot, options.entryPath), 'utf8').catch(() => '');
+  return hasConceptRibbon(html) ? { ...result, text: `${result.text}\n\n${CONCEPT_PUBLISH_WARNING}` } : result;
+}
+
+async function publishArtifactInner(options: PublishArtifactOptions): Promise<PublishArtifactResult> {
   const now = options.now ?? new Date();
   if (options.provider !== undefined && !isPublishProvider(options.provider)) {
     return { ok: false, text: `Unknown provider "${options.provider}". Use one of: ${PUBLISH_PROVIDERS.join(', ')}.` };

@@ -24,7 +24,7 @@ Redesign pitches often fail when the client sees their words rewritten without a
 
 ### Ribbon by default, off by the user
 
-The ribbon protects both sides when a concept link is forwarded. It is a preview-only element the agent removes only on the user's word that the work is commissioned. Exports for a site the user owns never get it.
+The ribbon protects both sides when a concept link is forwarded. It stays on the page, published copies included, and the agent removes it only on the user's word that the site is theirs or the work is commissioned, marking `<body>` with `data-od-owned` so the check knows. Exports for a site the user owns never get it.
 
 ## Risks / Trade-offs
 

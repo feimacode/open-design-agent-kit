@@ -54,6 +54,17 @@
       ]
     },
     {
+      "id": "redesign",
+      "label": "Redesign a website",
+      "description": "A new version of a live site that keeps its words, photos and brand, fixes what's wrong with it, and shows as a concept until the owner agrees.",
+      "icon": "refresh",
+      "status": "ready",
+      "prompt": "open-design-redesign",
+      "entries": [
+        "web-prototype"
+      ]
+    },
+    {
       "id": "app-screens",
       "label": "App screens",
       "description": "Screens people use to get a task done in your app or web product: forms, tables, settings, sign-in and whole flows.",
@@ -847,7 +858,8 @@
         "poster",
         "social",
         "campaign",
-        "email"
+        "email",
+        "redesign"
       ]
     },
     {

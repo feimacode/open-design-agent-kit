@@ -5,6 +5,8 @@ import {
   latestFlowPlan,
   resolveBriefFlow,
   prepareBaseScreen,
+  loadRedesignContext,
+  type RedesignContext,
   composeComponentVocabularySection,
   findCollectionArtifacts,
   resolveBriefCanvas,
@@ -36,6 +38,7 @@ interface PrepareBriefInput {
   fluid?: boolean;
   answers?: Record<string, string>;
   assumptions?: string[];
+  redesign?: unknown;
 }
 
 export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefInput> {
@@ -44,7 +47,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<PrepareBriefInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, flow, baseScreen: baseScreenInput, sources: sourcePaths, format, fluid, answers, assumptions } = options.input;
+    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, flow, baseScreen: baseScreenInput, sources: sourcePaths, format, fluid, answers, assumptions, redesign: redesignInput } = options.input;
 
     const decisions = validateBriefDecisions(answers, assumptions);
     if (!decisions.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(decisions.error)]);
@@ -148,6 +151,13 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       if (!base.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(base.error)]);
       baseScreen = base;
     }
+    let redesign: RedesignContext | undefined;
+    if (redesignInput !== undefined) {
+      if (!vscode.workspace.workspaceFolders?.[0]) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart('redesign needs an open workspace folder.')]);
+      const loaded = await loadRedesignContext(getWorkspaceRoot(), getOutputDirectory(), redesignInput);
+      if (!loaded.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(loaded.error)]);
+      redesign = loaded.context;
+    }
     const recentDesigns = await loadRecentDesigns(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath, { collectionId, entryPath: suggestedEntryPath });
     const instructions = composeInstructions({
       skillName: skill.name,
@@ -162,6 +172,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       flowContext,
       componentVocabulary: designSystem?.appComponents ? composeComponentVocabularySection(designSystem.appComponents) : undefined,
       baseScreen,
+      redesign,
       hostOverride: hostOverrideFor(skill.id, skill.body),
       sourceContext: sources.context,
       canvasFormat,
@@ -186,6 +197,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       flowScreenId: flowContext?.screenId,
       flowNote,
       baseScreenPath: baseScreen?.path,
+      redesign: redesign ? { contentPath: redesign.contentPath, auditPath: redesign.auditPath, findings: redesign.findings.map((f) => f.id), concept: !redesign.owned } : undefined,
     };
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(JSON.stringify(payload, null, 2))]);

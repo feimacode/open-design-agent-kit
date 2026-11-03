@@ -442,6 +442,23 @@
               ],
               "description": "The flow plan of a multi-screen collection: its screens (at most 20), the links between them (at most 80) the shared navigation and the tasks it is for. Plan it once before the first screen and pass the same plan on every screen's brief and registration; the latest registered plan wins. Needs collectionId; screenRole names this screen's id in the plan."
             },
+            "redesign": {
+              "type": "object",
+              "description": "For a redesign of a live website: { site, owned }. Reads the content inventory that #od-extract-design-system wrote with content: true (call that first) and the #od-audit-site findings if the site was audited, and adds a section binding the site's own words, listing the problems to fix and, unless owned is true, the concept ribbon.",
+              "properties": {
+                "site": {
+                  "type": "string",
+                  "description": "The site being redesigned, as given to extraction."
+                },
+                "owned": {
+                  "type": "boolean",
+                  "description": "True only when the user says the site is theirs or the work is commissioned: no concept ribbon."
+                }
+              },
+              "required": [
+                "site"
+              ]
+            },
             "baseScreen": {
               "type": "string",
               "description": "For a redesign of a screen that exists: a workspace image (PNG, JPEG, WebP) of it, or its URL (e.g. the app's dev server page, captured in a browser). Stored under .open-design/.bases/ (never published); the instructions treat it as the screen to change, and the check shows it beside the new design."
@@ -1152,6 +1169,14 @@
                 "both"
               ],
               "description": "Which theme to measure (default light). dark and both measure a dark theme only if the site has one."
+            },
+            "content": {
+              "type": "boolean",
+              "description": "For a redesign: also copy each page's content verbatim (headings, copy, calls to action, navigation, contact details, opening hours, prices, images with alt text) into content.json in the same visit. Pages robots.txt disallows are skipped and reported as blocked."
+            },
+            "localizeImages": {
+              "type": "boolean",
+              "description": "With content: copy the images the pages loaded into the bundle. Only when the user says the site is theirs or the client has commissioned the work."
             }
           },
           "required": [
@@ -2199,6 +2224,9 @@
       },
       {
         "path": "./prompts/local/open-design-recurring.prompt.md"
+      },
+      {
+        "path": "./prompts/local/open-design-redesign.prompt.md"
       },
       {
         "path": "./prompts/local/open-design-site-audit.prompt.md"

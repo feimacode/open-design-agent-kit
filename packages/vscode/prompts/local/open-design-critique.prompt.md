@@ -61,6 +61,8 @@ The critic judges only what is in `critiqueInput` and the screenshots, never wha
 
 **Walk each task.** For every task in `critiqueInput.tasks`, go through its `path` screen by screen on the screenshots (for a single screen, find the action that completes it). On each screen ask: is the control for the next step (its `triggers` label) visible on the first screen, is it the most prominent action there rather than a secondary link under a bigger button, does its label say where it leads, and is there a way back? Report what fails under `task`, naming the task and the screen in `where`. A task marked `unreachable`, or one you can't walk on the screenshots, makes the verdict at least `polish`.
 
+**Check a redesign's fixes.** When `critiqueInput.auditFixes` lists problems found on the old site, look for each one in the screenshots of the new design (a booking button below the fold on the phone, text too faint to read, tap targets too small). Report any that is still there under `task`, with its id and title in `where`. One still there makes the verdict at least `polish`.
+
 **The brief wins.** When the brief or the design system asks for the look a finding objects to (all caps, one colour, a dense layout), drop the finding. Don't flag what the check already reported as an error unless it is still visible in the screenshots.
 
 **Verdict:** one of

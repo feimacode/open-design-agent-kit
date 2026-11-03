@@ -9,7 +9,10 @@ import { loadCollectionFlow } from '../export/collectionFlow';
 import * as path from 'node:path';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { checkRunsDir, listCheckRuns } from '../export/checkHistory';
+import { promises as fs } from 'node:fs';
 import { readCritique, validateCritique, type CritiqueRecord } from './critiqueTypes';
+import { loadAuditFixes } from '../generation/contentInventory';
+import { redesignSiteOf } from '../export/redesignChecks';
 
 export * from './critiqueTypes';
 
@@ -44,6 +47,8 @@ export interface CritiqueInput {
   lastCritique?: CritiqueRecord;
   /** The tasks the screen or flow is for, with the path the check found through the flow (openspec add-task-walkthrough). */
   tasks?: CritiqueTask[];
+  /** For a redesign of a live site: the old site's top audit problems, each of which the new design must fix (openspec add-redesign-from-url). */
+  auditFixes?: Array<{ id: string; title: string; where: string; fix: string }>;
 }
 
 export interface CritiqueTask {
@@ -75,6 +80,21 @@ async function critiqueTasks(workspaceRoot: string, entryPath: string, manifest:
   const answers = brief?.answers && typeof brief.answers === 'object' ? (brief.answers as Record<string, unknown>) : undefined;
   const task = typeof answers?.task === 'string' ? answers.task.trim() : '';
   return task ? [{ name: task }] : undefined;
+}
+
+/** The audit findings of the site a redesign is of, from `data-od-redesign` in the entry HTML. */
+async function redesignAuditFixes(workspaceRoot: string, outputDir: string, entryPath: string): Promise<CritiqueInput['auditFixes']> {
+  const html = await fs.readFile(path.join(workspaceRoot, entryPath), 'utf8').catch(() => '');
+  const site = redesignSiteOf(html);
+  if (!site) return undefined;
+  let url: URL;
+  try {
+    url = new URL(site);
+  } catch {
+    return undefined;
+  }
+  const audit = await loadAuditFixes(workspaceRoot, outputDir, url);
+  return audit && audit.findings.length > 0 ? audit.findings : undefined;
 }
 
 /**
@@ -114,6 +134,7 @@ export async function buildCritiqueInput(options: {
       : undefined,
     lastCritique: readCritique(manifest),
     tasks: await critiqueTasks(options.workspaceRoot, options.entryPath, manifest, metadata),
+    auditFixes: await redesignAuditFixes(options.workspaceRoot, options.outputDir, options.entryPath),
   };
 }
 
