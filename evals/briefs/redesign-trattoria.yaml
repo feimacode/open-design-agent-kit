@@ -1,0 +1,14 @@
+id: redesign-trattoria
+request: "Our neighbourhood trattoria's website at {{site}} looks dated and is hard to use on phones. Redesign it so I can pitch it to the owner. Keep their real menu, hours and address"
+expect:
+  surface: redesign
+  skills: [web-prototype]
+  questions: { max: 1 }
+designSystem: null
+site: trattoria-site
+answers:
+  brand: "Keep the brand"
+must:
+  - "The home page binds the site's own heading, hours, address and phone from content.json (data-od-bind), not retyped or invented"
+  - "The audit's top problems are fixed: the booking button is readable and on the first phone screen, and nothing scrolls sideways on a phone"
+  - "Every page shows the concept ribbon (data-od-concept), and any rewritten text has data-od-copy-edit with its original"

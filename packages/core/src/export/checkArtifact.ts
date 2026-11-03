@@ -34,6 +34,7 @@ import { isAppScreen, runScreenChecks } from './screenChecks';
 import { deviceViewports, drawsOwnFrame, parseDevice } from '../preview/deviceShell';
 import { hasDataBinds, resolveSampleData, sampleDataFindings, thinStaticTables } from './sampleData';
 import { findBaseScreen } from '../generation/baseScreen';
+import { redesignFindings } from './redesignChecks';
 import { appDesignSystemStaleness, parseAppComponentsFile, tokenFindings } from '../generation/appDesignSystem';
 
 export interface CheckViewport {
@@ -296,6 +297,7 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
     dataFindings.push(...sampleDataFindings(applied, promisedTexts(manifest)));
   }
   if (appForData && !isDiagram) dataFindings.push(...thinStaticTables(artifact.entryContent));
+  dataFindings.push(...redesignFindings(artifact.entryContent));
   const recorded = recordedSources(manifest);
   const stale = recorded.length > 0 ? await findStaleSources(options.workspaceRoot, options.outputDir ?? '.open-design', recorded) : [];
   // Style tiles must declare the design-token contract, so a chosen tile saves as a design system with no loss.

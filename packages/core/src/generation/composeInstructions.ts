@@ -9,6 +9,7 @@ import { composeRecentDesignsSection, type RecentDesignsContext } from '../works
 import { composeScreenSpecSection } from './screenDecisions';
 import { composeFlowSection, type FlowPlan } from './flowPlan';
 import { composeBaseScreenSection } from './baseScreen';
+import { composeRedesignSection, type RedesignContext } from './contentInventory';
 
 const CRAFT_SLUG = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -196,6 +197,8 @@ export interface ComposeInstructionsInput {
   componentVocabulary?: string;
   /** A redesign's base screen, stored under .bases/ (openspec add-design-from-app). */
   baseScreen?: { path: string; from: string };
+  /** A redesign of a live site: its content inventory and audit findings (openspec add-redesign-from-url). */
+  redesign?: RedesignContext;
 }
 
 /**
@@ -243,6 +246,7 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
     );
   }
   if (input.baseScreen) parts.push(`\n\n${composeBaseScreenSection(input.baseScreen)}`);
+  if (input.redesign) parts.push(`\n\n${composeRedesignSection(input.redesign)}`);
 
   if (input.sourceContext && input.sourceContext.sources.length > 0) {
     parts.push(`\n\n${composeSourceMaterialSection(input.sourceContext)}`);

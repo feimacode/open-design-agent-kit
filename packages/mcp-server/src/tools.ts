@@ -150,6 +150,8 @@ import {
   registeredFlow,
   resolveBriefFlow,
   prepareBaseScreen,
+  loadRedesignContext,
+  type RedesignContext,
   composeComponentVocabularySection,
   formatAppScanResult,
   scanApp as scanAppCore,
@@ -309,6 +311,7 @@ export async function prepareBrief(
     fluid?: boolean;
     answers?: Record<string, string>;
     assumptions?: string[];
+    redesign?: unknown;
   },
 ): Promise<string> {
   const decisions = validateBriefDecisions(input.answers, input.assumptions);
@@ -375,6 +378,12 @@ export async function prepareBrief(
     if (!base.ok) return base.error;
     baseScreen = base;
   }
+  let redesign: RedesignContext | undefined;
+  if (input.redesign !== undefined) {
+    const loaded = await loadRedesignContext(ctx.workspaceRoot, ctx.outputDir, input.redesign);
+    if (!loaded.ok) return loaded.error;
+    redesign = loaded.context;
+  }
   const recentDesigns = await loadRecentDesigns(ctx.workspaceRoot, { collectionId: input.collectionId, entryPath: suggestedEntryPath });
   const instructions = composeInstructions({
     skillName: skill.name,
@@ -389,6 +398,7 @@ export async function prepareBrief(
     flowContext,
     componentVocabulary: designSystem?.appComponents ? composeComponentVocabularySection(designSystem.appComponents) : undefined,
     baseScreen,
+    redesign,
     hostOverride: hostOverrideFor(skill.id, skill.body),
     sourceContext: sources.context,
     canvasFormat,
@@ -413,6 +423,7 @@ export async function prepareBrief(
     flowScreenId: flowContext?.screenId,
     flowNote,
     baseScreenPath: baseScreen?.path,
+    redesign: redesign ? { contentPath: redesign.contentPath, auditPath: redesign.auditPath, findings: redesign.findings.map((f) => f.id), concept: !redesign.owned } : undefined,
   };
   return JSON.stringify(payload, null, 2);
 }
@@ -935,19 +946,23 @@ export async function createCustomDesignSystem(
  */
 export async function extractDesignSystemFromSite(
   ctx: ToolContext,
-  input: { url?: string; extraUrls?: string[]; theme?: string },
+  input: { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean },
 ): Promise<ToolOutput> {
   if (typeof input.url !== 'string' || !input.url.trim()) throw new Error('"url" is required: the website to extract a design system from.');
   if (input.extraUrls !== undefined && (!Array.isArray(input.extraUrls) || input.extraUrls.some((u) => typeof u !== 'string'))) {
     throw new Error('"extraUrls" must be a list of URLs on the same site.');
   }
   if (input.theme !== undefined && !['light', 'dark', 'both'].includes(input.theme)) throw new Error('"theme" must be light, dark or both.');
+  if (input.localizeImages && !input.content) throw new Error('"localizeImages" needs content: true.');
   const result = await extractSite({
     url: input.url.trim(),
     extraUrls: input.extraUrls,
     theme: input.theme as ExtractionTheme | undefined,
     workspaceRoot: ctx.workspaceRoot,
     outputDir: ctx.outputDir,
+    content: input.content === true,
+    localizeImages: input.localizeImages === true,
+    allowHostsForTesting: evalAllowedHosts(),
   });
   if (result.status === 'invalid-args') throw new Error(result.error);
   const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.blocked.find((b) => b.screenshot)?.screenshot;

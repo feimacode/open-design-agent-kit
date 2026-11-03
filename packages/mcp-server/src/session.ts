@@ -286,6 +286,16 @@ const TOOL_DEFS: ToolDef[] = [
             description: 'Required together with collectionId — this screen\'s short role label, e.g. "splash", "value-prop", "checkout".',
           },
           flow: FLOW_INPUT_SCHEMA,
+          redesign: {
+            type: 'object',
+            description:
+              'For a redesign of a live website: { site, owned }. Reads the content inventory that extract_open_design_design_system wrote with content: true (call that first) and the audit_open_design_site findings if the site was audited, and adds a section binding the site\'s own words, listing the problems to fix and, unless owned is true, the concept ribbon. Use the open-design-redesign skill.',
+            properties: {
+              site: { type: 'string', description: 'The site being redesigned, as given to extraction.' },
+              owned: { type: 'boolean', description: 'True only when the user says the site is theirs or the work is commissioned: no concept ribbon.' },
+            },
+            required: ['site'],
+          },
           baseScreen: {
             type: 'string',
             description:
@@ -347,6 +357,7 @@ const TOOL_DEFS: ToolDef[] = [
           fluid?: boolean;
           answers?: Record<string, string>;
           assumptions?: string[];
+          redesign?: unknown;
         },
       ),
   },
@@ -803,11 +814,20 @@ const TOOL_DEFS: ToolDef[] = [
             enum: ['light', 'dark', 'both'],
             description: 'Which theme to measure (default light). dark and both measure a dark theme only if the site has one (prefers-color-scheme or a theme attribute on the root element).',
           },
+          content: {
+            type: 'boolean',
+            description:
+              "For a redesign: also copy each page's content verbatim (headings, copy, calls to action, navigation, contact details, opening hours, prices, images with alt text) into content.json in the same visit. Pages robots.txt disallows are skipped and reported as blocked.",
+          },
+          localizeImages: {
+            type: 'boolean',
+            description: "With content: copy the images the pages loaded into the bundle. Only when the user says the site is theirs or the client has commissioned the work; otherwise images stay as the site's URLs.",
+          },
         },
         required: ['url'],
       },
     },
-    handler: (ctx, args) => tools.extractDesignSystemFromSite(ctx, args as { url?: string; extraUrls?: string[]; theme?: string }),
+    handler: (ctx, args) => tools.extractDesignSystemFromSite(ctx, args as { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean }),
   },
   {
     tool: {

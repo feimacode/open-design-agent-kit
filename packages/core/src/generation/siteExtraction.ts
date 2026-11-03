@@ -25,6 +25,7 @@ import {
   PAGE_TIMEOUT_MS,
   blockedReason,
   gotoPage,
+  hideConsentBanners,
   isBlockedHostLiteral,
   isPrivateAddress,
   launchLiveBrowser,
@@ -34,6 +35,7 @@ import {
   type LiveBrowser,
 } from '../export/livePage';
 import { extractBrandEvidence, type BrandEvidence } from './brandExtraction';
+import { CONTENT_FILE, capPageContent, fetchRobots, readContentInventory, robotsDisallows, type ContentInventory, type PageContent } from './contentInventory';
 import {
   draftTokensCss,
   evidenceToTokens,
@@ -66,6 +68,12 @@ export interface ExtractSiteInput {
   resolveHost?: (host: string) => Promise<string[]>;
   /** Hosts exempt from the private-address rules. Tests only, for a fixture server on 127.0.0.1; the tool never sets it. */
   allowHostsForTesting?: string[];
+  /** Also copy each page's content (headings, copy, calls to action, contact, hours, prices, images) into content.json, for a redesign. Honours robots.txt. */
+  content?: boolean;
+  /** With content: copy the images the pages loaded into the bundle. Only when the user says the site is theirs. */
+  localizeImages?: boolean;
+  /** Overrides fetch for robots.txt (tests). */
+  fetchImpl?: typeof fetch;
 }
 
 export interface BlockedPage {
@@ -92,6 +100,8 @@ export type ExtractSiteResult =
       candidates?: BrandEvidence;
       /** Logo / favicon files copied into the bundle, workspace-relative. */
       marks: string[];
+      /** Workspace-relative content.json, when content was asked for. */
+      content?: string;
       notes: string[];
     };
 
@@ -505,6 +515,8 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   const pages: PageEvidence[] = [];
   const marks: string[] = [];
   let dark: SiteEvidence['dark'];
+  const contentPages: PageContent[] = [];
+  const robots = input.content ? await fetchRobots(main.origin, input.fetchImpl) : undefined;
   try {
     live = await launchLiveBrowser(browserPath, input.allowHostsForTesting ?? [], 'od-extract-profile-');
     const { page, images } = live;
@@ -513,6 +525,10 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
       const prefix = valid.urls.length > 1 ? `page-${i + 1}-` : '';
       await page.setViewport(DESKTOP_VIEWPORT);
       await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+      if (robots && robotsDisallows(url.pathname, robots)) {
+        blocked.push({ url: url.toString(), reason: 'robots.txt disallows it' });
+        continue;
+      }
       try {
         await gotoPage(page, url.toString());
       } catch (err) {
@@ -529,6 +545,12 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         continue;
       }
       screenshots.push(rel(desktopShot));
+      if (input.content) {
+        await page.evaluate(hideConsentBanners).catch(() => 0);
+        await page.evaluate(`globalThis.__odContent = ${readContentInventory.toString()}`);
+        const content = (await page.evaluate('globalThis.__odContent()')) as Omit<PageContent, 'url'>;
+        contentPages.push(capPageContent({ url: page.url() || url.toString(), ...content }));
+      }
 
       if (measured.roles.accent && measured.rects['accent-on']) {
         for (const state of ['hover', 'active'] as const) {
@@ -621,6 +643,16 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   const draft = pages.length > 0 ? evidenceToTokens(siteEvidence) : undefined;
   if (draft && theme !== 'light' && dark && !draft.dark) notes.push('The dark theme changed nothing the draft measures, so no dark values were returned.');
   const status = pages.length === 0 ? 'blocked' : 'ok';
+  let contentRel: string | undefined;
+  if (input.content && contentPages.length > 0) {
+    if (input.localizeImages) {
+      const copied = await localizeContentImages(contentPages, live?.images ?? new Map(), bundleDir, bundleRel);
+      if (copied.missing > 0) notes.push(`${copied.missing} image(s) weren't loaded by the page (lazy-loaded or too large), so they stay remote.`);
+    }
+    const inventory: ContentInventory = { site: main.toString(), capturedAt: new Date().toISOString(), pages: contentPages };
+    await fs.writeFile(path.join(bundleDir, CONTENT_FILE), JSON.stringify(inventory, null, 2) + '\n');
+    contentRel = rel(CONTENT_FILE);
+  }
   await fs.writeFile(
     path.join(bundleDir, 'evidence.json'),
     JSON.stringify({ status, url: main.toString(), theme, measuredAt: new Date().toISOString(), ...siteEvidence, blocked, marks, notes, draft }, null, 2) + '\n',
@@ -634,8 +666,37 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
     screenshots,
     blocked,
     marks,
+    content: contentRel,
     notes,
   };
+}
+
+/** Copies the images the pages loaded into `<bundle>/images/`, recording each copy on its inventory entry. */
+async function localizeContentImages(pages: PageContent[], images: Map<string, Buffer>, bundleDir: string, bundleRel: string): Promise<{ copied: number; missing: number }> {
+  let copied = 0;
+  let missing = 0;
+  const done = new Map<string, string>();
+  for (const p of pages) {
+    for (const img of p.images) {
+      const already = done.get(img.src);
+      if (already) {
+        img.local = already;
+        continue;
+      }
+      const buf = images.get(img.src);
+      if (!buf) {
+        missing++;
+        continue;
+      }
+      if (copied === 0) await fs.mkdir(path.join(bundleDir, 'images'), { recursive: true });
+      const ext = /\.(svg|png|jpe?g|webp|gif|avif)(\?|$)/i.exec(img.src)?.[1]?.toLowerCase().replace('jpeg', 'jpg') ?? 'png';
+      const name = `images/${String(++copied).padStart(2, '0')}.${ext}`;
+      await fs.writeFile(path.join(bundleDir, name), buf);
+      img.local = path.posix.join(bundleRel, name);
+      done.set(img.src, img.local);
+    }
+  }
+  return { copied, missing };
 }
 
 /** The tool's text: what was measured, from where, and what to do next. */
@@ -655,11 +716,12 @@ export function formatExtractSiteResult(result: ExtractSiteResult): string {
       screenshots: result.screenshots,
       blocked: result.blocked,
       marks: result.marks,
+      content: result.content,
       draft: result.draft ? { tokens: result.draft.tokens, dark: result.draft.dark, sources: result.draft.sources, unmeasured: result.draft.unmeasured } : undefined,
       draftCss: result.draftCss,
       candidates: result.candidates,
       notes: result.notes,
-      next,
+      next: result.content ? `${next} The site's content is in ${result.content}: for a redesign, pass redesign: { site } to prepare_open_design_brief, which binds it into the design.` : next,
     },
     null,
     2,

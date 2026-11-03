@@ -52,5 +52,6 @@ The report gives **no score**, and it makes no claims about search ranking, real
 
 ## Next steps
 
+- **Redesign it:** make a concept that keeps the site's words and brand and fixes these problems ([Redesign a website](redesign-a-website.md)).
 - **Match the site's brand:** [take a design system from it](design-systems.md#take-one-from-a-website).
 - **Share the report:** zip the folder, or publish it like any design ([Share and publish](share-and-publish.md)).
