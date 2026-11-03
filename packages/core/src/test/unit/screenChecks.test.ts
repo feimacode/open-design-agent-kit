@@ -151,4 +151,15 @@ describe('app screen checks (real browser; skipped when none is installed)', fun
     const pdf = await exportArtifact({ workspaceRoot: root, entryPath: ENTRY, format: 'pdf', shell: false, browserPath, settleMs: 0 });
     assert.ok(!pdf.ok && /PNG and JPEG/.test(pdf.error), JSON.stringify(pdf));
   });
+  it('sample data: renders bound rows and reports thin lists, missing binds and a hand-written short table', async () => {
+    const rows = '<table aria-label="Customers"><tbody><tr data-od-repeat="customers"><td data-od-bind=".name">Name</td><td data-od-bind=".value" data-od-format="currency">0</td></tr></tbody></table><p data-od-bind="totals.sum">0</p>';
+    const root = await workspace(screen(rows, '<section data-od-state="empty" hidden><p>No customers yet.</p></section>'));
+    await fs.writeFile(path.join(root, '.open-design/screens/customers.data.json'), JSON.stringify({ locale: 'en-GB', currency: 'GBP', customers: [{ name: 'Ada', value: 1200 }, { name: 'Grace', value: 0 }] }));
+    const result = ok(await check(root, { stress: false }));
+    const checks = result.findings.map((f) => f.check);
+    assert.ok(checks.includes('sample-data-thin'), JSON.stringify(result.findings));
+    assert.ok(result.findings.some((f) => f.check === 'sample-data-missing' && /totals\.sum/.test(f.message)), JSON.stringify(result.findings));
+    const hand = ok(await check(await workspace(screen(TABLE, '<section data-od-state="empty" hidden><p>No customers yet.</p></section>')), { stress: false }));
+    assert.ok(hand.findings.some((f) => f.check === 'sample-data-thin' && /3 rows/.test(f.message)), JSON.stringify(hand.findings));
+  });
 });

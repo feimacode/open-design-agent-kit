@@ -16,11 +16,11 @@ If each screen copies values from the data file, they drift the first time one i
 
 ### The template row stays in the file
 
-`data-od-repeat` keeps one row in the source as the template; the kit renders one row per item after it and hides the template. Saving from the preview strips the rendered rows. A design opened outside the kit (a raw file in a browser) shows the template row, which is acceptable.
+`data-od-repeat` keeps one row in the source as the template; the kit fills it with the first item and renders one copy per further item after it, marked preview-only (an empty list hides the template). Saving from the preview strips the copies, so the file keeps the binds and the one template. A design opened outside the kit (a raw file in a browser) shows the template row, which is acceptable.
 
 ### Locale from the brief
 
-The locale comes from the brief's language and region answers, or the user's locale, stored in the data file (`"locale": "de-DE"`, `"currency": "EUR"`). Formatting uses `Intl.NumberFormat` and `Intl.DateTimeFormat` in the served page, so a currency change is one edit.
+The locale comes from the brief's language and region answers, or the user's locale, stored in the data file (`"locale": "de-DE"`, `"currency": "EUR"`). Formatting uses `Intl.NumberFormat` and `Intl.DateTimeFormat` when the kit serves the page (binds are filled on the server, with the shared fragments), so the check, previews and exports format alike and a currency change is one edit. Dates without a time are formatted in UTC so they never move a day.
 
 ### Thin data is a warning, not an error
 
@@ -29,4 +29,4 @@ Twelve rows and one long value are a floor for app tables, not a rule for every 
 ## Risks / Trade-offs
 
 - **Two ways to put data in a screen.** Inline values still work, so not every design will bind. The app-screens templates use binds, and the critic's `copy` area keeps judging invented numbers either way.
-- **Export size.** One-file exports inline the data file once, not per screen.
+- **Export size.** One-file exports and sites carry each screen already filled in, not the data file: the rows are repeated per screen, which keeps them working with no script and costs little for sample-sized data.

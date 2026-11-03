@@ -32,6 +32,7 @@ import { formatPreflight, runPreflight, type Finding } from '../poster/preflight
 import { renderShapeSheetHtml, type ShapeThumbnail } from '../poster/shapeSheet';
 import { isAppScreen, runScreenChecks } from './screenChecks';
 import { deviceViewports, drawsOwnFrame, parseDevice } from '../preview/deviceShell';
+import { hasDataBinds, resolveSampleData, sampleDataFindings, thinStaticTables } from './sampleData';
 import { findBaseScreen } from '../generation/baseScreen';
 import { appDesignSystemStaleness, parseAppComponentsFile, tokenFindings } from '../generation/appDesignSystem';
 
@@ -286,6 +287,15 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
         },
       ]
     : [];
+  // Sample data (openspec add-sample-data): binds that miss, thin lists, fewer items than the brief promised.
+  const appForData = isAppScreen(sourceSkillId, artifact.entryContent);
+  const dataFindings: Finding[] = [];
+  if (hasDataBinds(artifact.entryContent)) {
+    const absRoot = path.resolve(options.workspaceRoot);
+    const applied = await resolveSampleData(artifact.entryContent, path.resolve(absRoot, options.entryPath), absRoot);
+    dataFindings.push(...sampleDataFindings(applied, promisedTexts(manifest)));
+  }
+  if (appForData && !isDiagram) dataFindings.push(...thinStaticTables(artifact.entryContent));
   const recorded = recordedSources(manifest);
   const stale = recorded.length > 0 ? await findStaleSources(options.workspaceRoot, options.outputDir ?? '.open-design', recorded) : [];
   // Style tiles must declare the design-token contract, so a chosen tile saves as a design system with no loss.
@@ -339,7 +349,7 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
       viewports: mode === 'page' ? viewports : undefined,
       ok: true,
       mode,
-      findings: [...tileFindings, ...deviceFindings, ...webgl, ...sceneSpecFindings(artifact.entryContent, sourceSkillId), ...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
+      findings: [...tileFindings, ...deviceFindings, ...dataFindings, ...webgl, ...sceneSpecFindings(artifact.entryContent, sourceSkillId), ...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
       images,
       omitted: [...out.omitted, ...dropped],
       slideCount: mode === 'deck' ? slideCount : undefined,
@@ -811,4 +821,19 @@ export function formatCheckResult(result: CheckArtifactResult): string {
   const warnings = result.warnings.filter((w) => !w.startsWith('Failed to load: '));
   if (warnings.length > 0) lines.push('Warnings:', ...warnings.map((w) => `- ${w}`));
   return lines.join('\n');
+}
+
+/** What the brief and the screen's flow plan say, for counts it promised ("6 products"). */
+function promisedTexts(manifest: JsonRecord): string[] {
+  const meta = manifest.metadata && typeof manifest.metadata === 'object' ? (manifest.metadata as JsonRecord) : {};
+  const out: string[] = [];
+  const brief = meta.brief && typeof meta.brief === 'object' ? (meta.brief as JsonRecord) : undefined;
+  if (typeof brief?.text === 'string') out.push(brief.text);
+  const flow = meta.flow && typeof meta.flow === 'object' ? (meta.flow as JsonRecord) : undefined;
+  const plan = flow?.plan && typeof flow.plan === 'object' ? (flow.plan as JsonRecord) : undefined;
+  if (Array.isArray(plan?.screens)) {
+    const screen = (plan.screens as JsonRecord[]).find((x) => x && x.id === flow?.screenId);
+    if (typeof screen?.role === 'string') out.push(screen.role);
+  }
+  return out;
 }

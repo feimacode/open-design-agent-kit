@@ -32,6 +32,7 @@ import { qrSvg } from '../poster/qr';
 import { composeShapeSheet, type ShapeThumbnail } from '../poster/shapeSheet';
 import { isFullyOpaquePng, usesWebgl, waitForScene, webglFindings } from './webgl';
 import { wrapInDeviceShell } from './deviceShellImage';
+import { hasIncludes, resolveIncludes } from './flowIncludes';
 import { DEVICE_CONTENT_SIZES, parseDevice } from '../preview/deviceShell';
 
 export type ImageFormat = 'png' | 'jpeg';
@@ -484,7 +485,10 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     return packageArtifact({
       workspaceRoot: options.workspaceRoot,
       entryPath: relEntry,
-      entryContent: artifact.entryContent,
+      // Shared fragments and sample data filled in, as the preview shows them.
+      entryContent: hasIncludes(artifact.entryContent)
+        ? (await resolveIncludes(artifact.entryContent, path.resolve(options.workspaceRoot, relEntry), path.resolve(options.workspaceRoot))).html
+        : artifact.entryContent,
       manifest: artifact.manifest,
       format: options.format,
       badge: options.badge,

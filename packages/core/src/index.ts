@@ -85,6 +85,7 @@ export * from './export/exportArtifact';
 export * from './export/checkArtifact';
 export * from './export/screenChecks';
 export * from './export/flowIncludes';
+export * from './export/sampleData';
 export * from './export/flowCheck';
 export * from './export/flowMap';
 export * from './export/collectionCheck';

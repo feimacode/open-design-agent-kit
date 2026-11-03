@@ -289,6 +289,10 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
   if (input.flowContext) {
     parts.push(`\n\n${composeFlowSection(input.flowContext.plan, input.flowContext.screenId, input.flowContext.collectionDir)}`);
   }
+  // Sample data rules for app screens and flows (openspec add-sample-data).
+  if (input.flowContext || input.craftSections?.some((c) => c.id === 'product-ui')) {
+    parts.push(`\n\n${composeSampleDataSection(input.flowContext?.collectionDir)}`);
+  }
   if (input.componentVocabulary) parts.push(`\n\n${input.componentVocabulary}`);
 
   const recent = composeRecentDesignsSection(input.recentDesigns, Boolean(input.designSystemBody?.trim()));
@@ -324,4 +328,25 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
   );
 
   return parts.join('');
+}
+
+/** The "Sample data" section: one data file, binds and repeats, and the rules that make the data realistic. */
+export function composeSampleDataSection(collectionDir: string | undefined): string {
+  const where = collectionDir
+    ? `\`${collectionDir}/_shared/data.json\`, once for the whole flow, before the first screen (if it already exists, read it and add to it; don't start again)`
+    : '`<name>.data.json` beside the screen (`orders.html` → `orders.data.json`)';
+  return [
+    '## Sample data',
+    '',
+    `Write the data this screen shows to one JSON file, ${where}, and bind the screen to it, so every screen shows the same records and a developer gets them as mocks.`,
+    '',
+    '- **The file:** `{ "locale": "de-DE", "currency": "EUR", "invoices": [ … ], "customers": [ … ] }`. Named lists of records, with ids, so screens can point at the same one.',
+    '- **Binds:** `data-od-bind="invoices[2].total"` fills an element\'s text; `data-od-bind-src`, `data-od-bind-href` and so on fill an attribute. `data-od-format="currency"` (or `date`, `datetime`, `time`, `number`, `percent`) formats the value with the file\'s locale and currency; `data-od-empty="—"` is shown for a missing value.',
+    '- **Repeats:** write one row or card with `data-od-repeat="invoices"` and the kit renders one copy per record. Inside it, paths starting with `.` are the current record\'s fields (`data-od-bind=".customer"`); a nested `data-od-repeat=".lines"` works the same way. Keep the template\'s own text realistic: it is what a raw file shows.',
+    '- **Realistic, not tidy:** at least 12 rows in any table or list; names from very short to very long (at least one over 30 characters, written for this product and locale, not copied from an example); a zero, a negative where the field allows, and a number at least a hundred times the typical one; one record with an optional field left `null`; dates spread over weeks, in ISO form (`2026-03-04`), formatted by the kit. Use names, currency and addresses from the user\'s locale.',
+    '- **No invented facts:** never make up real companies\' prices, real people\'s details, or figures the brief didn\'t give; use plausible, clearly fictional values instead.',
+    '- **Counts the brief names are promises:** "6 products" means six records render.',
+    '',
+    'The check reports binds to data that isn\'t in the file (`sample-data-missing`), lists with fewer than 12 records or no long value (`sample-data-thin`), and fewer items than the brief named (`items-promised`).',
+  ].join('\n');
 }

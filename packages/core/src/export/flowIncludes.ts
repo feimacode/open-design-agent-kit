@@ -9,6 +9,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as cheerio from 'cheerio';
+import { hasDataBinds, resolveSampleData } from './sampleData';
 
 const INCLUDE = /<template\b([^>]*?)\bdata-od-include\s*=\s*(["'])([^"']+)\2([^>]*)>([\s\S]*?)<\/template>/gi;
 const MAX_INCLUDES = 8;
@@ -36,17 +37,27 @@ export function prepareFragment(fragment: string, includePath: string, current: 
   return $.html();
 }
 
+/** True when the page needs filling when served: shared fragments, or sample data binds (sampleData.ts). */
 export function hasIncludes(html: string): boolean {
-  return /\bdata-od-include\s*=/i.test(html);
+  return /\bdata-od-include\s*=/i.test(html) || hasDataBinds(html);
 }
 
 /**
  * Resolves `data-od-include` templates in an HTML document at `fileAbs`.
  * Paths are relative to the file's directory and must stay inside `rootAbs`;
- * a missing or out-of-bounds fragment leaves the template as it is.
+ * a missing or out-of-bounds fragment leaves the template as it is. Then fills
+ * sample data binds and repeats from the screen's data file (sampleData.ts).
  */
 export async function resolveIncludes(html: string, fileAbs: string, rootAbs: string): Promise<{ html: string; included: string[]; missing: string[] }> {
   if (!hasIncludes(html)) return { html, included: [], missing: [] };
+  const withFragments = await resolveFragments(html, fileAbs, rootAbs);
+  // Sample data after fragments, so shared navigation can bind too (openspec add-sample-data).
+  if (!hasDataBinds(withFragments.html)) return withFragments;
+  const data = await resolveSampleData(withFragments.html, fileAbs, rootAbs);
+  return { ...withFragments, html: data.html };
+}
+
+async function resolveFragments(html: string, fileAbs: string, rootAbs: string): Promise<{ html: string; included: string[]; missing: string[] }> {
   const current = currentScreenOf(html);
   const matches = [...html.matchAll(INCLUDE)].slice(0, MAX_INCLUDES);
   const included: string[] = [];

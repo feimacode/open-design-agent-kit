@@ -9,6 +9,7 @@
 // sync with the prototype afterward — a deliberate one-time action.
 
 import { markedComponents, type AppComponentsFile } from './appDesignSystem';
+import { composeMockDataSection, type SampleData } from '../export/sampleData';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 
@@ -68,6 +69,8 @@ export interface ComposePortToAppInstructionsInput {
   referenceComponentPath?: string;
   /** The component vocabulary of the app design system the design was built on (openspec add-design-from-app). */
   appComponents?: AppComponentsFile;
+  /** The sample data file the design binds to (openspec add-sample-data). */
+  sampleData?: { path: string; data: SampleData };
 }
 
 /** "Reuse the app's components": the marked parts to import, and the new: parts to create. */
@@ -108,8 +111,11 @@ export function composePortToAppInstructions(input: ComposePortToAppInstructions
   if (reuse) parts.push(`\n\n${reuse}`);
 
   parts.push(
-    `\n\n## Styling and content\n\nDo NOT copy the artifact's inline CSS verbatim into the new component unless the app's own components genuinely use inline styles — translate to whatever styling approach the reference component(s) actually use. Use the artifact's own text/images as static content, unless the reference component's pattern clearly shows data arriving via props, in which case shape the new component the same way.`,
+    `\n\n## Styling and content\n\nDo NOT copy the artifact's inline CSS verbatim into the new component unless the app's own components genuinely use inline styles — translate to whatever styling approach the reference component(s) actually use. Use the artifact's own text/images as static content${input.sampleData ? ' (except the records bound to the data file: see below)' : ''}, unless the reference component's pattern clearly shows data arriving via props, in which case shape the new component the same way.`,
   );
+
+  const mocks = input.sampleData ? composeMockDataSection(input.sampleData) : '';
+  if (mocks) parts.push(`\n\n${mocks}`);
 
   parts.push(
     `\n\n## Explicitly out of scope for this task\n\nDo NOT wire the new component into routing, navigation, or any other part of the app — leave that as a separate, deliberate step for the user to review and do themselves once they've seen the ported code.`,

@@ -4,7 +4,7 @@ A fixed set of briefs, run the same way before and after a change that claims to
 
 ## Briefs
 
-`briefs/*.yaml`, one file per brief, the file name matching its `id`. Eleven cover the main surfaces (poster, landing page, deck, shop pack, card set, dashboard, an app settings screen, an Android screen, an iPad screen, a sign-in flow, and a billing screen designed from a small Next.js + shadcn app in `fixtures/acme-billing`) and two are deliberately vague, to see whether the agent asks the right few questions.
+`briefs/*.yaml`, one file per brief, the file name matching its `id`. Twelve cover the main surfaces (poster, landing page, deck, shop pack, card set, dashboard, an app settings screen, an orders table, an Android screen, an iPad screen, a sign-in flow, and a billing screen designed from a small Next.js + shadcn app in `fixtures/acme-billing`) and two are deliberately vague, to see whether the agent asks the right few questions.
 
 ```yaml
 id: gig-poster
@@ -27,7 +27,7 @@ When a surface is added, add or update a brief for it.
 ## Running
 
 ```bash
-npm run evals                                    # every brief, twice (26 agent runs)
+npm run evals                                    # every brief, twice (28 agent runs)
 npm run evals -- --only gig-poster --repeat 1    # one quick look
 npm run evals -- --label "before add-taste-checks"
 npm run evals -- --score-only ~/designs          # score designs made in Desktop or Codex
@@ -41,7 +41,7 @@ Agent runs need Claude Code (`claude`) on `PATH`, signed in, and a Chrome, Edge 
 3. if the agent stops without building anything, counts the questions in its last message and replies with the brief's `answers` plus "for anything else, you pick", up to three rounds. A page it built but didn't register ends the run and is reported as "no design";
 4. copies the workspace to `evals/runs/<date-time>/<brief>-<n>/` with the transcript, and scores it.
 
-A run costs model tokens: a full run is twenty-six agent sessions. Use `--only` and `--repeat 1` while iterating, and the full run only for the before and after of a PR.
+A run costs model tokens: a full run is twenty-eight agent sessions. Use `--only` and `--repeat 1` while iterating, and the full run only for the before and after of a PR.
 
 `--score-only <dir>` takes one workspace (a folder with `.open-design/`) or a folder of workspaces. A subfolder named after a brief, such as `gig-poster` or `gig-poster-2`, is scored as that brief (repeat 2). The transcript columns are `n/a`.
 

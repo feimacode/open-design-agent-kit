@@ -20,6 +20,21 @@ Design the screens people use to get something done in your app: a settings page
 
 > **In the preview:** a states bar above the design switches between its states, and **All states** lays them out side by side. Saving from the preview never writes the bar into your file.
 
+## Sample data
+
+App screens keep their data in one file instead of typing rows into the markup: `_shared/data.json` beside the screens of a flow, or `<name>.data.json` beside a single screen. It holds the locale, the currency and named lists of records:
+
+```json
+{ "locale": "de-DE", "currency": "EUR",
+  "invoices": [ { "id": "inv-1042", "customer": "Großhandel Müller & Söhne Lebensmittel GmbH", "total": 1284903.17, "due": "2026-03-04" } ] }
+```
+
+Screens bind to it. `data-od-bind="invoices[2].total"` fills an element, `data-od-bind-src` (or any `data-od-bind-<attribute>`) fills an attribute, and one template row with `data-od-repeat="invoices"` becomes one row per record, with `.customer` style paths inside it. `data-od-format` (`currency`, `date`, `datetime`, `time`, `number`, `percent`) formats values for the file's locale, and `data-od-empty="—"` shows for a missing value. The kit fills them wherever it shows the design (previews, check, exports, the clickable prototype and published flows). The file keeps the binds and the one template row, so the invoice that is €1,240 on the list is €1,240 on the detail screen too, and changing it is one edit.
+
+The brief asks for realistic data: at least 12 rows in a table, one very long name, a zero and a very large number, a missing optional value, your locale's names and formats, and no invented real-world facts. The check reports a bind to data the file doesn't have (`sample-data-missing`), a list with fewer than 12 records or no long value, or a hand-written table with fewer than 6 rows (`sample-data-thin`), and fewer items than the brief named, such as "6 products" (`items-promised`).
+
+When you [promote the design to code](promote-to-app-code.md), the data comes along as typed mocks.
+
 ## Device frames
 
 A screen for a phone, tablet or desktop app says so on its `<body>`: `data-od-device="iphone"`, `"android"`, `"tablet"` (with `data-od-orientation="portrait"` or `"landscape"`) or `"desktop-app"` (with `data-od-window="mac"` or `"windows"`). The agent adds it from your platform answer. The kit then draws a plain device frame around the screen everywhere you see it: a status bar, the camera cutout and the home indicator for phones and tablets, a title bar with the app's name and window buttons for a desktop app. The design itself is only the app, so the frame never ends up in your code, and a tab bar fixed to the bottom sits right above the home indicator.
@@ -68,6 +83,7 @@ Publishing any screen of a flow publishes the whole flow ([Share and publish](sh
 .open-design/onboarding/welcome.html            ← a screen (and its .artifact.json)
 .open-design/onboarding/goals.html
 .open-design/onboarding/_shared/nav.html        ← the shared navigation
+.open-design/onboarding/_shared/data.json       ← the sample data every screen binds to
 .open-design/onboarding/flow.html               ← the flow map, rewritten by each collection check
 .open-design/onboarding/exports/onboarding-prototype.html
 ```

@@ -32,6 +32,7 @@ import {
   composeDesignSystemTokensInstructions,
   composeInstructions,
   composePortToAppInstructions,
+  sampleDataForEntry,
   prepareComponentLibrary as prepareComponentLibraryCore,
   copyExampleArtifact,
   detectExistingApp,
@@ -972,6 +973,7 @@ export async function portToAppCode(
     targetComponentPath,
     referenceComponentPath: input.referenceComponentPath,
     appComponents: await appComponentsFor(ctx.contentIndex, artifact.manifest?.designSystemId),
+    sampleData: await sampleDataForEntry(ctx.workspaceRoot, input.entryPath, artifact.entryContent),
   });
   return JSON.stringify({ instructions, suggestedTargetComponentPath: targetComponentPath }, null, 2);
 }

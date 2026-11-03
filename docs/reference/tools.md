@@ -812,6 +812,9 @@ Pages made from an [app-screens](../guides/app-screens.md) entry (or with `data-
 | `stress-overflow` | With names 60 characters long, numbers like 9,999,999 and text 2.5 times as long swapped in: text pushed out of its box. Only problems the page didn't already have are reported |
 | `stress-truncation` | In the same pass: text cut with an ellipsis and no `title` or other way to read it in full |
 | `large-text-overflow` | With the root text size at 20 px (a larger system text setting): text pushed out of its box or overlapping. Only problems the page didn't already have are reported |
+| `sample-data-missing` | A `data-od-bind` or `data-od-repeat` path the data file doesn't have, or binds with no data file (an error) |
+| `sample-data-thin` | A repeated table or list with fewer than 12 records or no value of 30+ characters, or a hand-written app table with fewer than 6 rows |
+| `items-promised` | The brief or the screen's flow plan names a count ("6 products") and the matching list renders fewer |
 | `device-double-frame` | A screen with `data-od-device` that also draws a status bar, notch, home indicator, device frame or title bar of its own, which the kit already draws |
 
 A screen with `data-od-device` (see [Device frames](../guides/app-screens.md#device-frames)) is checked at its device's screen size instead of the usual viewports: `iphone` 390 × 763, `android` 412 × 867, `tablet` 1024 × 724 and 768 × 980, `desktop-app` 1280 × 800. An app screen without a device is also checked at `tablet-1024` and `tablet-768`, whose screenshots are attached only when they have findings.
