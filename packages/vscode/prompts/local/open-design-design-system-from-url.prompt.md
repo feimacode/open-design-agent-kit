@@ -73,3 +73,5 @@ Apply what the user says ("the buttons are rounder on the site" → raise the ra
 ## 5. Save
 
 Call `set_active_design_system` with the returned `id` if the user wants to design with it now (offer it). Tell the user the design system's id and where its files are, and that the measurements are kept in the evidence bundle.
+
+If the site is one the user wants to improve or pitch a redesign for, offer to audit it too: `audit_open_design_site` checks the same pages for contrast, phone layout and other problems (the `open-design-site-audit` skill has the steps).

@@ -10,6 +10,7 @@
 //
 // Costs model tokens: run it by hand before and after a quality change, not in CI.
 import { spawn } from 'node:child_process';
+import * as http from 'node:http';
 import { existsSync, promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -29,6 +30,7 @@ import {
   summary,
   writeContactSheet,
 } from './score.mjs';
+import { siteContentType } from './lib.mjs';
 
 const DEFAULTS = { repeat: 2, model: 'claude-sonnet-5-5', maxTurns: 80, maxRounds: 3, roundTimeoutMinutes: 20 };
 
@@ -118,9 +120,33 @@ async function localPlugin(runDir) {
   for (const sub of ['skills', 'agents']) {
     if (existsSync(path.join(source, sub))) await fs.symlink(path.join(source, sub), path.join(dir, sub), 'dir');
   }
-  const mcp = { mcpServers: { 'open-design': { command: process.execPath, args: [server], env: { OPEN_DESIGN_LAUNCHER: 'claude-plugin' } } } };
+  // OPEN_DESIGN_EVALS lets the site audit load the fixture sites this runner serves on 127.0.0.1 (briefs with `site:`).
+  const mcp = { mcpServers: { 'open-design': { command: process.execPath, args: [server], env: { OPEN_DESIGN_LAUNCHER: 'claude-plugin', OPEN_DESIGN_EVALS: '1', OPEN_DESIGN_ALLOW_HOSTS: '127.0.0.1' } } } };
   await fs.writeFile(path.join(dir, '.mcp.json'), JSON.stringify(mcp, null, 2) + '\n');
   return dir;
+}
+
+/** Serves a fixture folder on 127.0.0.1 at a random port. */
+async function serveSite(dir) {
+  const server = http.createServer((req, res) => {
+    const rel = decodeURIComponent((req.url ?? '/').split('?')[0]).replace(/^\/+/, '') || 'index.html';
+    const file = path.join(dir, rel.endsWith('/') ? `${rel}index.html` : rel);
+    if (!file.startsWith(dir + path.sep)) {
+      res.writeHead(403);
+      return res.end();
+    }
+    fs.readFile(file)
+      .then((body) => {
+        res.writeHead(200, { 'content-type': siteContentType(file) });
+        res.end(body);
+      })
+      .catch(() => {
+        res.writeHead(404);
+        res.end();
+      });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  return { url: `http://127.0.0.1:${server.address().port}/`, close: () => server.close() };
 }
 
 /** What the "user" says when the agent asks: the brief's answers, then "you pick" for the rest. */
@@ -137,6 +163,8 @@ async function runBrief(brief, repeat, ctx) {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), `od-eval-${brief.id}-`));
   // A brief about an existing project (design from your app) starts from a copy of it.
   if (brief.fixture) await fs.cp(path.join(EVALS_DIR, 'fixtures', brief.fixture), tmp, { recursive: true });
+  // A brief about a live website (site audit, redesign) gets a fixture site served on 127.0.0.1 for the run.
+  const site = brief.site ? await serveSite(path.join(EVALS_DIR, 'fixtures', brief.site)) : undefined;
   const transcriptFile = path.join(caseDir, 'transcript.jsonl');
   const started = Date.now();
   let sessionId;
@@ -144,7 +172,7 @@ async function runBrief(brief, repeat, ctx) {
   let costUsd = 0;
   let error;
   let rounds = 0;
-  let message = brief.request;
+  let message = site ? brief.request.replaceAll('{{site}}', site.url) : brief.request;
   const texts = [];
   const toolUses = [];
   while (rounds < ctx.maxRounds) {
@@ -169,6 +197,7 @@ async function runBrief(brief, repeat, ctx) {
     questions += Math.max(1, countQuestions(t.result.result ?? t.texts.at(-1) ?? ''));
     message = answerMessage(brief);
   }
+  site?.close();
   const wallSeconds = (Date.now() - started) / 1000;
   const workspace = path.join(caseDir, 'workspace');
   await fs.cp(tmp, workspace, { recursive: true, filter: (src) => !src.split(path.sep).includes('node_modules') });

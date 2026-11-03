@@ -67,6 +67,7 @@ export const REMOTE_HIDDEN_TOOLS: Record<string, string> = {
   publish_open_design_artifact_to_shop: "the user's own shop connector",
   restore_open_design_artifact: 'a Claude artifact read on the user’s side',
   extract_open_design_design_system: 'rendering any website from the server',
+  audit_open_design_site: 'rendering any website from the server',
 };
 
 /** Why a remote call with these arguments is refused, or undefined when it's fine. */

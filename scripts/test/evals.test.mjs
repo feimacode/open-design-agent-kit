@@ -14,6 +14,9 @@ test('briefProblem names what is missing', () => {
   assert.match(briefProblem({ id: 'x', expect: { surface: 'poster' }, must: ['m'] }, 'x.yaml'), /request/);
   assert.match(briefProblem({ id: 'x', request: 'r', expect: { surface: 'poster' }, must: [] }, 'x.yaml'), /must/);
   assert.equal(briefProblem({ id: 'x', request: 'r', expect: { surface: 'poster' }, answers: { a: 'b' }, must: ['m'] }, 'x.yaml'), undefined);
+  assert.match(briefProblem({ id: 'x', request: 'r', expect: { surface: 'any' }, site: 'nope', must: ['m'] }, 'x.yaml'), /site must name a folder/);
+  assert.match(briefProblem({ id: 'x', request: 'Audit it', expect: { surface: 'any' }, site: 'trattoria-site', must: ['m'] }, 'x.yaml'), /\{\{site\}\}/);
+  assert.equal(briefProblem({ id: 'x', request: 'Audit {{site}}', expect: { surface: 'any' }, site: 'trattoria-site', must: ['m'] }, 'x.yaml'), undefined);
 });
 
 test('parseTranscript collects text, tool uses and the result, skipping other events', () => {

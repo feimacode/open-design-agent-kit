@@ -764,6 +764,27 @@ const TOOL_DEFS: ToolDef[] = [
   },
   {
     tool: {
+      name: 'audit_open_design_site',
+      description:
+        "Audits a live website with Open Design's own checks, for a redesign pitch or an owner's own site. Renders each page in an installed Chrome, Edge or Chromium at desktop (1440\u00d7900) and phone (390\u00d7844) sizes and reports what a visitor runs into: text contrast, tap targets, sideways scrolling, 320 px reflow, layout with larger text, overflowing or covered text, the first phone screen with nothing to tap, broken images, styles or scripts, images without alt text, a missing viewport tag, download size and request count, and default-template looks. Checks that need Open Design markup (states, flows, sample data, tokens) don't run. Writes <output folder>/.audits/<site>/: audit.json with every finding, screenshots, crops of the top problems and index.html, a short plain-language report with the 5 biggest problems ranked by what they cost a visitor and a statement of what wasn't measured. Gives no score and makes no speed or SEO claims. Only public http(s) pages; at most 4 pages on one site, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'The page to audit, usually the home page.' },
+          extraUrls: {
+            type: 'array',
+            items: { type: 'string' },
+            maxItems: 3,
+            description: 'Optional: up to 3 more pages on the same site (menu, services, contact) to audit too.',
+          },
+        },
+        required: ['url'],
+      },
+    },
+    handler: (ctx, args) => tools.auditSite(ctx, args as { url?: string; extraUrls?: string[] }),
+  },
+  {
+    tool: {
       name: 'extract_open_design_design_system',
       description:
         "Renders a website in an installed Chrome, Edge or Chromium and measures its design system: colour roles from the elements that carry them (page background, cards, text, borders, the primary button and its forced :hover/:active states), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url skill has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and marks the result partial.",

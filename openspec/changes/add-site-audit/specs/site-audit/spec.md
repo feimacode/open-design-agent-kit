@@ -14,7 +14,7 @@
 
 ### Requirement: Live-Safe Checks Only
 
-The audit SHALL run only the checks that read the DOM and computed styles without kit markup. These include contrast, tap targets, 320 px reflow, large text, screen economy, broken assets, focus visibility, reduced motion and the taste rules. The audit SHALL add `page-weight`, `missing-viewport` and `missing-alt`. It SHALL NOT run state, flow, sample data or token checks.
+The audit SHALL run only the checks that read the DOM and computed styles without kit markup. These are contrast, overflow, overlap, sideways scrolling, tap targets, 320 px reflow, large text, screen economy and the taste rules other than type scale. The audit SHALL add `page-weight`, `missing-viewport`, `missing-alt` and `broken-asset`. It SHALL NOT run state, flow, sample data or token checks.
 
 #### Scenario: No state findings on a live page
 - **WHEN** a live page has a table with no empty state
