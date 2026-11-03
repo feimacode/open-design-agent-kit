@@ -23,6 +23,7 @@ Two rules apply to every tool (and over MCP every tool declares `readOnlyHint`, 
 | [`remix_open_design_example`](#remix_open_design_example) | `#od-remix-example` | yes | Copy an example in as a starting point |
 | [`create_open_design_design_system`](#create_open_design_design_system) | `#od-create-design-system` | yes | Instructions for a custom design system |
 | [`extract_open_design_design_system`](#extract_open_design_design_system) | `#od-extract-design-system` | yes | Measure a website's colours, fonts and spacing as a draft design system |
+| [`audit_open_design_site`](#audit_open_design_site) | `#od-audit-site` | yes | Check a live website for design and accessibility problems, with a plain-language report |
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
 | [`publish_open_design_artifact_to_canva`](#publish_open_design_artifact_to_canva) | `#od-publish-to-canva` | yes | Get a design into Canva: through your Canva connector when it's connected, otherwise a file to import |
@@ -617,6 +618,21 @@ What it measures: the page background, card surface, body and secondary text, bo
 **Result:** `status` (`ok`, `partial` or `blocked`), the bundle path, screenshots (the desktop one is attached as an image), `draft.tokens` (contract names only, plus `draft.dark` when the site has a dark theme), `draft.sources` (the element and crop each value came from), `draft.unmeasured` (left to the contract's fallbacks), `draftCss`, and `marks` (the logo and favicon). With no browser it reads the page source instead and returns `partial` with candidate colours and fonts. A bot check, a login redirect or an empty page is `blocked`, with its screenshot.
 
 Limits: public addresses only (private, loopback and link-local hosts are refused, for the page and everything it loads); at most 4 pages, 20 seconds each; no cookies, logins or form submissions. See [Design systems](../guides/design-systems.md#take-one-from-a-website).
+
+### audit_open_design_site
+
+Audits a live website with the kit's own checks and writes a short report for a business owner. Renders each page at desktop (1440×900) and phone (390×844) sizes. **It changes nothing on the site** and writes only `<outputDirectory>/.audits/<site>/`.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `url` | string | yes | The page to audit, usually the home page. `http` or `https` only. |
+| `extraUrls` | string[] | no | Up to 3 more pages on the same site. |
+
+What it checks: text contrast, overflowing and covered text, and the default-template looks (`slop-glow`, `card-row`, `uniform-surface`, `intent`) at both sizes; on the phone, sideways scrolling (`horizontal-scroll`), tap targets, a first screen with nothing to tap (`screen-economy`), layout with the reader's text at 20 px (`large-text-overflow`), images without `alt` (`missing-alt`), a missing viewport tag (`missing-viewport`), files that fail to load from the site (`broken-asset`) and the phone load's size and request count (`page-weight`, over 2 MB or 80 requests); then sideways scrolling at 320 px (`reflow`). Checks that need Open Design markup (states, flows, sample data, tokens, type scale) don't run. Common cookie banners are hidden before measuring, and the result says so.
+
+**Result:** `status` (`ok`, `partial` when some pages were blocked, or `blocked`), `report` (the `index.html` path), `top` (at most 5 finding groups, ranked by what they cost a visitor, each with a title, where, cost, fix, a developer detail and a crop with the element marked in red; the first crop is attached as an image), `otherGroups`, `pageWeight`, `blocked` and `screenshots`. `audit.json` beside the report keeps every finding. The report lists what was checked and what wasn't measured (SEO, real-user speed, conversion, pages behind a login) and gives no score.
+
+Limits: the same as `extract_open_design_design_system`. Hidden on the hosted server. See [Audit a website](../guides/site-audit.md).
 
 ## Beyond the prototype
 

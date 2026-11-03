@@ -15,12 +15,24 @@
 // `blocked` with its screenshot.
 
 import { promises as fs } from 'node:fs';
-import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import type { Browser, Page } from 'puppeteer-core';
+import type { Page } from 'puppeteer-core';
 import { findBrowser } from '../export/browserDiscovery';
+import {
+  DESKTOP_VIEWPORT,
+  MAX_EXTRA_URLS,
+  MOBILE_VIEWPORT,
+  PAGE_TIMEOUT_MS,
+  blockedReason,
+  gotoPage,
+  isBlockedHostLiteral,
+  isPrivateAddress,
+  launchLiveBrowser,
+  liveSlug,
+  registrableDomain,
+  validateLiveUrls,
+  type LiveBrowser,
+} from '../export/livePage';
 import { extractBrandEvidence, type BrandEvidence } from './brandExtraction';
 import {
   draftTokensCss,
@@ -32,10 +44,10 @@ import {
   type SiteEvidence,
 } from './evidenceToTokens';
 
-export const MAX_EXTRA_URLS = 3;
-export const PAGE_TIMEOUT_MS = 20_000;
-export const DESKTOP_VIEWPORT = { width: 1440, height: 900 };
-export const MOBILE_VIEWPORT = { width: 390, height: 844 };
+export { DESKTOP_VIEWPORT, MAX_EXTRA_URLS, MOBILE_VIEWPORT, PAGE_TIMEOUT_MS, isBlockedHostLiteral, isPrivateAddress, registrableDomain };
+/** Kept under the extraction names. */
+export const validateExtractionUrls = validateLiveUrls;
+export const extractionSlug = liveSlug;
 
 export type ExtractionTheme = 'light' | 'dark' | 'both';
 
@@ -82,96 +94,6 @@ export type ExtractSiteResult =
       marks: string[];
       notes: string[];
     };
-
-// ── URL safety ───────────────────────────────────────────────────────────
-
-/** Loopback, private, link-local, unique-local, CGNAT, unspecified and multicast addresses. */
-export function isPrivateAddress(ip: string): boolean {
-  const v4 = ip.startsWith('::ffff:') ? ip.slice(7) : ip;
-  if (isIP(v4) === 4) {
-    const [a, b] = v4.split('.').map(Number);
-    return (
-      a === 0 || a === 10 || a === 127 || a >= 224 ||
-      (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127)
-    );
-  }
-  if (isIP(ip) === 6) {
-    const lower = ip.toLowerCase();
-    return lower === '::' || lower === '::1' || /^f[cd]/.test(lower) || /^fe[89ab]/.test(lower) || /^ff/.test(lower);
-  }
-  return false;
-}
-
-function isLocalName(host: string): boolean {
-  const h = host.toLowerCase().replace(/\.$/, '');
-  return h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal') || !h.includes('.');
-}
-
-/** A hostname or literal IP that's never fetched: local names and private literal addresses. Cheap, no DNS. */
-export function isBlockedHostLiteral(host: string): boolean {
-  const h = host.replace(/^\[|\]$/g, '');
-  return isIP(h) ? isPrivateAddress(h) : isLocalName(h);
-}
-
-const SECOND_LEVEL = new Set(['co', 'com', 'org', 'net', 'gov', 'ac', 'edu']);
-
-/** `www.shop.example.co.uk` → `example.co.uk`. An approximation of the public suffix list, good enough to keep extra pages on one site. */
-export function registrableDomain(host: string): string {
-  const labels = host.toLowerCase().replace(/\.$/, '').split('.');
-  if (isIP(host) || labels.length <= 2) return labels.join('.');
-  const tld = labels[labels.length - 1];
-  const sld = labels[labels.length - 2];
-  const take = tld.length === 2 && SECOND_LEVEL.has(sld) ? 3 : 2;
-  return labels.slice(-take).join('.');
-}
-
-async function defaultResolveHost(host: string): Promise<string[]> {
-  return (await lookup(host, { all: true })).map((r) => r.address);
-}
-
-/** The pages to render, or why not. Resolves each host and refuses private addresses. */
-export async function validateExtractionUrls(
-  url: string,
-  extraUrls: string[] = [],
-  resolveHost: (host: string) => Promise<string[]> = defaultResolveHost,
-  allowHosts: string[] = [],
-): Promise<{ ok: true; urls: URL[] } | { ok: false; error: string }> {
-  if (extraUrls.length > MAX_EXTRA_URLS) return { ok: false, error: `extraUrls takes at most ${MAX_EXTRA_URLS} pages (got ${extraUrls.length}).` };
-  const parsed: URL[] = [];
-  for (const raw of [url, ...extraUrls]) {
-    let u: URL;
-    try {
-      u = new URL(raw);
-    } catch {
-      return { ok: false, error: `"${raw}" is not a valid URL.` };
-    }
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return { ok: false, error: `${raw}: only http and https URLs can be extracted.` };
-    if (u.username || u.password) return { ok: false, error: `${raw}: URLs with credentials aren't accepted.` };
-    if (allowHosts.includes(u.hostname)) {
-      parsed.push(u);
-      continue;
-    }
-    if (isBlockedHostLiteral(u.hostname)) return { ok: false, error: `${raw}: local and private addresses can't be extracted.` };
-    let addresses: string[];
-    try {
-      addresses = await resolveHost(u.hostname.replace(/^\[|\]$/g, ''));
-    } catch {
-      return { ok: false, error: `${raw}: the host ${u.hostname} doesn't resolve.` };
-    }
-    if (addresses.length === 0 || addresses.some(isPrivateAddress)) return { ok: false, error: `${raw}: ${u.hostname} resolves to a local or private address.` };
-    parsed.push(u);
-  }
-  const site = registrableDomain(parsed[0].hostname);
-  for (const extra of parsed.slice(1)) {
-    if (registrableDomain(extra.hostname) !== site) return { ok: false, error: `${extra.toString()} is not on the same site as ${parsed[0].toString()} (${site}).` };
-  }
-  return { ok: true, urls: parsed };
-}
-
-/** `https://www.example.com/pricing` → `example-com`. */
-export function extractionSlug(url: URL): string {
-  return url.hostname.toLowerCase().replace(/^www\./, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'site';
-}
 
 // ── In-page measurement ─────────────────────────────────────────────────
 // Serialized into the page by page.evaluate(), so it must be self-contained.
@@ -510,63 +432,6 @@ function measureRolesInBrowser(): Partial<Record<ColorRole, RoleSample>> {
 
 // ── Browser session ──────────────────────────────────────────────────────
 
-const LOGIN_PATH = /\/(log-?in|sign-?in|auth|sso|account\/login)(\/|$|\?)/i;
-
-function blockedReason(requested: URL, finalUrl: string, m: MeasuredPage): string | undefined {
-  if (m.challenge) return 'the page shows a bot check or access wall';
-  let final: URL | undefined;
-  try {
-    final = new URL(finalUrl);
-  } catch {
-    final = undefined;
-  }
-  if (final && LOGIN_PATH.test(final.pathname) && !LOGIN_PATH.test(requested.pathname)) return `the page redirected to a login (${final.pathname})`;
-  if (m.bodyTextLength < 40 && m.elementCount < 30) return 'the page rendered an empty body';
-  return undefined;
-}
-
-async function guardRequests(page: Page, images: Map<string, Buffer>, allowHosts: string[]): Promise<void> {
-  await page.setRequestInterception(true);
-  page.on('request', (req) => {
-    let u: URL;
-    try {
-      u = new URL(req.url());
-    } catch {
-      void req.abort().catch(() => undefined);
-      return;
-    }
-    const allowedScheme = u.protocol === 'https:' || u.protocol === 'http:' || u.protocol === 'data:' || u.protocol === 'blob:';
-    const formPost = req.isNavigationRequest() && req.method() !== 'GET';
-    if (!allowedScheme || formPost || ((u.protocol === 'http:' || u.protocol === 'https:') && isBlockedHostLiteral(u.hostname) && !allowHosts.includes(u.hostname))) {
-      void req.abort('blockedbyclient').catch(() => undefined);
-      return;
-    }
-    void req.continue().catch(() => undefined);
-  });
-  // Kept so a logo image can be saved from what the page itself loaded, without a second fetch.
-  page.on('response', (res) => {
-    const type = res.headers()['content-type'] ?? '';
-    if (!type.startsWith('image/') || images.size >= 60) return;
-    res
-      .buffer()
-      .then((buf) => {
-        if (buf.length <= 1_000_000) images.set(res.url(), buf);
-      })
-      .catch(() => undefined);
-  });
-}
-
-async function gotoPage(page: Page, url: string): Promise<void> {
-  try {
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: PAGE_TIMEOUT_MS });
-  } catch (err) {
-    // A page that never goes network-idle (analytics, long polling) is still measurable once its DOM is there.
-    if (!/timeout/i.test(String(err))) throw err;
-    await page.evaluate(() => document.readyState).catch(() => undefined);
-  }
-  await new Promise((r) => setTimeout(r, 400));
-}
-
 async function forcedStateColor(page: Page, state: 'hover' | 'active'): Promise<string | undefined> {
   const client = await page.createCDPSession();
   try {
@@ -614,11 +479,11 @@ const darkSignature = (roles: Partial<Record<ColorRole, RoleSample>>): string =>
 
 /** Renders the pages and measures them. Never throws for a site problem; reports it. */
 export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteResult> {
-  const valid = await validateExtractionUrls(input.url, input.extraUrls ?? [], input.resolveHost, input.allowHostsForTesting);
+  const valid = await validateLiveUrls(input.url, input.extraUrls ?? [], input.resolveHost, input.allowHostsForTesting);
   if (!valid.ok) return { status: 'invalid-args', error: valid.error };
   const [main] = valid.urls;
   const theme = input.theme ?? 'light';
-  const slug = extractionSlug(main);
+  const slug = liveSlug(main);
   const bundleRel = path.posix.join(input.outputDir, '.extract', slug);
   const bundleDir = path.join(input.workspaceRoot, bundleRel);
   await fs.rm(bundleDir, { recursive: true, force: true });
@@ -634,30 +499,15 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
     return { status: 'partial', slug, bundleDir: bundleRel, screenshots: [], blocked: [], candidates, marks: [], notes: [...notes, ...candidates.warnings] };
   }
 
-  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-extract-profile-'));
-  let browser: Browser | undefined;
+  let live: LiveBrowser | undefined;
   const screenshots: string[] = [];
   const blocked: BlockedPage[] = [];
   const pages: PageEvidence[] = [];
   const marks: string[] = [];
   let dark: SiteEvidence['dark'];
   try {
-    const { default: puppeteer } = await import('puppeteer-core');
-    browser = await puppeteer.launch({
-      executablePath: browserPath,
-      headless: true,
-      userDataDir: profileDir,
-      protocolTimeout: 60_000,
-      // Chrome refuses to start its sandbox as root (containers, CI); everywhere else the sandbox stays on.
-      args: ['--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb', '--disable-features=Translate', ...(process.getuid?.() === 0 ? ['--no-sandbox'] : [])],
-    });
-    // A normal desktop user agent: the headless marker alone gets many sites to serve a stripped page.
-    const userAgent = (await browser.userAgent()).replace(/HeadlessChrome/g, 'Chrome');
-    const page = await browser.newPage();
-    await page.evaluateOnNewDocument('globalThis.__name = globalThis.__name || ((fn) => fn)');
-    await page.setUserAgent(userAgent);
-    const images = new Map<string, Buffer>();
-    await guardRequests(page, images, input.allowHostsForTesting ?? []);
+    live = await launchLiveBrowser(browserPath, input.allowHostsForTesting ?? [], 'od-extract-profile-');
+    const { page, images } = live;
 
     for (const [i, url] of valid.urls.entries()) {
       const prefix = valid.urls.length > 1 ? `page-${i + 1}-` : '';
@@ -764,8 +614,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   } catch (err) {
     notes.push(`The browser stopped early: ${err instanceof Error ? err.message.split('\n')[0] : String(err)}`);
   } finally {
-    await browser?.close().catch(() => undefined);
-    await fs.rm(profileDir, { recursive: true, force: true }).catch(() => undefined);
+    await live?.close();
   }
 
   const siteEvidence: SiteEvidence = { pages, dark };

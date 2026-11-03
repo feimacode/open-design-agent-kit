@@ -16,11 +16,11 @@ The audit gets its own tool instead of a `url` option on `check_open_design_arti
 
 ### Only checks that don't need kit markup
 
-Each page script is tagged `live: true` when it reads only the DOM and computed styles. The audit runs only those. State, flow, data and token checks stay artifact-only. This avoids false findings ("no empty state") on pages that were never meant to have them.
+The audit keeps an allow-list of the checks that read only the DOM and computed styles (`LIVE_PREFLIGHT_CHECKS` in `siteAudit.ts`) and runs only those. State, flow, data and token checks stay artifact-only. This avoids false findings ("no empty state") on pages that were never meant to have them.
 
 ### Rank by visitor cost, show at most five
 
-A real site can produce 80 contrast findings. The report groups findings by check and element pattern, ranks the groups by a fixed weight (blocking > phone-only > cosmetic) times how many visible elements they hit above the fold, and shows the top 5 with a crop each. `audit.json` keeps everything.
+A real site can produce 80 contrast findings. The report groups findings by check and element pattern, ranks the groups by a fixed weight per check, times 1 + log10 of the distinct elements, times 1.5 for a group with an element in the first screen and 0.5 for the footer, and shows the top 5 with a crop each. `audit.json` keeps everything.
 
 ### Page weight is the only speed signal
 
@@ -29,6 +29,7 @@ Bytes transferred and request count come from the browser's network log during t
 ## Risks / Trade-offs
 
 - **Third-party sites change and block bots.** The report carries the capture time and screenshots, so a claim can be checked later. Blocked pages are reported, never retried with tricks.
-- **Consent banners cover the page.** The audit hides elements matching common consent-manager selectors before measuring, notes that it did, and keeps a screenshot with the banner.
+- **Consent banners cover the page.** The audit hides elements matching common consent-manager selectors before measuring and notes that it did.
 - **Overclaiming.** The scope statement is fixed text in the report, and tests assert that the report holds no number the audit didn't compute.
 - **Evals can't reach public sites from the container.** The eval runner serves the fixture site on loopback and allows that one host through a test-only setting (`OPEN_DESIGN_ALLOW_HOSTS`, read only when `OPEN_DESIGN_EVALS=1`), as the extraction tests already do with `allowHostsForTesting`.
+- **Phone without mobile emulation.** Chrome's mobile emulation zooms out to fit overflowing content, which hides sideways scrolling. The phone pass uses a 390 px viewport with touch but without `isMobile`, and checks the viewport tag from the DOM.

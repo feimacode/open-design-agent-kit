@@ -27,6 +27,8 @@ import {
   type PrepareExplorationInput,
   composeCustomDesignSystemInstructions,
   extractSite,
+  auditSite as auditLiveSite,
+  formatAuditSiteResult,
   formatExtractSiteResult,
   type ExtractionTheme,
   composeDesignSystemTokensInstructions,
@@ -951,6 +953,26 @@ export async function extractDesignSystemFromSite(
   const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
   const image = shot ? await fs.readFile(path.join(ctx.workspaceRoot, shot)).catch(() => undefined) : undefined;
   return { text: formatExtractSiteResult(result), images: image ? [{ data: image, mime: 'image/png' }] : [] };
+}
+
+export async function auditSite(ctx: ToolContext, input: { url?: string; extraUrls?: string[] }): Promise<ToolOutput> {
+  if (typeof input.url !== 'string' || !input.url.trim()) throw new Error('"url" is required: the website to audit.');
+  if (input.extraUrls !== undefined && (!Array.isArray(input.extraUrls) || input.extraUrls.some((u) => typeof u !== 'string'))) {
+    throw new Error('"extraUrls" must be a list of URLs on the same site.');
+  }
+  const result = await auditLiveSite({ url: input.url.trim(), extraUrls: input.extraUrls, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, allowHostsForTesting: evalAllowedHosts() });
+  if (result.status === 'invalid-args' || result.status === 'no-browser') throw new Error(result.error);
+  const crop = result.groups.find((g) => g.crop)?.crop;
+  const shot = crop ?? result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
+  const image = shot ? await fs.readFile(path.join(ctx.workspaceRoot, shot)).catch(() => undefined) : undefined;
+  return { text: formatAuditSiteResult(result), images: image ? [{ data: image, mime: 'image/png' }] : [] };
+}
+
+/** Hosts the eval runner serves fixture sites from; honoured only when OPEN_DESIGN_EVALS=1. */
+function evalAllowedHosts(): string[] | undefined {
+  if (process.env.OPEN_DESIGN_EVALS !== '1') return undefined;
+  const hosts = (process.env.OPEN_DESIGN_ALLOW_HOSTS ?? '').split(',').map((h) => h.trim()).filter((h) => h === '127.0.0.1' || h === 'localhost');
+  return hosts.length ? hosts : undefined;
 }
 
 async function appComponentsFor(contentIndex: ToolContext['contentIndex'], designSystemId: unknown): Promise<AppComponentsFile | undefined> {

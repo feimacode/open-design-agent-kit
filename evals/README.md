@@ -16,6 +16,7 @@ expect:
   questions: { max: 1 }            # how many questions are reasonable; outside the range gets a ⚠
 designSystem: null                 # a design system id to name, or null to exercise the recommender
 fixture: acme-billing              # optional; a folder in evals/fixtures/ copied into the workspace first (an app to design from)
+site: trattoria-site               # optional; a folder in evals/fixtures/ served on 127.0.0.1 for the run, its address put where the request says {{site}} (a website to audit or redesign)
 answers:                           # what the "user" says when asked; anything else is "you pick"
   where: "Both: A3 print for the venue and a version for Instagram"
 must:                              # two or three things a reviewer ticks on the contact sheet

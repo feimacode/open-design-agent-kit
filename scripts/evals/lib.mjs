@@ -57,7 +57,15 @@ export function briefProblem(brief, fileName) {
   if (brief.answers !== undefined && (typeof brief.answers !== 'object' || Array.isArray(brief.answers))) return 'answers must be a mapping';
   if (!Array.isArray(brief.must) || brief.must.length === 0) return 'must needs at least one note';
   if (brief.fixture !== undefined && (typeof brief.fixture !== 'string' || !/^[a-z0-9-]+$/.test(brief.fixture) || !existsSync(path.join(EVALS_DIR, 'fixtures', brief.fixture)))) return `fixture must name a folder in evals/fixtures/ (got ${JSON.stringify(brief.fixture)})`;
+  if (brief.site !== undefined && (typeof brief.site !== 'string' || !/^[a-z0-9-]+$/.test(brief.site) || !existsSync(path.join(EVALS_DIR, 'fixtures', brief.site)))) return `site must name a folder in evals/fixtures/ (got ${JSON.stringify(brief.site)})`;
+  if (brief.site !== undefined && !brief.request.includes('{{site}}')) return 'a brief with site must put {{site}} in its request, where the address goes';
   return undefined;
+}
+
+/** The content type a fixture site's file is served with. */
+export function siteContentType(file) {
+  const ext = path.extname(file).toLowerCase();
+  return { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp' }[ext] ?? 'application/octet-stream';
 }
 
 // ---------------------------------------------------------------- transcript

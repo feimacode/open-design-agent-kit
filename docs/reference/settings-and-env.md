@@ -95,6 +95,14 @@ All hosts. The Chrome, Edge or Chromium executable used for export. When unset, 
 
 Nothing is ever downloaded. See [Troubleshooting](../troubleshooting.md#no-chrome-edge-or-chromium-browser-was-found). The [browser preview](../guides/browser-preview.md) uses the same browser for its window and comment screenshots.
 
+### OPEN_DESIGN_EVALS
+
+Eval runner only. Set to `1` by `npm run evals` for the server it starts, so `audit_open_design_site` can load the fixture sites the runner serves on `127.0.0.1` (see `OPEN_DESIGN_ALLOW_HOSTS`). Never set it for real use.
+
+### OPEN_DESIGN_ALLOW_HOSTS
+
+Eval runner only, and read only when `OPEN_DESIGN_EVALS=1`: a comma-separated list of hosts the site audit may load despite being local. Only `127.0.0.1` and `localhost` are accepted.
+
 ### OPEN_DESIGN_HOST
 
 MCP server. Set to `claude-desktop-extension` by the desktop extension's manifest. The server then holds the lock file `~/.config/open-design/desktop-extension.lock` (under `$XDG_CONFIG_HOME` when set) while it runs, and treats its working directory as no folder of its own. You don't set it yourself.
