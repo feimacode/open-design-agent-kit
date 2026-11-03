@@ -10,7 +10,7 @@ A screen SHALL declare its device with `data-od-device` on `<body>`, one of `iph
 
 ### Requirement: Kit-Drawn Shells
 
-Wherever the kit serves a design (preview, check, export, MCP App, one-file prototype), it SHALL draw the device shell around a screen that declares a device: status bar, camera cutout, home indicator or gesture bar and rounded corners for phones and tablets, and a title bar with the app's name and Mac or Windows window controls for a desktop app. The shell SHALL be generic (no logos or model names), marked preview-only so saving from the preview keeps the source without it, and SHALL contain fixed-position elements of the design.
+Wherever the kit serves a design (preview, check, export, MCP App, one-file prototype), it SHALL draw the device shell around a screen that declares a device: status bar, camera cutout, home indicator or gesture bar and rounded corners for phones and tablets, and a title bar with the app's name and Mac or Windows window controls for a desktop app. The shell SHALL be generic (no logos or model names), drawn by the preview host around the frame that holds the design, so it is never part of the page and saving from the preview keeps the source without it, and SHALL contain fixed-position elements of the design.
 
 #### Scenario: Same frame on every screen
 - **WHEN** four screens of a flow declare `data-od-device="iphone"`
@@ -30,7 +30,7 @@ The brief for an app-screens or mobile entry with a platform answer SHALL tell t
 
 ### Requirement: Shell in Exports
 
-PNG and PDF exports of a device screen SHALL include the shell unless `shell: false` is passed; the site export and promote to code SHALL never include it.
+PNG and JPEG exports of a device screen SHALL include the shell unless `shell: false` is passed; PDF exports, the site export and promote to code SHALL never include it.
 
 #### Scenario: Store screenshot without the frame
 - **WHEN** the user exports an Android screen as PNG with `shell: false`

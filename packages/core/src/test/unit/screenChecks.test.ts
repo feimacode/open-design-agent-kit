@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { findBrowser } from '../../export/browserDiscovery';
 import { checkArtifact, type CheckArtifactResult } from '../../export/checkArtifact';
+import { exportArtifact } from '../../export/exportArtifact';
 import { isAppScreen } from '../../export/screenChecks';
 import { writeArtifactManifest } from '../../vendored/artifactCreate';
 
@@ -113,5 +114,41 @@ describe('app screen checks (real browser; skipped when none is installed)', fun
     await fs.writeFile(path.join(root, ENTRY), html);
     const result = ok(await check(root));
     assert.ok(!result.findings.some((f) => ['state-missing', 'dead-control', 'stress-overflow', 'stress-truncation'].includes(f.check)), JSON.stringify(result.findings));
+  });
+  it('large text: finds a fixed-height box that clips when the text size goes up', async () => {
+    const html = screen(`${TABLE}<div style="height:24px;overflow:hidden;width:300px;font-size:1rem;line-height:1.5rem">Next payment on 3 March</div>`, '<section data-od-state="empty" hidden><p>No customers yet.</p></section>', 'html{font-size:16px}');
+    const result = ok(await check(await workspace(html), { stress: false }));
+    assert.ok(result.findings.some((f) => f.check === 'large-text-overflow'), JSON.stringify(result.findings));
+    const fine = ok(await check(await workspace(screen(TABLE, '<section data-od-state="empty" hidden><p>No customers yet.</p></section>')), { stress: false }));
+    assert.ok(!fine.findings.some((f) => f.check === 'large-text-overflow'), JSON.stringify(fine.findings));
+  });
+
+  it('checks a device screen at its content size and flags a frame it drew itself', async () => {
+    const html = screen(TABLE, '<section data-od-state="empty" hidden><p>No customers yet.</p></section>').replace('<body>', '<body data-od-device="iphone">').replace('<main>', '<div class="status-bar">9:41</div><main>');
+    const result = ok(await check(await workspace(html), { stress: false }));
+    assert.ok(result.findings.some((f) => f.check === 'device-double-frame'), JSON.stringify(result.findings));
+    assert.match(result.images[0]?.label ?? '', /iphone/);
+    assert.ok(!result.images.some((i) => /desktop|tablet/.test(i.label)), JSON.stringify(result.images.map((i) => i.label)));
+  });
+
+  it('checks a web app screen at tablet sizes too, shown only when something is wrong there', async () => {
+    const wide = '<div style="width:900px;white-space:nowrap">A row of filters that needs nine hundred pixels to fit on one line</div>';
+    const result = ok(await check(await workspace(screen(`${TABLE}${wide}`, '<section data-od-state="empty" hidden><p>No customers yet.</p></section>')), { stress: false, maxImages: 6 }));
+    assert.ok(result.findings.some((f) => f.viewport === 'tablet-768'), JSON.stringify(result.findings));
+    assert.ok(result.images.some((i) => /tablet-768/.test(i.label)), JSON.stringify(result.images.map((i) => i.label)));
+    const fine = ok(await check(await workspace(screen(TABLE, '<section data-od-state="empty" hidden><p>No customers yet.</p></section>')), { stress: false, maxImages: 6 }));
+    assert.ok(!fine.images.some((i) => /tablet/.test(i.label)), JSON.stringify(fine.images.map((i) => i.label)));
+  });
+
+  it('exports a device screen inside its frame, or bare with shell: false', async () => {
+    const root = await workspace(screen(TABLE).replace('<body>', '<body data-od-device="android">'));
+    const framed = await exportArtifact({ workspaceRoot: root, entryPath: ENTRY, format: 'png', browserPath, settleMs: 0 });
+    assert.ok(framed.ok, JSON.stringify(framed));
+    assert.ok(framed.files[0].width > 412 && framed.files[0].height > 867, JSON.stringify(framed.files));
+    const bare = await exportArtifact({ workspaceRoot: root, entryPath: ENTRY, format: 'png', shell: false, browserPath, settleMs: 0 });
+    assert.ok(bare.ok, JSON.stringify(bare));
+    assert.deepStrictEqual([bare.files[0].width, bare.files[0].height], [412, 867]);
+    const pdf = await exportArtifact({ workspaceRoot: root, entryPath: ENTRY, format: 'pdf', shell: false, browserPath, settleMs: 0 });
+    assert.ok(!pdf.ok && /PNG and JPEG/.test(pdf.error), JSON.stringify(pdf));
   });
 });

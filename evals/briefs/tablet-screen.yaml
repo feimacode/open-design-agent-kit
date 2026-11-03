@@ -1,0 +1,14 @@
+id: tablet-screen
+request: "Design the orders screen of our restaurant iPad app: a list of open orders and the selected order's details beside it"
+expect:
+  surface: app-screens
+  skills: [app-table, app-detail, app-shell]
+  questions: { max: 1 }
+designSystem: null
+answers:
+  platform: "iPad (landscape)"
+  density: "Medium"
+must:
+  - "data-od-device=\"tablet\" on <body> with landscape orientation, and no frame or status bar drawn by the design"
+  - "List and detail side by side in landscape; still usable in portrait (checked at 768 × 980)"
+  - "Touch targets at least 44 px"

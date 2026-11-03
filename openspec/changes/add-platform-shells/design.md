@@ -12,7 +12,9 @@
 
 ### The kit draws the shell, the design is only the app
 
-Drawing the frame at serve time removes drift and token cost, and lets promote and the site export drop it cleanly. The served page wraps `<body>` content in a shell element sized to the device, scales it to fit the preview, and marks the shell `data-od-preview-only`. The design's CSS sees a viewport of the device size, so media queries behave as on the device.
+Drawing the frame in the kit removes drift and token cost, and lets promote and the site export drop it cleanly. The page's bridge reports the device in its `ready` message, and each preview host (browser shell, VS Code webview, MCP App, one-file prototype) wraps the iframe holding the design in a shell (`mountDeviceShell`) with the bars outside the iframe. The iframe is sized to the device's screen and never scaled (a smaller stage scrolls), so the design's CSS sees a viewport of the device size, fixed elements attach to the device screen, and overlay positions stay right. The page itself is never changed, so nothing needs marking preview-only.
+
+Image exports capture the bare screen at the device size, then frame that image with the same `mountDeviceShell` in a second page. PDF exports stay bare: a PDF of an app screen is a handoff document, not a mockup.
 
 ### Check at the device size, not "desktop and mobile"
 
@@ -28,5 +30,5 @@ Existing designs that draw their own iPhone frame keep working: no attribute, no
 
 ## Risks / Trade-offs
 
-- **Fixed-position elements.** A bottom tab bar with `position: fixed` must sit inside the shell. The shell is a containing block (`transform: translateZ(0)`), so fixed elements attach to it; the check covers it in a test.
+- **Fixed-position elements.** A bottom tab bar with `position: fixed` must sit inside the shell. The design is in an iframe the size of the device's screen, so fixed elements attach to that screen.
 - **Screenshots get bigger.** A tablet in two orientations is two captures; the budget rules above keep the total as today.

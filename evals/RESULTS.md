@@ -142,3 +142,30 @@ Must notes (ticked by the reviewer from the contact sheet):
 - [ ] billing-from-app: Uses the app's green brand colour and IBM Plex Sans, not the kit's defaults
 - [ ] billing-from-app: Parts built from the app's components carry data-od-component marks (Button, Card, Badge, Switch, Input); anything new is marked new:<Name>
 - [ ] billing-from-app: No raw hex colours where the app has a token (no token-hardcoded warnings)
+
+## 2026-11-02 — add-platform-shells
+
+- Kit: 0.4.0-beta.2 (claude/project-thread-fldkhh 82037c2, local changes)
+- Mode: agent claude (2.1.316 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-02-22-45-44/`
+- Contact sheet: [runs/2026-11-02-22-45-44/contact-sheet.png](runs/2026-11-02-22-45-44/contact-sheet.png)
+
+- Designs: 2 from 2 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 2 of 2.
+- Critic: n/a (no critique recorded).
+- Agent cost: $1.10.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| android-screen | 1 | .open-design/android-habit-tracker-home-screen-today-s-habits-with-streak/android-habit-tracker-home-screen-today-s-habits-with-streak.html | od:prototype:mobile-app ⚠ | 0 | — | 4 (stress-overflow×4) | n/a | 0 | 5 | 14 | 97s | #1a73e8 / - / - / light |
+| tablet-screen | 1 | .open-design/design-the-orders-screen-of-our-restaurant-ipad-app-a-list-o/orders-screen.html | od:prototype:app-table | 0 | — | 0 (—) | n/a | 0 | 5 | 13 | 156s | #9b5b32 / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] android-screen: data-od-device="android" on <body>, and no status bar, notch or phone frame drawn by the design
+- [ ] android-screen: Material patterns: top app bar, a floating action button for adding a habit, 48 dp touch targets
+- [ ] android-screen: Has an empty state for a first-day user with no habits
+- [ ] tablet-screen: data-od-device="tablet" on <body> with landscape orientation, and no frame or status bar drawn by the design
+- [ ] tablet-screen: List and detail side by side in landscape; still usable in portrait (checked at 768 × 980)
+- [ ] tablet-screen: Touch targets at least 44 px

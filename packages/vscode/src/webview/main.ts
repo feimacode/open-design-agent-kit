@@ -2,6 +2,7 @@ import { PREVIEW_ONLY_ATTR, type ManualEditPatch, type CuratedStyles } from '@fe
 import type { ArtifactComment } from '@feimacode/open-design-agent-kit-core/src/workspace/artifactCommentTypes';
 import { createCommentController } from '@feimacode/open-design-agent-kit-core/src/preview/commentController';
 import { escapeHtml, highlightBox, hostRectOf, selectionGuides } from '@feimacode/open-design-agent-kit-core/src/preview/overlays';
+import { mountDeviceShell } from '@feimacode/open-design-agent-kit-core/src/preview/deviceShell';
 import { BRIDGE_TAG, isBridgeMessage, type BridgeRect, type ElementSnapshot, type FromBridge, type StyleSnapshot, type ToBridge, type Untagged } from '@feimacode/open-design-agent-kit-core/src/preview/protocol';
 import { icon } from '@feimacode/open-design-agent-kit-core/src/preview/dom/icons';
 import { attachMenu } from '@feimacode/open-design-agent-kit-core/src/preview/dom/menuButton';
@@ -263,6 +264,8 @@ function onBridgeMessage(message: FromBridge): void {
   switch (message.type) {
     case 'ready':
       bridgeReady = true;
+      // The device the page declares gets the kit's frame around it (openspec add-platform-shells).
+      mountDeviceShell(document, iframe, message.device, message.title);
       toBridge({ type: 'set-mode', mode });
       sendCommentsToBridge();
       break;

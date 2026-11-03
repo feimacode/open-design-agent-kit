@@ -1,0 +1,14 @@
+id: android-screen
+request: "Design the home screen of our Android habit tracker app: today's habits with streaks and a way to add one"
+expect:
+  surface: app-screens
+  skills: [app-shell, app-detail, mobile-app]
+  questions: { max: 1 }
+designSystem: null
+answers:
+  platform: "Android"
+  density: "Medium"
+must:
+  - "data-od-device=\"android\" on <body>, and no status bar, notch or phone frame drawn by the design"
+  - "Material patterns: top app bar, a floating action button for adding a habit, 48 dp touch targets"
+  - "Has an empty state for a first-day user with no habits"

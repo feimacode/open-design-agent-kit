@@ -31,6 +31,8 @@ import { finishPrintPdf, mergePdfs, preparePrintPage, printBleedPage, RGB_NOTE, 
 import { qrSvg } from '../poster/qr';
 import { composeShapeSheet, type ShapeThumbnail } from '../poster/shapeSheet';
 import { isFullyOpaquePng, usesWebgl, waitForScene, webglFindings } from './webgl';
+import { wrapInDeviceShell } from './deviceShellImage';
+import { DEVICE_CONTENT_SIZES, parseDevice } from '../preview/deviceShell';
 
 export type ImageFormat = 'png' | 'jpeg';
 /** Formats rendered in a headless browser. */
@@ -64,6 +66,8 @@ export interface ExportArtifactOptions {
   selector?: string;
   /** PNG with no page background (omitBackground), for cut-outs such as a 3D product shot. Image exports of pages only. */
   transparent?: boolean;
+  /** Device screens (data-od-device): draw the kit's device frame around PNG and JPEG exports. Default true; false exports the bare screen. */
+  shell?: boolean;
   /** Re-encode as progressively lower-quality JPEG until each file fits. */
   maxBytes?: number;
   /** Explicit browser executable (setting/flag); falls back to discovery. */
@@ -261,6 +265,7 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
   if (o.maxBytes !== undefined && !(Number.isInteger(o.maxBytes) && o.maxBytes > 0)) return 'maxBytes must be a positive integer.';
   if (o.transparent && o.format !== undefined && o.format !== 'png') return `transparent exports a PNG (the only image format with transparency), not "${o.format}".`;
   if (o.selector !== undefined && o.selector.trim() === '') return 'selector must not be empty.';
+  if (o.shell !== undefined && o.format !== undefined && o.format !== 'png' && o.format !== 'jpeg') return `shell applies to PNG and JPEG exports of device screens, not "${o.format}".`;
   if (isPackageFormat(o.format) && (o.selector !== undefined || o.slides !== undefined || o.maxBytes !== undefined)) {
     return `selector, slides and maxBytes apply to image, PDF and PPTX exports, not "${o.format}".`;
   }
@@ -503,6 +508,10 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
   // Canvas format: an explicit preset, else the format recorded at registration. With `presets`
   // (fluid designs only), each listed format is its own shape, planned the same way.
   const fluid = isFluidHtml(artifact.entryContent);
+  // A device screen (openspec add-platform-shells) is captured at its device's content size, then framed.
+  const device = parseDevice(artifact.entryContent);
+  const deviceSize = device ? DEVICE_CONTENT_SIZES[device.device === 'tablet' ? `tablet-${device.orientation ?? 'landscape'}` : device.device] : undefined;
+  if (options.shell !== undefined && !device) return fail('invalid-args', `shell applies to device screens (data-od-device on <body>), and ${options.entryPath} declares no device.`);
   const presetFormat = getFormat(options.preset);
   const recordedId = manifest.metadata && typeof manifest.metadata === 'object' ? (manifest.metadata as JsonRecord).format : undefined;
   const recordedFormat = typeof recordedId === 'string' ? getFormat(recordedId) : undefined;
@@ -606,8 +615,8 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
   const aspectHint = sourceSkillId && options.lookupAspectHint ? await options.lookupAspectHint(sourceSkillId) : undefined;
   const sizeFor = (p: ShapePlan) =>
     resolveExportSize({
-      width: options.width,
-      height: options.height,
+      width: options.width ?? (deviceSize && !p.canvas && !p.selector ? deviceSize.width : undefined),
+      height: options.height ?? (deviceSize && !p.canvas && !p.selector ? deviceSize.height : undefined),
       aspectHint,
       sourceSkillId,
       selector: p.selector,
@@ -831,11 +840,24 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
               if (targets.length === 0) return fail('selector-no-match', `No element matching "${p.selector}" has a visible box.`);
             } else {
               const s = sizeFor(p);
-              targets.push({
+              const target: Target = {
                 width: s.viewport.width * passScale,
                 height: s.viewport.height * passScale,
                 capture: async (f, q) => Buffer.from(await page.screenshot({ type: f, quality: q, omitBackground: !!options.transparent })),
-              });
+              };
+              if (device && options.shell !== false && !p.canvas) {
+                const bare = target.capture;
+                const background = (await page.evaluate(
+                  `(function(){var b=getComputedStyle(document.body).backgroundColor;return /^(?:transparent|rgba\\(0, 0, 0, 0\\))$/.test(b)?getComputedStyle(document.documentElement).backgroundColor:b})()`,
+                )) as string;
+                target.capture = async (f, q) => {
+                  const framed = await wrapInDeviceShell(instance, await bare('png'), { ...device, background }, { title, scale: passScale, format: f, quality: q });
+                  target.width = framed.width;
+                  target.height = framed.height;
+                  return framed.buffer;
+                };
+              }
+              targets.push(target);
             }
             const imageFormat = p.format as ImageFormat;
             const passQuality = imageFormat === 'jpeg' ? (options.quality ?? 90) : undefined;

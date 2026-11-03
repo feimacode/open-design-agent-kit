@@ -10,6 +10,7 @@ import { critiqueSummary, type CritiqueRecord } from '../../workspace/critiqueTy
 import { createCommentController } from '../commentController';
 import { icon } from '../dom/icons';
 import { escapeHtml, highlightBox, hostRectOf, selectionGuides } from '../overlays';
+import { mountDeviceShell } from '../deviceShell';
 import { BRIDGE_TAG, isBridgeMessage, type BridgeRect, type ElementSnapshot, type FromBridge, type ToBridge, type Untagged } from '../protocol';
 
 type Mode = 'view' | 'comment';
@@ -291,6 +292,8 @@ async function startPreview(entryPath: string): Promise<void> {
     switch (message.type) {
       case 'ready':
         bridgeReady = true;
+        // The device the page declares gets the kit's frame around it (openspec add-platform-shells).
+        mountDeviceShell(document, iframe, message.device, message.title);
         toBridge({ type: 'set-mode', mode });
         toBridge({ type: 'set-comments', comments: comments.forBridge() });
         if (restoreScroll) {

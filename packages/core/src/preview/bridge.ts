@@ -12,6 +12,7 @@ import { commentTextExcerpt } from '../workspace/artifactCommentTypes';
 import { ensureDataOdId, htmlHintFor, selectorFor, sourceDataOdId } from './dom/elementTargeting';
 import { applyPatch, PREVIEW_ONLY_ATTR, PREVIEW_SRC_ATTR, serializeDocument } from './dom/sourcePatches';
 import { installStateSwitcher } from './stateSwitcher';
+import { deviceFromAttributes, type DeviceSpec } from './deviceShell';
 import { BRIDGE_TAG, isBridgeMessage, type BridgeMode, type BridgeRect, type ElementSnapshot, type FromBridge, type ToBridge, type Untagged } from './protocol';
 
 declare global {
@@ -214,7 +215,7 @@ function install(): void {
     const message = event.data as ToBridge;
     switch (message.type) {
       case 'hello':
-        post({ type: 'ready', title: document.title });
+        post({ type: 'ready', title: document.title, device: pageDevice() });
         break;
       case 'set-mode':
         mode = message.mode;
@@ -263,10 +264,23 @@ function install(): void {
   const announce = (): void => {
     updatePickStyle();
     restoreStates ??= installStateSwitcher(document);
-    post({ type: 'ready', title: document.title });
+    post({ type: 'ready', title: document.title, device: pageDevice() });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', announce);
   else announce();
+}
+
+/** The device the page declares (openspec add-platform-shells), with its background so the shell's bars match. */
+function pageDevice(): DeviceSpec | undefined {
+  const body = document.body;
+  if (!body) return undefined;
+  const spec = deviceFromAttributes((name) => body.getAttribute(name));
+  if (!spec) return undefined;
+  const clear = (c: string) => !c || c === 'transparent' || /^rgba\(0, 0, 0, 0\)$/.test(c);
+  const bodyBg = getComputedStyle(body).backgroundColor;
+  const htmlBg = getComputedStyle(document.documentElement).backgroundColor;
+  const background = !clear(bodyBg) ? bodyBg : !clear(htmlBg) ? htmlBg : undefined;
+  return background ? { ...spec, background } : spec;
 }
 
 install();
