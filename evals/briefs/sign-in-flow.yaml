@@ -1,5 +1,5 @@
 id: sign-in-flow
-request: "Design the sign-in flow for our habit tracker iPhone app: sign in, forgot password, check your email, and the home screen after"
+request: "Design the sign-in flow for our habit tracker iPhone app: sign in, forgot password, check your email, and the home screen after. The main task: someone who forgot their password gets back into the app"
 expect:
   surface: app-screens
   skills: [flow-sign-in]
@@ -7,7 +7,9 @@ expect:
 designSystem: null
 answers:
   platform: "iPhone"
+  task: "Reset a forgotten password and get back in"
 must:
   - "Four screens in one collection, planned as a flow, that link to each other with real links"
   - "The collection check reports no flow-broken-link or flow-dead-end"
+  - "The plan names the task \"reset a forgotten password\" from sign-in to home, and the check finds a path for it (no task-unreachable)"
   - "Sign in shows its error state (wrong password) and a way to reset it"

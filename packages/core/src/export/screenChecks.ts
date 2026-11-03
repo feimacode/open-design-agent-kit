@@ -345,6 +345,26 @@ export async function runScreenChecks(
     }
   }
 
+  // Screen economy: the first screen shows a way to act, and no one picture or empty box fills it (openspec add-task-walkthrough).
+  if (opts.appScreen) {
+    await setViewport(first);
+    const economy = (await page.evaluate(SCREEN_ECONOMY_SCRIPT)) as { exempt: boolean; actions: number; media?: { name: string; share: number } };
+    if (!economy.exempt) {
+      if (economy.actions === 0) {
+        findings.push({ check: 'screen-economy', severity: 'warning', viewport: first.name, message: `The first screen (${first.width}×${first.height}) has no button, link or field to act with; the user has to scroll to do anything. Move the main action up.` });
+      }
+      if (economy.media && economy.media.share > 0.5) {
+        findings.push({
+          check: 'screen-economy',
+          severity: 'warning',
+          viewport: first.name,
+          selector: economy.media.name,
+          message: `${economy.media.name} covers ${Math.round(economy.media.share * 100)}% of the first screen, pushing the content down. App screens lead with the content and the main action; shrink it or move it below.`,
+        });
+      }
+    }
+  }
+
   // Every non-default state: shown alone, checked at each viewport, its first screen kept for the board.
   if (frames.length > 1) {
     const baselineKeys = new Set(opts.baseline.map((f) => `${f.check}|${f.selector ?? f.message}`));
@@ -403,6 +423,23 @@ export async function runScreenChecks(
   }
   return { findings, shots, states };
 }
+
+/** Measures the first viewport: visible enabled actions, and the largest picture or empty box. String form: no DOM lib types here. */
+export const SCREEN_ECONOMY_SCRIPT = `(function(){
+  var body=document.body;if(!body)return {exempt:true,actions:0};
+  if(body.getAttribute('data-od-screen')==='splash')return {exempt:true,actions:0};
+  var W=innerWidth,H=innerHeight,area=W*H;
+  function visible(el){var r=el.getBoundingClientRect();if(r.width<4||r.height<4||r.bottom<=0||r.top>=H||r.right<=0||r.left>=W)return null;var cs=getComputedStyle(el);if(cs.visibility==='hidden'||cs.display==='none'||Number(cs.opacity)===0)return null;if(el.closest('[hidden],[aria-hidden="true"]'))return null;return r}
+  var actions=0;[].slice.call(document.querySelectorAll('button,a[href],[role=button],input:not([type=hidden]),select,textarea,[data-od-goto]')).forEach(function(el){if(el.disabled)return;if(visible(el))actions++});
+  function name(el){var id=el.id?'#'+el.id:'';var cls=(typeof el.className==='string'&&el.className.trim())?'.'+el.className.trim().split(/\\s+/)[0]:'';return el.tagName.toLowerCase()+id+cls}
+  var best=null;[].slice.call(document.querySelectorAll('img,video,canvas,picture,svg,div,section,figure,header')).forEach(function(el){
+    var media=/^(IMG|VIDEO|CANVAS|PICTURE)$/.test(el.tagName)||(el.tagName!=='svg'&&getComputedStyle(el).backgroundImage.indexOf('url(')>=0);
+    if(!media&&el.tagName==='svg')media=true;
+    var empty=!media&&/^(DIV|SECTION|FIGURE)$/.test(el.tagName)&&el.children.length===0&&!(el.textContent||'').trim();
+    if(!media&&!empty)return;var r=visible(el);if(!r)return;
+    var w=Math.max(0,Math.min(r.right,W)-Math.max(r.left,0)),h=Math.max(0,Math.min(r.bottom,H)-Math.max(r.top,0));var share=(w*h)/area;
+    if(!best||share>best.share)best={name:name(el),share:share}});
+  return {exempt:false,actions:actions,media:best||undefined}})()`;
 
 /** Root font size for the large-text pass. */
 export const LARGE_TEXT_ROOT_PX = 20;

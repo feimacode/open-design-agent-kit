@@ -74,6 +74,6 @@ export function flowMapFor(flow: CollectionFlow, frameWidth?: number): { html: s
     }),
     ...flow.screens.filter((s) => !planned.some((p) => p.id === s.id)).map((s) => ({ id: s.id, title: s.title, href: hrefOf(s) })),
   ];
-  const html = flowMapHtml({ title: flow.collectionName, screens: mapScreens, links: analysis.links, plan: flow.plan, missingLinks: analysis.missingLinks, frameWidth });
+  const html = flowMapHtml({ title: flow.collectionName, screens: mapScreens, links: analysis.links, plan: flow.plan, missingLinks: analysis.missingLinks, frameWidth, taskPaths: analysis.taskPaths });
   return { html, analysis };
 }

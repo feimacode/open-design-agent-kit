@@ -3,6 +3,9 @@
 // agent passes `critique` to register_open_design_artifact; read by the
 // browser preview's Checks panel and by get_open_design_artifact's critique
 // input, which gathers what the critic looks at.
+import { flowRecordOf } from '../generation/flowPlan';
+import { analyzeFlow } from '../export/flowCheck';
+import { loadCollectionFlow } from '../export/collectionFlow';
 import * as path from 'node:path';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { checkRunsDir, listCheckRuns } from '../export/checkHistory';
@@ -39,6 +42,39 @@ export interface CritiqueInput {
     images: Array<{ label: string; path: string }>;
   };
   lastCritique?: CritiqueRecord;
+  /** The tasks the screen or flow is for, with the path the check found through the flow (openspec add-task-walkthrough). */
+  tasks?: CritiqueTask[];
+}
+
+export interface CritiqueTask {
+  name: string;
+  start?: string;
+  end?: string;
+  maxSteps?: number;
+  /** Screen ids from start to end over the real links; absent for a single screen or when there is no path. */
+  path?: string[];
+  /** The label followed at each step. */
+  triggers?: string[];
+  /** True when the flow has no path for the task. */
+  unreachable?: boolean;
+}
+
+/** The flow's tasks with their paths, or a single screen's task from the brief's answers. */
+async function critiqueTasks(workspaceRoot: string, entryPath: string, manifest: JsonRecord | null, metadata: JsonRecord): Promise<CritiqueTask[] | undefined> {
+  const record = flowRecordOf(metadata);
+  const collectionId = typeof manifest?.collectionId === 'string' ? manifest.collectionId : undefined;
+  if (record?.plan.tasks && record.plan.tasks.length > 0) {
+    const flow = collectionId ? await loadCollectionFlow(workspaceRoot, path.posix.dirname(entryPath), collectionId).catch(() => undefined) : undefined;
+    const paths = flow ? analyzeFlow({ screens: flow.screens, plan: flow.plan ?? record.plan, sharedNav: flow.sharedNav, collectionDir: flow.collectionDir }).taskPaths : [];
+    return record.plan.tasks.map((t) => {
+      const found = paths.find((p) => p.task.name === t.name);
+      return { ...t, ...(found?.path ? { path: found.path, triggers: found.triggers } : flow ? { unreachable: true } : {}) };
+    });
+  }
+  const brief = metadata.brief && typeof metadata.brief === 'object' ? (metadata.brief as JsonRecord) : undefined;
+  const answers = brief?.answers && typeof brief.answers === 'object' ? (brief.answers as Record<string, unknown>) : undefined;
+  const task = typeof answers?.task === 'string' ? answers.task.trim() : '';
+  return task ? [{ name: task }] : undefined;
 }
 
 /**
@@ -77,6 +113,7 @@ export async function buildCritiqueInput(options: {
         }
       : undefined,
     lastCritique: readCritique(manifest),
+    tasks: await critiqueTasks(options.workspaceRoot, options.entryPath, manifest, metadata),
   };
 }
 

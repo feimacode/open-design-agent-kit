@@ -20,7 +20,7 @@ A step is one link followed. A form filled on one screen is one step, however ma
 
 ### Single-screen tasks
 
-A task on one screen (no flow) has no path to check. It still goes to the critic, which judges whether the action that completes it is visible and primary on that screen.
+A task on one screen (no flow) is the app-screens `task` answer, kept in the brief's answers; it has no path to check. It still goes to the critic, which judges whether the action that completes it is visible and primary on that screen.
 
 ### Screen economy measured, not guessed
 

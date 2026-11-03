@@ -815,6 +815,7 @@ Pages made from an [app-screens](../guides/app-screens.md) entry (or with `data-
 | `sample-data-missing` | A `data-od-bind` or `data-od-repeat` path the data file doesn't have, or binds with no data file (an error) |
 | `sample-data-thin` | A repeated table or list with fewer than 12 records or no value of 30+ characters, or a hand-written app table with fewer than 6 rows |
 | `items-promised` | The brief or the screen's flow plan names a count ("6 products") and the matching list renders fewer |
+| `screen-economy` | The first screen of an app screen has no visible button, link or field, or one image, video, canvas or empty box covers more than half of it. `data-od-screen="splash"` on `<body>` exempts a splash screen |
 | `device-double-frame` | A screen with `data-od-device` that also draws a status bar, notch, home indicator, device frame or title bar of its own, which the kit already draws |
 
 A screen with `data-od-device` (see [Device frames](../guides/app-screens.md#device-frames)) is checked at its device's screen size instead of the usual viewports: `iphone` 390 × 763, `android` 412 × 867, `tablet` 1024 × 724 and 768 × 980, `desktop-app` 1280 × 800. An app screen without a device is also checked at `tablet-1024` and `tablet-768`, whose screenshots are attached only when they have findings.
@@ -830,6 +831,8 @@ With `collectionId`, the check also reads the links between screens:
 | `flow-unfilled` | A planned screen that isn't registered, or is empty |
 | `flow-unlinked` | A planned link (`from`, `trigger`, `to`) that its screen doesn't have |
 | `flow-nav-drift` | A screen that writes its own navigation (with different labels) instead of including `_shared/nav.html`, a missing shared navigation, or one without the plan's items |
+| `task-unreachable` | An error: a task in the plan's `tasks` with no chain of real links (the shared navigation counts) from its start screen to its end screen |
+| `task-too-long` | A task whose shortest path takes more steps (links followed) than its `maxSteps`, with the path |
 | `store-rules` | In a collection with sign-up or paywall screens: no reachable account deletion, a paywall without restore, terms, privacy or the price and period, and a permission request with no reason. Info notes, or warnings when the brief says the app ships to the App Store or Play |
 
 On a design system [saved from an app](../guides/design-from-your-app.md), two more:

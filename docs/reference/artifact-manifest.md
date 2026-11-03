@@ -127,7 +127,7 @@ The design critic's latest opinion on the design (a [second opinion](../guides/g
 | Field | Type | Meaning |
 |---|---|---|
 | `verdict` | string | `ship` (nothing worth another round), `polish` (one round of the listed fixes) or `rework` (the direction is wrong). |
-| `findings` | `{ area, where?, problem?, fix }`[] | At most 5, most important first. `area` is one of `purpose-hierarchy`, `typography`, `colour-contrast`, `layout-rhythm`, `copy`, `states`, `fit`. |
+| `findings` | `{ area, where?, problem?, fix }`[] | At most 5, most important first. `area` is one of `purpose-hierarchy`, `typography`, `colour-contrast`, `layout-rhythm`, `copy`, `states`, `task`, `fit`. |
 | `checkRunId` | string | The [saved check run](../guides/browser-preview.md#checks) the critic judged. |
 | `at` | ISO date | When it was recorded. |
 

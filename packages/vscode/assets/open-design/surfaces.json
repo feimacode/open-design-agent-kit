@@ -78,7 +78,7 @@
       "questions": [
         {
           "id": "task",
-          "text": "What should someone get done on these screens?",
+          "text": "What is the main thing someone should get done here, in a few words (for example \"change plan to Team\")?",
           "options": [
             "Sign in or sign up",
             "Find and manage records",
@@ -86,7 +86,7 @@
             "A whole flow (several linked screens)"
           ],
           "default": "Find and manage records",
-          "changes": "which patterns and how many screens"
+          "changes": "which patterns and how many screens, and the task the check and the critic walk through"
         },
         {
           "id": "platform",

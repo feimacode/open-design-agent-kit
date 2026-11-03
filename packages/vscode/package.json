@@ -404,12 +404,43 @@
                     ]
                   },
                   "description": "The navigation every screen shares (tab bar or sidebar), if any. Written once to _shared/nav.html and included by each screen."
+                },
+                "tasks": {
+                  "type": "array",
+                  "maxItems": 5,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "What the user is doing, e.g. \"Change plan to Team\"."
+                      },
+                      "start": {
+                        "type": "string",
+                        "description": "The screen id the task starts on."
+                      },
+                      "end": {
+                        "type": "string",
+                        "description": "The screen id that shows it is done."
+                      },
+                      "maxSteps": {
+                        "type": "number",
+                        "description": "Optional: at most this many screen changes from start to end."
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "start",
+                      "end"
+                    ]
+                  },
+                  "description": "The main tasks the flow is for (at most 5). The check follows the screens' real links from start to end (task-unreachable, task-too-long), the flow map draws each path, and the critic walks it."
                 }
               },
               "required": [
                 "screens"
               ],
-              "description": "The flow plan of a multi-screen collection: its screens (at most 20), the links between them (at most 80) and the shared navigation. Plan it once before the first screen and pass the same plan on every screen's brief and registration; the latest registered plan wins. Needs collectionId; screenRole names this screen's id in the plan."
+              "description": "The flow plan of a multi-screen collection: its screens (at most 20), the links between them (at most 80) the shared navigation and the tasks it is for. Plan it once before the first screen and pass the same plan on every screen's brief and registration; the latest registered plan wins. Needs collectionId; screenRole names this screen's id in the plan."
             },
             "baseScreen": {
               "type": "string",
@@ -792,6 +823,37 @@
                     ]
                   },
                   "description": "The navigation every screen shares (tab bar or sidebar), if any. Written once to _shared/nav.html and included by each screen."
+                },
+                "tasks": {
+                  "type": "array",
+                  "maxItems": 5,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "What the user is doing, e.g. \"Change plan to Team\"."
+                      },
+                      "start": {
+                        "type": "string",
+                        "description": "The screen id the task starts on."
+                      },
+                      "end": {
+                        "type": "string",
+                        "description": "The screen id that shows it is done."
+                      },
+                      "maxSteps": {
+                        "type": "number",
+                        "description": "Optional: at most this many screen changes from start to end."
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "start",
+                      "end"
+                    ]
+                  },
+                  "description": "The main tasks the flow is for (at most 5). The check follows the screens' real links from start to end (task-unreachable, task-too-long), the flow map draws each path, and the critic walks it."
                 }
               },
               "required": [

@@ -236,6 +236,12 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
   if (decisions) parts.push(`\n\n${decisions}`);
   const screenSpec = composeScreenSpecSection(input.decisions?.answers);
   if (screenSpec) parts.push(`\n\n${screenSpec}`);
+  const task = input.decisions?.answers?.task?.trim();
+  if (task && (input.flowContext || input.craftSections?.some((c) => c.id === 'product-ui'))) {
+    parts.push(
+      `\n\n## The main task\n\n"${task}" is what someone comes to these screens to do. Make each step of it the most prominent action on its screen, label it with where it leads, and show clearly when it is done.${input.flowContext ? ' In the flow plan, add it to `tasks` as { name, start, end, maxSteps } (the screen it starts on, the screen that shows it is done, and the fewest steps it can take), so the check follows it over the real links and the critic walks it.' : ' The critic walks it on the screenshots.'}`,
+    );
+  }
   if (input.baseScreen) parts.push(`\n\n${composeBaseScreenSection(input.baseScreen)}`);
 
   if (input.sourceContext && input.sourceContext.sources.length > 0) {

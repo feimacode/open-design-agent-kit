@@ -5,7 +5,10 @@
 // screens not built yet are empty cards. Self-contained apart from the screens
 // it frames, which sit next to it.
 import type { FlowPlan } from '../generation/flowPlan';
-import type { FoundLink } from './flowCheck';
+import type { FoundLink, TaskPath } from './flowCheck';
+
+/** One colour per task path (openspec add-task-walkthrough). */
+export const TASK_COLOURS = ['#1f77d0', '#d0761f', '#2a9d58', '#9b4dca', '#c2185b'];
 
 export const FLOW_MAP_FILE = 'flow.html';
 
@@ -52,6 +55,8 @@ export function flowMapHtml(input: {
   missingLinks: Array<{ from: string; trigger: string; to: string }>;
   /** Screen width the thumbnails are rendered at (default 390, a phone). */
   frameWidth?: number;
+  /** The plan's tasks and the paths the check found for them. */
+  taskPaths?: TaskPath[];
 }): string {
   const width = input.frameWidth ?? 390;
   const height = Math.round(width * (844 / 390));
@@ -78,7 +83,14 @@ export function flowMapHtml(input: {
           .join('')}</div>`,
     )
     .join('');
-  const data = JSON.stringify(edges).replace(/</g, '\\u003c');
+  // Task paths are drawn over the links, each in its own colour and offset so they don't hide each other.
+  const taskEdges = (input.taskPaths ?? []).flatMap((t, i) =>
+    t.path ? t.path.slice(1).map((to, j) => ({ from: t.path![j], to, label: '', missing: false, task: i, colour: TASK_COLOURS[i % TASK_COLOURS.length] })) : [],
+  );
+  const data = JSON.stringify([...edges, ...taskEdges]).replace(/</g, '\\u003c');
+  const taskLegend = (input.taskPaths ?? [])
+    .map((t, i) => `<li><i style="background:${TASK_COLOURS[i % TASK_COLOURS.length]}"></i>${esc(t.task.name)}: ${t.path ? `${t.path.length - 1} step(s)${t.task.maxSteps !== undefined && t.path.length - 1 > t.task.maxSteps ? ` <span class="bad">(at most ${t.task.maxSteps})</span>` : ''}` : '<span class="bad">no path</span>'}</li>`)
+    .join('');
   const legend = `${found.size} link(s) found${input.missingLinks.length ? `, <span class="bad">${input.missingLinks.length} planned link(s) missing</span>` : ''}${input.plan ? `, ${input.plan.screens.length} planned screen(s)` : ''}`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -98,18 +110,19 @@ header{padding:20px 24px 4px}h1{margin:0 0 4px;font-size:20px}p{margin:0;color:v
 figcaption{display:flex;justify-content:space-between;gap:8px;padding:8px 2px 0}figcaption span{color:var(--muted)}
 svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
 svg path{fill:none;stroke:var(--line);stroke-width:1.5}svg path.missing{stroke:var(--bad);stroke-dasharray:6 5}
-svg text{fill:var(--muted);font-size:11px}svg text.missing{fill:var(--bad)}
+svg text{fill:var(--muted);font-size:11px}svg text.missing{fill:var(--bad)}svg path.task{stroke-width:3;opacity:.85}
+.tasks{list-style:none;display:flex;flex-wrap:wrap;gap:6px 18px;margin:8px 0 0;padding:0}.tasks i{display:inline-block;width:18px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
 </style></head><body>
-<header><h1>${esc(input.title)}</h1><p>${legend}. Click a screen to open it.</p></header>
+<header><h1>${esc(input.title)}</h1><p>${legend}. Click a screen to open it.</p>${taskLegend ? `<ul class="tasks" aria-label="Tasks">${taskLegend}</ul>` : ''}</header>
 <div class="map" id="map">${cards}<svg id="arrows"><defs><marker id="h" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L8 4L0 8z" style="fill:var(--line);stroke:none"/></marker><marker id="hm" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L8 4L0 8z" style="fill:var(--bad);stroke:none"/></marker></defs></svg></div>
 <script>
 (function(){var edges=${data};var map=document.getElementById('map');var svg=document.getElementById('arrows');
 function draw(){[].slice.call(svg.querySelectorAll('g')).forEach(function(g){g.remove()});var m=map.getBoundingClientRect();svg.setAttribute('width',map.scrollWidth);svg.setAttribute('height',map.scrollHeight);
 var seen={};edges.forEach(function(e){var a=map.querySelector('[data-id="'+e.from+'"]'),b=map.querySelector('[data-id="'+e.to+'"]');if(!a||!b)return;
-var key=e.from+'>'+e.to;var n=seen[key]=(seen[key]||0)+1;var ra=a.getBoundingClientRect(),rb=b.getBoundingClientRect();var ox=map.scrollLeft-m.left,oy=map.scrollTop-m.top;
+var key=e.from+'>'+e.to;var n=seen[key]=(seen[key]||0)+1;if(e.task!==undefined)n=1.5+e.task*0.5;var ra=a.getBoundingClientRect(),rb=b.getBoundingClientRect();var ox=map.scrollLeft-m.left,oy=map.scrollTop-m.top;
 var back=rb.left<ra.left+10;var x1=(back?ra.left:ra.right)+ox,y1=ra.top+ra.height/2+oy+(n-1)*14,x2=(back?rb.right:rb.left)+ox,y2=rb.top+rb.height/2+oy+(n-1)*14;
 var c=Math.max(40,Math.abs(x2-x1)/2)*(back?-1:1);var g=document.createElementNS('http://www.w3.org/2000/svg','g');
-var p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d','M'+x1+' '+y1+' C'+(x1+c)+' '+y1+' '+(x2-c)+' '+y2+' '+x2+' '+y2);p.setAttribute('marker-end',e.missing?'url(#hm)':'url(#h)');if(e.missing)p.setAttribute('class','missing');
+var p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d','M'+x1+' '+y1+' C'+(x1+c)+' '+y1+' '+(x2-c)+' '+y2+' '+x2+' '+y2);p.setAttribute('marker-end',e.missing?'url(#hm)':'url(#h)');if(e.missing)p.setAttribute('class','missing');if(e.colour){p.setAttribute('class','task');p.style.stroke=e.colour;p.removeAttribute('marker-end')}
 var t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',(x1+x2)/2);t.setAttribute('y',(y1+y2)/2-6);t.setAttribute('text-anchor','middle');if(e.missing)t.setAttribute('class','missing');t.textContent=(e.missing?'missing: ':'')+e.label;
 g.appendChild(p);g.appendChild(t);svg.appendChild(g)})}
 window.addEventListener('load',draw);window.addEventListener('resize',draw);draw()})();

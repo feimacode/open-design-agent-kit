@@ -1,5 +1,5 @@
 id: billing-from-app
-request: "Design the billing settings screen for our app (plan, payment method, invoices). Make it match our app: same colours, fonts and components."
+request: "Design the billing settings screen for our app (plan, payment method, invoices). Make it match our app: same colours, fonts and components. The main task is changing the plan."
 fixture: acme-billing              # a small Next.js + Tailwind + shadcn app, copied into the workspace
 expect:
   surface: app-screens

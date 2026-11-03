@@ -35,12 +35,29 @@ export interface FlowNavItem {
   to: string;
 }
 
+/** A task a user should be able to finish in the flow (openspec add-task-walkthrough). */
+export interface FlowTask {
+  /** What the user is doing, e.g. "Change plan to Team". */
+  name: string;
+  /** The screen the task starts on. */
+  start: string;
+  /** The screen that shows the task is done. */
+  end: string;
+  /** At most this many screen changes from start to end. */
+  maxSteps?: number;
+}
+
 export interface FlowPlan {
   screens: FlowScreen[];
   links: FlowLink[];
   /** The navigation every screen shares (a tab bar or sidebar), when the flow has one. */
   nav?: FlowNavItem[];
+  /** The tasks the flow is for, checked as paths over its real links. */
+  tasks?: FlowTask[];
 }
+
+export const MAX_FLOW_TASKS = 5;
+export const MAX_TASK_NAME = 120;
 
 /** What a screen's manifest keeps: the plan and which screen it is. */
 export interface FlowRecord {
@@ -108,7 +125,25 @@ export function validateFlowPlan(value: unknown): FlowPlanResult {
     }
     if (nav.length === 0) nav = undefined;
   }
-  return { ok: true, plan: { screens, links, ...(nav ? { nav } : {}) } };
+  let tasks: FlowTask[] | undefined;
+  if (v.tasks !== undefined) {
+    if (!Array.isArray(v.tasks)) return { ok: false, error: 'flow.tasks must be a list of { name, start, end, maxSteps? }.' };
+    if (v.tasks.length > MAX_FLOW_TASKS) return { ok: false, error: `flow.tasks has ${v.tasks.length} tasks; at most ${MAX_FLOW_TASKS}. Keep the main ones.` };
+    tasks = [];
+    for (const raw of v.tasks as unknown[]) {
+      const t = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+      const name = str(t.name);
+      const start = slugifyScreenId(str(t.start));
+      const end = slugifyScreenId(str(t.end));
+      if (!name || name.length > MAX_TASK_NAME) return { ok: false, error: `flow.tasks: each task needs a name of at most ${MAX_TASK_NAME} characters, such as "Change plan to Team"; got ${JSON.stringify(raw)}.` };
+      if (!ids.has(start) || !ids.has(end)) return { ok: false, error: `flow.tasks: "${name}" goes from "${str(t.start)}" to "${str(t.end)}"; both must be screens in flow.screens.` };
+      const maxSteps = t.maxSteps === undefined ? undefined : Number(t.maxSteps);
+      if (maxSteps !== undefined && !(Number.isInteger(maxSteps) && maxSteps >= 1 && maxSteps <= 20)) return { ok: false, error: `flow.tasks: maxSteps of "${name}" must be a whole number from 1 to 20.` };
+      tasks.push({ name, start, end, ...(maxSteps !== undefined ? { maxSteps } : {}) });
+    }
+    if (tasks.length === 0) tasks = undefined;
+  }
+  return { ok: true, plan: { screens, links, ...(nav ? { nav } : {}), ...(tasks ? { tasks } : {}) } };
 }
 
 /** The flow record on a manifest's metadata, when it has a valid one. */
@@ -155,6 +190,12 @@ export function composeFlowSection(plan: FlowPlan, screenId: string, collectionD
     const active = plan.nav.find((n) => n.to === screenId);
     parts.push(
       `### Shared navigation\n\nEvery screen shares one navigation, written once so it can't drift between screens:\n\n${items}\n\nIf \`${navFile}\` doesn't exist yet, write it: just the navigation element (no <html> or <head>), with each item as \`<a href="<to>.html" data-od-goto="<to>">Label</a>\`, styled by classes this screen's CSS defines. Then put \`<template data-od-include="${SHARED_NAV_PATH}"></template>\` where the navigation goes on this screen; the kit replaces it with the file in the preview, the check and exports. Don't write a navigation of your own. ${active ? `On this screen "${active.label}" is the current item: add \`data-od-current="${active.to}"\` to <body>, and the kit marks the matching link with aria-current="page".` : 'This screen is not a navigation item; no item is current.'}`,
+    );
+  }
+  if (plan.tasks && plan.tasks.length > 0) {
+    const mine = plan.tasks.filter((t) => t.start === screenId || t.end === screenId);
+    parts.push(
+      `### Tasks this flow is for\n\n${plan.tasks.map((t) => `- **${t.name}**: from \`${t.start}\` to \`${t.end}\`${t.maxSteps ? ` in at most ${t.maxSteps} step(s)` : ''}`).join('\n')}\n\nThe check follows the screens' real links from each task's start to its end and reports a task with no path (\`task-unreachable\`) or with more steps than allowed (\`task-too-long\`); the critic walks each task on the screenshots. On every screen along a task, make the next step the most prominent action, label it with where it leads, and keep a way back.${mine.length > 0 ? ` This screen ${mine.map((t) => (t.start === screenId ? `starts "${t.name}"` : `ends "${t.name}": show clearly that it is done`)).join(' and ')}.` : ''}`,
     );
   }
   parts.push(
