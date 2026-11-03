@@ -215,3 +215,31 @@ Must notes (ticked by the reviewer from the contact sheet):
 - [ ] orders-table: Rows come from a data file (data-od-repeat), at least 12 orders
 - [ ] orders-table: One very long customer name, a £0.00 order and a very large total, shown without breaking the row
 - [ ] orders-table: Dates and money formatted for en-GB (4 Mar 2026, £1,240.00)
+
+## 2026-11-03 — add-task-walkthrough
+
+- Kit: 0.4.0-beta.2 (local/sample-data 843c15c, local changes)
+- Mode: agent claude (2.1.317 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-03-02-15-20/`
+- Contact sheet: [runs/2026-11-03-02-15-20/contact-sheet.png](runs/2026-11-03-02-15-20/contact-sheet.png)
+
+- Designs: 5 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 5.
+- Critic: n/a (no critique recorded).
+- Agent cost: $0.77.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| sign-in-flow | 1 | .open-design/habit-sign-in/check-email.html | od:prototype:flow-sign-in | 0 | — | 1 (state-missing) | n/a | 0 | 1 | 19 | 219s | - / - / - / - |
+| sign-in-flow | 1 | .open-design/habit-sign-in/forgot-password.html | od:prototype:flow-sign-in | 0 | — | 0 (—) | n/a | 0 | 1 | 19 | 219s | - / - / - / - |
+| sign-in-flow | 1 | .open-design/habit-sign-in/home.html | od:prototype:flow-sign-in | 0 | — | 2 (stress-overflow×2) | n/a | 0 | 1 | 19 | 219s | - / - / - / - |
+| sign-in-flow | 1 | .open-design/habit-sign-in/new-password.html | od:prototype:flow-sign-in | 0 | — | 0 (—) | n/a | 0 | 1 | 19 | 219s | - / - / - / - |
+| sign-in-flow | 1 | .open-design/habit-sign-in/sign-in.html | — | 0 | — | 0 (—) | n/a | 0 | 5 | 19 | 219s | - / - / - / - |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] sign-in-flow: Four screens in one collection, planned as a flow, that link to each other with real links
+- [ ] sign-in-flow: The collection check reports no flow-broken-link or flow-dead-end
+- [ ] sign-in-flow: The plan names the task "reset a forgotten password" from sign-in to home, and the check finds a path for it (no task-unreachable)
+- [ ] sign-in-flow: Sign in shows its error state (wrong password) and a way to reset it

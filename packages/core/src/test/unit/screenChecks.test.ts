@@ -162,4 +162,16 @@ describe('app screen checks (real browser; skipped when none is installed)', fun
     const hand = ok(await check(await workspace(screen(TABLE, '<section data-od-state="empty" hidden><p>No customers yet.</p></section>')), { stress: false }));
     assert.ok(hand.findings.some((f) => f.check === 'sample-data-thin' && /3 rows/.test(f.message)), JSON.stringify(hand.findings));
   });
+  it('screen economy: a hero that fills the first screen and pushes the only action below it', async () => {
+    const hero = '<div style="height:100vh;background-image:url(data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==);background-size:cover" class="hero"></div>';
+    const html = screen(`${hero}${TABLE}<button>Add customer</button>`, '<section data-od-state="empty" hidden><p>No customers yet.</p></section>');
+    const result = ok(await check(await workspace(html.replace('<main><h1>Customers</h1>', '<main>')), { stress: false }));
+    const economy = result.findings.filter((f) => f.check === 'screen-economy');
+    assert.ok(economy.some((f) => /no button, link or field/.test(f.message)), JSON.stringify(result.findings));
+    assert.ok(economy.some((f) => /div\.hero covers/.test(f.message)), JSON.stringify(economy));
+    const splash = ok(await check(await workspace(html.replace('<body>', '<body data-od-screen="splash">')), { stress: false }));
+    assert.ok(!splash.findings.some((f) => f.check === 'screen-economy'), JSON.stringify(splash.findings));
+    const fine = ok(await check(await workspace(screen(`${TABLE}<button>Add customer</button>`, '<section data-od-state="empty" hidden><p>No customers yet.</p></section>')), { stress: false }));
+    assert.ok(!fine.findings.some((f) => f.check === 'screen-economy'), JSON.stringify(fine.findings));
+  });
 });

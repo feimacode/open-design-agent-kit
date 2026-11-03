@@ -2,7 +2,7 @@
 
 ### Requirement: Tasks in the Brief
 
-`prepare_open_design_brief` SHALL accept up to five tasks for an app screen or flow, each with a name, a start screen, an end screen or end condition and an optional step budget; the instructions SHALL list them, and registration SHALL store them with the flow plan or on the screen's manifest. When an app-screens request names no task, the questions SHALL ask for the main one.
+`prepare_open_design_brief` SHALL accept up to five tasks for an app screen or flow, each with a name, a start screen, an end screen or end condition and an optional step budget; the instructions SHALL list them, and registration SHALL store them with the flow plan (`flow.tasks`), and a single screen's task as the brief's `task` answer. When an app-screens request names no task, the questions SHALL ask for the main one.
 
 #### Scenario: Task recorded on the plan
 - **WHEN** the agent prepares a billing flow with the task "Change plan to Team" from `billing` to `plan-changed` in at most 3 steps

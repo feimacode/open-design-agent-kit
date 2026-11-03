@@ -4,7 +4,7 @@
 import * as path from 'node:path';
 import * as cheerio from 'cheerio';
 import type { Finding } from '../poster/preflight';
-import { SHARED_NAV_PATH, slugifyScreenId, type FlowPlan } from '../generation/flowPlan';
+import { SHARED_NAV_PATH, slugifyScreenId, type FlowPlan, type FlowTask } from '../generation/flowPlan';
 
 export interface FlowScreenSource {
   /** The screen's id: its flow id, else its slugified screenRole, else its file name. */
@@ -31,6 +31,75 @@ export interface FlowAnalysis {
   links: FoundLink[];
   /** Planned links that no screen has. */
   missingLinks: Array<{ from: string; trigger: string; to: string }>;
+  /** Each planned task's shortest path over the real links (screen ids), or undefined when there is none. */
+  taskPaths: TaskPath[];
+}
+
+export interface TaskPath {
+  task: FlowTask;
+  /** Screen ids from start to end; undefined when the end can't be reached. */
+  path?: string[];
+  /** The label followed at each step (one fewer than the screens). */
+  triggers?: string[];
+}
+
+/** The shortest path for each task over the links found in the screens (breadth-first; a step is one link followed). */
+export function taskPathsOf(tasks: FlowTask[], links: FoundLink[]): TaskPath[] {
+  return tasks.map((task) => {
+    if (task.start === task.end) return { task, path: [task.start], triggers: [] };
+    const prev = new Map<string, { from: string; trigger: string }>();
+    const seen = new Set([task.start]);
+    const queue = [task.start];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      for (const l of links) {
+        if (l.from !== id || l.broken || seen.has(l.to)) continue;
+        seen.add(l.to);
+        prev.set(l.to, { from: id, trigger: l.trigger });
+        if (l.to === task.end) {
+          const path = [task.end];
+          const triggers: string[] = [];
+          let cur = task.end;
+          while (cur !== task.start) {
+            const p = prev.get(cur)!;
+            triggers.unshift(p.trigger);
+            path.unshift(p.from);
+            cur = p.from;
+          }
+          return { task, path, triggers };
+        }
+        queue.push(l.to);
+      }
+    }
+    return { task };
+  });
+}
+
+/** task-unreachable and task-too-long for each task path. */
+export function taskFindings(paths: TaskPath[]): Finding[] {
+  const out: Finding[] = [];
+  for (const { task, path: p, triggers } of paths) {
+    if (!p) {
+      out.push({
+        check: 'task-unreachable',
+        severity: 'error',
+        screen: task.start,
+        message: `"${task.name}" can't be finished: no chain of links leads from ${task.start} to ${task.end}. Add the missing link (the flow map shows which screens are connected).`,
+      });
+      continue;
+    }
+    const steps = p.length - 1;
+    if (task.maxSteps !== undefined && steps > task.maxSteps) {
+      const route = p.map((id, i) => (i === 0 ? id : `"${triggers![i - 1]}" → ${id}`)).join(' ');
+      out.push({
+        check: 'task-too-long',
+        severity: 'warning',
+        screen: task.start,
+        message: `"${task.name}" takes ${steps} steps (${route}); it should take at most ${task.maxSteps}. Link the screens more directly or merge a step.`,
+      });
+    }
+  }
+  return out;
 }
 
 const text = (s: string) => s.replace(/\s+/g, ' ').trim();
@@ -155,7 +224,9 @@ export function analyzeFlow(input: {
       }
     }
   }
-  return { findings, links, missingLinks };
+  const taskPaths = plan?.tasks ? taskPathsOf(plan.tasks, links) : [];
+  findings.push(...taskFindings(taskPaths));
+  return { findings, links, missingLinks, taskPaths };
 }
 
 const SIGN_UP = /sign[-\s]?up|register|create[-\s]account|sign[-\s]?in|log[-\s]?in|onboard/i;

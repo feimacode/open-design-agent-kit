@@ -55,11 +55,21 @@ The agent plans the flow once before the first screen: the screens, the links be
 
 Five flow packs come ready: **sign-in**, **onboarding**, **paywall**, **settings** and **AI chat**, each with its screens, links and the states each screen needs.
 
+## The main task
+
+App screens are for getting something done, so the agent asks what that is ("change plan to Team") when your request doesn't say. For a flow, the task goes in the plan with the screen it starts on, the screen that shows it is done and, optionally, the most steps it should take:
+
+```json
+"tasks": [{ "name": "Change plan to Team", "start": "billing", "end": "plan-changed", "maxSteps": 3 }]
+```
+
+The collection check follows the screens' real links from start to end and reports a task that can't be finished (`task-unreachable`) or takes too many steps (`task-too-long`), and the flow map draws each task's path in its own colour. The design critic walks every task on the screenshots: is the next step visible, the most prominent action on its screen, labelled with where it leads, and is there a way back? Its findings are under `task`. Every app screen is also checked for **screen economy**: the first screen must show a way to act, and no single picture may fill more than half of it (`screen-economy`; a splash screen says so with `data-od-screen="splash"`).
+
 ## Check a flow
 
 > Check the onboarding flow.
 
-The agent checks the whole collection at once (`check_open_design_artifact` with `collectionId`): every screen as above, with findings naming their screen, plus the links between them. It reports links to screens that don't exist (`flow-broken-link`), screens with no way on (`flow-dead-end`; a screen where the flow really ends says so with `data-od-end`), planned screens not built yet (`flow-unfilled`), planned links missing (`flow-unlinked`) and a screen with its own navigation instead of the shared one (`flow-nav-drift`).
+The agent checks the whole collection at once (`check_open_design_artifact` with `collectionId`): every screen as above, with findings naming their screen, plus the links between them. It reports links to screens that don't exist (`flow-broken-link`), screens with no way on (`flow-dead-end`; a screen where the flow really ends says so with `data-od-end`), planned screens not built yet (`flow-unfilled`), planned links missing (`flow-unlinked`), a screen with its own navigation instead of the shared one (`flow-nav-drift`), and tasks that can't be finished or take too long (`task-unreachable`, `task-too-long`).
 
 Sign-up and paywall flows also get **store rules**: a way to delete the account, a paywall with "Restore purchases", the price and period, and Terms and Privacy links, and a reason before any permission request. They are notes, or warnings when your brief says the app ships to the App Store or Google Play.
 

@@ -8,7 +8,7 @@ export const CRITIQUE_VERDICTS = ['ship', 'polish', 'rework'] as const;
 export type CritiqueVerdict = (typeof CRITIQUE_VERDICTS)[number];
 
 /** The rubric's areas, in the order the critique skill lists them. */
-export const CRITIQUE_AREAS = ['purpose-hierarchy', 'typography', 'colour-contrast', 'layout-rhythm', 'copy', 'states', 'fit'] as const;
+export const CRITIQUE_AREAS = ['purpose-hierarchy', 'typography', 'colour-contrast', 'layout-rhythm', 'copy', 'states', 'task', 'fit'] as const;
 export type CritiqueArea = (typeof CRITIQUE_AREAS)[number];
 
 export const MAX_CRITIQUE_FINDINGS = 5;

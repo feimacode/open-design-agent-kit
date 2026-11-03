@@ -58,7 +58,10 @@ The critic judges only what is in `critiqueInput` and the screenshots, never wha
 | `layout-rhythm` | Spacing on the design system's steps, alignment, crowded or dead areas. |
 | `copy` | Filler, invented numbers, vague buttons ("Submit", "Learn more"). |
 | `states` | Empty, loading and error states present where the design shows data. When a screenshot is labelled `states: …` (the states board), judge every frame on it: each says why it is in that state and offers a next action, and none is a blank panel or a near-copy of the default. |
+| `task` | When `critiqueInput.tasks` lists tasks: each can be finished on these screens (see the walkthrough below). |
 | `fit` | Matches the design system's `DESIGN.md` and the brief, not a generic look. |
+
+**Walk each task.** For every task in `critiqueInput.tasks`, go through its `path` screen by screen on the screenshots (for a single screen, find the action that completes it). On each screen ask: is the control for the next step (its `triggers` label) visible on the first screen, is it the most prominent action there rather than a secondary link under a bigger button, does its label say where it leads, and is there a way back? Report what fails under `task`, naming the task and the screen in `where`. A task marked `unreachable`, or one you can't walk on the screenshots, makes the verdict at least `polish`.
 
 **The brief wins.** When the brief or the design system asks for the look a finding objects to (all caps, one colour, a dense layout), drop the finding. Don't flag what the check already reported as an error unless it is still visible in the screenshots.
 
