@@ -15,7 +15,7 @@ The agent finds remixable entries with [`list_open_design_skills`](../reference/
 The [Open Design gallery](https://feimacode.github.io/open-design-agent-kit/) shows every example and design system as a web page, with no install. Search or filter by tag (a link can carry the filter, such as `examples/#tag=poster`), open one full size, and download its files. Each page hands the next step to your agent:
 
 - **An example** gives the remix prompt ("Remix the Open Design example …") and the brief it was made from. Paste it into any agent with Open Design.
-- **A design system** gives a prompt to use it with Open Design, and one to add it to Claude Design, with **Open in Claude** to start that chat. See [Use one in Claude Design](design-systems.md#use-one-in-claude-design).
+- **A design system** gives a prompt to use it with Open Design, and one to add it to Claude Design, with **Open in Claude** to start that chat. See [Use one in Claude Design](design-systems.md#use-one-in-claude-design). Systems you made yourself aren't in the online gallery; the agent exports one for Claude Design with `export_open_design_design_system`.
 
 Agents can read the same list as data from `gallery.json` at the site root. How the site is built: [gallery/README.md](../../gallery/README.md).
 

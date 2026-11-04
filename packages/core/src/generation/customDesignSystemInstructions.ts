@@ -1,3 +1,4 @@
+import { designMdHeading, type BrandKind } from './brandKit';
 import * as path from 'node:path';
 import type { DesignSystemDetail } from '../content/contentIndex';
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
@@ -9,6 +10,8 @@ export interface ComposeCustomDesignSystemInstructionsInput {
   suggestedEntryPath: string;
   id: string;
   evidence?: BrandEvidence;
+  /** The person's own brand, or a reference site; decides the DESIGN.md heading. Unset reads as a reference. */
+  kind?: BrandKind;
 }
 
 /** `<dir of DESIGN.md>/tokens.css` — custom design systems keep both files side by side, like bundled ones. */
@@ -71,7 +74,7 @@ export function composeCustomDesignSystemInstructions(input: ComposeCustomDesign
   }
 
   parts.push(
-    `\n\n## First file: DESIGN.md\n\nWrite it at \`${input.suggestedEntryPath}\` with this exact structure — the \`#\` heading and the blockquote immediately under it are read structurally (name + category + one-line summary), everything after that is free-form guidance you should make genuinely specific to this brand, not generic filler:\n\n\`\`\`markdown\n# Design System Inspired by ${input.name.replace(/[\s-]+inspired$/i, '')}\n\n> Category: <a short category, e.g. "Technology & SaaS">\n> <one-line summary of the visual identity>\n\n## Color Palette\n<primary/secondary/accent/neutral colors as hex values with a short role description each>\n\n## Typography\n<display and body font choices, weights, scale>\n\n## Voice & Tone\n<how copy in this style should read>\n\n## Imagery & Iconography\n<photography style, icon style, illustration approach>\n\n## Layout & Spacing\n<grid/spacing/radius/shadow conventions>\n\n## Agent Prompt Guide\n<a short paragraph summarizing how a generation should apply this system>\n\`\`\``,
+    `\n\n## First file: DESIGN.md\n\nWrite it at \`${input.suggestedEntryPath}\` with this exact structure — the \`#\` heading and the blockquote immediately under it are read structurally (name + category + one-line summary), everything after that is free-form guidance you should make genuinely specific to this brand, not generic filler:\n\n\`\`\`markdown\n${designMdHeading(input.name, input.kind)}\n\n> Category: <a short category, e.g. "Technology & SaaS">\n> <one-line summary of the visual identity>\n\n## Color Palette\n<primary/secondary/accent/neutral colors as hex values with a short role description each>\n\n## Typography\n<display and body font choices, weights, scale>\n\n## Voice & Tone\n<how copy in this style should read>\n\n## Imagery & Iconography\n<photography style, icon style, illustration approach>\n\n## Layout & Spacing\n<grid/spacing/radius/shadow conventions>\n\n## Agent Prompt Guide\n<a short paragraph summarizing how a generation should apply this system>\n\`\`\``,
   );
 
   parts.push(`\n\n## Second file: tokens.css\n\nThen write \`${tokensPathFor(input.suggestedEntryPath)}\`.\n\n${composeTokenContractSection()}`);

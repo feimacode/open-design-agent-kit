@@ -14,6 +14,7 @@ import { CreateCustomDesignSystemTool } from './createCustomDesignSystemTool';
 import { AuditSiteTool } from './auditSiteTool';
 import { BeforeAfterTool } from './beforeAfterTool';
 import { ExtractDesignSystemTool } from './extractDesignSystemTool';
+import { ExportDesignSystemTool } from './exportDesignSystemTool';
 import { PortToAppCodeTool } from './portToAppCodeTool';
 import { PrepareComponentLibraryTool } from './prepareComponentLibraryTool';
 import { ShareToCommunityTool } from './shareToCommunityTool';
@@ -56,7 +57,8 @@ export function registerTools(
     ['set_active_design_system', new SetActiveDesignSystemTool(contentIndex)],
     ['remix_open_design_example', new RemixExampleTool(contentIndex, assetsRoot, communityContentDir)],
     ['create_open_design_design_system', new CreateCustomDesignSystemTool(contentIndex)],
-    ['extract_open_design_design_system', new ExtractDesignSystemTool()],
+    ['export_open_design_design_system', new ExportDesignSystemTool(contentIndex)],
+    ['extract_open_design_design_system', new ExtractDesignSystemTool(contentIndex)],
     ['audit_open_design_site', new AuditSiteTool()],
     ['compare_open_design_before_after', new BeforeAfterTool()],
     ['port_open_design_artifact_to_app', new PortToAppCodeTool(contentIndex)],

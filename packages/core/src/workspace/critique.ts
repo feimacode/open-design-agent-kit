@@ -13,6 +13,7 @@ import { promises as fs } from 'node:fs';
 import { readCritique, validateCritique, type CritiqueRecord } from './critiqueTypes';
 import { loadAuditFixes } from '../generation/contentInventory';
 import { redesignSiteOf } from '../export/redesignChecks';
+import { BRAND_REFERENCE_FILE, readBrandRecord, type BrandComponents, type BrandVoice } from '../generation/brandKit';
 
 export * from './critiqueTypes';
 
@@ -49,6 +50,32 @@ export interface CritiqueInput {
   tasks?: CritiqueTask[];
   /** For a redesign of a live site: the old site's top audit problems, each of which the new design must fix (openspec add-redesign-from-url). */
   auditFixes?: Array<{ id: string; title: string; where: string; fix: string }>;
+  /** For a design on the person's own brand: what `fit` is judged against (openspec connect-brand-design-systems). */
+  brand?: CritiqueBrand;
+}
+
+export interface CritiqueBrand {
+  name?: string;
+  /** Workspace-relative path to the brand's site screenshot, when one was kept. */
+  reference?: string;
+  components?: BrandComponents;
+  /** Voice facts (heading case, sentence length, person, exclamations) and a few real lines. */
+  voice?: Omit<BrandVoice, 'samples'> & { samples?: string[] };
+}
+
+/** The own brand's reference screenshot, component specs and voice, or undefined for any other design system. */
+export async function critiqueBrand(workspaceRoot: string, outputDir: string, designSystemId: string | undefined): Promise<CritiqueBrand | undefined> {
+  if (!designSystemId?.startsWith('user:')) return undefined;
+  const rel = path.posix.join(outputDir.split(path.sep).join('/'), 'design-systems', designSystemId.slice('user:'.length));
+  const brand = await readBrandRecord(path.join(workspaceRoot, rel));
+  if (brand?.kind !== 'own') return undefined;
+  const refFile = brand.reference ?? BRAND_REFERENCE_FILE;
+  const reference = await fs
+    .access(path.join(workspaceRoot, rel, refFile))
+    .then(() => path.posix.join(rel, refFile))
+    .catch(() => undefined);
+  const voice = brand.voice ? { ...brand.voice, samples: brand.voice.samples?.filter((s) => s.kind !== 'nav').slice(0, 6).map((s) => s.text) } : undefined;
+  return { name: brand.name, reference, components: brand.components, voice };
 }
 
 export interface CritiqueTask {
@@ -135,6 +162,7 @@ export async function buildCritiqueInput(options: {
     lastCritique: readCritique(manifest),
     tasks: await critiqueTasks(options.workspaceRoot, options.entryPath, manifest, metadata),
     auditFixes: await redesignAuditFixes(options.workspaceRoot, options.outputDir, options.entryPath),
+    brand: await critiqueBrand(options.workspaceRoot, options.outputDir, options.designSystem?.id ?? str(manifest?.designSystemId)),
   };
 }
 

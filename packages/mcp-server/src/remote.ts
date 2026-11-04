@@ -24,6 +24,7 @@ export const REMOTE_AVAILABLE_TOOLS = new Set([
   'recommend_open_design_design_systems',
   'prepare_open_design_brief',
   'create_open_design_design_system',
+  'export_open_design_design_system',
   'get_open_design_artifact',
   'show_open_design_artifact',
   'show_open_design_examples',

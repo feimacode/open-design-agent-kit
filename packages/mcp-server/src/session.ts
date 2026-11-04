@@ -752,7 +752,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'create_open_design_design_system',
       description:
-        'Composes instructions for authoring a brand-new, custom design system as a DESIGN.md file plus a sibling tokens.css following the Open Design token contract. Does NOT write any files. If sourceUrl is given, performs a best-effort extraction of candidate colors/fonts from that page. After writing the files, call set_active_design_system with the returned id. To write ONLY a tokens.css for an existing custom design system (id starting with user:), pass existingDesignSystemId instead of name/brief.',
+        'Composes instructions for authoring a brand-new, custom design system as a DESIGN.md file plus a sibling tokens.css following the Open Design token contract. Writes no DESIGN.md or tokens.css; with kind it writes the system\'s brand.json (own brand or reference, descriptor, and from evidenceDir the source URLs and the site screenshot as reference.png), which the recommender, the check and the critic read. If sourceUrl is given, performs a best-effort extraction of candidate colors/fonts from that page. After writing the files, call set_active_design_system with the returned id. To write ONLY a tokens.css for an existing custom design system (id starting with user:), pass existingDesignSystemId instead of name/brief.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -767,11 +767,33 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'string',
             description: 'Optional: the id of an existing custom design system (user:…). Returns instructions to write only its tokens.css, from its current DESIGN.md.',
           },
+          kind: {
+            type: 'string',
+            enum: ['own', 'reference'],
+            description:
+              "Optional: own when this is the user's own brand (DESIGN.md is headed '<Name> Design System', the recommender puts it first, and the check and critic hold designs to it); reference for a look taken from someone else's site ('Design System Inspired by <Name>'). Writes brand.json.",
+          },
+          descriptor: {
+            type: 'object',
+            description: 'Optional, with kind: what the recommender matches on, as for bundled systems.',
+            properties: {
+              moods: { type: 'array', items: { type: 'string' }, description: 'e.g. calm, playful, premium, technical, bold, minimal, warm, romantic' },
+              industries: { type: 'array', items: { type: 'string' }, description: 'e.g. fintech, saas, retail, food, health, education, dating' },
+              surfaces: { type: 'array', items: { type: 'string' }, description: 'web, mobile, print, slides' },
+            },
+          },
+          evidenceDir: {
+            type: 'string',
+            description: 'Optional, with kind: the bundleDir extract_open_design_design_system returned. Records the source URLs and keeps the site screenshot beside DESIGN.md as reference.png.',
+          },
         },
       },
     },
     handler: (ctx, args) =>
-      tools.createCustomDesignSystem(ctx, args as { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string }),
+      tools.createCustomDesignSystem(
+        ctx,
+        args as { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string; kind?: string; descriptor?: unknown; evidenceDir?: string },
+      ),
   },
   {
     tool: {
@@ -851,11 +873,30 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'boolean',
             description: "With content: copy the images the pages loaded into the bundle. Only when the user says the site is theirs or the client has commissioned the work; otherwise images stay as the site's URLs.",
           },
+          compareTo: {
+            type: 'string',
+            description:
+              "To refresh a saved design system (user:…): measure the site again (from the URLs its brand.json recorded when url is left out) and return, under refresh, the tokens, fonts, component specs and marks added, changed or removed. Changes nothing in the design system.",
+          },
         },
-        required: ['url'],
       },
     },
-    handler: (ctx, args) => tools.extractDesignSystemFromSite(ctx, args as { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean }),
+    handler: (ctx, args) => tools.extractDesignSystemFromSite(ctx, args as { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean; compareTo?: string }),
+  },
+  {
+    tool: {
+      name: 'export_open_design_design_system',
+      description:
+        "Writes a design system in Claude Design's Design System format (project/design-system.json, project/tokens.json, project/README.md) into <output folder>/claude-design/<id>/, checked against that format, plus a brand.html page (the showcase, marks, voice, do and don't) registered as an artifact. For the user's own brand it also copies the logo, icons and licensed font files to project/assets/ and adds a fonts note; a reference system gets no marks. Writes files only: publish them with your Artifact tool to make a Claude Design System artifact. Works for bundled and custom systems.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          designSystemId: { type: 'string', description: 'The design system to export, e.g. user:acme. Default: the active one.' },
+          by: { type: 'string', description: "Optional: who the export is recorded for in Claude's lastChange." },
+        },
+      },
+    },
+    handler: (ctx, args) => tools.exportDesignSystem(ctx, args as { designSystemId?: string; by?: string }),
   },
   {
     tool: {

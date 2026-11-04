@@ -594,7 +594,7 @@ The active system is stored in the [`openDesign.activeDesignSystemId`](settings-
 
 ### create_open_design_design_system
 
-Composes instructions for writing a custom design system: a `DESIGN.md` plus a sibling `tokens.css` following the Open Design token contract. **It writes nothing.**
+Composes instructions for writing a custom design system: a `DESIGN.md` plus a sibling `tokens.css` following the Open Design token contract. **It writes neither file.** With `kind`, it writes the system's `brand.json`.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
@@ -602,8 +602,22 @@ Composes instructions for writing a custom design system: a `DESIGN.md` plus a s
 | `brief` | string | yes, unless `existingDesignSystemId` is given | The brand in the user's words: colors, tone, industry. |
 | `sourceUrl` | string | no | A website to take a rough starting palette, fonts and favicon from, by reading its source (best effort). To match a site, use [`extract_open_design_design_system`](#extract_open_design_design_system) first. |
 | `existingDesignSystemId` | string | no | An existing custom design system (`user:<slug>`). Returns instructions to write **only** its `tokens.css`, from its current `DESIGN.md`; the other arguments are ignored. Built-in ids are rejected. |
+| `kind` | `own` \| `reference` | no | `own` for the user's own brand: `DESIGN.md` is headed `# <Name> Design System`, the recommender lists it first, and the check and the critic hold designs to it. `reference` for a look taken from someone else's site: `# Design System Inspired by <Name>`. Writes `brand.json`. |
+| `descriptor` | object | no | With `kind`: `{ moods, industries, surfaces }`, what the recommender matches on, as for bundled systems. |
+| `evidenceDir` | string | no | With `kind`: the `bundleDir` [`extract_open_design_design_system`](#extract_open_design_design_system) returned. Records the source URLs in `brand.json`, keeps the site's desktop screenshot as `reference.png`, and writes a registered `review.html` that puts the screenshot beside a sample styled only by `tokens.css`. Checking it reports `brand-fidelity` where the sample differs from the site. |
 
-**Result:** `{ instructions, suggestedEntryPath, id }`. The files go to `<outputDirectory>/design-systems/<slug>/DESIGN.md` and `…/tokens.css`, and the id is `user:<slug>`. After writing them, call `set_active_design_system` with that id. In tokens-only mode, `suggestedEntryPath` is the `tokens.css` path. See [Design systems](../guides/design-systems.md).
+**Result:** `{ instructions, suggestedEntryPath, id }`, plus `brand` (the `brand.json` path) with `kind` and `review` with `evidenceDir`. The files go to `<outputDirectory>/design-systems/<slug>/DESIGN.md` and `…/tokens.css`, and the id is `user:<slug>`. After writing them, call `set_active_design_system` with that id. In tokens-only mode, `suggestedEntryPath` is the `tokens.css` path. See [Design systems](../guides/design-systems.md).
+
+### export_open_design_design_system
+
+Writes a design system in Claude Design's Design System format into `<outputDirectory>/claude-design/<id>/`: `project/design-system.json`, `project/tokens.json` and `project/README.md`, checked against that format. For the user's own brand (`brand.json` `kind: own`) it also copies the logo, icons and font files from the system's `assets/` folder to `project/assets/` and adds a fonts section to the README; a reference or bundled system gets no marks. It also writes `brand.html` (the showcase, the marks, the voice and `DESIGN.md`'s do and don't) and registers it. Needs no checkout of the kit, and is offered on the hosted server too.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `designSystemId` | string | no | The system to export, e.g. `user:acme`. Default: the active one. |
+| `by` | string | no | Who the export is recorded for in Claude's `lastChange`. |
+
+**Result:** `{ dir, files, brandPage, notes, warnings, next }`. In Claude, publish the `project/` files with the Artifact tool to make a Design System artifact. See [Design systems](../guides/design-systems.md#use-one-in-claude-design).
 
 ### extract_open_design_design_system
 
@@ -611,11 +625,12 @@ Renders a website in an installed Chrome, Edge or Chromium and measures its desi
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `url` | string | yes | The page to measure, usually the home page. `http` or `https` only. |
+| `url` | string | yes, unless `compareTo` is given | The page to measure, usually the home page. `http` or `https` only. |
 | `extraUrls` | string[] | no | Up to 3 more pages on the same site. Each is measured fully; the first page's values win, and other pages fill gaps or are listed as `draft.conflicts`. |
 | `theme` | `light` \| `dark` \| `both` | no | Default `light`. `dark` and `both` measure a dark theme only when the site has one (under `prefers-color-scheme: dark`, or a `data-theme`/`.dark` toggle on the root element). |
 | `content` | boolean | no | For a [redesign](../guides/redesign-a-website.md): in the same visit, also copy each page's content verbatim into `content.json` (title, headings with levels, body copy, calls to action with targets, navigation, phone numbers, emails, addresses, opening hours, prices and images with alt text, each with the selector it came from). Pages the site's `robots.txt` disallows are skipped and reported as `blocked`. |
 | `localizeImages` | boolean | no | With `content`: copy the images the pages loaded into the bundle's `images/` folder and note each copy as `local` in `content.json`. Only when the user says the site is theirs; otherwise images stay as the site's URLs. |
+| `compareTo` | string | no | To refresh a saved design system (`user:<slug>`): measure the site again, from the URLs its `brand.json` recorded when `url` is left out, and return `refresh`: the tokens added, changed (`from`, `to`) or no longer measured, fonts, component specs and marks added or removed. **The design system is not changed**; apply the changes the user confirms. |
 
 Before measuring, it hides (never clicks) consent banners, cookie walls and chat launchers, then scrolls the page once so lazy-loaded and scroll-reveal sections count. What it measures: the page background, card surface, body text and two secondary text tiers (`--fg-2`, `--meta`), muted text, borders and row separators (`--border-soft`), the primary button's colour (a gradient button's first colour stop, with the full gradient in a note), its text colour, its `:hover`, `:active` and `:focus-visible` states (forced in the browser; the focus ring becomes `--focus-ring`), and success, warning and error colours from alerts, badges and invalid fields; `:root` and theme-scoped custom properties, matched by value to the drafted tokens (`draft.sources[token].declared`) and used by name for unmeasured status and focus roles; the fonts the page loaded; text sizes, line heights and tracking; radii (buttons → `--radius-sm`, cards → `--radius-md`, large featured blocks → `--radius-lg`), spacing, the container width, and the container gutter and section padding at both widths; card shadows (a 1 px ring becomes `--elev-ring`); transition durations and easing. Each page is shot at 1440×900 and 390×844, plus a full-page shot up to 6,000 px tall.
 

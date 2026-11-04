@@ -38,6 +38,8 @@ Three things decide the run. Take each from the request when it says so, and ask
 
 If the request already answers all three ("make a dark design system from https://example.com, it's our brand"), ask nothing and go straight on.
 
+**Refreshing one you saved.** If the user wants an existing design system brought up to date with the site ("our site changed, refresh our design system"), call `extract_open_design_design_system` with `compareTo` set to its id (and no `url`: it uses the addresses the system was saved from). The result's `refresh` lists the tokens added, changed (`from` and `to`) or no longer measured, and fonts, component specs and marks added or removed. Nothing has changed yet. Show the changes to the user in groups (colours, type, spacing and shape, components, marks) and apply only the groups they confirm, to `tokens.css` and `DESIGN.md` together. Then stop: the rest of this recipe is for a new system.
+
 ## 2. Measure the site
 
 Call `extract_open_design_design_system` with `url`, `extraUrls` if there are any, and `theme`.
@@ -53,7 +55,7 @@ If the user asked for dark and the result notes that no dark theme was found, sa
 
 ## 3. Write both files from the draft
 
-Call `create_open_design_design_system` with a `name` (for a reference site, "<Name>-inspired") and a `brief` describing the site in a sentence. Don't pass `sourceUrl`: you have better measurements already. It returns the `suggestedEntryPath`, the `id` and the token contract.
+Call `create_open_design_design_system` with a `name` (for a reference site, "<Name>-inspired"), a `brief` describing the site in a sentence, `kind` (`own` for the user's brand, `reference` otherwise), `evidenceDir` (the result's `bundleDir`) and a `descriptor` (`moods`, `industries`, `surfaces`) from what you see. Don't pass `sourceUrl`: you have better measurements already. It returns the `suggestedEntryPath`, the `id`, the token contract, `brand` (the `brand.json` it wrote, which keeps the source addresses and the site's screenshot as `reference.png`) and `review` (a review page, see step 4). With `kind: own`, the recommender, the check and the critic treat it as the user's brand from then on.
 
 Write `DESIGN.md` at `suggestedEntryPath` and `tokens.css` beside it, **both from the same draft**:
 
@@ -64,17 +66,16 @@ Write `DESIGN.md` at `suggestedEntryPath` and `tokens.css` beside it, **both fro
 
 ## 4. Review it side by side
 
-Write a review page next to the design system as `review.html`, and register it with `register_open_design_artifact`. One page, two columns:
+The create call already wrote `review.html` (its `review`) and registered it: the site's screenshot on the left, and on the right a sample (a hero, a primary and secondary button, a card, a form row) styled only by the new `tokens.css`, so it shows each edit to `tokens.css` as you make it.
 
-- **Left, "The site":** the desktop screenshot from the evidence bundle (an `<img>` with a relative path to it), cropped with `object-fit: cover` to the top 900px.
-- **Right, "The design system":** a sample page that uses only the new `tokens.css` (`<link rel="stylesheet">` to it, or its `:root` block inlined): a hero with a heading and a primary and secondary button, a card with text, and a form row with a label, an input and a button.
-
-Call `check_open_design_artifact` on it. Compare the two columns yourself (colours, font, button shape, density), fix anything that's clearly off, then show the user the review and ask whether it matches.
+Call `check_open_design_artifact` on it. Its `brand-fidelity` findings name each place the sample differs from what was measured on the site (the button colour, text colour, background, heading and body font, button and card radius), with both values: fix those in `tokens.css` unless you have a reason (say it). Compare the two columns yourself too (density, weight, shape), then show the user the review and ask whether it matches.
 
 Apply what the user says ("the buttons are rounder on the site" → raise the radius tokens) in both files, rebuild the review and check again. Stop after **two rounds** of fixes: save then, and list anything still open.
 
 ## 5. Save
 
 Call `set_active_design_system` with the returned `id` if the user wants to design with it now (offer it). Tell the user the design system's id and where its files are, and that the measurements are kept in the evidence bundle.
+
+For the user's own brand, also offer to write the project's root `DESIGN.md` (`set_active_design_system` with `writeProjectDesignMd: true`), saying that other design tools in the project (Claude Design, Cursor, v0, Stitch and other agents) read that file, so they will use the brand too. Skip the offer if the project already has a root `DESIGN.md` the user wrote.
 
 If the site is one the user wants to improve or pitch a redesign for, offer to audit it too: `audit_open_design_site` checks the same pages for contrast, phone layout and other problems (the `open-design-site-audit` skill has the steps).

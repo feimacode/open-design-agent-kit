@@ -31,6 +31,8 @@ Read every screenshot with the Read tool before anything else, and judge what is
 
 **Check a redesign's fixes.** When `critiqueInput.auditFixes` lists problems found on the old site, look for each one in the screenshots of the new design (a booking button below the fold on the phone, text too faint to read, tap targets too small). Report any that is still there under `task`, with its id and title in `where`. One still there makes the verdict at least `polish`.
 
+**Judge `fit` against the person's own brand.** When `critiqueInput.brand` is present the design is on their own brand. Open `brand.reference` (their site) beside the screenshots. Compare the buttons, inputs and cards with `brand.components` (height, radius, weight, case), and the headlines and calls to action with `brand.voice` (heading case, sentence length, person, exclamation marks, the sample lines). Name each mismatch in the `fit` note with the brand's value, for example "headline in upper case with exclamation marks; the brand writes sentence case and uses none".
+
 **The brief wins.** When the brief or the design system asks for the look a finding objects to (all caps, one colour, a dense layout), drop the finding. Don't flag what the check already reported as an error unless it is still visible in the screenshots.
 
 **Verdict:** one of

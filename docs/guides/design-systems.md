@@ -190,7 +190,21 @@ The agent uses `/open-design-design-system-from-url` (in VS Code, also **Open De
 3. **Shows you a review**: the site's screenshot beside a sample page (hero, buttons, a card, a form) in the new tokens, checked with `check_open_design_artifact`. Say what's off ("the buttons are rounder on the site"); it fixes and re-checks, up to two rounds.
 4. **Saves it** as `user:<name>` and offers to make it active.
 
+The review is `review.html` in the design system's folder: the site's screenshot beside a sample styled only by your `tokens.css`. Checking it measures the sample the way the site was measured and reports `brand-fidelity` wherever they differ (the button colour, text colour, background, fonts, button and card radius), with both values.
+
 For a reference site, the design system is named "<Name>-inspired" and no logos or images are copied. Dark values are only measured when the site has a dark theme. A page behind a bot check or login comes back as blocked, with its screenshot; give the agent the CSS or a screenshot instead. Without a browser, the agent gets candidate colours and fonts from the page source only, and asks you to confirm them.
+
+### Your own brand
+
+When the design system is your brand rather than a look you borrowed, say so ("it's our brand"). The agent saves it with `kind: own` in a `brand.json` beside `DESIGN.md`, and from then on:
+
+- `DESIGN.md` is headed `# <Name> Design System`, not "Inspired by".
+- The recommender lists it first for every brief, unless you name another look ("in the style of Linear"). A brief prepared on another system notes that your brand exists.
+- The check holds designs to it, as warnings: `brand-off-palette` for a large area in a colour that isn't one of your colours or a tint or shade of one, `brand-font` for text in a font outside your stacks, and `brand-mark-missing` (a note) for a poster, social post or deck that shows no logo when your brand has one. If your accent is a Tailwind indigo, the "default AI indigo" warning stays quiet. `data-od-allow="brand-off-palette"` on an element marks a deliberate exception (a partner's colour, say).
+- The design critic judges `fit` against your site's screenshot, your button and card specs and your voice (heading case, sentence length, exclamation marks).
+- The agent offers to write the project's root `DESIGN.md` with `set_active_design_system` and `writeProjectDesignMd`, so other design tools in the project use your brand too.
+
+**When your site changes,** ask "refresh our design system from the site". The agent measures it again with `compareTo` and shows what changed (a new accent, a different font, a new logo), grouped. Nothing changes until you confirm a group.
 
 ### Take one from your app
 
@@ -277,7 +291,7 @@ Claude Design keeps design systems as "Design System" artifacts in Claude (Setti
 
 The **connector** starting point is for design tools (Figma, Canva and the like). It reads a design file through that tool's connector, so it doesn't apply to Open Design systems.
 
-For a custom system (yours, or one made from a website), export it first: `npx tsx scripts/claude-design-system.ts export <design-system-folder> <out-dir>` writes `<out-dir>/project/` in the same format, and fails if the result wouldn't pass Claude's format rules. Then upload it or ask the agent to publish it.
+For a custom system (yours, or one made from a website), ask the agent to "put it into Claude Design". It calls [`export_open_design_design_system`](../reference/tools.md#export_open_design_design_system), which writes `.open-design/claude-design/<name>/project/` in the same format (and fails if the result wouldn't pass Claude's format rules), plus a `brand.html` page to look at. For your own brand, the logo, icons and font files go along in `project/assets/` and the README lists your fonts and where they come from. Then the agent publishes it with its Artifact tool, or you upload the folder. In a checkout of this repository, `npx tsx scripts/claude-design-system.ts export <design-system-folder> <out-dir>` still does the same without the assets.
 
 To bring one back from Claude, ask the agent to read `project/design-system.json`, `project/tokens.json` and `project/README.md` from the system into a folder, then run `npx tsx scripts/claude-design-system.ts import <that-folder> .open-design/design-systems` (your Open Design output folder). The result shows up as `user:<name>`.
 
