@@ -204,6 +204,8 @@ When the design system is your brand rather than a look you borrowed, say so ("i
 - The design critic judges `fit` against your site's screenshot, your button and card specs and your voice (heading case, sentence length, exclamation marks).
 - The agent offers to write the project's root `DESIGN.md` with `set_active_design_system` and `writeProjectDesignMd`, so other design tools in the project use your brand too.
 
+The extraction also takes your brand kit from the site and keeps it in `brand.json` ([format](../reference/brand-json.md)): the logo for light and dark backgrounds, the icons and social image (copied into the design system's `assets/`), where each font comes from (a self-hosted font may be licensed: the agent asks before copying its files, and suggests a free near-match otherwise), measured specs for buttons, inputs, cards, the nav and badges (written as numbers in DESIGN.md's Components section), the voice (heading case, sentence length, who it speaks to, exclamation marks), and the imagery (photos or illustrations, image corners, the icon set and its stroke).
+
 **When your site changes,** ask "refresh our design system from the site". The agent measures it again with `compareTo` and shows what changed (a new accent, a different font, a new logo), grouped. Nothing changes until you confirm a group.
 
 ### Take one from your app

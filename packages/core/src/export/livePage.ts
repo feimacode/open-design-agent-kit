@@ -128,7 +128,7 @@ export function blockedReason(requested: URL, finalUrl: string, m: PageSignals):
 }
 
 /** Blocks private hosts, other schemes and form posts on every request; keeps the images the page loaded (for logos). */
-export async function guardRequests(page: Page, images: Map<string, Buffer>, allowHosts: string[]): Promise<void> {
+export async function guardRequests(page: Page, images: Map<string, Buffer>, allowHosts: string[], fonts?: Map<string, Buffer>): Promise<void> {
   await page.setRequestInterception(true);
   page.on('request', (req) => {
     let u: URL;
@@ -149,6 +149,11 @@ export async function guardRequests(page: Page, images: Map<string, Buffer>, all
   // Kept so a logo image can be saved from what the page itself loaded, without a second fetch.
   page.on('response', (res) => {
     const type = res.headers()['content-type'] ?? '';
+    // Font files, kept so a brand's own licensed face can be copied once the user confirms the licence (add-brand-kit-capture).
+    if (fonts && (type.startsWith('font/') || /application\/(x-)?font|woff/.test(type) || /\.(woff2?|ttf|otf)(\?|$)/i.test(res.url()))) {
+      if (fonts.size < 16) res.buffer().then((buf) => { if (buf.length <= 2_000_000) fonts.set(res.url(), buf); }).catch(() => undefined);
+      return;
+    }
     if (!type.startsWith('image/') || images.size >= 60) return;
     res
       .buffer()
@@ -255,6 +260,8 @@ export interface LiveBrowser {
   page: Page;
   /** Images the page loaded, by URL. */
   images: Map<string, Buffer>;
+  /** Font files the page loaded, by URL. */
+  fonts: Map<string, Buffer>;
   close(): Promise<void>;
 }
 
@@ -282,11 +289,13 @@ export async function launchLiveBrowser(executablePath: string, allowHosts: stri
   await page.evaluateOnNewDocument('globalThis.__name = globalThis.__name || ((fn) => fn)');
   await page.setUserAgent(userAgent);
   const images = new Map<string, Buffer>();
-  await guardRequests(page, images, allowHosts);
+  const fonts = new Map<string, Buffer>();
+  await guardRequests(page, images, allowHosts, fonts);
   return {
     browser,
     page,
     images,
+    fonts,
     close: async () => {
       await browser.close().catch(() => undefined);
       await fs.rm(profileDir, { recursive: true, force: true }).catch(() => undefined);

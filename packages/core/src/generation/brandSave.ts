@@ -6,7 +6,8 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { BRAND_REVIEW_FILE, renderBrandReviewPage } from '../export/brandReview';
 import { writeArtifactManifest } from '../vendored/artifactCreate';
-import { BRAND_REFERENCE_FILE, writeBrandRecord, type BrandKind, type BrandRecord } from './brandKit';
+import { BRAND_REFERENCE_FILE, writeBrandRecord, type BrandKind, type BrandMark, type BrandRecord } from './brandKit';
+import type { CapturedBrandKit } from './siteExtraction';
 
 export interface SaveNewBrandInput {
   workspaceRoot: string;
@@ -18,6 +19,8 @@ export interface SaveNewBrandInput {
   descriptor?: unknown;
   /** The extraction's bundle (under <outputDir>/.extract/). */
   evidenceDir?: string;
+  /** Own brands: the user confirmed they hold the licence for the self-hosted fonts, so their files are copied. */
+  fontLicence?: 'confirmed';
 }
 
 /**
@@ -41,14 +44,17 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
     const bundle = path.join(input.workspaceRoot, rel);
     let urls: string[] | undefined;
     let measuredAt: string | undefined;
+    let kit: CapturedBrandKit | undefined;
     try {
-      const ev = JSON.parse(await fs.readFile(path.join(bundle, 'evidence.json'), 'utf8')) as { url?: string; measuredAt?: string; pages?: Array<{ url?: string }> };
+      const ev = JSON.parse(await fs.readFile(path.join(bundle, 'evidence.json'), 'utf8')) as { url?: string; measuredAt?: string; pages?: Array<{ url?: string }>; brandKit?: CapturedBrandKit };
       urls = ev.pages?.map((p) => p.url).filter((u): u is string => typeof u === 'string') ?? (ev.url ? [ev.url] : undefined);
       measuredAt = ev.measuredAt;
+      kit = ev.brandKit;
     } catch {
       throw new Error(`No evidence.json in ${rel}. Pass the bundleDir that extract_open_design_design_system returned.`);
     }
     update.sources = { urls, extractedAt: measuredAt, bundleDir: rel };
+    if (kit) Object.assign(update, await brandKitRecord(kit, bundle, dir, input.kind, input.fontLicence === 'confirmed'));
     const shot = await fs.readFile(path.join(bundle, 'desktop.png')).catch(() => fs.readFile(path.join(bundle, 'page-1-desktop.png')).catch(() => undefined));
     if (shot) {
       await fs.mkdir(dir, { recursive: true });
@@ -63,4 +69,58 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
   await fs.writeFile(path.join(input.workspaceRoot, review), renderBrandReviewPage({ name: input.name, evidence, reference: brand.reference }));
   await writeArtifactManifest({ workspaceRoot: input.workspaceRoot, entryPath: review, artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: `${input.name}: review` } });
   return { brand, review };
+}
+
+/**
+ * The brand-kit part of brand.json from an extraction. An own brand's marks
+ * are copied into assets/ (paths relative to the design system); a reference
+ * keeps no marks, no font files and no copied lines of the site's text, only
+ * the counted voice facts.
+ */
+export async function brandKitRecord(kit: CapturedBrandKit, bundle: string, dir: string, kind: BrandKind, fontsConfirmed: boolean): Promise<Partial<BrandRecord>> {
+  const own = kind === 'own';
+  const marks: BrandMark[] = [];
+  if (own) {
+    for (const m of kit.marks) {
+      const name = path.posix.basename(m.path);
+      const from = path.join(bundle, m.path);
+      const to = path.join(dir, 'assets', name);
+      try {
+        await fs.mkdir(path.dirname(to), { recursive: true });
+        await fs.copyFile(from, to);
+        marks.push({ ...m, path: `assets/${name}` });
+      } catch {
+        // A mark whose file is gone is left out.
+      }
+    }
+  }
+  const fonts = [];
+  for (const f of kit.fonts) {
+    if (own && fontsConfirmed && f.source === 'self-hosted' && f.files?.length) {
+      const files: string[] = [];
+      for (const file of f.files) {
+        const to = path.join(dir, 'assets', 'fonts', path.posix.basename(file));
+        try {
+          await fs.mkdir(path.dirname(to), { recursive: true });
+          await fs.copyFile(path.join(bundle, file), to);
+          files.push(`assets/fonts/${path.posix.basename(file)}`);
+        } catch {
+          // Skipped.
+        }
+      }
+      fonts.push({ ...f, licence: 'confirmed' as const, files });
+    } else {
+      const rest = { ...f };
+      delete rest.files;
+      fonts.push(rest);
+    }
+  }
+  const { samples, ...facts } = kit.voice;
+  return {
+    marks: own ? marks : undefined,
+    fonts,
+    components: kit.components,
+    voice: own ? { samples, ...facts } : { samples: [], ...facts },
+    imagery: kit.imagery,
+  };
 }

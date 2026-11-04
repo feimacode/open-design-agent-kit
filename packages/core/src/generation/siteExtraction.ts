@@ -36,6 +36,8 @@ import {
   type LiveBrowser,
 } from '../export/livePage';
 import { extractBrandEvidence, type BrandEvidence } from './brandExtraction';
+import type { BrandComponents, BrandFont, BrandImagery, BrandMark, BrandVoice } from './brandKit';
+import { captureBrandKitInBrowser, componentRects, componentSpecs, fontAvailability, markEntry, pickIcons, VOICE_MAX_CHARS, voiceFacts, type CapturedKit } from './brandKitCapture';
 import { CONTENT_FILE, capPageContent, fetchRobots, readContentInventory, robotsDisallows, type ContentInventory, type PageContent } from './contentInventory';
 import {
   cssColorToHex,
@@ -104,8 +106,20 @@ export type ExtractSiteResult =
       marks: string[];
       /** Workspace-relative content.json, when content was asked for. */
       content?: string;
+      /** Marks with variants, fonts with their source, component specs, voice and imagery (add-brand-kit-capture). */
+      brandKit?: CapturedBrandKit;
       notes: string[];
     };
+
+export interface CapturedBrandKit {
+  /** Paths relative to the evidence bundle. */
+  marks: BrandMark[];
+  fonts: BrandFont[];
+  components: BrandComponents;
+  voice: BrandVoice;
+  imagery: BrandImagery;
+  themeColor?: string;
+}
 
 // ── In-page measurement ─────────────────────────────────────────────────
 // Serialized into the page by page.evaluate(), so it must be self-contained.
@@ -700,6 +714,13 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   const blocked: BlockedPage[] = [];
   const pages: PageEvidence[] = [];
   const marks: string[] = [];
+  const kitMarks: BrandMark[] = [];
+  const voiceSamples: BrandVoice['samples'] = [];
+  let kitComponents: BrandComponents = {};
+  let kitImagery: BrandImagery = {};
+  let themeColor: string | undefined;
+  const stylesheets = new Set<string>();
+  let firstLogo: string | undefined;
   let dark: SiteEvidence['dark'];
   let noDarkFound = false;
   const contentPages: PageContent[] = [];
@@ -764,6 +785,25 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         if (sample && crop) sample.crop = `crops/${crop}`;
       }
 
+      // The brand kit: marks' links, component specs, voice, imagery (add-brand-kit-capture).
+      let kit: CapturedKit | undefined;
+      try {
+        await page.evaluate(`globalThis.__odKit = ${captureBrandKitInBrowser.toString()}`);
+        kit = (await page.evaluate(`globalThis.__odKit(${VOICE_MAX_CHARS})`)) as CapturedKit;
+      } catch {
+        kit = undefined;
+      }
+      if (kit) {
+        voiceSamples.push(...kit.voice);
+        for (const s of kit.links.stylesheets) stylesheets.add(s);
+        if (i === 0) {
+          const kitCrops = await cropRoles(page, Object.fromEntries(componentRects(kit.components)) as MeasuredPage['rects'], path.join(bundleDir, 'crops'), `${prefix}component-`);
+          kitComponents = componentSpecs(kit.components, Object.fromEntries(Object.entries(kitCrops).map(([k, f]) => [k, `crops/${f}`])));
+          kitImagery = kit.imagery;
+          themeColor = kit.links.themeColor;
+        }
+      }
+
       if (i === 0) {
         if (measured.logo?.kind === 'svg') {
           await fs.writeFile(path.join(bundleDir, 'logo.svg'), measured.logo.markup);
@@ -782,6 +822,13 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
           await fs.writeFile(path.join(bundleDir, `favicon.${ext}`), icon);
           marks.push(rel(`favicon.${ext}`));
         }
+        const logoFile = marks.find((m) => /\/logo\.[a-z]+$|crops\/.*logo\.png$/.test(m));
+        if (logoFile) {
+          firstLogo = kit?.logo?.svg ?? kit?.logo?.src;
+          kitMarks.push(markEntry('logo', path.posix.relative(bundleRel, logoFile), { width: kit?.logo?.width, height: kit?.logo?.height, seenOn: kit?.logo?.seenOn }));
+        }
+        if (kit) kitMarks.push(...(await saveKitMarks(page, live.images, kit, main, bundleDir, input.allowHostsForTesting ?? [])));
+        if (themeColor) notes.push(`The site declares theme-color ${themeColor}.`);
         if (measured.stylesheetsUnreadable > 0) notes.push(`${measured.stylesheetsUnreadable} cross-origin stylesheet(s) couldn't be read, so their custom properties and @font-face sources are missing; computed values are unaffected.`);
       }
 
@@ -811,6 +858,20 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
             await page.screenshot({ path: path.join(bundleDir, `${prefix}desktop-dark.png`) });
             screenshots.push(rel(`${prefix}desktop-dark.png`));
           } else if (i === 0) noDarkFound = true;
+        }
+        if (pageDark && i === 0 && firstLogo) {
+          // The logo again in the dark theme: kept as logo-dark when it changed.
+          try {
+            await page.evaluate(`globalThis.__odKit = ${captureBrandKitInBrowser.toString()}`);
+            const darkKit = (await page.evaluate('globalThis.__odKit(0)')) as CapturedKit;
+            const darkLogo = darkKit.logo;
+            if (darkLogo && (darkLogo.svg ?? darkLogo.src) !== firstLogo) {
+              const saved = await saveLogo(darkLogo, live.images, bundleDir, 'logo-dark');
+              if (saved) kitMarks.push(markEntry('logo-dark', saved, { width: darkLogo.width, height: darkLogo.height, seenOn: darkLogo.seenOn }));
+            }
+          } catch {
+            // No dark logo: only the light one is recorded.
+          }
         }
         await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
       }
@@ -859,6 +920,28 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
     await live?.close();
   }
 
+  let brandKit: CapturedBrandKit | undefined;
+  if (pages.length > 0) {
+    const fonts = fontAvailability(pages.flatMap((p) => p.fonts), [...stylesheets]);
+    // Self-hosted faces the page loaded: kept in the bundle, copied into a design system only for an own brand whose licence the user confirmed.
+    for (const f of fonts.filter((x) => x.source === 'self-hosted')) {
+      const faceSources = pages.flatMap((p) => p.fonts).filter((x) => x.family === f.family && x.source).map((x) => x.source!);
+      const files: string[] = [];
+      for (const [url, buf] of live?.fonts ?? new Map<string, Buffer>()) {
+        if (!faceSources.some((src) => src.includes(url) || src.includes(url.split('/').pop() ?? '\u0000'))) continue;
+        const name = (url.split('?')[0].split('/').pop() ?? 'font').replace(/[^\w.-]+/g, '-').slice(0, 80);
+        await fs.mkdir(path.join(bundleDir, 'fonts'), { recursive: true });
+        await fs.writeFile(path.join(bundleDir, 'fonts', name), buf);
+        files.push(`fonts/${name}`);
+      }
+      if (files.length > 0) f.files = files;
+    }
+    const capped = voiceSamples.slice(0, 60);
+    brandKit = { marks: kitMarks, fonts, components: kitComponents, voice: { samples: capped, ...voiceFacts(capped) }, imagery: kitImagery, themeColor };
+    const licensed = fonts.filter((f) => f.source === 'self-hosted' || f.source === 'adobe');
+    if (licensed.length > 0) notes.push(`${licensed.map((f) => `${f.family} (${f.source}, free match ${f.freeMatch})`).join(', ')} may be licensed: ask before copying font files, and only for the user's own brand.`);
+  }
+
   const siteEvidence: SiteEvidence = { pages, dark };
   const draft = pages.length > 0 ? evidenceToTokens(siteEvidence) : undefined;
   if (theme !== 'light' && !dark && noDarkFound) notes.push('No dark theme was found: the site looks the same under prefers-color-scheme: dark and with a dark theme attribute on the root element. No dark values were returned.');
@@ -878,7 +961,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   }
   await fs.writeFile(
     path.join(bundleDir, 'evidence.json'),
-    JSON.stringify({ version: 2, status, url: main.toString(), theme, measuredAt: new Date().toISOString(), ...siteEvidence, pageShots, blocked, marks, notes, draft }, null, 2) + '\n',
+    JSON.stringify({ version: 2, status, url: main.toString(), theme, measuredAt: new Date().toISOString(), ...siteEvidence, pageShots, blocked, marks, brandKit, components: brandKit?.components, notes, draft }, null, 2) + '\n',
   );
   return {
     status,
@@ -890,8 +973,96 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
     blocked,
     marks,
     content: contentRel,
+    brandKit,
     notes,
   };
+}
+
+const IMAGE_EXT = /\.(svg|png|ico|jpe?g|webp|gif|avif)(\?|$)/i;
+const extOf = (url: string, fallback = 'png'): string => IMAGE_EXT.exec(url)?.[1]?.toLowerCase().replace('jpeg', 'jpg') ?? fallback;
+
+/** Saves a logo read in the page (inline SVG or an image it loaded) as `<name>.<ext>` in the bundle. */
+async function saveLogo(logo: NonNullable<CapturedKit['logo']>, images: Map<string, Buffer>, bundleDir: string, name: string): Promise<string | undefined> {
+  if (logo.svg) {
+    await fs.writeFile(path.join(bundleDir, `${name}.svg`), logo.svg);
+    return `${name}.svg`;
+  }
+  const buf = logo.src ? images.get(logo.src) : undefined;
+  if (!buf || !logo.src) return undefined;
+  const file = `${name}.${extOf(logo.src)}`;
+  await fs.writeFile(path.join(bundleDir, file), buf);
+  return file;
+}
+
+/**
+ * The marks beyond the header logo: the logo on a dark surface, the largest
+ * icon, the touch icon, web manifest icons and the social image. Files come
+ * from what the page loaded, else from one fetch made inside the page (so it
+ * goes through the same request guard), on the same site only.
+ */
+async function saveKitMarks(page: Page, images: Map<string, Buffer>, kit: CapturedKit, main: URL, bundleDir: string, allowHosts: string[]): Promise<BrandMark[]> {
+  const out: BrandMark[] = [];
+  const site = registrableDomain(main.hostname);
+  let fetches = 0;
+  const sameSite = (u: string): boolean => {
+    try {
+      const url = new URL(u);
+      return (url.protocol === 'https:' || url.protocol === 'http:') && (registrableDomain(url.hostname) === site || allowHosts.includes(url.hostname));
+    } catch {
+      return false;
+    }
+  };
+  const load = async (u: string): Promise<Buffer | undefined> => {
+    const have = images.get(u);
+    if (have) return have;
+    if (!sameSite(u) || fetches >= 6) return undefined;
+    fetches++;
+    await page
+      .evaluate(async (url: string) => {
+        const ctl = new AbortController();
+        setTimeout(() => ctl.abort(), 8000);
+        await fetch(url, { signal: ctl.signal, credentials: 'omit' }).then((r) => r.arrayBuffer()).catch(() => undefined);
+      }, u)
+      .catch(() => undefined);
+    await new Promise((r) => setTimeout(r, 150));
+    return images.get(u);
+  };
+  const save = async (role: BrandMark['role'], u: string | undefined, name: string, extra: Partial<BrandMark> = {}): Promise<void> => {
+    if (!u) return;
+    const buf = await load(u);
+    if (!buf) return;
+    const file = `${name}.${extOf(u)}`;
+    await fs.writeFile(path.join(bundleDir, file), buf);
+    out.push(markEntry(role, file, extra));
+  };
+  if (kit.logoOnDark) {
+    const file = await saveLogo(kit.logoOnDark, images, bundleDir, 'logo-on-dark');
+    if (file) out.push(markEntry('logo-on-dark', file, { width: kit.logoOnDark.width, height: kit.logoOnDark.height, seenOn: kit.logoOnDark.seenOn }));
+  }
+  const { icon, touch } = pickIcons(kit.links.icons);
+  await save('icon', icon, 'icon');
+  await save('touch-icon', touch, 'touch-icon');
+  if (kit.links.manifest && sameSite(kit.links.manifest)) {
+    const manifest = (await page
+      .evaluate(async (url: string) => {
+        try {
+          const r = await fetch(url, { credentials: 'omit' });
+          return r.ok ? await r.text() : undefined;
+        } catch {
+          return undefined;
+        }
+      }, kit.links.manifest)
+      .catch(() => undefined)) as string | undefined;
+    try {
+      const icons = (JSON.parse(manifest ?? '{}') as { icons?: Array<{ src?: string; sizes?: string }> }).icons ?? [];
+      const largest = icons.filter((i) => i.src).sort((a, b) => (Number((b.sizes ?? '').split('x')[0]) || 0) - (Number((a.sizes ?? '').split('x')[0]) || 0))[0];
+      if (largest?.src) await save('manifest-icon', new URL(largest.src, kit.links.manifest).toString(), 'manifest-icon');
+    } catch {
+      // An unreadable manifest has no icons.
+    }
+  }
+  await save('social', kit.links.ogImage, 'social');
+  return out;
 }
 
 /** Copies the images the pages loaded into `<bundle>/images/`, recording each copy on its inventory entry. */
@@ -940,6 +1111,7 @@ export function formatExtractSiteResult(result: ExtractSiteResult): string {
       blocked: result.blocked,
       marks: result.marks,
       content: result.content,
+      brandKit: result.brandKit,
       draft: result.draft ? { tokens: result.draft.tokens, dark: result.draft.dark, sources: result.draft.sources, unmeasured: result.draft.unmeasured, conflicts: result.draft.conflicts } : undefined,
       draftCss: result.draftCss,
       candidates: result.candidates,

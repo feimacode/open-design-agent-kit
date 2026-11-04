@@ -784,15 +784,17 @@ const TOOL_DEFS: ToolDef[] = [
           },
           evidenceDir: {
             type: 'string',
-            description: 'Optional, with kind: the bundleDir extract_open_design_design_system returned. Records the source URLs and keeps the site screenshot beside DESIGN.md as reference.png.',
+            description:
+              "Optional, with kind: the bundleDir extract_open_design_design_system returned. Records the source URLs, keeps the site screenshot as reference.png, writes review.html, and puts the brand kit into brand.json: marks (copied into assets/ for an own brand only), fonts with their source, component specs, voice facts (and, for an own brand, the sampled lines) and imagery.",
           },
+          fontLicence: { type: 'string', enum: ['confirmed'], description: "Optional, with kind own and evidenceDir: 'confirmed' when the user says they hold the licence for the brand's self-hosted fonts. Only then are the font files the site loaded copied into the design system's assets/fonts/. Never for a reference site." },
         },
       },
     },
     handler: (ctx, args) =>
       tools.createCustomDesignSystem(
         ctx,
-        args as { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string; kind?: string; descriptor?: unknown; evidenceDir?: string },
+        args as { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string; kind?: string; descriptor?: unknown; evidenceDir?: string; fontLicence?: string },
       ),
   },
   {

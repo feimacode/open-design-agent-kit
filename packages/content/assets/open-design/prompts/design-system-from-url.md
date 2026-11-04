@@ -34,6 +34,9 @@ Call `extract_open_design_design_system` with `url`, `extraUrls` if there are an
 - **`partial`** (no browser installed): only candidate colours and fonts from the page source. Tell the user, show the candidates, and ask them to confirm the brand colour and font, or to install Chrome for a full measurement.
 - **`blocked`**: show the user the screenshot and the reason. Ask for the site's CSS, a screenshot of the page they mean, or another public page. Don't retry the same page.
 - An invalid-args error (a private address, an extra page on another site): tell the user what was refused and why.
+- **`brandKit`**: the brand kit the page shows. `marks` with roles (`logo`, `logo-dark`, `logo-on-dark`, `icon`, `touch-icon`, `manifest-icon`, `social`) and the background each was seen on; `fonts` with their source (`google` with a stylesheet, `adobe`, `self-hosted`, `system`), and for a self-hosted or Adobe face a `freeMatch`; `components` (primary, secondary and ghost buttons, the input and its focus style, card, nav, badge, in px with a crop each); `voice` (sampled lines and counted facts: heading case, sentence length, person, exclamations, emoji); and `imagery` (hero kind, image radius and ratios, the icon set with its style and stroke). The create call puts it into `brand.json`.
+
+**Fonts for the user's own brand.** If `brandKit.fonts` has a `self-hosted` face, it may be licensed. Ask the user once whether they hold the licence for it. If they say yes, pass `fontLicence: "confirmed"` to the create call, which copies the font files into the design system. If not, or for a reference site, name the face in DESIGN.md and use its `freeMatch` as the loaded fallback, and say so.
 
 If the user asked for dark and the result notes that no dark theme was found, say so. Don't invent dark values.
 
@@ -45,8 +48,11 @@ Write `DESIGN.md` at `suggestedEntryPath` and `tokens.css` beside it, **both fro
 
 - **`tokens.css`**: start from `draftCss`. Keep every measured value exactly as measured. For an `unmeasured` token, leave it out so the contract fallback applies, or derive it from measured ones (a `color-mix()` of `--accent` for a missing hover); never make one up, and don't fill two steps with the same value.
 - **Sanity-check each role against the screenshot first.** If a measured value plainly can't be that role (text that would be unreadable on `--bg`, a hairline as a spacing step), drop it and say so; don't write prose to explain it away.
-- **`DESIGN.md`**: the values it names (primary colour, surface, text, the font families, the type scale) must be the same values as `tokens.css`. Where `sources` names the site's own variable for a value, use that name in DESIGN.md too (`#635bff, the site's --color-brand-500`). Write the prose (atmosphere, layout, components, voice, do and don't) from the screenshots. For a reference site, say near the top that it is inspired by the site and name it.
-- **Marks**: for the user's own brand, copy the files in the result's `marks` into an `assets/` folder beside `DESIGN.md` and mention them there. For a reference site, copy none.
+- **`DESIGN.md`**: the values it names (primary colour, surface, text, the font families, the type scale) must be the same values as `tokens.css`. Where `sources` names the site's own variable for a value, use that name in DESIGN.md too (`#635bff, the site's --color-brand-500`). Write the prose (atmosphere, layout, do and don't) from the screenshots. For a reference site, say near the top that it is inspired by the site and name it.
+- **Components**: write a Components section from `brandKit.components` as numbers ("Primary button: 44px high, 0 24px padding, weight 600, sentence case, pill radius, no border"), one line each for the buttons, the input (with its focus style), the card, the nav (sticky or not) and the badge. Leave out what wasn't measured.
+- **Voice**: describe the tone from `brandKit.voice`'s facts and samples (sentence case, short sentences, speaks to "you", no exclamation marks). For the user's own brand you may quote a line or two as examples; for a reference site, describe the tone and copy no lines.
+- **Imagery**: from `brandKit.imagery`, say what the hero uses (photo, illustration, 3D, video), the image corner radius and ratios, and the icon set ("Lucide, outline, 1.5 stroke"). These are hints from the page, so call them that if the screenshots disagree.
+- **Marks**: for the user's own brand the create call copies `brandKit.marks` into `assets/` beside `DESIGN.md` (its `brand.json` lists them); mention them in DESIGN.md (which logo goes on light, which on dark). For a reference site, none are copied.
 
 ## 4. Review it side by side
 

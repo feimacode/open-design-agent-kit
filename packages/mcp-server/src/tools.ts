@@ -933,7 +933,7 @@ export async function setActiveDesignSystemTool(
 
 export async function createCustomDesignSystem(
   ctx: ToolContext,
-  input: { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string; kind?: string; descriptor?: unknown; evidenceDir?: string },
+  input: { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string; kind?: string; descriptor?: unknown; evidenceDir?: string; fontLicence?: string },
 ): Promise<string> {
   if (input.existingDesignSystemId) {
     const id = input.existingDesignSystemId.trim();
@@ -952,7 +952,7 @@ export async function createCustomDesignSystem(
   const evidence = input.sourceUrl ? await extractBrandEvidence(input.sourceUrl) : undefined;
   const kind = input.kind as BrandKind | undefined;
   const dirRel = path.posix.dirname(suggestedEntryPath);
-  const saved = kind ? await saveNewBrand({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, dirRel, name: input.name, kind, descriptor: input.descriptor, evidenceDir: input.evidenceDir }) : undefined;
+  const saved = kind ? await saveNewBrand({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, dirRel, name: input.name, kind, descriptor: input.descriptor, evidenceDir: input.evidenceDir, fontLicence: input.fontLicence === 'confirmed' && kind === 'own' ? 'confirmed' : undefined }) : undefined;
   const brand = saved?.brand;
   const review = saved?.review;
   const instructions = composeCustomDesignSystemInstructions({ name: input.name, brief: input.brief, suggestedEntryPath, id, evidence, kind });

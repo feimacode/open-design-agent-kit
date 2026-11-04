@@ -13,6 +13,7 @@ interface CreateCustomDesignSystemInput {
   kind?: string;
   descriptor?: unknown;
   evidenceDir?: string;
+  fontLicence?: string;
 }
 
 // Composes instructions only — never writes DESIGN.md or tokens.css itself,
@@ -40,7 +41,7 @@ export class CreateCustomDesignSystemTool implements vscode.LanguageModelTool<Cr
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<CreateCustomDesignSystemInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { name, brief, sourceUrl, existingDesignSystemId, kind, descriptor, evidenceDir } = options.input;
+    const { name, brief, sourceUrl, existingDesignSystemId, kind, descriptor, evidenceDir, fontLicence } = options.input;
     const text = (value: string) => new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(value)]);
 
     if (existingDesignSystemId) {
@@ -65,7 +66,7 @@ export class CreateCustomDesignSystemTool implements vscode.LanguageModelTool<Cr
     let saved: Awaited<ReturnType<typeof saveNewBrand>> | undefined;
     if (kind) {
       try {
-        saved = await saveNewBrand({ workspaceRoot: getWorkspaceRoot(), outputDir: getOutputDirectory(), dirRel, name, kind: kind as BrandKind, descriptor, evidenceDir });
+        saved = await saveNewBrand({ workspaceRoot: getWorkspaceRoot(), outputDir: getOutputDirectory(), dirRel, name, kind: kind as BrandKind, descriptor, evidenceDir, fontLicence: fontLicence === 'confirmed' && kind === 'own' ? 'confirmed' : undefined });
       } catch (err) {
         return text(err instanceof Error ? err.message : String(err));
       }
