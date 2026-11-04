@@ -9,6 +9,7 @@
 
 import { getAllSchemaNames } from '../vendored/designTokenSchema';
 import { parseTokensCss } from './designSystemTokens';
+import { roleForName } from './sourceExtraction';
 import { extractFontFamilies, extractHexColors, rankColors } from './tokenExtraction';
 
 const MAX_COLORS = 12;
@@ -70,24 +71,39 @@ export function buildDesignSystemMarkdown(input: BuildDesignSystemMarkdownInput)
 }
 
 /**
- * The imported design system's tokens.css — but only from declarations the
- * source already makes under token-contract names (`--bg`, `--accent`, …),
- * copied with their values unchanged. Extracted colors/fonts are NEVER
- * assigned to token roles by inference here: that would be guessing, which
- * this import path promises not to do. Returns undefined when the source
- * declares no contract tokens (or is itself a DESIGN.md); the preview then
- * shows the design system as approximated, with a Generate tokens.css action.
+ * The imported design system's tokens.css, from the source's own custom
+ * properties: declarations under token-contract names (`--bg`, `--accent`, …)
+ * are copied unchanged, and properties whose names state a role
+ * (`--color-primary`, `--background`, `--font-heading`) are copied under that
+ * contract name (openspec add-brand-from-screenshot-or-css, the same name table
+ * as extraction). Values are never assigned to roles by inference: a colour
+ * with no telling name stays out. Returns undefined when nothing maps (or the
+ * source is itself a DESIGN.md); the preview then shows the design system as
+ * approximated, with a Generate tokens.css action.
  */
 export function buildDesignSystemTokensCss(rawContent: string, sourceLabel: string): string | undefined {
   if (looksLikeDesignMd(rawContent)) return undefined;
   const contract = new Set(getAllSchemaNames());
-  const declarations = [...parseTokensCss(rawContent)].filter(([name]) => contract.has(name));
-  if (declarations.length === 0) return undefined;
+  const all = [...parseTokensCss(rawContent)];
+  const declared = all.filter(([name]) => contract.has(name));
+  const taken = new Set(declared.map(([name]) => name));
+  const mapped: Array<[string, string, string]> = [];
+  for (const [name, value] of all) {
+    if (contract.has(name) || /var\(/.test(value)) continue;
+    const role = /font|typeface|family/i.test(name) ? roleForName(name, 'font') : roleForName(name);
+    if (!role || !contract.has(role) || taken.has(role)) continue;
+    taken.add(role);
+    mapped.push([role, value, name]);
+  }
+  if (declared.length === 0 && mapped.length === 0) return undefined;
   return [
     `/* Imported from ${sourceLabel.replace(/\*\//g, '* /')}.`,
-    ' * Only declarations using Open Design token-contract names were copied, values unchanged. */',
+    mapped.length
+      ? ' * Declarations using Open Design token-contract names were copied, values unchanged; others were mapped by their names only. */'
+      : ' * Only declarations using Open Design token-contract names were copied, values unchanged. */',
     ':root {',
-    ...declarations.map(([name, value]) => `  ${name}: ${value};`),
+    ...declared.map(([name, value]) => `  ${name}: ${value};`),
+    ...mapped.map(([role, value, from]) => `  ${role}: ${value}; /* from ${from} */`),
     '}',
     '',
   ].join('\n');

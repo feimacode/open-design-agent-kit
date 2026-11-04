@@ -185,12 +185,50 @@ The agent calls [`create_open_design_design_system`](../reference/tools.md#creat
 
 The agent uses `/open-design-design-system-from-url` (in VS Code, also **Open Design: Design System from Website**, on the Design Systems view's title bar). It asks only what you left out: the address, light, dark or both, and whether the site is your brand or a reference. Then it:
 
-1. **Measures the rendered site** with [`extract_open_design_design_system`](../reference/tools.md#extract_open_design_design_system) in your installed Chrome, Edge or Chromium: the colours of the elements that carry them (background, cards, text, borders, the main button and its hover and pressed states), the fonts the page actually loaded, text sizes, radii, spacing and motion. The screenshots, one crop per colour and the logo go to `.open-design/.extract/<site>/`.
+1. **Measures the rendered site** with [`extract_open_design_design_system`](../reference/tools.md#extract_open_design_design_system) in your installed Chrome, Edge or Chromium. Cookie banners and chat launchers are hidden first (never accepted), and the page is scrolled once so content that loads on scroll counts. It measures the colours of the elements that carry them (background, cards, text tiers, borders, the main button and its hover, pressed and focus states, and success, warning and error colours where the page shows them), the fonts the page actually loaded, text sizes, radii, spacing, gutters and section padding at desktop and phone widths, and motion. Where the site names a value in its own CSS variables (`--color-brand-500`), the draft says so. The screenshots, one crop per colour and the logo go to `.open-design/.extract/<site>/`. With several pages, the first page's values win and any page that disagrees is listed for you to choose.
 2. **Writes `DESIGN.md` and `tokens.css` from the same measurements**, so the two agree. Anything nothing measured is left to the token contract's defaults rather than guessed.
 3. **Shows you a review**: the site's screenshot beside a sample page (hero, buttons, a card, a form) in the new tokens, checked with `check_open_design_artifact`. Say what's off ("the buttons are rounder on the site"); it fixes and re-checks, up to two rounds.
 4. **Saves it** as `user:<name>` and offers to make it active.
 
-For a reference site, the design system is named "<Name>-inspired" and no logos or images are copied. Dark values are only measured when the site has a dark theme. A page behind a bot check or login comes back as blocked, with its screenshot; give the agent the CSS or a screenshot instead. Without a browser, the agent gets candidate colours and fonts from the page source only, and asks you to confirm them.
+The review is `review.html` in the design system's folder: the site's screenshot beside a sample styled only by your `tokens.css`. Checking it measures the sample the way the site was measured and reports `brand-fidelity` wherever they differ (the button colour, text colour, background, fonts, button and card radius), with both values.
+
+For a reference site, the design system is named "<Name>-inspired" and no logos or images are copied. Dark values are only measured when the site has a dark theme. A page behind a bot check or login comes back as blocked, with its screenshot; give the agent the CSS or a screenshot instead. Without a browser, the agent reads the page source and stylesheets, takes roles from the names the CSS gives them, and asks you to confirm the brand colour and font.
+
+### Take one from a template, brand guide, CSS or screenshot
+
+> Make a design system from our PowerPoint template, brand/Acme.potx.
+
+Not every brand has a website you can open. The same tool takes up to six other sources, alone or with a site:
+
+| Source | What it gives | How sure |
+|---|---|---|
+| PowerPoint template (`.pptx`, `.potx`) | Theme colours, heading and body fonts, text sizes, the logo on the master, the chart colours | declared |
+| CSS, a Tailwind theme, `tokens.json` | Colours and fonts the file names (`--color-primary`, `background`) | declared |
+| Brand guide (PDF, DOCX, PPTX, Markdown) | Labelled colour codes (CMYK converted and marked), typefaces | stated |
+| Screenshot (PNG) | Background, text, surface and accent colours, sampled | sampled |
+
+When they disagree (the guide says one red, the site's CSS another), the more trusted value is drafted and the agent asks you which is right. A template still on PowerPoint's stock Office theme has no brand in it, and a Pantone-only colour needs its hex. Old `.ppt` files must be saved as `.pptx` first.
+
+| Where | Website | Sources |
+|---|---|---|
+| Local server (Claude Code, Claude Desktop, VS Code, Cursor, Codex) | Yes, in your browser | Yes |
+| Hosted connector (Claude directory, ChatGPT) | No: the agent fetches the page and CSS itself and passes them | Yes |
+
+In VS Code, **Import Design System** now also maps CSS properties whose names state a role (`--color-primary` → `--accent`) into `tokens.css`, marked with the original name.
+
+### Your own brand
+
+When the design system is your brand rather than a look you borrowed, say so ("it's our brand"). The agent saves it with `kind: own` in a `brand.json` beside `DESIGN.md`, and from then on:
+
+- `DESIGN.md` is headed `# <Name> Design System`, not "Inspired by".
+- The recommender lists it first for every brief, unless you name another look ("in the style of Linear"). A brief prepared on another system notes that your brand exists.
+- The check holds designs to it, as warnings: `brand-off-palette` for a large area in a colour that isn't one of your colours or a tint or shade of one, `brand-font` for text in a font outside your stacks, and `brand-mark-missing` (a note) for a poster, social post or deck that shows no logo when your brand has one. If your accent is a Tailwind indigo, the "default AI indigo" warning stays quiet. `data-od-allow="brand-off-palette"` on an element marks a deliberate exception (a partner's colour, say).
+- The design critic judges `fit` against your site's screenshot, your button and card specs and your voice (heading case, sentence length, exclamation marks).
+- The agent offers to write the project's root `DESIGN.md` with `set_active_design_system` and `writeProjectDesignMd`, so other design tools in the project use your brand too.
+
+The extraction also takes your brand kit from the site and keeps it in `brand.json` ([format](../reference/brand-json.md)): the logo for light and dark backgrounds, the icons and social image (copied into the design system's `assets/`), where each font comes from (a self-hosted font may be licensed: the agent asks before copying its files, and suggests a free near-match otherwise), measured specs for buttons, inputs, cards, the nav and badges (written as numbers in DESIGN.md's Components section), the voice (heading case, sentence length, who it speaks to, exclamation marks), and the imagery (photos or illustrations, image corners, the icon set and its stroke).
+
+**When your site changes,** ask "refresh our design system from the site". The agent measures it again with `compareTo` and shows what changed (a new accent, a different font, a new logo), grouped. Nothing changes until you confirm a group.
 
 ### Take one from your app
 
@@ -277,7 +315,7 @@ Claude Design keeps design systems as "Design System" artifacts in Claude (Setti
 
 The **connector** starting point is for design tools (Figma, Canva and the like). It reads a design file through that tool's connector, so it doesn't apply to Open Design systems.
 
-For a custom system (yours, or one made from a website), export it first: `npx tsx scripts/claude-design-system.ts export <design-system-folder> <out-dir>` writes `<out-dir>/project/` in the same format, and fails if the result wouldn't pass Claude's format rules. Then upload it or ask the agent to publish it.
+For a custom system (yours, or one made from a website), ask the agent to "put it into Claude Design". It calls [`export_open_design_design_system`](../reference/tools.md#export_open_design_design_system), which writes `.open-design/claude-design/<name>/project/` in the same format (and fails if the result wouldn't pass Claude's format rules), plus a `brand.html` page to look at. For your own brand, the logo, icons and font files go along in `project/assets/` and the README lists your fonts and where they come from. Then the agent publishes it with its Artifact tool, or you upload the folder. In a checkout of this repository, `npx tsx scripts/claude-design-system.ts export <design-system-folder> <out-dir>` still does the same without the assets.
 
 To bring one back from Claude, ask the agent to read `project/design-system.json`, `project/tokens.json` and `project/README.md` from the system into a folder, then run `npx tsx scripts/claude-design-system.ts import <that-folder> .open-design/design-systems` (your Open Design output folder). The result shows up as `user:<name>`.
 

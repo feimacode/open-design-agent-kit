@@ -371,6 +371,8 @@ interface Scored {
   c: MatchCandidate;
   score: number;
   named: boolean;
+  /** The user's own brand (brand.json kind own), ranked first unless another look is named. */
+  own?: boolean;
   matchedMoods: string[];
   matchedIndustries: string[];
 }
@@ -398,7 +400,10 @@ function scoreCandidate(c: MatchCandidate, p: NormalizedProfile, briefWords: str
     score += WEIGHTS.brief * Math.min(1, hits / Math.min(3, briefWords.length));
   }
   if (named) score += 2;
-  return { c, score, named, matchedMoods, matchedIndustries };
+  // The user's own brand comes first unless the profile names another look.
+  const own = c.detail.brand?.kind === 'own' && (p.likeBrands.length === 0 || named);
+  if (own) score += 3;
+  return { c, score, named, own, matchedMoods, matchedIndustries };
 }
 
 /** Everyday words in a brief that point at a mood or an industry, used only for fields the profile left empty. */
@@ -497,7 +502,7 @@ function uniq<T>(xs: T[]): T[] {
 
 /** Ranking tier: named systems, then matching genres, then matching brands, then the rest. */
 function tier(s: Scored): number {
-  if (s.named) return 0;
+  if (s.named || s.own) return 0;
   const brand = s.c.descriptor?.kind === 'brand';
   if (s.score > 0) return brand ? 2 : 1;
   return 3;
@@ -521,6 +526,7 @@ function shortSummary(detail: DesignSystemDetail): string | undefined {
 
 function reasonFor(s: Scored, p: NormalizedProfile): string {
   const parts: string[] = [];
+  if (s.own) parts.push('your own brand');
   if (s.named) parts.push('the look you named');
   if (s.matchedMoods.length) parts.push(s.matchedMoods.join(', '));
   if (s.matchedIndustries.length) parts.push(`fits ${s.matchedIndustries.join(', ')}`);
@@ -562,9 +568,15 @@ export function rankDesignSystems(candidates: MatchCandidate[], profile: DesignP
   const signals = profileSignalCount(p);
   if (signals === 0 && briefWords.length === 0) {
     const byId = new Map(pool.map((c) => [c.detail.id, c]));
-    const picks = FALLBACK_DESIGN_SYSTEMS.map((id) => byId.get(id)).filter((c): c is MatchCandidate => c !== undefined);
-    const recs = picks.slice(0, max).map((c) => toRecommendation({ c, score: 0, named: false, matchedMoods: [], matchedIndustries: [] }, p));
-    return { recommendations: recs, confidence: 'low', questions: matchQuestions(p), ...(p.ignored.length ? { ignored: p.ignored } : {}) };
+    const owned = pool.filter((c) => c.detail.brand?.kind === 'own').sort((a, b) => a.detail.id.localeCompare(b.detail.id));
+    const picks = [...owned, ...FALLBACK_DESIGN_SYSTEMS.map((id) => byId.get(id)).filter((c): c is MatchCandidate => c !== undefined)];
+    const recs = picks.slice(0, max).map((c) => toRecommendation({ c, score: 0, named: false, own: c.detail.brand?.kind === 'own', matchedMoods: [], matchedIndustries: [] }, p));
+    return {
+      recommendations: recs,
+      confidence: owned.length > 0 ? 'high' : 'low',
+      ...(owned.length > 0 ? {} : { questions: matchQuestions(p) }),
+      ...(p.ignored.length ? { ignored: p.ignored } : {}),
+    };
   }
 
   const scored = pool.map((c) => scoreCandidate(c, scoring, briefWords));
@@ -591,4 +603,18 @@ export function matchesAllWords(haystacks: string[], query: string): boolean {
   if (ws.length === 0) return true;
   const lowered = haystacks.map((h) => h.toLowerCase());
   return ws.every((w) => lowered.some((h) => h.includes(w)));
+}
+
+/**
+ * A note for a brief prepared without the user's own brand (openspec
+ * connect-brand-design-systems): names their brand systems and how to use
+ * one. Undefined when they have none or this brief already uses one.
+ */
+export function ownBrandHint(ownBrands: Array<{ id: string; name: string }>, used: { id: string; name: string } | undefined): string | undefined {
+  if (ownBrands.length === 0 || ownBrands.some((b) => b.id === used?.id)) return undefined;
+  const list = ownBrands.map((b) => `${b.name} (${b.id})`).join(', ');
+  const next = used
+    ? `This brief uses ${used.name} instead; that's fine if the user asked for it, otherwise prepare it again with designSystemId "${ownBrands[0].id}".`
+    : `Unless the user wants another look, prepare the brief again with designSystemId "${ownBrands[0].id}".`;
+  return `The user has their own brand design system${ownBrands.length > 1 ? 's' : ''}: ${list}. ${next}`;
 }

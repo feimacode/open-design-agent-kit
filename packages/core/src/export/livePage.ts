@@ -128,7 +128,7 @@ export function blockedReason(requested: URL, finalUrl: string, m: PageSignals):
 }
 
 /** Blocks private hosts, other schemes and form posts on every request; keeps the images the page loaded (for logos). */
-export async function guardRequests(page: Page, images: Map<string, Buffer>, allowHosts: string[]): Promise<void> {
+export async function guardRequests(page: Page, images: Map<string, Buffer>, allowHosts: string[], fonts?: Map<string, Buffer>): Promise<void> {
   await page.setRequestInterception(true);
   page.on('request', (req) => {
     let u: URL;
@@ -149,6 +149,11 @@ export async function guardRequests(page: Page, images: Map<string, Buffer>, all
   // Kept so a logo image can be saved from what the page itself loaded, without a second fetch.
   page.on('response', (res) => {
     const type = res.headers()['content-type'] ?? '';
+    // Font files, kept so a brand's own licensed face can be copied once the user confirms the licence (add-brand-kit-capture).
+    if (fonts && (type.startsWith('font/') || /application\/(x-)?font|woff/.test(type) || /\.(woff2?|ttf|otf)(\?|$)/i.test(res.url()))) {
+      if (fonts.size < 16) res.buffer().then((buf) => { if (buf.length <= 2_000_000) fonts.set(res.url(), buf); }).catch(() => undefined);
+      return;
+    }
     if (!type.startsWith('image/') || images.size >= 60) return;
     res
       .buffer()
@@ -183,13 +188,33 @@ export function readPageSignals(): PageSignals {
 }
 
 /** In-page: hides common cookie and consent banners so they don't cover what is measured. Returns how many were hidden. */
+/**
+ * Hides consent banners, cookie walls and chat launchers (never clicks them:
+ * "Accept" would set cookies and change what the site does). Known vendors by
+ * selector, plus any fixed or sticky element that mentions cookies or consent
+ * and covers a third of the viewport or is pinned to its top or bottom edge.
+ * Hidden elements carry `data-od-hidden-consent`. Self-contained: it runs in
+ * the page through `page.evaluate`. Returns how many it hid.
+ */
 export function hideConsentBanners(): number {
   const selectors = [
-    '#onetrust-banner-sdk', '#onetrust-consent-sdk', '#CybotCookiebotDialog', '#cookiebanner', '#cookie-banner', '#cookie-notice', '#cookie-law-info-bar',
-    '.cc-window', '.cookie-banner', '.cookie-consent', '.cookie-notice', '[id*="cookie-consent" i]', '[class*="cookie-consent" i]', '[aria-label*="cookie" i][role="dialog"]',
-    '#usercentrics-root', '#qc-cmp2-container', '.fc-consent-root', '#didomi-host', '.truste_box_overlay', '#truste-consent-track',
+    '#onetrust-banner-sdk', '#onetrust-consent-sdk', '#CybotCookiebotDialog', '#CybotCookiebotDialogBodyUnderlay', '#cookiebanner', '#cookie-banner', '#cookie-notice', '#cookie-law-info-bar',
+    '.cc-window', '.cc-banner', '.cookie-banner', '.cookie-consent', '.cookie-notice', '[id*="cookie-consent" i]', '[class*="cookie-consent" i]', '[id*="cookieconsent" i]',
+    '[id*="cookie-banner" i]', '[class*="cookie-banner" i]', '[aria-label*="cookie" i][role="dialog"]',
+    '#usercentrics-root', '#usercentrics-cmp-ui', '#qc-cmp2-container', '.qc-cmp2-container', '.fc-consent-root', '#didomi-host', '#didomi-popup',
+    '.truste_box_overlay', '.truste_overlay', '#truste-consent-track', '#consent_blackbar', '.osano-cm-window', '#iubenda-cs-banner',
+    // Chat launchers: third-party, often brand-coloured, and pinned over the page.
+    '#intercom-container', '.intercom-lightweight-app', '#intercom-frame', '#drift-widget', '#drift-frame-controller', '#drift-frame-chat',
+    '#hubspot-messages-iframe-container', '#launcher', '#ze-snippet', '#crisp-chatbox', '.crisp-client', '#tidio-chat', '#fc_frame',
   ];
   let hidden = 0;
+  const hide = (el: Element) => {
+    const h = el as HTMLElement;
+    if (h.getAttribute('data-od-hidden-consent') !== null || el === document.body || el === document.documentElement) return;
+    h.setAttribute('data-od-hidden-consent', '');
+    h.style.setProperty('display', 'none', 'important');
+    hidden++;
+  };
   for (const sel of selectors) {
     let els: Element[] = [];
     try {
@@ -197,19 +222,37 @@ export function hideConsentBanners(): number {
     } catch {
       els = [];
     }
-    for (const el of els) {
-      const h = el as HTMLElement;
-      if (h.getAttribute('data-od-hidden-consent') !== null) continue;
-      h.setAttribute('data-od-hidden-consent', '');
-      h.style.setProperty('display', 'none', 'important');
-      hidden++;
+    els.forEach(hide);
+  }
+  if (document.body) {
+    const consent = /cookie|consent|gdpr|ccpa/i;
+    for (const el of Array.from(document.body.querySelectorAll('*'))) {
+      const s = getComputedStyle(el);
+      if ((s.position !== 'fixed' && s.position !== 'sticky') || s.display === 'none') continue;
+      const r = el.getBoundingClientRect();
+      const w = Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0));
+      const h = Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0));
+      const cover = (w * h) / (innerWidth * innerHeight);
+      if (cover === 0 || !consent.test((el.textContent ?? '').slice(0, 4000))) continue;
+      if (cover > 0.3 || r.bottom >= innerHeight - 4 || r.top <= 4) hide(el);
     }
   }
   if (hidden > 0) {
-    document.documentElement.style.removeProperty('overflow');
-    if (document.body) document.body.style.removeProperty('overflow');
+    // Consent walls often lock scrolling on the page behind them.
+    for (const el of [document.documentElement, document.body]) {
+      if (!el) continue;
+      el.style.removeProperty('overflow');
+      if (getComputedStyle(el).overflowY === 'hidden') el.style.setProperty('overflow', 'auto', 'important');
+    }
   }
   return hidden;
+}
+
+/** The elements `hideConsentBanners` hid, as short selectors. Self-contained, for `page.evaluate`. */
+export function hiddenConsentSelectors(): string[] {
+  return Array.from(document.querySelectorAll('[data-od-hidden-consent]')).map((el) =>
+    el.id ? `#${el.id}` : `${el.tagName.toLowerCase()}${Array.from(el.classList).slice(0, 2).map((c) => `.${c}`).join('')}`,
+  );
 }
 
 export interface LiveBrowser {
@@ -217,6 +260,8 @@ export interface LiveBrowser {
   page: Page;
   /** Images the page loaded, by URL. */
   images: Map<string, Buffer>;
+  /** Font files the page loaded, by URL. */
+  fonts: Map<string, Buffer>;
   close(): Promise<void>;
 }
 
@@ -244,11 +289,13 @@ export async function launchLiveBrowser(executablePath: string, allowHosts: stri
   await page.evaluateOnNewDocument('globalThis.__name = globalThis.__name || ((fn) => fn)');
   await page.setUserAgent(userAgent);
   const images = new Map<string, Buffer>();
-  await guardRequests(page, images, allowHosts);
+  const fonts = new Map<string, Buffer>();
+  await guardRequests(page, images, allowHosts, fonts);
   return {
     browser,
     page,
     images,
+    fonts,
     close: async () => {
       await browser.close().catch(() => undefined);
       await fs.rm(profileDir, { recursive: true, force: true }).catch(() => undefined);

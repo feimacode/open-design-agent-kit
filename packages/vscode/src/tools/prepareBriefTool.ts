@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import {
+  ownBrandHint,
   composeInstructions,
   latestFlowPlan,
   resolveBriefFlow,
@@ -192,6 +193,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       designSystemHint: designSystem
         ? undefined
         : "No design system was used. If the user wants a look but hasn't named one, call recommend_open_design_design_systems with what you know about the design, then prepare the brief again with the chosen designSystemId.",
+      brandHint: ownBrandHint(await this.contentIndex.ownBrandDesignSystems(), designSystem),
       outlinePath: sources.context?.outlinePath,
       sources: sources.context?.sources.map((s) => ({ path: s.path, markdownPath: s.markdownPath, kind: s.kind })),
       flowScreenId: flowContext?.screenId,

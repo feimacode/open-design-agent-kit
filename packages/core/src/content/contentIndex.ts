@@ -1,3 +1,4 @@
+import { BRAND_FILE, parseBrandRecord, type BrandRecord } from '../generation/brandKit';
 import { promises as fs } from 'node:fs';
 import { APP_COMPONENTS_FILE, parseAppComponentsFile, type AppComponentsFile } from '../generation/appDesignSystem';
 import * as path from 'node:path';
@@ -120,6 +121,8 @@ export interface DesignSystemDetail extends DesignSystemSummary {
   tokensCss?: string;
   /** User systems saved from an app: its component vocabulary and scanned tokens (openspec add-design-from-app). */
   appComponents?: AppComponentsFile;
+  /** User systems with a brand.json: own brand or reference, descriptor, marks and the brand kit (openspec connect-brand-design-systems). */
+  brand?: BrandRecord;
   /** Built-in only: the extension's additive local override (content overlay `tokens.override.css`), applied on top of `tokensCss`. */
   tokensOverrideCss?: string;
 }
@@ -514,6 +517,14 @@ async function loadDesignSystems(assetsRoot: string): Promise<Map<string, Design
 // system the model just wrote in the same session, with no extension
 // reload — unlike the ~152 bundled built-ins, which are legitimately
 // cacheable (immutable for the life of the extension host).
+/** A user system's recommender descriptor from its brand.json, when it has one. */
+function brandDescriptor(detail: DesignSystemDetail): DesignSystemDescriptor | undefined {
+  const brand = detail.brand;
+  if (!brand) return undefined;
+  const d = brand.descriptor ?? {};
+  return { kind: 'brand', moods: d.moods ?? [], industries: d.industries ?? [], surfaces: d.surfaces?.length ? d.surfaces : ['web', 'mobile', 'print', 'slides'] };
+}
+
 async function loadUserDesignSystems(dir: string | undefined): Promise<Map<string, DesignSystemDetail>> {
   const result = new Map<string, DesignSystemDetail>();
   if (!dir || !(await pathExists(dir))) return result;
@@ -532,6 +543,7 @@ async function loadUserDesignSystems(dir: string | undefined): Promise<Map<strin
     // Never an override for custom systems: the user owns tokens.css directly.
     const tokensCss = await readOptional(path.join(dir, entry.name, 'tokens.css'));
     const appComponents = parseAppComponentsFile(await readOptional(path.join(dir, entry.name, APP_COMPONENTS_FILE)));
+    const brand = parseBrandRecord(await readOptional(path.join(dir, entry.name, BRAND_FILE)));
     result.set(id, {
       id,
       name: fallback.name,
@@ -545,6 +557,7 @@ async function loadUserDesignSystems(dir: string | undefined): Promise<Map<strin
       hasTokens: tokensCss !== undefined,
       tokensCss,
       ...(appComponents ? { appComponents } : {}),
+      ...(brand ? { brand } : {}),
     });
   }
   return result;
@@ -893,9 +906,15 @@ export class ContentIndex {
         facets = computeDesignSystemFacets(detail);
         if (detail.source === 'built-in') this.facetCache.set(detail.id, facets);
       }
-      candidates.push({ detail, facets, descriptor: descriptors.get(detail.id) });
+      candidates.push({ detail, facets, descriptor: descriptors.get(detail.id) ?? brandDescriptor(detail) });
     }
     return rankDesignSystems(candidates, profile, limit);
+  }
+
+  /** User design systems whose brand.json says they are the user's own brand. */
+  async ownBrandDesignSystems(): Promise<DesignSystemDetail[]> {
+    const designSystems = await this.loadedDesignSystems();
+    return [...designSystems.values()].filter((d) => d.brand?.kind === 'own').sort((a, b) => a.id.localeCompare(b.id));
   }
 
   async getDesignSystem(id: string): Promise<DesignSystemDetail | undefined> {

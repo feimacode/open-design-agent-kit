@@ -2,14 +2,18 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
 import { extractBrandEvidence } from '@feimacode/open-design-agent-kit-core';
-import { composeCustomDesignSystemInstructions, composeDesignSystemTokensInstructions } from '@feimacode/open-design-agent-kit-core';
-import { getOutputDirectory, slugify } from '../workspace/artifactWriter';
+import { BRAND_FILE, composeCustomDesignSystemInstructions, composeDesignSystemTokensInstructions, saveNewBrand, type BrandKind } from '@feimacode/open-design-agent-kit-core';
+import { getOutputDirectory, getWorkspaceRoot, slugify } from '../workspace/artifactWriter';
 
 interface CreateCustomDesignSystemInput {
   name?: string;
   brief?: string;
   sourceUrl?: string;
   existingDesignSystemId?: string;
+  kind?: string;
+  descriptor?: unknown;
+  evidenceDir?: string;
+  fontLicence?: string;
 }
 
 // Composes instructions only — never writes DESIGN.md or tokens.css itself,
@@ -37,7 +41,7 @@ export class CreateCustomDesignSystemTool implements vscode.LanguageModelTool<Cr
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<CreateCustomDesignSystemInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { name, brief, sourceUrl, existingDesignSystemId } = options.input;
+    const { name, brief, sourceUrl, existingDesignSystemId, kind, descriptor, evidenceDir, fontLicence } = options.input;
     const text = (value: string) => new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(value)]);
 
     if (existingDesignSystemId) {
@@ -55,10 +59,21 @@ export class CreateCustomDesignSystemTool implements vscode.LanguageModelTool<Cr
     const id = `user:${slug}`;
     const suggestedEntryPath = path.posix.join(getOutputDirectory(), 'design-systems', slug, 'DESIGN.md');
 
+    if (kind !== undefined && kind !== 'own' && kind !== 'reference') return text('"kind" must be own (the user\'s brand) or reference.');
+    if (evidenceDir !== undefined && !kind) return text('"evidenceDir" needs "kind".');
     const evidence = sourceUrl ? await extractBrandEvidence(sourceUrl) : undefined;
+    const dirRel = path.posix.dirname(suggestedEntryPath);
+    let saved: Awaited<ReturnType<typeof saveNewBrand>> | undefined;
+    if (kind) {
+      try {
+        saved = await saveNewBrand({ workspaceRoot: getWorkspaceRoot(), outputDir: getOutputDirectory(), dirRel, name, kind: kind as BrandKind, descriptor, evidenceDir, fontLicence: fontLicence === 'confirmed' && kind === 'own' ? 'confirmed' : undefined });
+      } catch (err) {
+        return text(err instanceof Error ? err.message : String(err));
+      }
+    }
 
-    const instructions = composeCustomDesignSystemInstructions({ name, brief, suggestedEntryPath, id, evidence });
+    const instructions = composeCustomDesignSystemInstructions({ name, brief, suggestedEntryPath, id, evidence, kind: kind as BrandKind | undefined });
 
-    return text(JSON.stringify({ instructions, suggestedEntryPath, id }, null, 2));
+    return text(JSON.stringify({ instructions, suggestedEntryPath, id, ...(saved ? { brand: path.posix.join(dirRel, BRAND_FILE) } : {}), ...(saved?.review ? { review: saved.review } : {}) }, null, 2));
   }
 }

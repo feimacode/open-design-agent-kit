@@ -83,20 +83,21 @@ export function synthesizeBrandEvidence(base: URL, html: string | undefined, sty
   return { fetchedUrl: base.toString(), colors: rankColors(colorTally, MAX_COLORS), fonts: [...fonts].slice(0, MAX_FONTS), faviconUrl, warnings };
 }
 
-export async function extractBrandEvidence(sourceUrl: string): Promise<BrandEvidence> {
+/** The page's HTML and up to 3 of its same-origin stylesheets, fetched as text (no browser). */
+export async function fetchSiteTexts(sourceUrl: string): Promise<{ base?: URL; html?: string; stylesheets: Array<{ url: string; text: string }>; warnings: string[] }> {
   const warnings: string[] = [];
   let base: URL;
   try {
     base = new URL(sourceUrl);
     if (base.protocol !== 'http:' && base.protocol !== 'https:') {
-      return { fetchedUrl: sourceUrl, colors: [], fonts: [], warnings: [`Unsupported URL scheme "${base.protocol}" — only http(s) is supported.`] };
+      return { stylesheets: [], warnings: [`Unsupported URL scheme "${base.protocol}" — only http(s) is supported.`] };
     }
   } catch {
-    return { fetchedUrl: sourceUrl, colors: [], fonts: [], warnings: [`"${sourceUrl}" is not a valid URL.`] };
+    return { stylesheets: [], warnings: [`"${sourceUrl}" is not a valid URL.`] };
   }
 
   const html = await fetchText(base.toString(), warnings);
-  const stylesheetTexts: string[] = [];
+  const stylesheets: Array<{ url: string; text: string }> = [];
 
   if (html) {
     // Same-origin only — this is a plain content fetch of what the page
@@ -108,9 +109,14 @@ export async function extractBrandEvidence(sourceUrl: string): Promise<BrandEvid
 
     for (const cssUrl of stylesheetHrefs) {
       const css = await fetchText(cssUrl, warnings);
-      if (css) stylesheetTexts.push(css);
+      if (css) stylesheets.push({ url: cssUrl, text: css });
     }
   }
+  return { base, html, stylesheets, warnings };
+}
 
-  return synthesizeBrandEvidence(base, html, stylesheetTexts, warnings);
+export async function extractBrandEvidence(sourceUrl: string): Promise<BrandEvidence> {
+  const fetched = await fetchSiteTexts(sourceUrl);
+  if (!fetched.base) return { fetchedUrl: sourceUrl, colors: [], fonts: [], warnings: fetched.warnings };
+  return synthesizeBrandEvidence(fetched.base, fetched.html, fetched.stylesheets.map((s) => s.text), fetched.warnings);
 }

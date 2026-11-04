@@ -751,3 +751,46 @@ describe('prepare_open_design_component_library', () => {
     assert.match(await tools.prepareComponentLibrary(ctx, { entryPaths: ['.open-design/p/p.html'], library: 'vuetify' }), /^Component set not prepared \(unsupported-library\)/);
   });
 });
+
+describe('own brand design systems (connect-brand-design-systems)', () => {
+  async function brandContext(): Promise<ToolContext> {
+    const ctx = await makeContext();
+    return { ...ctx, contentIndex: new ContentIndex(ctx.assetsRoot, () => path.join(ctx.workspaceRoot, '.open-design', 'design-systems')) };
+  }
+
+  it('create with kind and evidenceDir writes brand.json, reference.png and a registered review page', async () => {
+    const ctx = await brandContext();
+    const bundle = path.join(ctx.workspaceRoot, '.open-design', '.extract', 'acme-example');
+    await fs.mkdir(bundle, { recursive: true });
+    await fs.writeFile(path.join(bundle, 'evidence.json'), JSON.stringify({ version: 2, url: 'https://acme.example/', measuredAt: '2026-11-04T00:00:00Z', pages: [{ url: 'https://acme.example/' }] }));
+    await fs.writeFile(path.join(bundle, 'desktop.png'), 'png');
+    const out = JSON.parse(await tools.createCustomDesignSystem(ctx, { name: 'Acme Bank', brief: 'Our bank', kind: 'own', evidenceDir: '.open-design/.extract/acme-example' }));
+    assert.strictEqual(out.id, 'user:acme-bank');
+    assert.match(out.instructions, /# Acme Bank Design System/);
+    const dir = path.join(ctx.workspaceRoot, '.open-design', 'design-systems', 'acme-bank');
+    const brand = JSON.parse(await fs.readFile(path.join(dir, 'brand.json'), 'utf8'));
+    assert.strictEqual(brand.kind, 'own');
+    assert.deepStrictEqual(brand.sources.urls, ['https://acme.example/']);
+    assert.strictEqual(brand.reference, 'reference.png');
+    assert.strictEqual(out.review, '.open-design/design-systems/acme-bank/review.html');
+    assert.match(await fs.readFile(path.join(ctx.workspaceRoot, out.review), 'utf8'), /data-od-brand-review="\.\.\/\.\.\/\.extract\/acme-example\/evidence\.json"/);
+    await fs.access(path.join(ctx.workspaceRoot, `${out.review}.artifact.json`));
+    await assert.rejects(tools.createCustomDesignSystem(ctx, { name: 'X', brief: 'x', kind: 'own', evidenceDir: '../elsewhere' }), /evidence bundle under/);
+  });
+
+  it('exports a user design system for Claude Design and registers brand.html', async () => {
+    const ctx = await brandContext();
+    const dir = path.join(ctx.workspaceRoot, '.open-design', 'design-systems', 'acme-bank');
+    await fs.mkdir(path.join(dir, 'assets'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'DESIGN.md'), '# Acme Bank Design System\n\n> Category: Finance\n> Calm.\n');
+    await fs.writeFile(path.join(dir, 'tokens.css'), ':root{--bg:#ffffff;--fg:#111111;--accent:#0b5fff;--accent-on:#ffffff;--font-body:Inter, sans-serif}');
+    await fs.writeFile(path.join(dir, 'brand.json'), JSON.stringify({ version: 1, kind: 'own', name: 'Acme Bank' }));
+    await fs.writeFile(path.join(dir, 'assets', 'logo.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    const out = JSON.parse(await tools.exportDesignSystem(ctx, { designSystemId: 'user:acme-bank' }));
+    assert.ok(out.files.includes('.open-design/claude-design/acme-bank/project/tokens.json'));
+    assert.ok(out.files.includes('.open-design/claude-design/acme-bank/project/assets/logo.svg'));
+    assert.match(out.next, /Artifact tool/);
+    await fs.access(path.join(ctx.workspaceRoot, `${out.brandPage}.artifact.json`));
+    await assert.rejects(tools.exportDesignSystem(ctx, { designSystemId: 'user:nope' }), /No design system/);
+  });
+});

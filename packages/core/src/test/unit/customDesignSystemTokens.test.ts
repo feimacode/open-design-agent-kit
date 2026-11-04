@@ -94,8 +94,17 @@ describe('buildDesignSystemTokensCss', () => {
     );
   });
 
-  it('writes nothing when the source has colors but no contract-named declarations', () => {
-    assert.strictEqual(buildDesignSystemTokensCss(':root { --brand: #ff385c; } body { color: #111; }', 'x.css'), undefined);
+  it('maps properties whose names state a role, never by value', () => {
+    const css = buildDesignSystemTokensCss(':root { --color-primary: #ff385c; --color-background: #fff; --font-heading: "Cereal", sans-serif; --rausch: #ff385c; --bg-alt: var(--x); }', 'x.css')!;
+    assert.match(css, /--accent: #ff385c; \/\* from --color-primary \*\//);
+    assert.match(css, /--bg: #fff; \/\* from --color-background \*\//);
+    assert.match(css, /--font-display: "Cereal", sans-serif;/);
+    assert.doesNotMatch(css, /rausch/);
+    assert.match(css, /mapped by their names only/);
+  });
+
+  it('writes nothing when the source has colors but no role names', () => {
+    assert.strictEqual(buildDesignSystemTokensCss(':root { --rausch: #ff385c; } body { color: #111; }', 'x.css'), undefined);
     assert.strictEqual(buildDesignSystemTokensCss('module.exports = { colors: { primary: "#ff385c" } }', 'tailwind.config.js'), undefined);
   });
 

@@ -27,6 +27,10 @@ import {
   type PrepareExplorationInput,
   composeCustomDesignSystemInstructions,
   extractSite,
+  extractFromSources,
+  validateSources,
+  type ExtractionSource,
+  type ExtractSiteResult,
   auditSite as auditLiveSite,
   compareBeforeAfter as compareLiveBeforeAfter,
   formatBeforeAfterResult,
@@ -159,6 +163,14 @@ import {
   scanApp as scanAppCore,
   type AppComponentsFile,
   withFlowMetadata,
+  BRAND_FILE,
+  ownBrandHint,
+  saveNewBrand,
+  refreshUrls,
+  brandRefreshDiff,
+  formatRefreshResult,
+  exportDesignSystemForClaude,
+  type BrandKind,
 } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
 import type { DesignLayout } from './layout';
@@ -411,6 +423,8 @@ export async function prepareBrief(
     projectDesignMdPath: ctx.managedWorkspace || designSystem ? undefined : await findProjectDesignMd(ctx.workspaceRoot),
   });
 
+  const ownBrands = await ctx.contentIndex.ownBrandDesignSystems();
+  const brandHint = ownBrandHint(ownBrands, designSystem);
   const payload = {
     instructions,
     suggestedEntryPath,
@@ -420,6 +434,7 @@ export async function prepareBrief(
     designSystemId: designSystem ? designSystemId : undefined,
     designSystemName: designSystem?.name,
     designSystemHint: designSystem ? undefined : NO_DESIGN_SYSTEM_HINT,
+    brandHint,
     outlinePath: sources.context?.outlinePath,
     sources: sources.context?.sources.map((s) => ({ path: s.path, markdownPath: s.markdownPath, kind: s.kind })),
     flowScreenId: flowContext?.screenId,
@@ -922,7 +937,7 @@ export async function setActiveDesignSystemTool(
 
 export async function createCustomDesignSystem(
   ctx: ToolContext,
-  input: { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string },
+  input: { name?: string; brief?: string; sourceUrl?: string; existingDesignSystemId?: string; kind?: string; descriptor?: unknown; evidenceDir?: string; fontLicence?: string },
 ): Promise<string> {
   if (input.existingDesignSystemId) {
     const id = input.existingDesignSystemId.trim();
@@ -936,10 +951,46 @@ export async function createCustomDesignSystem(
   const slug = slugify(input.name);
   const id = `user:${slug}`;
   const suggestedEntryPath = path.posix.join(ctx.outputDir, 'design-systems', slug, 'DESIGN.md');
+  if (input.kind !== undefined && input.kind !== 'own' && input.kind !== 'reference') throw new Error('"kind" must be own (the user\'s brand) or reference.');
+  if (input.evidenceDir !== undefined && !input.kind) throw new Error('"evidenceDir" needs "kind".');
   const evidence = input.sourceUrl ? await extractBrandEvidence(input.sourceUrl) : undefined;
-  const instructions = composeCustomDesignSystemInstructions({ name: input.name, brief: input.brief, suggestedEntryPath, id, evidence });
-  return JSON.stringify({ instructions, suggestedEntryPath, id }, null, 2);
+  const kind = input.kind as BrandKind | undefined;
+  const dirRel = path.posix.dirname(suggestedEntryPath);
+  const saved = kind ? await saveNewBrand({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, dirRel, name: input.name, kind, descriptor: input.descriptor, evidenceDir: input.evidenceDir, fontLicence: input.fontLicence === 'confirmed' && kind === 'own' ? 'confirmed' : undefined }) : undefined;
+  const brand = saved?.brand;
+  const review = saved?.review;
+  const instructions = composeCustomDesignSystemInstructions({ name: input.name, brief: input.brief, suggestedEntryPath, id, evidence, kind });
+  return JSON.stringify({ instructions, suggestedEntryPath, id, ...(brand ? { brand: path.posix.join(dirRel, BRAND_FILE) } : {}), ...(review ? { review } : {}) }, null, 2);
 }
+
+
+/**
+ * export_open_design_design_system: writes a design system in Claude Design's
+ * project/ format, with an own brand's logo and icons, and a registered
+ * brand.html (openspec connect-brand-design-systems).
+ */
+export async function exportDesignSystem(ctx: ToolContext, input: { designSystemId?: string; by?: string }): Promise<string> {
+  const resolution = await resolveActiveDesignSystem(input.designSystemId?.trim() || undefined, ctx.store, (id) => ctx.contentIndex.getDesignSystem(id));
+  if (resolution.unknownExplicitId) throw new Error(`No design system "${resolution.unknownExplicitId}". list_open_design_design_systems lists them.`);
+  const { designSystemId: id, designSystem: detail } = resolution;
+  if (!id || !detail) throw new Error('"designSystemId" is required (no design system is active). list_open_design_design_systems lists them.');
+  const result = await exportDesignSystemForClaude({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, detail, by: input.by });
+  await writeArtifactManifest({
+    workspaceRoot: ctx.workspaceRoot,
+    entryPath: result.brandPage,
+    artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: `${detail.name}: brand`, designSystemId: id },
+  });
+  return JSON.stringify(
+    {
+      ...result,
+      next:
+        'To put it into Claude Design, publish the files under project/ as a Design System artifact with your Artifact tool (each at its path, e.g. project/tokens.json), with brand.html as the page to look at. Without an Artifact tool, give the user the folder: Claude Design imports a project/ folder the same way.',
+    },
+    null,
+    2,
+  );
+}
+
 
 /**
  * extract_open_design_design_system: renders a website, writes the evidence
@@ -948,8 +999,28 @@ export async function createCustomDesignSystem(
  */
 export async function extractDesignSystemFromSite(
   ctx: ToolContext,
-  input: { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean },
+  input: { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean; compareTo?: string; sources?: unknown },
 ): Promise<ToolOutput> {
+  // sources: screenshots, CSS, page source, brand guides and PowerPoint templates (openspec add-brand-from-screenshot-or-css).
+  let sources: ExtractionSource[] | undefined;
+  if (input.sources !== undefined) {
+    const checked = validateSources(input.sources);
+    if (!checked.ok) throw new Error(checked.error);
+    sources = checked.sources.length ? checked.sources : undefined;
+  }
+  if (sources && (typeof input.url !== 'string' || !input.url.trim()) && !input.compareTo) {
+    if (input.content) throw new Error('"content" needs a url: it copies the words from live pages.');
+    const result = await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources });
+    return await extractOutput(ctx, result, formatExtractSiteResult(result));
+  }
+  // compareTo: measure again from the URLs a saved system recorded, and diff (openspec connect-brand-design-systems).
+  const compareTo = typeof input.compareTo === 'string' && input.compareTo.trim() ? input.compareTo.trim() : undefined;
+  const previous = compareTo ? await ctx.contentIndex.getDesignSystem(compareTo) : undefined;
+  if (compareTo) {
+    const urls = refreshUrls(previous, compareTo);
+    if (!urls.ok) throw new Error(urls.error);
+    if (typeof input.url !== 'string' || !input.url.trim()) input = { ...input, url: urls.url, extraUrls: input.extraUrls ?? urls.extraUrls };
+  }
   if (typeof input.url !== 'string' || !input.url.trim()) throw new Error('"url" is required: the website to extract a design system from.');
   if (input.extraUrls !== undefined && (!Array.isArray(input.extraUrls) || input.extraUrls.some((u) => typeof u !== 'string'))) {
     throw new Error('"extraUrls" must be a list of URLs on the same site.');
@@ -967,9 +1038,16 @@ export async function extractDesignSystemFromSite(
     allowHostsForTesting: evalAllowedHosts(),
   });
   if (result.status === 'invalid-args') throw new Error(result.error);
-  const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
+  const merged = sources && 'bundleDir' in result ? await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, urlResult: result }) : result;
+  const text = compareTo && previous ? formatRefreshResult(formatExtractSiteResult(merged), await brandRefreshDiff(ctx.workspaceRoot, previous, merged)) : formatExtractSiteResult(merged);
+  return await extractOutput(ctx, merged, text);
+}
+
+async function extractOutput(ctx: ToolContext, result: ExtractSiteResult, text: string): Promise<ToolOutput> {
+  if (result.status === 'invalid-args') throw new Error(result.error);
+  const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.screenshots.find((s) => /source-\d+\.png$/.test(s)) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
   const image = shot ? await fs.readFile(path.join(ctx.workspaceRoot, shot)).catch(() => undefined) : undefined;
-  return { text: formatExtractSiteResult(result), images: image ? [{ data: image, mime: 'image/png' }] : [] };
+  return { text, images: image ? [{ data: image, mime: 'image/png' }] : [] };
 }
 
 export async function auditSite(ctx: ToolContext, input: { url?: string; extraUrls?: string[] }): Promise<ToolOutput> {

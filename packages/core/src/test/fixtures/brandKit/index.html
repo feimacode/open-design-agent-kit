@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acme: banking that stays out of the way</title>
+<meta name="description" content="Open an account in minutes. We handle the paperwork so you can get on with your day.">
+<meta name="theme-color" content="#0b5fff">
+<meta property="og:image" content="/og.png">
+<link rel="icon" href="/icon-32.png" sizes="32x32">
+<link rel="icon" href="/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/touch.png">
+<link rel="manifest" href="/site.webmanifest">
+<style>
+  @font-face { font-family: 'Brand Sans'; src: url('/brand.woff2') format('woff2'); font-weight: 600; }
+  :root { --brand: #0b5fff; }
+  body { margin: 0; font-family: 'Brand Sans', Georgia, serif; color: #141414; background: #ffffff; }
+  header { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 32px; background: #ffffff; border-bottom: 1px solid #e5e5e5; }
+  .logo-dark { display: none; }
+  nav a { margin-left: 20px; color: #141414; text-decoration: none; font-size: 15px; }
+  main { max-width: 1120px; margin: 0 auto; padding: 48px 32px; }
+  h1 { font-size: 48px; font-weight: 600; margin: 0 0 16px; }
+  .actions { display: flex; gap: 12px; margin: 24px 0 48px; }
+  .btn { display: inline-flex; align-items: center; height: 44px; padding: 0 24px; font: 600 16px 'Brand Sans', Georgia, serif; border-radius: 999px; text-decoration: none; }
+  .btn-primary { background: #0b5fff; color: #ffffff; border: 0; }
+  .btn-secondary { background: transparent; color: #0b5fff; border: 1px solid #0b5fff; }
+  .btn-ghost { background: transparent; color: #141414; border: 0; padding: 0 12px; }
+  .hero-art { display: block; width: 600px; height: 300px; }
+  .card { background: #f5f7fb; border-radius: 16px; padding: 24px; margin: 24px 0; width: 400px; }
+  .badge { display: inline-block; padding: 2px 10px; height: 22px; border-radius: 999px; background: #e8efff; color: #0b5fff; font-size: 12px; text-transform: uppercase; }
+  input { height: 40px; padding: 0 12px; border: 1px solid #c8c8c8; border-radius: 8px; font: inherit; }
+  input:focus { outline: none; box-shadow: 0 0 0 3px rgba(11, 95, 255, 0.4); }
+  .features { display: flex; gap: 24px; }
+  .features svg { width: 24px; height: 24px; }
+  footer { background: #0a0f1f; color: #ffffff; padding: 40px 32px; }
+  @media (prefers-color-scheme: dark) {
+    body, header { background: #0a0f1f; color: #f2f4f8; }
+    .logo-light { display: none; }
+    .logo-dark { display: inline; }
+    nav a { color: #f2f4f8; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <a href="/" class="logo" aria-label="Acme home">
+    <svg class="logo-light" width="96" height="24" viewBox="0 0 96 24" xmlns="http://www.w3.org/2000/svg"><rect width="96" height="24" fill="#141414"/></svg>
+    <svg class="logo-dark" width="96" height="24" viewBox="0 0 96 24" xmlns="http://www.w3.org/2000/svg"><rect width="96" height="24" fill="#ffffff"/></svg>
+  </a>
+  <nav><a href="/pricing">Pricing</a><a href="/business">Business</a><a href="/help">Help</a></nav>
+</header>
+<main>
+  <span class="badge">New</span>
+  <h1>Banking that stays out of the way</h1>
+  <p>Open an account in minutes. We handle the paperwork, so you can get on with your day and keep more of what you earn.</p>
+  <div class="actions">
+    <a class="btn btn-primary" href="/signup">Start your account</a>
+    <a class="btn btn-secondary" href="/tour">See how it works</a>
+    <a class="btn btn-ghost" href="/rates">Compare rates</a>
+  </div>
+  <svg class="hero-art" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg"><circle cx="300" cy="150" r="120" fill="#e8efff"/></svg>
+  <div class="card"><h2>Your money, sorted</h2><p>Every payment you make is sorted for you, with nothing to set up.</p></div>
+  <form onsubmit="return false"><input type="email" placeholder="you@example.com"></form>
+  <h2>Built for how you live</h2>
+  <div class="features">
+    <svg class="lucide lucide-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v12H3z"/></svg>
+    <svg class="lucide lucide-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l8 4v6c0 4-3 7-8 8-5-1-8-4-8-8V7z"/></svg>
+    <svg class="lucide lucide-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/></svg>
+  </div>
+</main>
+<footer>
+  <a href="/" class="logo footer-logo"><svg width="80" height="20" viewBox="0 0 80 20" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="20" fill="#fefefe"/></svg></a>
+</footer>
+</body>
+</html>

@@ -7,4 +7,5 @@ The complete list of everything you can call or configure. `npm run lint` checks
 - [CLI](cli.md)
 - [Settings and environment variables](settings-and-env.md)
 - [Artifact manifest](artifact-manifest.md)
+- [brand.json](brand-json.md)
 - [Hosted server](remote-server.md)

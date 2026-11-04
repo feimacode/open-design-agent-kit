@@ -148,6 +148,24 @@ describe('hosted gateway over HTTP', function () {
     }
   });
 
+  it('drafts a design system from sources only, and refuses a url', async () => {
+    const client = await connect();
+    try {
+      const project = ((await client.callTool({ name: 'start_open_design_project', arguments: {} })).structuredContent as { project: string }).project;
+      const refused = await client.callTool({ name: 'extract_open_design_design_system', arguments: { project, url: 'https://example.com' } });
+      assert.strictEqual(refused.isError, true);
+      assert.match(text(refused), /as sources/);
+      const css = ':root { --color-primary: #e4002b; --color-background: #ffffff; --color-text: #1a1a1a; --font-heading: "Montserrat", sans-serif; }';
+      const html = '<!doctype html><html><head><style>body { font-family: "Open Sans", sans-serif; }</style></head><body></body></html>';
+      const drafted = await client.callTool({ name: 'extract_open_design_design_system', arguments: { project, sources: [{ kind: 'css', text: css }, { kind: 'html', text: html }] } });
+      assert.ok(!drafted.isError, text(drafted));
+      assert.match(text(drafted), /#e4002b/);
+      assert.match(text(drafted), /declared/);
+    } finally {
+      await client.close();
+    }
+  });
+
   it('makes viewer links on the user-content host only, with no-index headers', async () => {
     const client = await connect();
     try {

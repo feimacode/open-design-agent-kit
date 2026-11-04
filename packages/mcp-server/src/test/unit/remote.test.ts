@@ -39,6 +39,9 @@ describe('remote profile (add-remote-mcp-server)', () => {
     assert.match(remoteArgRefusal('export_open_design_artifact', { embedAssets: true }) ?? '', /embedAssets/);
     assert.strictEqual(remoteArgRefusal('export_open_design_artifact', { format: 'pdf' }), undefined);
     assert.strictEqual(remoteArgRefusal('publish_open_design_artifact', { provider: 'netlify' }), undefined);
+    assert.match(remoteArgRefusal('extract_open_design_design_system', { url: 'https://example.com' }) ?? '', /pass its HTML and stylesheets as sources/);
+    assert.match(remoteArgRefusal('extract_open_design_design_system', { compareTo: 'user:acme', sources: [] }) ?? '', /does not fetch websites/);
+    assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { sources: [{ kind: 'css', text: ':root{--brand:#e4002b}' }], content: false }), undefined);
   });
 
   it('reads limits from the environment, ignoring bad values', () => {

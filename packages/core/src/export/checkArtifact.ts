@@ -35,6 +35,8 @@ import { deviceViewports, drawsOwnFrame, parseDevice } from '../preview/deviceSh
 import { hasDataBinds, resolveSampleData, sampleDataFindings, thinStaticTables } from './sampleData';
 import { findBaseScreen } from '../generation/baseScreen';
 import { redesignFindings } from './redesignChecks';
+import { applyBrandChecks, loadOwnBrandContext } from './brandChecks';
+import { BRAND_REVIEW_ATTR, brandReviewFindings } from './brandReview';
 import { appDesignSystemStaleness, parseAppComponentsFile, tokenFindings } from '../generation/appDesignSystem';
 
 export interface CheckViewport {
@@ -321,6 +323,9 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
         ]
       : [];
 
+  // Designs on the person's own brand: palette, font and logo checks (openspec connect-brand-design-systems).
+  const ownBrand = await loadOwnBrandContext(options.workspaceRoot, options.outputDir ?? '.open-design', typeof manifest.designSystemId === 'string' ? manifest.designSystemId : undefined);
+
   const browser = await findBrowser({ explicitPath: options.browserPath });
   if (!browser.ok) return fail('no-browser', browser.message);
 
@@ -343,6 +348,19 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
     const slideCount = await countSlides(page);
     const isDeck = kind === 'deck' || renderer === 'deck-html' || (slideCount >= 2 && (sourceSkillId ?? '').startsWith('od:deck:'));
     if (options.slides !== undefined && !isDeck) return fail('invalid-args', "slides applies to decks, and this artifact isn't one.");
+    const branded = async <T extends { findings: Finding[] }>(mode: CheckMode, out: T): Promise<T> => {
+      if (!ownBrand) return out;
+      try {
+        if (mode === 'page') {
+          await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
+          await page.evaluate('window.scrollTo(0, 0)');
+        }
+        out.findings = await applyBrandChecks(page, ownBrand, out.findings, mode);
+      } catch (err) {
+        warnings.push(`The brand checks didn't run: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      return out;
+    };
     const done = (mode: CheckMode, out: { findings: Finding[]; images: CheckImage[]; omitted: string[]; slidesChecked?: number[]; scene3d?: SceneEvidence }): CheckArtifactResult => {
       // Timestamped captures (`at`) come first and share the image budget with the regular ones.
       const images = timed.length > 0 ? [...timed, ...out.images].slice(0, maxImages) : out.images;
@@ -365,7 +383,7 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
     if (isDeck && slideCount > 0) {
       const slideError = validateSlideNumbers(options.slides, slideCount);
       if (slideError) return fail('invalid-args', slideError);
-      return done('deck', await checkDeck(instance, page, slideCount, options.slides, maxImages, warnings));
+      return done('deck', await branded('deck', await checkDeck(instance, page, slideCount, options.slides, maxImages, warnings)));
     }
     if (isDeck) warnings.push(`No slide elements (${SLIDE_SELECTOR}) were found, so the deck was checked as a single page.`);
 
@@ -373,7 +391,7 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
     if (cardCount > 0) {
       if (options.viewports !== undefined) warnings.push('viewports apply to pages without a [data-od-card]; this design was checked at its card size instead.');
       const aspectHint = sourceSkillId && options.lookupAspectHint ? await options.lookupAspectHint(sourceSkillId) : undefined;
-      return done('cards', await checkCards(instance, page, artifact.entryContent, manifest, aspectHint, sourceSkillId, maxImages));
+      return done('cards', await branded('cards', await checkCards(instance, page, artifact.entryContent, manifest, aspectHint, sourceSkillId, maxImages)));
     }
     // The review sheet goes second, after the first viewport's first screen; other screens fill the rest of the budget.
     const sheetSlot = reviewable && maxImages > 0 ? 1 : 0;
@@ -443,7 +461,12 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
       await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 1 });
       result.findings.push(...((await page.evaluate(collectEmailFindings, { maxWidth: EMAIL_MAX_WIDTH, hasBaseUrl: false, checkOnly: true })) as Finding[]));
     }
-    return done('page', result);
+    if (artifact.entryContent.includes(BRAND_REVIEW_ATTR)) {
+      // A design system review: the sample against the site's measurements (openspec connect-brand-design-systems).
+      await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
+      result.findings.push(...(await brandReviewFindings(page, options.workspaceRoot, options.entryPath, artifact.entryContent, warnings)));
+    }
+    return done('page', await branded('page', result));
   } catch (err) {
     return fail('capture-failed', `Check failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
