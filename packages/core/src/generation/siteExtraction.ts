@@ -25,6 +25,7 @@ import {
   PAGE_TIMEOUT_MS,
   blockedReason,
   gotoPage,
+  hiddenConsentSelectors,
   hideConsentBanners,
   isBlockedHostLiteral,
   isPrivateAddress,
@@ -37,6 +38,7 @@ import {
 import { extractBrandEvidence, type BrandEvidence } from './brandExtraction';
 import { CONTENT_FILE, capPageContent, fetchRobots, readContentInventory, robotsDisallows, type ContentInventory, type PageContent } from './contentInventory';
 import {
+  cssColorToHex,
   draftTokensCss,
   evidenceToTokens,
   type ColorRole,
@@ -108,7 +110,7 @@ export type ExtractSiteResult =
 // ── In-page measurement ─────────────────────────────────────────────────
 // Serialized into the page by page.evaluate(), so it must be self-contained.
 
-interface MeasuredPage extends Omit<PageEvidence, 'url'> {
+interface MeasuredPage extends Omit<PageEvidence, 'url' | 'dark' | 'hiddenOverlays'> {
   title: string;
   bodyTextLength: number;
   elementCount: number;
@@ -131,6 +133,8 @@ function measurePageInBrowser(): MeasuredPage {
     return r.width > 2 && r.height > 2 && s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity) > 0.05;
   };
   const transparent = (c: string): boolean => c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c) || /\/\s*0\)$/.test(c);
+  // A gradient's first colour stop, which stands in for the fill when an element paints a gradient over a transparent colour.
+  const firstStop = (image: string): string | undefined => (/gradient\(/.test(image) ? /rgba?\([^)]*\)/.exec(image)?.[0] : undefined);
   const selectorFor = (el: Element): string => {
     const part = (e: Element): string => {
       if (e.id && /^[A-Za-z][\w-]*$/.test(e.id)) return `#${e.id}`;
@@ -229,9 +233,29 @@ function measurePageInBrowser(): MeasuredPage {
   const muted = tally(mutedEls, (el) => cs(el).color, textWeight).find((entry) => entry[0] !== fg?.[0] && readable(entry));
   if (muted) setRole('muted', muted[0], muted[1].el, muted[1].count);
 
+  // Secondary text tiers: the next two readable, near-neutral text colours by
+  // amount of text (links and coloured labels aren't text tiers).
+  const neutral = (c: string): boolean => {
+    const [r, g, b] = (c.match(/[\d.]+/g) ?? []).slice(0, 3).map((n) => Number(n) / 255);
+    const max = Math.max(r, g, b);
+    return max === 0 || (max - Math.min(r, g, b)) / max < 0.25;
+  };
+  const tiers = tally(all('p, li, td, dd, span, small, figcaption, time, label'), (el) => cs(el).color, textWeight)
+    .filter((entry) => entry[0] !== fg?.[0] && entry[0] !== muted?.[0] && readable(entry) && neutral(entry[0]) && entry[1].weight >= 40)
+    .slice(0, 2)
+    .sort((a, b) => contrastOnPage(b[0]) - contrastOnPage(a[0]));
+  const mutedContrast = muted ? contrastOnPage(muted[0]) : 0;
+  if (tiers.length === 2) {
+    setRole('fg-2', tiers[0][0], tiers[0][1].el, tiers[0][1].count);
+    setRole('meta', tiers[1][0], tiers[1][1].el, tiers[1][1].count);
+  } else if (tiers.length === 1) setRole(contrastOnPage(tiers[0][0]) > mutedContrast ? 'fg-2' : 'meta', tiers[0][0], tiers[0][1].el, tiers[0][1].count);
+
   const bordered = all('div, section, article, input, hr, li, table, td, th, header, nav, aside, button').filter((el) => parseFloat(cs(el).borderTopWidth) > 0 || parseFloat(cs(el).borderBottomWidth) > 0);
   const border = tally(bordered, (el) => (parseFloat(cs(el).borderTopWidth) > 0 ? cs(el).borderTopColor : cs(el).borderBottomColor)).find(([c]) => c !== fg?.[0]);
   if (border) setRole('border', border[0], border[1].el, border[1].count);
+  const separators = all('tr, td, th, li, hr, [class*="divider" i], [class*="separator" i], [class*="row" i]').filter((el) => parseFloat(cs(el).borderTopWidth) > 0 || parseFloat(cs(el).borderBottomWidth) > 0);
+  const soft = tally(separators, (el) => (parseFloat(cs(el).borderBottomWidth) > 0 ? cs(el).borderBottomColor : cs(el).borderTopColor)).find(([c]) => c !== border?.[0] && c !== fg?.[0]);
+  if (soft) setRole('border-soft', soft[0], soft[1].el, soft[1].count);
 
   // Accent: the most prominent filled button above the fold, else the link colour.
   const rgb = (c: string): number[] => (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
@@ -241,8 +265,12 @@ function measurePageInBrowser(): MeasuredPage {
     const min = Math.min(r, g, b);
     return max === 0 ? 0 : (max - min) / max;
   };
-  const buttons = all('button, a[role="button"], [class*="btn" i], [class*="button" i], input[type="submit"], a[href]').filter((el) => {
+  const fill = (el: Element): string => {
     const bgc = cs(el).backgroundColor;
+    return transparent(bgc) ? (firstStop(cs(el).backgroundImage) ?? bgc) : bgc;
+  };
+  const buttons = all('button, a[role="button"], [class*="btn" i], [class*="button" i], input[type="submit"], a[href]').filter((el) => {
+    const bgc = fill(el);
     const r = el.getBoundingClientRect();
     return !transparent(bgc) && bgc !== pageBg && bgc !== surface?.[0] && r.height >= 24 && r.height <= 120 && r.width <= 600 && (el.textContent ?? '').trim().length > 0;
   });
@@ -251,18 +279,48 @@ function measurePageInBrowser(): MeasuredPage {
       const r = el.getBoundingClientRect();
       const fold = r.top + win.scrollY < win.innerHeight ? 2 : 1;
       const tag = /^(button|input)$/i.test(el.tagName) || /btn|button|cta|primary/i.test(el.className.toString()) ? 1.5 : 1;
-      return { el, score: Math.sqrt(r.width * r.height) * fold * tag * (0.4 + saturation(cs(el).backgroundColor)) };
+      return { el, score: Math.sqrt(r.width * r.height) * fold * tag * (0.4 + saturation(fill(el))) };
     })
     .sort((a, b) => b.score - a.score);
   const primary = scored[0]?.el;
+  const gradients: NonNullable<MeasuredPage['gradients']> = [];
   if (primary) {
-    const value = cs(primary).backgroundColor;
-    setRole('accent', value, primary, buttons.filter((b) => cs(b).backgroundColor === value).length);
+    const value = fill(primary);
+    setRole('accent', value, primary, buttons.filter((b) => fill(b) === value).length);
+    if (/gradient\(/.test(cs(primary).backgroundImage)) gradients.push({ role: 'accent', value: cs(primary).backgroundImage });
     setRole('accent-on', cs(primary).color, primary, 1);
     primary.setAttribute(`${MARK}-primary`, '');
   } else {
     const links = tally(all('a[href]'), (el) => cs(el).color).find(([c]) => c !== fg?.[0]);
     if (links) setRole('accent', links[0], links[1].el, links[1].count);
+  }
+
+  // Status colours, only from elements whose role, state or class names say
+  // which status they show, and only saturated values (grey isn't a status).
+  const statusOf = (el: Element): 'success' | 'warn' | 'danger' | undefined => {
+    const key = `${el.getAttribute('role') ?? ''} ${el.className.toString()} ${el.id}`.toLowerCase();
+    if (el.getAttribute('aria-invalid') === 'true' || /error|danger|invalid|destructive|negative/.test(key)) return 'danger';
+    if (/success|positive/.test(key)) return 'success';
+    if (/warn|caution/.test(key)) return 'warn';
+    return undefined;
+  };
+  const statusTally = new Map<string, Map<string, { count: number; el: Element }>>();
+  for (const el of all('[role="alert"], [role="status"], [aria-invalid="true"], [class*="error" i], [class*="danger" i], [class*="invalid" i], [class*="alert" i], [class*="success" i], [class*="warn" i], [class*="badge" i], [class*="toast" i], [class*="status" i]')) {
+    const status = statusOf(el);
+    if (!status) continue;
+    const s = cs(el);
+    const candidates = [s.backgroundColor, s.color, el.tagName === 'INPUT' ? s.borderTopColor : 'transparent'];
+    const value = candidates.find((c) => !transparent(c) && saturation(c) > 0.3);
+    if (!value) continue;
+    const m = statusTally.get(status) ?? new Map();
+    const cur = m.get(value);
+    if (cur) cur.count++;
+    else m.set(value, { count: 1, el });
+    statusTally.set(status, m);
+  }
+  for (const [status, m] of statusTally) {
+    const [value, { count, el }] = [...m].sort((a, b) => b[1].count - a[1].count)[0];
+    setRole(status as ColorRole, value, el, count);
   }
 
   // Text roles.
@@ -339,12 +397,16 @@ function measurePageInBrowser(): MeasuredPage {
   });
 
   // Shape, spacing, layout, motion.
-  const radiusEls: Array<[Element, 'button' | 'input' | 'card' | 'other']> = [
-    ...buttons.slice(0, 40).map((el) => [el, 'button'] as [Element, 'button']),
-    ...all('input:not([type="checkbox"]):not([type="radio"]), select, textarea').map((el) => [el, 'input'] as [Element, 'input']),
-    ...cards.slice(0, 60).map((el) => [el, 'card'] as [Element, 'card']),
+  type RadiusKind = 'button' | 'input' | 'card' | 'featured' | 'other';
+  const viewportArea = win.innerWidth * win.innerHeight;
+  const featured = all('img, video, picture, figure, section, article, aside, [class*="hero" i], [class*="feature" i], [class*="banner" i], [class*="media" i], div').filter((el) => area(el) >= viewportArea * 0.15 && area(el) <= viewportArea * 3);
+  const radiusEls: Array<[Element, RadiusKind]> = [
+    ...buttons.slice(0, 40).map((el) => [el, 'button'] as [Element, RadiusKind]),
+    ...all('input:not([type="checkbox"]):not([type="radio"]), select, textarea').map((el) => [el, 'input'] as [Element, RadiusKind]),
+    ...cards.filter((el) => area(el) < viewportArea * 0.15).slice(0, 60).map((el) => [el, 'card'] as [Element, RadiusKind]),
+    ...featured.slice(0, 40).map((el) => [el, 'featured'] as [Element, RadiusKind]),
   ];
-  const radiusTally = new Map<string, { px: number; count: number; kind: 'button' | 'input' | 'card' | 'other' }>();
+  const radiusTally = new Map<string, { px: number; count: number; kind: RadiusKind }>();
   for (const [el, kind] of radiusEls) {
     const r = parseFloat(cs(el).borderTopLeftRadius);
     if (!(r > 0)) continue;
@@ -394,6 +456,50 @@ function measurePageInBrowser(): MeasuredPage {
   const shadowEl = surface?.[1].el;
   const cardShadow = shadowEl && cs(shadowEl).boxShadow !== 'none' ? cs(shadowEl).boxShadow : undefined;
 
+  // Gutter: the inline padding of wide content containers. Section rhythm:
+  // the most common vertical padding of top-level sections.
+  const gutters = new Map<number, number>();
+  for (const el of all('[class*="container" i], [class*="wrapper" i], [class*="inner" i], [class*="content" i], main, header > div, footer > div, section > div')) {
+    const r = el.getBoundingClientRect();
+    const pad = parseFloat(cs(el).paddingLeft);
+    if (r.width < win.innerWidth * 0.5 || !(pad >= 8 && pad <= 120)) continue;
+    const snapped = Math.round(pad / 2) * 2;
+    gutters.set(snapped, (gutters.get(snapped) ?? 0) + 1);
+  }
+  let gutter = [...gutters].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0];
+  if (gutter === undefined) {
+    // No padded container: the left edge of the first text block, when it's a plausible gutter.
+    const block = all('main p, main h1, main h2, p, h1, h2')[0];
+    const left = block ? Math.round(block.getBoundingClientRect().left) : 0;
+    if (left >= 8 && left <= 48) gutter = left;
+  }
+  const sectionPads = new Map<number, number>();
+  for (const el of all('main > section, main > div, body > section, body > main > section, [class*="section" i]')) {
+    if (el.getBoundingClientRect().width < win.innerWidth * 0.9) continue;
+    const s = cs(el);
+    for (const v of [parseFloat(s.paddingTop), parseFloat(s.paddingBottom)]) {
+      if (!(v >= 16 && v <= 240)) continue;
+      const snapped = Math.round(v / 4) * 4;
+      sectionPads.set(snapped, (sectionPads.get(snapped) ?? 0) + 1);
+    }
+  }
+  const sectionY = [...sectionPads].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0]?.[0];
+
+  // The hero: the first full-width block near the top that paints something behind it.
+  let hero: MeasuredPage['hero'];
+  for (const el of all('[class*="hero" i], header + section, header + div, main > section:first-child, main > div:first-child, section')) {
+    const r = el.getBoundingClientRect();
+    if (r.top + win.scrollY > win.innerHeight || r.width < win.innerWidth * 0.6 || r.height < 200) continue;
+    const image = cs(el).backgroundImage;
+    if (/gradient\(/.test(image)) {
+      hero = { background: 'gradient', value: image };
+      gradients.push({ role: 'hero', value: image });
+    } else if (/url\(/.test(image)) hero = { background: 'image' };
+    else if (el.querySelector('video')) hero = { background: 'video' };
+    if (hero) break;
+  }
+  if (surface && /gradient\(/.test(cs(surface[1].el).backgroundImage)) gradients.push({ role: 'surface', value: cs(surface[1].el).backgroundImage });
+
   // Marks.
   let logo: MeasuredPage['logo'];
   const logoEl = all('header [class*="logo" i] svg, header [class*="logo" i] img, header a[href="/"] svg, header a[href="/"] img, [class*="logo" i] svg, [class*="logo" i] img, header svg, header img').find(
@@ -429,10 +535,64 @@ function measurePageInBrowser(): MeasuredPage {
     containerMax,
     transitions: { durations: [...durations].map(([ms, count]) => ({ ms, count })), easings: [...easings].map(([value, count]) => ({ value, count })) },
     cardShadow,
+    gradients: gradients.length > 0 ? gradients : undefined,
+    hero,
+    layout: { desktop: { gutter, sectionY } },
     logo,
     favicon: iconLink?.href,
     stylesheetsUnreadable,
   };
+}
+
+async function quietOverlays(page: Page, hidden: Set<string>): Promise<void> {
+  await page.evaluate(hideConsentBanners).catch(() => 0);
+  const found = (await page.evaluate(hiddenConsentSelectors).catch(() => [])) as string[];
+  for (const sel of found) hidden.add(sel);
+}
+
+export const SCROLL_MAX_STEPS = 12;
+export const SCROLL_MAX_MS = 8_000;
+export const FULL_PAGE_MAX_HEIGHT = 6_000;
+
+/** Scrolls the page in viewport steps so lazy and scroll-reveal content renders, then back to the top with reveal animations finished. */
+async function scrollThrough(page: Page): Promise<void> {
+  const started = Date.now();
+  for (let i = 0; i < SCROLL_MAX_STEPS && Date.now() - started < SCROLL_MAX_MS; i++) {
+    const atEnd = await page
+      .evaluate(() => {
+        const before = window.scrollY;
+        window.scrollBy(0, window.innerHeight);
+        return window.scrollY === before || window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+      })
+      .catch(() => true);
+    await new Promise((r) => setTimeout(r, 150));
+    if (atEnd) break;
+  }
+  await page
+    .evaluate(() => {
+      window.scrollTo(0, 0);
+      // Reveal effects end in their final state; an endless animation can't finish and is left as it is.
+      for (const a of document.getAnimations?.() ?? []) {
+        try {
+          a.finish();
+        } catch {
+          // Infinite iteration count.
+        }
+      }
+    })
+    .catch(() => undefined);
+  await new Promise((r) => setTimeout(r, 200));
+}
+
+async function fullPageScreenshot(page: Page, file: string): Promise<boolean> {
+  try {
+    const height = (await page.evaluate(() => document.documentElement.scrollHeight)) as number;
+    const viewport = page.viewport();
+    await page.screenshot({ path: file, captureBeyondViewport: true, clip: { x: 0, y: 0, width: viewport?.width ?? DESKTOP_VIEWPORT.width, height: Math.max(1, Math.min(height, FULL_PAGE_MAX_HEIGHT)) } });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Roles only, for the dark-theme pass. */
@@ -443,6 +603,29 @@ function measureRolesInBrowser(): Partial<Record<ColorRole, RoleSample>> {
 // ── Browser session ──────────────────────────────────────────────────────
 
 async function forcedStateColor(page: Page, state: 'hover' | 'active'): Promise<string | undefined> {
+  return (await forcedStateStyle(page, state === 'active' ? ['hover', 'active'] : ['hover']))?.background;
+}
+
+/** The primary control's keyboard focus ring with :focus-visible forced, as a box-shadow value; undefined for the browser's own ring or none. */
+async function forcedFocusRing(page: Page): Promise<string | undefined> {
+  const rest = await page.evaluate(() => {
+    const el = document.querySelector('[data-od-extract-primary]');
+    return el ? getComputedStyle(el).boxShadow : undefined;
+  });
+  const focused = await forcedStateStyle(page, ['focus', 'focus-visible']);
+  if (!focused) return undefined;
+  if (focused.outlineStyle !== 'none' && focused.outlineStyle !== 'auto' && parseFloat(focused.outlineWidth) > 0) {
+    const color = cssColorToHex(focused.outlineColor);
+    if (color) return `0 0 0 ${Math.round(parseFloat(focused.outlineWidth) * 10) / 10}px ${color}`;
+  }
+  if (focused.boxShadow && focused.boxShadow !== 'none' && focused.boxShadow !== rest) return focused.boxShadow;
+  return undefined;
+}
+
+async function forcedStateStyle(
+  page: Page,
+  forcedPseudoClasses: string[],
+): Promise<{ background: string; outlineStyle: string; outlineWidth: string; outlineColor: string; boxShadow: string } | undefined> {
   const client = await page.createCDPSession();
   try {
     await client.send('DOM.enable');
@@ -455,10 +638,13 @@ async function forcedStateColor(page: Page, state: 'hover' | 'active'): Promise<
       const el = document.querySelector('[data-od-extract-primary]') as HTMLElement | null;
       if (el) el.style.setProperty('transition', 'none', 'important');
     });
-    await client.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: state === 'active' ? ['hover', 'active'] : ['hover'] });
+    await client.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses });
     const value = await page.evaluate(() => {
       const el = document.querySelector('[data-od-extract-primary]');
-      return el ? getComputedStyle(el).backgroundColor : undefined;
+      if (!el) return undefined;
+      const s = getComputedStyle(el);
+      const fill = s.backgroundColor === 'rgba(0, 0, 0, 0)' ? (/rgba?\([^)]*\)/.exec(s.backgroundImage)?.[0] ?? s.backgroundColor) : s.backgroundColor;
+      return { background: fill, outlineStyle: s.outlineStyle, outlineWidth: s.outlineWidth, outlineColor: s.outlineColor, boxShadow: s.boxShadow };
     });
     await client.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
     return value;
@@ -515,6 +701,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   const pages: PageEvidence[] = [];
   const marks: string[] = [];
   let dark: SiteEvidence['dark'];
+  let noDarkFound = false;
   const contentPages: PageContent[] = [];
   /** Each measured page's screenshots, so a redesign's base screen can be traced back to its page. */
   const pageShots: Array<{ url: string; desktop: string; mobile: string }> = [];
@@ -537,6 +724,13 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         blocked.push({ url: url.toString(), reason: `the page didn't load (${err instanceof Error ? err.message.split('\n')[0] : String(err)})` });
         continue;
       }
+      // Overlays first, so a consent button can't become the accent; then a
+      // scroll so lazy and scroll-reveal sections count; then overlays that
+      // appeared on the way.
+      const hidden = new Set<string>();
+      await quietOverlays(page, hidden);
+      await scrollThrough(page);
+      await quietOverlays(page, hidden);
       const desktopShot = `${prefix}desktop.png`;
       await page.screenshot({ path: path.join(bundleDir, desktopShot) });
       await page.evaluate(`globalThis.__odMeasure = ${measurePageInBrowser.toString()}`);
@@ -547,8 +741,9 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         continue;
       }
       screenshots.push(rel(desktopShot));
+      const fullShot = `${prefix}full.png`;
+      if (await fullPageScreenshot(page, path.join(bundleDir, fullShot))) screenshots.push(rel(fullShot));
       if (input.content) {
-        await page.evaluate(hideConsentBanners).catch(() => 0);
         await page.evaluate(`globalThis.__odContent = ${readContentInventory.toString()}`);
         const content = (await page.evaluate('globalThis.__odContent()')) as Omit<PageContent, 'url'>;
         contentPages.push(capPageContent({ url: page.url() || url.toString(), ...content }));
@@ -561,6 +756,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
             measured.roles[`accent-${state}`] = { value, selector: `${measured.roles.accent.selector}:${state}`, count: 1, crop: undefined };
           }
         }
+        measured.focusRing = await forcedFocusRing(page);
       }
       const crops = await cropRoles(page, measured.rects, path.join(bundleDir, 'crops'), prefix);
       for (const [role, sample] of Object.entries(measured.roles)) {
@@ -587,33 +783,36 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
           marks.push(rel(`favicon.${ext}`));
         }
         if (measured.stylesheetsUnreadable > 0) notes.push(`${measured.stylesheetsUnreadable} cross-origin stylesheet(s) couldn't be read, so their custom properties and @font-face sources are missing; computed values are unaffected.`);
+      }
 
-        if (theme !== 'light') {
-          const light = darkSignature(measured.roles);
-          await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
-          await gotoPage(page, url.toString());
-          await page.evaluate(`globalThis.__odMeasure = ${measurePageInBrowser.toString()}`);
-          let roles = (await page.evaluate(measureRolesInBrowser)) as Partial<Record<ColorRole, RoleSample>>;
+      // Every page's dark theme: the first one found is drafted, others that differ are conflicts.
+      let pageDark: SiteEvidence['dark'];
+      if (theme !== 'light') {
+        const light = darkSignature(measured.roles);
+        await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+        await gotoPage(page, url.toString());
+        await page.evaluate(`globalThis.__odMeasure = ${measurePageInBrowser.toString()}`);
+        await quietOverlays(page, hidden);
+        let roles = (await page.evaluate(measureRolesInBrowser)) as Partial<Record<ColorRole, RoleSample>>;
+        if (darkSignature(roles) !== light) {
+          pageDark = { trigger: 'prefers-color-scheme', roles };
+          await page.screenshot({ path: path.join(bundleDir, `${prefix}desktop-dark.png`) });
+          screenshots.push(rel(`${prefix}desktop-dark.png`));
+        } else {
+          await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+          await page.evaluate(() => {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.classList.add('dark');
+          });
+          await new Promise((r) => setTimeout(r, 400));
+          roles = (await page.evaluate(measureRolesInBrowser)) as Partial<Record<ColorRole, RoleSample>>;
           if (darkSignature(roles) !== light) {
-            dark = { trigger: 'prefers-color-scheme', roles };
+            pageDark = { trigger: 'toggle', roles };
             await page.screenshot({ path: path.join(bundleDir, `${prefix}desktop-dark.png`) });
             screenshots.push(rel(`${prefix}desktop-dark.png`));
-          } else {
-            await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
-            await page.evaluate(() => {
-              document.documentElement.setAttribute('data-theme', 'dark');
-              document.documentElement.classList.add('dark');
-            });
-            await new Promise((r) => setTimeout(r, 400));
-            roles = (await page.evaluate(measureRolesInBrowser)) as Partial<Record<ColorRole, RoleSample>>;
-            if (darkSignature(roles) !== light) {
-              dark = { trigger: 'toggle', roles };
-              await page.screenshot({ path: path.join(bundleDir, `${prefix}desktop-dark.png`) });
-              screenshots.push(rel(`${prefix}desktop-dark.png`));
-            } else notes.push('No dark theme was found: the site looks the same under prefers-color-scheme: dark and with a dark theme attribute on the root element. No dark values were returned.');
-          }
-          await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+          } else if (i === 0) noDarkFound = true;
         }
+        await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
       }
 
       pages.push({
@@ -627,12 +826,30 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         containerMax: measured.containerMax,
         transitions: measured.transitions,
         cardShadow: measured.cardShadow,
+        focusRing: measured.focusRing,
+        gradients: measured.gradients,
+        hero: measured.hero,
+        layout: measured.layout,
+        hiddenOverlays: hidden.size > 0 ? [...hidden] : undefined,
+        dark: pageDark,
       });
+      if (!dark && pageDark) dark = pageDark;
+      if (hidden.size > 0) notes.push(`${url.toString()}: hid ${hidden.size} overlay(s) before measuring (consent banners or chat launchers, not clicked): ${[...hidden].slice(0, 5).join(', ')}.`);
 
+      // The phone render: its screenshot, and the gutter and section padding at that width.
       await page.setViewport({ ...MOBILE_VIEWPORT, isMobile: true, hasTouch: true });
       await gotoPage(page, url.toString()).catch(() => undefined);
+      await quietOverlays(page, new Set());
       const mobileShot = `${prefix}mobile.png`;
       await page.screenshot({ path: path.join(bundleDir, mobileShot) }).catch(() => undefined);
+      try {
+        await page.evaluate(`globalThis.__odMeasure = ${measurePageInBrowser.toString()}`);
+        const phone = (await page.evaluate('globalThis.__odMeasure()')) as MeasuredPage;
+        const evidence = pages[pages.length - 1];
+        evidence.layout = { ...evidence.layout, phone: phone.layout?.desktop };
+      } catch {
+        // No phone layout: its tokens stay unmeasured.
+      }
       screenshots.push(rel(mobileShot));
       pageShots.push({ url: url.toString(), desktop: rel(desktopShot), mobile: rel(mobileShot) });
     }
@@ -644,7 +861,10 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
 
   const siteEvidence: SiteEvidence = { pages, dark };
   const draft = pages.length > 0 ? evidenceToTokens(siteEvidence) : undefined;
+  if (theme !== 'light' && !dark && noDarkFound) notes.push('No dark theme was found: the site looks the same under prefers-color-scheme: dark and with a dark theme attribute on the root element. No dark values were returned.');
   if (draft && theme !== 'light' && dark && !draft.dark) notes.push('The dark theme changed nothing the draft measures, so no dark values were returned.');
+  if (draft) notes.push(...draft.notes);
+  if (draft && draft.conflicts.length > 0) notes.push(`Pages disagree on ${[...new Set(draft.conflicts.map((c) => c.token))].join(', ')}: the draft keeps the first page's values; see draft.conflicts.`);
   const status = pages.length === 0 ? 'blocked' : 'ok';
   let contentRel: string | undefined;
   if (input.content && contentPages.length > 0) {
@@ -658,7 +878,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   }
   await fs.writeFile(
     path.join(bundleDir, 'evidence.json'),
-    JSON.stringify({ status, url: main.toString(), theme, measuredAt: new Date().toISOString(), ...siteEvidence, pageShots, blocked, marks, notes, draft }, null, 2) + '\n',
+    JSON.stringify({ version: 2, status, url: main.toString(), theme, measuredAt: new Date().toISOString(), ...siteEvidence, pageShots, blocked, marks, notes, draft }, null, 2) + '\n',
   );
   return {
     status,
@@ -720,7 +940,7 @@ export function formatExtractSiteResult(result: ExtractSiteResult): string {
       blocked: result.blocked,
       marks: result.marks,
       content: result.content,
-      draft: result.draft ? { tokens: result.draft.tokens, dark: result.draft.dark, sources: result.draft.sources, unmeasured: result.draft.unmeasured } : undefined,
+      draft: result.draft ? { tokens: result.draft.tokens, dark: result.draft.dark, sources: result.draft.sources, unmeasured: result.draft.unmeasured, conflicts: result.draft.conflicts } : undefined,
       draftCss: result.draftCss,
       candidates: result.candidates,
       notes: result.notes,

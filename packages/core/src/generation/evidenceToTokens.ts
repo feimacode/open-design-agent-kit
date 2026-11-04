@@ -23,7 +23,22 @@ export interface RoleSample {
   crop?: string;
 }
 
-export type ColorRole = 'bg' | 'surface' | 'fg' | 'muted' | 'border' | 'accent' | 'accent-on' | 'accent-hover' | 'accent-active';
+export type ColorRole =
+  | 'bg'
+  | 'surface'
+  | 'fg'
+  | 'fg-2'
+  | 'muted'
+  | 'meta'
+  | 'border'
+  | 'border-soft'
+  | 'accent'
+  | 'accent-on'
+  | 'accent-hover'
+  | 'accent-active'
+  | 'success'
+  | 'warn'
+  | 'danger';
 
 export interface TextRoleSample {
   role: 'h1' | 'h2' | 'h3' | 'h4' | 'body' | 'small' | 'caption' | 'button' | 'nav' | 'code';
@@ -54,8 +69,8 @@ export interface PageEvidence {
   fonts: LoadedFont[];
   /** Declared custom properties: `:root` and theme-scoped (`[data-theme=dark]`, `.dark`, `@media (prefers-color-scheme: dark)`). */
   customProperties: { root: Record<string, string>; themes: Record<string, Record<string, string>> };
-  /** Distinct non-zero border radii in px with how many elements use each; ≥ 999 counts as pill. */
-  radii: Array<{ px: number; count: number; kind: 'button' | 'input' | 'card' | 'other' }>;
+  /** Distinct non-zero border radii in px with how many elements use each; ≥ 999 counts as pill. `featured` is a large container or hero media. */
+  radii: Array<{ px: number; count: number; kind: 'button' | 'input' | 'card' | 'featured' | 'other' }>;
   /** Padding/gap values snapped to 2px, with counts. */
   spacing: Array<{ px: number; count: number }>;
   /** px */
@@ -64,6 +79,25 @@ export interface PageEvidence {
   transitions: { durations: Array<{ ms: number; count: number }>; easings: Array<{ value: string; count: number }> };
   /** The card shadow, when cards have one. */
   cardShadow?: string;
+  /** The primary control's keyboard focus ring with :focus-visible forced, as a box-shadow value. */
+  focusRing?: string;
+  /** Gradients painted by the primary control, the hero or the main surface. */
+  gradients?: Array<{ role: 'accent' | 'hero' | 'surface'; value: string }>;
+  /** What paints behind the hero, when there is one. */
+  hero?: { background: 'gradient' | 'image' | 'video'; value?: string };
+  /** Container gutter and section padding (px) at the desktop and phone widths. */
+  layout?: { desktop?: LayoutSample; phone?: LayoutSample };
+  /** Overlays (consent banners, chat launchers) hidden before measuring, by selector. */
+  hiddenOverlays?: string[];
+  /** This page's dark-theme roles, when the site has a dark theme. */
+  dark?: SiteEvidence['dark'];
+}
+
+export interface LayoutSample {
+  /** The main container's inline padding. */
+  gutter?: number;
+  /** The most common vertical padding of top-level sections. */
+  sectionY?: number;
 }
 
 export interface SiteEvidence {
@@ -79,8 +113,12 @@ export interface DraftTokens {
   dark?: Record<string, string>;
   /** Contract tokens with no measurement (left to the contract fallback). */
   unmeasured: string[];
-  /** Token → where its value came from (selector and crop). */
-  sources: Record<string, { selector: string; crop?: string; page: string }>;
+  /** Token → where its value came from (selector and crop), and the site's own custom property with the same value. */
+  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string }>;
+  /** Values other pages (or their dark themes) gave for a drafted token; the draft keeps the first page's. */
+  conflicts: Array<{ token: string; value: string; page: string; selector: string; crop?: string; theme?: 'dark' }>;
+  /** Things the model should know when writing DESIGN.md (full gradients, an input radius that differs). */
+  notes: string[];
 }
 
 function hex2(n: number): string {
@@ -165,13 +203,21 @@ function colorTokens(roles: Partial<Record<ColorRole, RoleSample>>, page: string
 export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
   const tokens: Record<string, string> = {};
   const sources: DraftTokens['sources'] = {};
-  const [first, ...rest] = evidence.pages;
-  if (!first) return { tokens, unmeasured: TOKEN_SCHEMA.map((t) => t.name), sources };
+  const conflicts: DraftTokens['conflicts'] = [];
+  const notes: string[] = [];
+  const [first] = evidence.pages;
+  if (!first) return { tokens, unmeasured: TOKEN_SCHEMA.map((t) => t.name), sources, conflicts, notes };
 
-  // Colours from the first page (the URL the person gave); later pages fill gaps.
-  for (const page of [first, ...rest]) {
-    for (const [name, value] of Object.entries(colorTokens(page.roles, page.url, sources))) if (!(name in tokens)) tokens[name] = value;
-    for (const name of Object.keys(sources)) if (!(name in tokens)) delete sources[name];
+  // Colours from the first page (the URL the person gave); later pages fill
+  // gaps, and a later page that disagrees is listed as a conflict.
+  for (const page of evidence.pages) {
+    const pageSources: DraftTokens['sources'] = {};
+    for (const [name, value] of Object.entries(colorTokens(page.roles, page.url, pageSources))) {
+      if (!(name in tokens)) {
+        tokens[name] = value;
+        sources[name] = pageSources[name];
+      } else if (tokens[name] !== value) conflicts.push({ token: name, value, page: page.url, selector: pageSources[name].selector, crop: pageSources[name].crop });
+    }
   }
 
   const textRoles = evidence.pages.flatMap((p) => p.textRoles);
@@ -194,12 +240,21 @@ export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
   const code = textRoles.find((r) => r.role === 'code');
   if (code) tokens['--font-mono'] = fontStack(code.fontFamily, fonts);
 
-  // Radii: buttons → md, inputs → sm, cards → lg; a ≥ 999px radius is the pill.
+  // Radii, as the contract describes the steps: buttons (else inputs) → sm,
+  // cards and modals → md, featured containers and hero media → lg; a ≥ 999px
+  // radius is the pill.
   const radii = evidence.pages.flatMap((p) => p.radii);
   const byKind = (kind: string): number | undefined => mostCommon(radii.filter((r) => r.kind === kind && r.px < 999))?.px;
   const pill = radii.find((r) => r.px >= 999);
   if (pill) tokens['--radius-pill'] = '9999px';
-  for (const [kind, name] of [['input', '--radius-sm'], ['button', '--radius-md'], ['card', '--radius-lg']] as const) {
+  const buttonRadius = byKind('button');
+  const inputRadius = byKind('input');
+  const small = buttonRadius ?? inputRadius;
+  if (small !== undefined) tokens['--radius-sm'] = `${small}px`;
+  if (buttonRadius !== undefined && inputRadius !== undefined && inputRadius !== buttonRadius) {
+    notes.push(`Inputs use a ${inputRadius}px radius and buttons ${buttonRadius}px; --radius-sm takes the button's. Mention the input radius in DESIGN.md.`);
+  }
+  for (const [kind, name] of [['card', '--radius-md'], ['featured', '--radius-lg']] as const) {
     const px = byKind(kind);
     if (px !== undefined) tokens[name] = `${px}px`;
   }
@@ -218,7 +273,30 @@ export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
   }
 
   if (first.containerMax) tokens['--container-max'] = `${Math.round(first.containerMax)}px`;
-  if (first.cardShadow) tokens['--elev-raised'] = first.cardShadow;
+  const ring = first.cardShadow ? parseRingShadow(first.cardShadow) : undefined;
+  if (ring) tokens['--elev-ring'] = `0 0 0 1px ${ring}`;
+  else if (first.cardShadow) tokens['--elev-raised'] = first.cardShadow;
+  const focus = evidence.pages.find((p) => p.focusRing)?.focusRing;
+  if (focus) tokens['--focus-ring'] = focus;
+
+  // Gutters and section padding at the two widths the pages were measured at.
+  const layoutValue = (width: 'desktop' | 'phone', key: keyof LayoutSample): number | undefined =>
+    evidence.pages.map((p) => p.layout?.[width]?.[key]).find((v): v is number => typeof v === 'number' && v > 0);
+  for (const [width, gutterName, sectionName] of [
+    ['desktop', '--container-gutter-desktop', '--section-y-desktop'],
+    ['phone', '--container-gutter-phone', '--section-y-phone'],
+  ] as const) {
+    const gutter = layoutValue(width, 'gutter');
+    if (gutter !== undefined) tokens[gutterName] = `${Math.round(gutter)}px`;
+    const sectionY = layoutValue(width, 'sectionY');
+    if (sectionY !== undefined) tokens[sectionName] = `${Math.round(sectionY)}px`;
+  }
+
+  for (const g of evidence.pages.flatMap((p) => p.gradients ?? [])) {
+    notes.push(`The ${g.role === 'accent' ? 'primary button' : g.role === 'hero' ? 'hero' : 'main surface'} paints a gradient: ${g.value}.${g.role === 'accent' ? ' --accent is its first colour stop.' : ''} Describe it in DESIGN.md.`);
+  }
+  const hero = first.hero;
+  if (hero) notes.push(`The hero's background is ${hero.background === 'gradient' ? `a gradient (${hero.value})` : `an ${hero.background}`}.`);
 
   const durations = mergeCounts<number>(evidence.pages.map((p) => p.transitions.durations), 'ms').filter((d) => d.key > 0);
   if (durations.length > 0) {
@@ -231,20 +309,84 @@ export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
   const easing = mostCommon(mergeCounts<string>(evidence.pages.map((p) => p.transitions.easings), 'value'));
   if (easing && durations.length > 0) tokens['--ease-standard'] = easing.key;
 
+  matchDeclaredProperties(evidence.pages, tokens, sources);
+
   let dark: Record<string, string> | undefined;
-  if (evidence.dark) {
-    const measured = colorTokens(evidence.dark.roles, first.url);
+  const darkPage = evidence.dark ? first : evidence.pages.find((p) => p.dark);
+  const darkEvidence = evidence.dark ?? darkPage?.dark;
+  if (darkEvidence && darkPage) {
+    const measured = colorTokens(darkEvidence.roles, darkPage.url);
     dark = Object.fromEntries(Object.entries(measured).filter(([name, value]) => tokens[name] !== value));
     if (Object.keys(dark).length === 0) dark = undefined;
+    for (const page of evidence.pages) {
+      if (page === darkPage || !page.dark) continue;
+      const other = colorTokens(page.dark.roles, page.url, {});
+      for (const [name, value] of Object.entries(other)) {
+        const drafted = dark?.[name] ?? tokens[name];
+        if (drafted !== undefined && drafted !== value) conflicts.push({ token: name, value, page: page.url, selector: page.dark.roles[name.slice(2) as ColorRole]?.selector ?? '', theme: 'dark' });
+      }
+    }
   }
 
-  return { tokens, dark, unmeasured: TOKEN_SCHEMA.map((t) => t.name).filter((n) => !(n in tokens)), sources };
+  return { tokens, dark, unmeasured: TOKEN_SCHEMA.map((t) => t.name).filter((n) => !(n in tokens)), sources, conflicts, notes };
+}
+
+/** `rgb(229, 229, 229) 0px 0px 0px 1px` (a hairline ring) → `#e5e5e5`; anything else → undefined. */
+export function parseRingShadow(shadow: string): string | undefined {
+  if (shadow.replace(/rgba?\([^)]*\)/g, 'C').includes(',')) return undefined;
+  const color = /(rgba?\([^)]*\)|#[0-9a-f]{3,8})/i.exec(shadow)?.[1];
+  const lengths = shadow.replace(/(rgba?\([^)]*\)|#[0-9a-f]{3,8})/gi, '').replace(/inset/, '').trim().split(/\s+/).map((v) => parseFloat(v));
+  if (!color || lengths.length !== 4 || lengths[0] !== 0 || lengths[1] !== 0 || lengths[2] !== 0 || lengths[3] !== 1) return undefined;
+  return cssColorToHex(color);
+}
+
+const DECLARED_ROLE_NAMES: Array<[string, RegExp]> = [
+  ['--success', /success|positive/],
+  ['--danger', /danger|error|destructive|negative/],
+  ['--warn', /warn|caution/],
+  ['--focus-ring', /focus/],
+];
+
+/**
+ * The site's own custom properties: name each drafted colour's twin (same
+ * value), and fill unmeasured status and focus roles from properties whose
+ * names say so, but only when every such property agrees on one value.
+ */
+function matchDeclaredProperties(pages: PageEvidence[], tokens: Record<string, string>, sources: DraftTokens['sources']): void {
+  const declared = new Map<string, { value: string; page: string }>();
+  for (const page of pages) {
+    for (const [name, value] of Object.entries(page.customProperties.root)) if (!declared.has(name)) declared.set(name, { value, page: page.url });
+  }
+  const byHex = new Map<string, string>();
+  for (const [name, { value }] of declared) {
+    const hex = cssColorToHex(value);
+    if (hex && !byHex.has(hex)) byHex.set(hex, name);
+  }
+  for (const [token, value] of Object.entries(tokens)) {
+    const twin = byHex.get(value.toLowerCase());
+    if (twin && sources[token]) sources[token].declared = twin;
+  }
+  for (const [token, pattern] of DECLARED_ROLE_NAMES) {
+    if (token in tokens) continue;
+    const matches = [...declared].filter(([name]) => pattern.test(name.toLowerCase()) && !/(^|-)(bg|background|surface|text|fg|on|border|light|subtle|muted)(-|$)/.test(name.toLowerCase()));
+    const hexes = new Map<string, string>();
+    for (const [name, { value }] of matches) {
+      const hex = cssColorToHex(value);
+      if (hex && !hexes.has(hex)) hexes.set(hex, name);
+    }
+    if (hexes.size !== 1) continue;
+    const [[hex, name]] = [...hexes];
+    tokens[token] = token === '--focus-ring' ? `0 0 0 2px ${hex}` : hex;
+    sources[token] = { selector: `declared ${name}`, page: declared.get(name)!.page, declared: name };
+  }
 }
 
 /** The draft as a tokens.css text, for the model to start from. */
 export function draftTokensCss(draft: DraftTokens, header: string): string {
-  const lines = (set: Record<string, string>): string => Object.entries(set).map(([k, v]) => `  ${k}: ${v};`).join('\n');
-  let css = `/* ${header.replace(/\*\//g, '* /')} */\n:root {\n${lines(draft.tokens)}\n}\n`;
+  // The site's own name for a value, so DESIGN.md can use the brand's vocabulary.
+  const named = (k: string): string => (draft.sources[k]?.declared ? ` /* ${draft.sources[k].declared} */` : '');
+  const lines = (set: Record<string, string>, root = false): string => Object.entries(set).map(([k, v]) => `  ${k}: ${v};${root ? named(k) : ''}`).join('\n');
+  let css = `/* ${header.replace(/\*\//g, '* /')} */\n:root {\n${lines(draft.tokens, true)}\n}\n`;
   if (draft.dark) css += `\n[data-theme="dark"] {\n${lines(draft.dark)}\n}\n`;
   return css;
 }

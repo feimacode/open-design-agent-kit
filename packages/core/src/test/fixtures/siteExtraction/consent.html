@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Harbor banking</title>
+<style>
+  body { margin: 0; background: #ffffff; color: #1f2933; font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  section.band { padding: 64px 0; }
+  .btn { display: inline-block; background: #1d4ed8; color: #fff; padding: 10px 20px; border: 0; border-radius: 6px; font-size: 16px; }
+  .btn:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
+  .card { background: #f3f4f6; border-radius: 14px; padding: 24px; box-shadow: rgb(209, 213, 219) 0px 0px 0px 1px; }
+  .alert-error { color: #dc2626; }
+  .badge-success { background: #16a34a; color: #fff; padding: 2px 8px; border-radius: 999px; }
+  #onetrust-banner-sdk { position: fixed; left: 0; right: 0; bottom: 0; background: #111827; color: #fff; padding: 24px; z-index: 10; }
+  #onetrust-banner-sdk button { background: #22c55e; color: #fff; font-size: 20px; padding: 20px 64px; border: 0; border-radius: 4px; }
+  .cmp-wall { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9; }
+  .cmp-wall .box { background: #fff; margin: 200px auto; width: 500px; padding: 32px; }
+  .cmp-wall .box button { background: #e11d48; color: #fff; font-size: 22px; padding: 24px 80px; border: 0; }
+  .reveal { opacity: 0; transform: translateY(40px); transition: opacity 600ms ease, transform 600ms ease; }
+  .reveal.in { opacity: 1; transform: none; }
+</style>
+</head>
+<body>
+<header class="container"><a href="/">Harbor</a></header>
+<main>
+  <section class="band"><div class="container">
+    <h1>Banking that keeps up with you</h1>
+    <p>Open an account in minutes, move money instantly and see every payment the moment it happens, wherever you are.</p>
+    <a class="btn" href="/open">Open an account</a>
+    <p class="alert-error" role="alert">That card number doesn't look right. Check it and try again.</p>
+    <span class="badge-success">Verified</span>
+  </div></section>
+  <div style="height: 1200px"></div>
+  <section class="band"><div class="container">
+    <div class="card reveal"><h3>Instant transfers</h3><p>Send money to anyone in seconds, any day of the week, with no fees between Harbor accounts.</p></div>
+  </div></section>
+</main>
+<div id="onetrust-banner-sdk"><p>We use cookies to improve your experience.</p><button>Accept all cookies</button></div>
+<div class="cmp-wall"><div class="box"><p>Your privacy: we and our partners use cookies and consent choices for ads.</p><button>Accept and continue</button></div></div>
+<script>
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('in'); }));
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+</script>
+</body>
+</html>

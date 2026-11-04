@@ -43,7 +43,9 @@ If the request already answers all three ("make a dark design system from https:
 
 Call `extract_open_design_design_system` with `url`, `extraUrls` if there are any, and `theme`.
 
-- **`ok`**: you get a `draft` (contract tokens, a `[data-theme="dark"]` set only if the site has a dark theme), `sources` saying which element each value came from, the `unmeasured` tokens, and the screenshot. Look at the screenshot and the role crops in the evidence bundle before writing anything.
+- **`ok`**: you get a `draft` (contract tokens, a `[data-theme="dark"]` set only if the site has a dark theme), `sources` saying which element each value came from (and `declared`, the site's own CSS variable with that value), the `unmeasured` tokens, `conflicts`, `notes` and the screenshot. Look at the screenshot and the role crops in the evidence bundle before writing anything.
+- **`conflicts`**: another page (or its dark theme) gave a different value for a token. The draft keeps the first page's. If the difference matters (a second accent on the pricing page), show it to the user in the review and ask which one is the brand's.
+- **`notes`**: say which overlays were hidden before measuring (consent banners and chat widgets are never the brand), describe any gradient they mention in DESIGN.md (the token holds only its first colour stop), and mention an input radius that differs from the button's.
 - **`partial`** (no browser installed): only candidate colours and fonts from the page source. Tell the user, show the candidates, and ask them to confirm the brand colour and font, or to install Chrome for a full measurement.
 - **`blocked`**: show the user the screenshot and the reason. Ask for the site's CSS, a screenshot of the page they mean, or another public page. Don't retry the same page.
 - An invalid-args error (a private address, an extra page on another site): tell the user what was refused and why.
@@ -58,7 +60,7 @@ Write `DESIGN.md` at `suggestedEntryPath` and `tokens.css` beside it, **both fro
 
 - **`tokens.css`**: start from `draftCss`. Keep every measured value exactly as measured. For an `unmeasured` token, leave it out so the contract fallback applies, or derive it from measured ones (a `color-mix()` of `--accent` for a missing hover); never make one up, and don't fill two steps with the same value.
 - **Sanity-check each role against the screenshot first.** If a measured value plainly can't be that role (text that would be unreadable on `--bg`, a hairline as a spacing step), drop it and say so; don't write prose to explain it away.
-- **`DESIGN.md`**: the values it names (primary colour, surface, text, the font families, the type scale) must be the same values as `tokens.css`. Write the prose (atmosphere, layout, components, voice, do and don't) from the screenshots. For a reference site, say near the top that it is inspired by the site and name it.
+- **`DESIGN.md`**: the values it names (primary colour, surface, text, the font families, the type scale) must be the same values as `tokens.css`. Where `sources` names the site's own variable for a value, use that name in DESIGN.md too (`#635bff, the site's --color-brand-500`). Write the prose (atmosphere, layout, components, voice, do and don't) from the screenshots. For a reference site, say near the top that it is inspired by the site and name it.
 - **Marks**: for the user's own brand, copy the files in the result's `marks` into an `assets/` folder beside `DESIGN.md` and mention them there. For a reference site, copy none.
 
 ## 4. Review it side by side
