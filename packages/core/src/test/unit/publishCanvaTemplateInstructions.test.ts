@@ -11,11 +11,12 @@ describe('composePublishCanvaTemplateInstructions', () => {
     assert.match(result, /its registered title is "Now Page"/);
   });
 
-  it('exports as PDF for a page and PPTX for a deck', () => {
+  it('exports as PDF for a page and editable PPTX for a deck, with the picture PPTX as a fallback', () => {
     assert.match(composePublishCanvaTemplateInstructions(base), /format: "pdf"/);
+    assert.doesNotMatch(composePublishCanvaTemplateInstructions(base), /editable: true/);
     const deck = composePublishCanvaTemplateInstructions({ ...base, manifestKind: 'deck' });
-    assert.match(deck, /format: "pptx"/);
-    assert.match(deck, /NOT editable text or shapes/);
+    assert.match(deck, /format: "pptx"` and `editable: true`/);
+    assert.match(deck, /If that export fails, export again with `format: "pptx"` alone/);
   });
 
   it('looks up the Canva integration before choosing a route', () => {

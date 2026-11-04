@@ -12,7 +12,7 @@ When a deck is exported with `format: "pptx"` and `editable: true`, the system S
 - **THEN** the export SHALL fail, say that `editable` applies to `pptx` only, and write no file
 
 ### Requirement: Native Text Boxes
-In an editable export, the system SHALL create a text box for each visible block of text, keeping its runs' font family (first in the computed stack), size, bold (weight 600 or more), italic, colour, letter spacing and line breaks, its alignment and line height, and applying `text-transform: uppercase` to the text. Single-line text SHALL NOT wrap; multi-line text SHALL wrap within the block's content width.
+In an editable export, the system SHALL create a text box for each visible block of text, keeping its runs' font family (first in the computed stack), size, bold (weight 600 or more), italic, colour, letter spacing and line breaks, its alignment and line height, and applying `text-transform` to the text. Single-line text SHALL NOT wrap; multi-line text SHALL wrap within the block's content width. A list item with an outside disc, circle, square or numbered marker SHALL get a PowerPoint bullet or number instead of the marker.
 
 #### Scenario: Title can be edited
 - **WHEN** a slide with an `<h1>` "Q3 results" in Inter 64 px bold is exported as editable PPTX
@@ -26,14 +26,18 @@ In an editable export, the system SHALL create a rectangle, or a rounded rectang
 - **THEN** the slide SHALL contain a rounded rectangle at the card's position with that fill and border
 
 ### Requirement: Effects Are Not Made Native
-Elements with a transform, opacity below 1, a filter, a clip path, a blend mode or a gradient fill, and their descendants, SHALL NOT be turned into native objects in an editable export, and SHALL be listed as flattened.
+Elements with a transform other than a translation, a filter, a clip path or mask, a blend mode or gradient text (`background-clip: text`), and their descendants, SHALL NOT be turned into native objects in an editable export, and SHALL be listed as flattened. Opacity below 1 SHALL be carried as transparency instead; faded text over a solid colour SHALL be written as the solid colour it looks like.
 
 #### Scenario: Rotated label is not straightened
 - **WHEN** a slide has a label rotated by 90 degrees
 - **THEN** the label SHALL appear on the slide's background picture, not as a text box, and SHALL be listed as flattened
 
+#### Scenario: Faded text stays editable
+- **WHEN** a slide has black text at opacity 0.5 on a white panel
+- **THEN** it SHALL be a text box in mid grey
+
 ### Requirement: Background Picture for Unsupported Effects
-For each slide of an editable export, the system SHALL hide the elements it turned into native objects and capture what remains of the slide as a background picture: gradients, shadows, pseudo-element decoration, SVG, canvas and the elements excluded from native objects. This picture SHALL be placed below the native objects. A background picture that is a single uniform colour SHALL be dropped. The page SHALL be restored before the next slide is read.
+For each slide of an editable export, the system SHALL hide the elements it turned into native objects and capture what remains of the slide as a background picture: gradients, shadows, pseudo-element decoration, SVG, canvas and the elements excluded from native objects. This picture SHALL be placed below the native objects. A native shape or picture painted below a flattened element and overlapping it SHALL be left on the background picture too, so it can't cover that element. A background picture that is a single uniform colour SHALL be dropped. The page SHALL be restored before the next slide is read.
 
 #### Scenario: Gradient and decoration kept
 - **WHEN** a slide has a gradient background, a `::before` frame bar and an editable heading

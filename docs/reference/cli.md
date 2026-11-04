@@ -87,6 +87,7 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--max-bytes <n>` | Per-file byte budget. Oversized images are re-encoded as JPEG; documents only get a warning. |
 | `--deck` | Treat the artifact as a slide deck. Decks registered as kind `deck`, or made from an `od:deck:*` skill, are detected without it. |
 | `--slides <list>` | Decks only: 1-based slide numbers, e.g. `1,3`. |
+| `--editable` | Decks with `--format pptx`: an [editable PowerPoint](../guides/export-decks.md#editable-powerpoint), `<name>-editable.pptx`. |
 | `--preset <format>` | A [canvas format](tools.md#canvas-formats): screen formats set the size, card selector and byte budget; print formats make a [print-ready PDF](../guides/posters.md#print-ready-pdfs). |
 | `--bleed <mm>` | Print PDFs: bleed in mm on every side. Default: the format's. |
 | `--crop-marks` | Print PDFs: add crop marks in a slug around the page. |

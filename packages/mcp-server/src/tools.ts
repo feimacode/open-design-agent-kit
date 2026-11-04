@@ -1188,6 +1188,7 @@ export async function exportArtifact(
     maxBytes?: number;
     deck?: boolean;
     slides?: number[];
+    editable?: boolean;
     badge?: boolean;
     baseUrl?: string;
     embedAssets?: boolean;

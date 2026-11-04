@@ -18,6 +18,8 @@ export interface ExportCliOptions {
   deck?: boolean;
   /** Comma-separated 1-based slide numbers, e.g. "1,3". */
   slides?: string;
+  /** Decks with --format pptx: native text, shapes and pictures instead of one picture per slide. */
+  editable?: boolean;
   /** --badge / --no-badge (standalone and site only); undefined keeps the format default. */
   badge?: boolean;
   preset?: string;
@@ -108,6 +110,7 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     browserPath: flags.browser,
     deck: flags.deck,
     slides,
+    editable: flags.editable,
     badge: flags.badge,
     preset: flags.preset,
     bleed: parseNumberFlag('bleed', flags.bleed),
