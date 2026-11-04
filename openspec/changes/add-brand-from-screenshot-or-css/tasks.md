@@ -2,7 +2,8 @@
 
 - [ ] 1.1 `sourceExtraction.ts`: CSS (custom properties, `body`, `a`, `button` rules), Tailwind theme, W3C tokens, HTML (inline and `<style>` CSS, linked font hosts); roles from names only
 - [ ] 1.2 Brand guide: colour codes with labels, CMYK conversion, Pantone as given, font names, via `read_open_design_source`
-- [ ] 1.3 `screenshotPalette.ts`: CIELAB k-means, role rules, photo-region skip, crops; fixtures and unit tests
+- [ ] 1.3 `templateExtraction.ts`: theme colour scheme and fonts (incl. `sysClr`), master and layout text sizes, margins, background, master images as marks; stock Office theme detection; `.ppt` refusal; fixtures (branded template, stock Office theme, two masters)
+- [ ] 1.4 `screenshotPalette.ts`: CIELAB k-means, role rules, photo-region skip, crops; fixtures and unit tests
 
 ## 2. Tool
 

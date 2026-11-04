@@ -2,7 +2,7 @@
 
 ### Requirement: Extraction Sources
 
-`extract_open_design_design_system` SHALL accept `sources`, up to 6 entries of kind `screenshot` (a workspace image path, or image data up to 4 MB), `css` (a workspace file or text: CSS, a Tailwind config or a W3C design tokens file), `html` (page source text up to 2 MB) or `brandGuide` (a workspace document path), with or without `url`, and SHALL return the same draft shape as a URL extraction.
+`extract_open_design_design_system` SHALL accept `sources`, up to 6 entries of kind `screenshot` (a workspace image path, or image data up to 4 MB), `css` (a workspace file or text: CSS, a Tailwind config or a W3C design tokens file), `html` (page source text up to 2 MB), `brandGuide` (a workspace document path) or `template` (a `.pptx` or `.potx` path, or file data up to 20 MB), with or without `url`, and SHALL return the same draft shape as a URL extraction.
 
 #### Scenario: Screenshot only
 - **WHEN** the tool is called with only a screenshot of a landing page
@@ -35,6 +35,22 @@ For a `brandGuide` source, the tool SHALL read colour codes (hex, RGB, CMYK conv
 #### Scenario: Guide with a CMYK primary
 - **WHEN** a guide lists "Primary — CMYK 100 80 0 30" with no hex value
 - **THEN** `--accent` is drafted from the converted value and its source says it was converted from CMYK
+
+### Requirement: PowerPoint Template Reading
+
+For a `template` source, the tool SHALL read the theme's colour scheme and fonts without a browser or network, map light 1, dark 1, light 2, dark 2 and accent 1 to `--bg`, `--fg`, `--surface`, `--fg-2` and `--accent`, record accents 1 to 6 as the chart palette, map the major and minor fonts to `--font-display` and `--font-body`, take title and body sizes from the slide master as a type scale, and save images placed on the master as marks; all its values SHALL be sourced as `declared`.
+
+#### Scenario: Branded template
+- **WHEN** a `.potx` has accent 1 `#E4002B`, light 1 white, dark 1 `#1A1A1A`, heading font "Montserrat" and body font "Open Sans", and a logo on its master
+- **THEN** the draft has `--accent: #e4002b`, `--bg: #ffffff`, `--fg: #1a1a1a`, the two font stacks, and the logo in the evidence bundle's marks
+
+#### Scenario: Stock Office theme
+- **WHEN** the template uses the default Office theme colours and fonts
+- **THEN** the tool reports that the template has no brand theme and drafts no colour or font tokens from it
+
+#### Scenario: Legacy binary file
+- **WHEN** the `template` path ends in `.ppt`
+- **THEN** the tool refuses it and asks for the file saved as `.pptx`
 
 ### Requirement: Sources-Only Mode on the Hosted Gateway
 
