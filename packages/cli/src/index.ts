@@ -112,6 +112,7 @@ program
   .option('--max-bytes <n>', 'Per-file byte budget; over-budget images are re-encoded as JPEG until they fit')
   .option('--deck', 'Treat the artifact as a slide deck (auto-detected for decks registered as kind "deck")')
   .option('--slides <list>', 'Decks: comma-separated 1-based slide numbers to export, e.g. 1,3')
+  .option('--editable', 'Decks with --format pptx: an editable PowerPoint (text boxes, shapes and pictures) written as <name>-editable.pptx, instead of one picture per slide')
   .option('--preset <format>', 'Canvas format id: screen (x-image, ig-square, ig-portrait, story, xhs-card, yt-thumbnail) fills in size, card selector and byte budget; print (a4, a3, a2, a1, a0, a5, a6, a7, letter, tabloid, poster-18x24, poster-24x36, postcard-4x6, business-card, business-card-us, and cards with rounded corners trading-card, tarot-card, mini-card) makes a print-ready PDF with bleed')
   .option('--bleed <mm>', 'Print PDFs: bleed in mm on every side (default: the format\'s)')
   .option('--crop-marks', 'Print PDFs: add crop marks in a slug around the page')

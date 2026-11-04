@@ -1,6 +1,6 @@
 # Export decks and PDFs
 
-Turn a slide deck into **PowerPoint** or a **PDF**, export chosen slides as images, or print an ordinary page to a **vector PDF**.
+Turn a slide deck into **PowerPoint** (exact pictures, or slides you can edit) or a **PDF**, export chosen slides as images, or print an ordinary page to a **vector PDF**.
 
 ## Before you start
 
@@ -12,6 +12,8 @@ Ask:
 
 > Export this deck as PowerPoint.
 
+> I need to edit these slides in PowerPoint.
+
 > Give me slides 1 and 3 as PNGs.
 
 The agent calls [`export_open_design_artifact`](../reference/tools.md#export_open_design_artifact) with `format: "pptx"`, `"pdf"`, or `"png"` plus `slides: [1, 3]`. After registering a new deck, the agent offers these exports on its own.
@@ -22,6 +24,7 @@ The agent calls [`export_open_design_artifact`](../reference/tools.md#export_ope
 >
 > ```bash
 > npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format pptx
+> npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format pptx --editable
 > npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format pdf
 > npx @feimacode/open-design-agent-kit export .open-design/pitch/pitch.html --format png --slides 1,3
 > ```
@@ -29,10 +32,26 @@ The agent calls [`export_open_design_artifact`](../reference/tools.md#export_ope
 | Format | You get |
 |---|---|
 | `pptx` | `exports/<name>.pptx`: one full-bleed image per slide. It looks exactly like the HTML, but the text isn't editable in PowerPoint. Each slide's speaker notes (`aside.notes` or `.speaker-notes` in the HTML) become its PowerPoint notes. 16:9 decks use PowerPoint's 16:9 layout; other shapes get a matching custom size. |
+| `pptx` with `editable: true` | `exports/<name>-editable.pptx`: text, boxes and pictures you can edit, close to the deck but not identical. See [Editable PowerPoint](#editable-powerpoint). |
 | `pdf` | `exports/<name>.pdf`: one page per slide, in the deck's own shape. |
 | `png` / `jpeg` with `slides` | `exports/<name>-NN.png`: one image per chosen slide, numbered by slide. |
 
 `slides` also works with `pptx` and `pdf`, to include only those slides in that order. Decks are captured at scale 2 by default so text stays crisp when projected; `scale: 1` makes files about four times smaller.
+
+## Editable PowerPoint
+
+Ask for slides you can edit ("so I can change the text in PowerPoint", "for Google Slides"), or pass `editable: true` (`--editable`) with `format: "pptx"`. The kit opens the deck in the browser, reads where everything landed, and rebuilds each slide from PowerPoint's own objects:
+
+| In the deck | In PowerPoint |
+|---|---|
+| Headings, paragraphs, labels, table cells | Text boxes with the deck's font, size, weight, colour, letter spacing and line height. Single lines don't wrap. |
+| List items | Text with PowerPoint bullets or numbers. |
+| Cards, panels, bars, solid backgrounds, borders | Rectangles, rounded rectangles and circles. |
+| Photos and CSS background images | Pictures, already cropped the way the deck shows them. |
+| Gradients, shadows, SVG diagrams, charts drawn in SVG, canvas, rotated or blurred elements, decorative pseudo-elements | One background picture per slide, under everything else. Slides with only solid colours get no picture. |
+| Speaker notes | PowerPoint notes. |
+
+Faded text over a solid colour becomes the solid colour it looks like. The result lists, per slide, what stayed on the background picture, and every font used. Fonts aren't embedded: install the deck's web fonts (marked in the result) on the computer that opens the file, or PowerPoint shows a substitute and lines can wrap differently. Canva swaps fonts it doesn't have.
 
 ## Print a page to PDF
 
@@ -63,7 +82,8 @@ All 54 bundled example decks export this way.
 
 ## Limits
 
-- **The PowerPoint text isn't editable.** Each slide is an image.
+- **The default PowerPoint text isn't editable.** Each slide is an image. Use `editable: true` for slides you can edit.
+- **Editable PowerPoint is close, not identical.** Diagrams and effects on the background picture can't be edited or moved, tables come out as boxes and text rather than PowerPoint tables, and fonts PowerPoint doesn't have are replaced.
 - **Unlabelled on-screen overlays can show up on every slide.** A deck's own floating hint bar with no class (a `position: fixed` element outside the slides) isn't recognized as chrome.
 - **Size:** image-heavy decks can reach 10–20 MB at scale 2.
 

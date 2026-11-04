@@ -14,7 +14,8 @@ import { checkArtifact } from './checkArtifact';
 import { findCollectionArtifacts } from '../workspace/collectionScan';
 import { findBrowser } from './browserDiscovery';
 import { assemblePdf, assemblePptx } from './deck/assemble';
-import { captureDeckSlides, capturePagePdf, countSlides, resolveExportMode, validateSlideNumbers, type ExportMode } from './deck/captureDeck';
+import { assembleEditablePptx, editableReport, formatEditableReport, type EditableReport } from './deck/assembleEditable';
+import { captureDeckSlides, captureEditableDeck, capturePagePdf, countSlides, resolveExportMode, validateSlideNumbers, type ExportMode } from './deck/captureDeck';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize, type SizeSource } from './exportSize';
 import { exportInline, formatInlineExportResult, type InlineExportResult, type PasteTarget } from './inlineExport';
 import type { MotionFormat } from './motion/ffmpeg';
@@ -63,6 +64,8 @@ export interface ExportArtifactOptions {
   deck?: boolean;
   /** 1-based slide numbers to export (decks only). */
   slides?: number[];
+  /** Decks with format "pptx": native text boxes, shapes and pictures instead of one picture per slide (openspec add-editable-pptx-export). */
+  editable?: boolean;
   /** Export each matching element as its own numbered image. */
   selector?: string;
   /** PNG with no page background (omitBackground), for cut-outs such as a 3D product shot. Image exports of pages only. */
@@ -208,6 +211,8 @@ export type ExportArtifactResult =
       dpi?: number;
       /** The print house whose sizes were used. */
       printHouse?: { id: string; label: string; source: string; checkedAt: string };
+      /** Editable PPTX: what was made native per slide, what is on the background picture, and the fonts used. */
+      editable?: EditableReport;
     }
   | { ok: false; code: ExportErrorCode; error: string };
 
@@ -254,6 +259,7 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
     return 'quality must be an integer between 1 and 100.';
   }
   if (o.format !== undefined && !EXPORT_FORMATS.includes(o.format)) return `format must be one of ${EXPORT_FORMATS.join(', ')}.`;
+  if (o.editable && o.format !== 'pptx') return `editable applies to format "pptx" only (an editable PowerPoint of a deck), not "${o.format ?? 'png'}".`;
   if (o.format !== 'standalone' && (o.embedAssets !== undefined || o.maxResolution !== undefined)) return 'embedAssets and maxResolution apply to the "standalone" format only.';
   if (o.maxResolution !== undefined && !ASSET_RESOLUTIONS.includes(o.maxResolution)) return `maxResolution must be one of ${ASSET_RESOLUTIONS.join(', ')}.`;
   if (o.maxResolution !== undefined && !o.embedAssets) return 'maxResolution applies only with embedAssets.';
@@ -660,6 +666,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         format,
         deck: options.deck,
         slides: options.slides,
+        editable: options.editable,
         kind,
         renderer: typeof manifest.renderer === 'string' ? manifest.renderer : undefined,
         sourceSkillId,
@@ -686,6 +693,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     const prints: PrintInfo[] = [];
     let shapeSheetPath: string | undefined;
     let campaignSheetPath: string | undefined;
+    let editableResult: EditableReport | undefined;
     let scale = scaleFor(first);
     let viewport = size.viewport;
     let sizeSource: SizeSource = size.source;
@@ -983,6 +991,20 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       }
       // Failed loads are reported as findings too, so the agent sees them with everything else to fix.
       for (const w of warnings) if (w.startsWith('Failed to load: ')) findings.push({ check: 'broken-asset', severity: 'warning', message: w.slice('Failed to load: '.length) });
+    } else if (mode === 'deck-pptx-editable') {
+      // Editable PPTX: native objects from the browser's layout plus a background picture per slide.
+      scale = options.scale ?? 2;
+      const captured = await captureEditableDeck(page, { slideCount, slides: options.slides, width: options.width, height: options.height, scale });
+      warnings.push(...captured.warnings);
+      viewport = { width: captured.stage.w, height: captured.stage.h };
+      sizeSource = options.width !== undefined ? 'explicit' : 'deck-stage';
+      sizeDetail = options.width !== undefined ? `explicit ${options.width}×${options.height}` : `the deck's measured slide size ${captured.stage.w}×${captured.stage.h}`;
+      const assembled = await assembleEditablePptx(captured.slides, { title, stage: captured.stage });
+      editableResult = editableReport(captured.slides);
+      const relOut = await writeOut(exportFilePathWithSuffix(relEntry, 'editable', undefined, 'pptx', exportLayout), assembled);
+      files.push({ path: relOut, width: Math.round(captured.stage.w * scale), height: Math.round(captured.stage.h * scale), bytes: assembled.length, format: 'pptx' });
+      if (maxBytes !== undefined && assembled.length > maxBytes) warnings.push(`${relOut}: ${assembled.length} bytes is over maxBytes (${maxBytes}); PPTX isn't re-encoded — try scale: 1.`);
+      if (assembled.length > 50 * 1024 * 1024) warnings.push(`${relOut} is over 50 MB — scale: 1 roughly quarters it.`);
     } else {
       // Deck modes: capture one image per slide at the measured (or explicit) stage.
       const document = mode === 'deck-pptx' || mode === 'deck-pdf';
@@ -1066,6 +1088,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       campaignSheet: campaignSheetPath,
       dpi: plans.find((p) => p.densityDpi !== undefined)?.densityDpi,
       printHouse: house ? { id: house.id, label: house.label, source: house.source, checkedAt: house.checkedAt } : undefined,
+      editable: editableResult,
     };
   } catch (err) {
     return fail('capture-failed', `Export failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
@@ -1111,6 +1134,7 @@ export function formatExportResult(result: AnyExportResult): string {
         ),
       ];
   if (result.slideCount !== undefined) lines.push(`Deck: ${result.slideCount} slide(s) found.`);
+  if (result.editable) lines.push(...formatEditableReport(result.editable));
   if (result.printHouse) {
     lines.push(`Print house: sized for ${result.printHouse.label} at ${result.dpi} dpi, from their published spec (${result.printHouse.source}, checked ${result.printHouse.checkedAt}). Check it against their upload page before ordering.`);
   } else if (result.dpi !== undefined && !result.checkOnly) {

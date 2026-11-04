@@ -42,4 +42,4 @@ Call `register_open_design_artifact` with the same `sources`. For every number i
 
 ## 6. Hand it over
 
-Tell the user where the deck and its outline are, mention any images reused from the documents, and offer to export it as PowerPoint or PDF with `export_open_design_artifact`. PowerPoint exports include the speaker notes.
+Tell the user where the deck and its outline are, mention any images reused from the documents, and offer to export it as PowerPoint or PDF with `export_open_design_artifact`. PowerPoint exports include the speaker notes. Offer both PowerPoint versions: the default, which looks exactly like the deck, and `editable: true`, which people can edit in PowerPoint, Keynote, Google Slides or Canva.

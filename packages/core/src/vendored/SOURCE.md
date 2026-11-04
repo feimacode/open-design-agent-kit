@@ -91,7 +91,7 @@ Adapted from upstream at commit `1b47e60bd466` (Apache-2.0). Each file carries a
   - clipped `page.screenshot` replaces Electron `capturePage` and CDP;
   - a compressed-size heuristic flags blank slides, replacing upstream's bitmap scan;
   - the page-versus-deck decision also consults the manifest `kind` and an `od:deck:*` source skill.
-- **Not ported:** editable PPTX (`dom-to-pptx` plus its normalization passes), stitched whole-deck images, and upstream's Electron window and IPC plumbing.
+- **Not ported:** editable PPTX (`dom-to-pptx` plus its normalization passes), stitched whole-deck images, and upstream's Electron window and IPC plumbing. Editable PPTX is implemented separately as the kit's own code (`editablePageScripts.ts`, `slideScene.ts`, `assembleEditable.ts`; see `openspec/changes/add-editable-pptx-export/`), not from `dom-to-pptx`. It reuses the ported preparation, measurement and slide display above.
 
 ## Design system preview, added 2026-09-25 — see `openspec/changes/design-system-preview/design.md`
 

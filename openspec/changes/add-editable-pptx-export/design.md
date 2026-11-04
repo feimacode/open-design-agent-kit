@@ -39,7 +39,9 @@ Once native objects are recorded, the page script hides them in place:
 
 We then screenshot the slide. What remains is everything PowerPoint can't express: gradients, shadows, `::before`/`::after` decoration, SVG, canvas, filters, transformed or semi-transparent elements, and noise textures. That image goes in as the bottom picture. If it is one uniform colour (the existing blank-slide test), we drop it and use a solid background. `restoreSceneObjects` undoes the changes before the next slide.
 
-Elements we never turn into native objects are always left to the background picture. That covers elements with a transform, `opacity < 1`, a filter, `clip-path`, `mix-blend-mode` or a gradient fill, and their whole subtree. Text inside them is listed as flattened. This stops a rotated label from becoming a straight, misplaced text box.
+Elements we never turn into native objects are always left to the background picture. That covers elements with a transform other than a translation, a filter, `clip-path` or a mask, `mix-blend-mode` or gradient text, and their whole subtree. Text inside them is listed as flattened. This stops a rotated label from becoming a straight, misplaced text box.
+
+Changed while building it: `opacity < 1` was first on that list, but decks use it for muted text everywhere, and flattening it put most of a slide's text on the picture. Opacity is now carried down as transparency, and faded text over a solid colour is written as the solid colour it looks like (easier to edit, and LibreOffice clips transparent text to its box). A native shape painted below a flattened element and overlapping it is also left on the picture, since it would otherwise cover it. Outside list markers become PowerPoint bullets and numbers rather than staying on the picture.
 
 **Why:** the script only looked right on Iven's deck because of hard-coded fixes (a red frame bar drawn by hand). The background picture makes every deck look right without per-deck rules, and keeps all text that can be edited editable.
 
