@@ -38,6 +38,18 @@ Three things decide the run. Take each from the request when it says so, and ask
 
 If the request already answers all three ("make a dark design system from https://example.com, it's our brand"), ask nothing and go straight on.
 
+**No website, or not one this can open?** The brand may live elsewhere: a site behind a login or on an intranet, a native app, or a brand with only a PowerPoint template or a brand guide. Ask which of these the user has, and pass them as `sources` (up to 6, with or without `url`):
+
+- `{ kind: "template", path }`: a PowerPoint template (`.pptx` or `.potx`). Its theme colours, fonts, text sizes and the logo on its master. A legacy `.ppt` must be saved as `.pptx` first; a template still on the stock Office theme has no brand to take.
+- `{ kind: "brandGuide", path }`: a PDF, DOCX, PPTX or Markdown brand guide. Colour codes with their labels (Primary, Background, Text map to roles; CMYK is converted and marked so; a Pantone-only colour is noted, ask for its hex) and the typefaces it names.
+- `{ kind: "css", text | path }`: a stylesheet, a Tailwind theme or a `tokens.json` (W3C design tokens). Roles come only from names the file gives (`--color-primary`, `background`).
+- `{ kind: "html", text | path }`: page source.
+- `{ kind: "screenshot", path | data }`: a PNG of the site or app. Colours are sampled, and fonts can't be read from pixels: ask the user to confirm them.
+
+Each value in `sources` then carries a `confidence`: `measured` (a rendered page), `declared` (CSS, tokens, a template), `stated` (a brand guide) or `sampled` (a screenshot). Where sources disagree the draft keeps the more trusted value and lists the other under `conflicts`: show the user those and ask which is the brand's. `sourceCandidates` are colours with no role yet, and `chartPalette` (from a template) is the brand's order for chart series; mention it in DESIGN.md.
+
+**If the tool refuses `url`** because it runs on a hosted server that doesn't open websites: fetch the page yourself, with your own web tool if you have one, and pass its HTML and its main stylesheets as `html` and `css` sources. If you can't fetch, ask the user for a screenshot, the CSS, a brand guide or a template.
+
 **Refreshing one you saved.** If the user wants an existing design system brought up to date with the site ("our site changed, refresh our design system"), call `extract_open_design_design_system` with `compareTo` set to its id (and no `url`: it uses the addresses the system was saved from). The result's `refresh` lists the tokens added, changed (`from` and `to`) or no longer measured, and fonts, component specs and marks added or removed. Nothing has changed yet. Show the changes to the user in groups (colours, type, spacing and shape, components, marks) and apply only the groups they confirm, to `tokens.css` and `DESIGN.md` together. Then stop: the rest of this recipe is for a new system.
 
 ## 2. Measure the site
@@ -47,8 +59,8 @@ Call `extract_open_design_design_system` with `url`, `extraUrls` if there are an
 - **`ok`**: you get a `draft` (contract tokens, a `[data-theme="dark"]` set only if the site has a dark theme), `sources` saying which element each value came from (and `declared`, the site's own CSS variable with that value), the `unmeasured` tokens, `conflicts`, `notes` and the screenshot. Look at the screenshot and the role crops in the evidence bundle before writing anything.
 - **`conflicts`**: another page (or its dark theme) gave a different value for a token. The draft keeps the first page's. If the difference matters (a second accent on the pricing page), show it to the user in the review and ask which one is the brand's.
 - **`notes`**: say which overlays were hidden before measuring (consent banners and chat widgets are never the brand), describe any gradient they mention in DESIGN.md (the token holds only its first colour stop), and mention an input radius that differs from the button's.
-- **`partial`** (no browser installed): only candidate colours and fonts from the page source. Tell the user, show the candidates, and ask them to confirm the brand colour and font, or to install Chrome for a full measurement.
-- **`blocked`**: show the user the screenshot and the reason. Ask for the site's CSS, a screenshot of the page they mean, or another public page. Don't retry the same page.
+- **`partial`** (no browser installed): the page source and its stylesheets were read instead, so roles come only from the names the CSS gives them. Tell the user, show the draft and the candidates, and ask them to confirm the brand colour and font, or to install Chrome for a full measurement.
+- **`blocked`**: show the user the screenshot and the reason. Ask for a screenshot of the page they mean, the site's CSS, a brand guide or a template, and call again with them as `sources`, or try another public page. Don't retry the same page.
 - An invalid-args error (a private address, an extra page on another site): tell the user what was refused and why.
 - **`brandKit`**: the brand kit the page shows. `marks` with roles (`logo`, `logo-dark`, `logo-on-dark`, `icon`, `touch-icon`, `manifest-icon`, `social`) and the background each was seen on; `fonts` with their source (`google` with a stylesheet, `adobe`, `self-hosted`, `system`), and for a self-hosted or Adobe face a `freeMatch`; `components` (primary, secondary and ghost buttons, the input and its focus style, card, nav, badge, in px with a crop each); `voice` (sampled lines and counted facts: heading case, sentence length, person, exclamations, emoji); and `imagery` (hero kind, image radius and ratios, the icon set with its style and stroke). The create call puts it into `brand.json`.
 

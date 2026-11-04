@@ -192,7 +192,29 @@ The agent uses `/open-design-design-system-from-url` (in VS Code, also **Open De
 
 The review is `review.html` in the design system's folder: the site's screenshot beside a sample styled only by your `tokens.css`. Checking it measures the sample the way the site was measured and reports `brand-fidelity` wherever they differ (the button colour, text colour, background, fonts, button and card radius), with both values.
 
-For a reference site, the design system is named "<Name>-inspired" and no logos or images are copied. Dark values are only measured when the site has a dark theme. A page behind a bot check or login comes back as blocked, with its screenshot; give the agent the CSS or a screenshot instead. Without a browser, the agent gets candidate colours and fonts from the page source only, and asks you to confirm them.
+For a reference site, the design system is named "<Name>-inspired" and no logos or images are copied. Dark values are only measured when the site has a dark theme. A page behind a bot check or login comes back as blocked, with its screenshot; give the agent the CSS or a screenshot instead. Without a browser, the agent reads the page source and stylesheets, takes roles from the names the CSS gives them, and asks you to confirm the brand colour and font.
+
+### Take one from a template, brand guide, CSS or screenshot
+
+> Make a design system from our PowerPoint template, brand/Acme.potx.
+
+Not every brand has a website you can open. The same tool takes up to six other sources, alone or with a site:
+
+| Source | What it gives | How sure |
+|---|---|---|
+| PowerPoint template (`.pptx`, `.potx`) | Theme colours, heading and body fonts, text sizes, the logo on the master, the chart colours | declared |
+| CSS, a Tailwind theme, `tokens.json` | Colours and fonts the file names (`--color-primary`, `background`) | declared |
+| Brand guide (PDF, DOCX, PPTX, Markdown) | Labelled colour codes (CMYK converted and marked), typefaces | stated |
+| Screenshot (PNG) | Background, text, surface and accent colours, sampled | sampled |
+
+When they disagree (the guide says one red, the site's CSS another), the more trusted value is drafted and the agent asks you which is right. A template still on PowerPoint's stock Office theme has no brand in it, and a Pantone-only colour needs its hex. Old `.ppt` files must be saved as `.pptx` first.
+
+| Where | Website | Sources |
+|---|---|---|
+| Local server (Claude Code, Claude Desktop, VS Code, Cursor, Codex) | Yes, in your browser | Yes |
+| Hosted connector (Claude directory, ChatGPT) | No: the agent fetches the page and CSS itself and passes them | Yes |
+
+In VS Code, **Import Design System** now also maps CSS properties whose names state a role (`--color-primary` → `--accent`) into `tokens.css`, marked with the original name.
 
 ### Your own brand
 

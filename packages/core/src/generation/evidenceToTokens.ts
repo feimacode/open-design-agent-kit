@@ -114,9 +114,9 @@ export interface DraftTokens {
   /** Contract tokens with no measurement (left to the contract fallback). */
   unmeasured: string[];
   /** Token → where its value came from (selector and crop), and the site's own custom property with the same value. */
-  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string }>;
+  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; source?: string; note?: string }>;
   /** Values other pages (or their dark themes) gave for a drafted token; the draft keeps the first page's. */
-  conflicts: Array<{ token: string; value: string; page: string; selector: string; crop?: string; theme?: 'dark' }>;
+  conflicts: Array<{ token: string; value: string; page: string; selector: string; crop?: string; theme?: 'dark'; confidence?: 'measured' | 'declared' | 'stated' | 'sampled' }>;
   /** Things the model should know when writing DESIGN.md (full gradients, an input radius that differs). */
   notes: string[];
 }

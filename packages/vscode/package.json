@@ -1219,7 +1219,7 @@
           "properties": {
             "url": {
               "type": "string",
-              "description": "The page to measure, e.g. the home page."
+              "description": "The page to measure, e.g. the home page. Optional when sources are given."
             },
             "extraUrls": {
               "type": "array",
@@ -1249,6 +1249,45 @@
             "compareTo": {
               "type": "string",
               "description": "To refresh a saved design system (user:…): measure the site again (from the URLs its brand.json recorded when url is left out) and return, under refresh, the tokens, fonts, component specs and marks added, changed or removed. Changes nothing in the design system."
+            },
+            "sources": {
+              "type": "array",
+              "maxItems": 6,
+              "description": "Optional: up to 6 other sources to draft from, with or without a url: a screenshot, CSS (custom properties, a Tailwind theme or design-tokens JSON), page source, a brand guide or a PowerPoint template. Each value carries a confidence (measured, declared, stated, sampled); disagreements are listed under conflicts.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "screenshot",
+                      "css",
+                      "html",
+                      "brandGuide",
+                      "template"
+                    ]
+                  },
+                  "path": {
+                    "type": "string",
+                    "description": "Workspace-relative path to the file."
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "For css and html: the text itself (at most 2 MB)."
+                  },
+                  "data": {
+                    "type": "string",
+                    "description": "For a screenshot or template: the file as base64."
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Optional label for the source."
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
             }
           }
         }

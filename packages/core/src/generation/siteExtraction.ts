@@ -35,7 +35,7 @@ import {
   validateLiveUrls,
   type LiveBrowser,
 } from '../export/livePage';
-import { extractBrandEvidence, type BrandEvidence } from './brandExtraction';
+import { fetchSiteTexts, synthesizeBrandEvidence, type BrandEvidence } from './brandExtraction';
 import type { BrandComponents, BrandFont, BrandImagery, BrandMark, BrandVoice } from './brandKit';
 import { captureBrandKitInBrowser, componentRects, componentSpecs, fontAvailability, markEntry, pickIcons, VOICE_MAX_CHARS, voiceFacts, type CapturedKit } from './brandKitCapture';
 import { CONTENT_FILE, capPageContent, fetchRobots, readContentInventory, robotsDisallows, type ContentInventory, type PageContent } from './contentInventory';
@@ -78,6 +78,8 @@ export interface ExtractSiteInput {
   localizeImages?: boolean;
   /** Overrides fetch for robots.txt (tests). */
   fetchImpl?: typeof fetch;
+  /** Test hook: fetches the page and stylesheets when there is no browser. */
+  fetchSiteTexts?: typeof fetchSiteTexts;
 }
 
 export interface BlockedPage {
@@ -108,6 +110,10 @@ export type ExtractSiteResult =
       content?: string;
       /** Marks with variants, fonts with their source, component specs, voice and imagery (add-brand-kit-capture). */
       brandKit?: CapturedBrandKit;
+      /** Colours the sources gave without a role (add-brand-from-screenshot-or-css). */
+      sourceCandidates?: Array<{ value: string; label?: string; source: string }>;
+      /** Accents 1–6 of a PowerPoint template's theme. */
+      chartPalette?: string[];
       notes: string[];
     };
 
@@ -703,10 +709,20 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
 
   const browserPath = input.executablePath ?? (await findBrowser({ explicitPath: input.browserPath }).then((r) => (r.ok ? r.executablePath : undefined)));
   if (!browserPath) {
-    const candidates = await extractBrandEvidence(main.toString());
-    notes.push('No Chrome, Edge or Chromium browser was found, so only the page source was read: these are candidate colours and fonts, not measured roles. Install a browser or set OPEN_DESIGN_BROWSER_PATH for a full extraction.');
-    await fs.writeFile(path.join(bundleDir, 'evidence.json'), JSON.stringify({ status: 'partial', url: main.toString(), candidates }, null, 2) + '\n');
-    return { status: 'partial', slug, bundleDir: bundleRel, screenshots: [], blocked: [], candidates, marks: [], notes: [...notes, ...candidates.warnings] };
+    // No browser: the page source and its stylesheets, read as html and css sources (roles from names only).
+    const fetched = await (input.fetchSiteTexts ?? fetchSiteTexts)(main.toString());
+    const candidates = fetched.base ? synthesizeBrandEvidence(fetched.base, fetched.html, fetched.stylesheets.map((s) => s.text), fetched.warnings) : { fetchedUrl: main.toString(), colors: [], fonts: [], warnings: fetched.warnings };
+    notes.push('No Chrome, Edge or Chromium browser was found, so only the page source and its stylesheets were read: roles come from the names the CSS gives them, not from measuring. Install a browser or set OPEN_DESIGN_BROWSER_PATH for a full extraction.');
+    const partial: Extract<ExtractSiteResult, { bundleDir: string }> = { status: 'partial', slug, bundleDir: bundleRel, screenshots: [], blocked: [], candidates, marks: [], notes: [...notes, ...candidates.warnings] };
+    await fs.writeFile(path.join(bundleDir, 'evidence.json'), JSON.stringify({ version: 2, status: 'partial', url: main.toString(), candidates }, null, 2) + '\n');
+    const textSources = [
+      ...(fetched.html ? [{ kind: 'html' as const, text: fetched.html.slice(0, 2_000_000), name: 'page source' }] : []),
+      ...fetched.stylesheets.map((s) => ({ kind: 'css' as const, text: s.text.slice(0, 2_000_000), name: path.posix.basename(new URL(s.url).pathname) || 'stylesheet' })),
+    ];
+    if (textSources.length === 0) return partial;
+    const { extractFromSources } = await import('./sourceDraft');
+    const merged = await extractFromSources({ workspaceRoot: input.workspaceRoot, outputDir: input.outputDir, sources: textSources, urlResult: partial });
+    return { ...merged, status: 'partial' };
   }
 
   let live: LiveBrowser | undefined;
@@ -1115,6 +1131,8 @@ export function formatExtractSiteResult(result: ExtractSiteResult): string {
       draft: result.draft ? { tokens: result.draft.tokens, dark: result.draft.dark, sources: result.draft.sources, unmeasured: result.draft.unmeasured, conflicts: result.draft.conflicts } : undefined,
       draftCss: result.draftCss,
       candidates: result.candidates,
+      sourceCandidates: result.sourceCandidates,
+      chartPalette: result.chartPalette,
       notes: result.notes,
       next: result.content ? `${next} The site's content is in ${result.content}: for a redesign, pass redesign: { site } to prepare_open_design_brief, which binds it into the design.` : next,
     },

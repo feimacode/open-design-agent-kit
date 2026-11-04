@@ -850,11 +850,11 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'extract_open_design_design_system',
       description:
-        "Renders a website in an installed Chrome, Edge or Chromium (consent banners and chat launchers hidden, never clicked; each page scrolled once) and measures its design system: colour roles from the elements that carry them (page background, cards, text tiers, borders, the primary button and its forced :hover/:active/:focus-visible states, status colours from alerts and invalid fields), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url skill has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and marks the result partial.",
+        "Renders a website in an installed Chrome, Edge or Chromium (consent banners and chat launchers hidden, never clicked; each page scrolled once) and measures its design system: colour roles from the elements that carry them (page background, cards, text tiers, borders, the primary button and its forced :hover/:active/:focus-visible states, status colours from alerts and invalid fields), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url skill has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and stylesheets and marks the result partial. Also takes sources instead of, or as well as, a url: a screenshot, pasted CSS (custom properties, Tailwind theme or design-tokens JSON), page source, a brand guide document or a PowerPoint template (.pptx, .potx). Each value then carries a confidence (measured, declared, stated, sampled); where sources disagree the more confident value wins and the other is listed under conflicts.",
       inputSchema: {
         type: 'object',
         properties: {
-          url: { type: 'string', description: 'The page to measure, e.g. the home page.' },
+          url: { type: 'string', description: 'The page to measure, e.g. the home page. Optional when sources are given.' },
           extraUrls: {
             type: 'array',
             items: { type: 'string' },
@@ -874,6 +874,23 @@ const TOOL_DEFS: ToolDef[] = [
           localizeImages: {
             type: 'boolean',
             description: "With content: copy the images the pages loaded into the bundle. Only when the user says the site is theirs or the client has commissioned the work; otherwise images stay as the site's URLs.",
+          },
+          sources: {
+            type: 'array',
+            maxItems: 6,
+            description:
+              'Optional: up to 6 other sources to draft from, with or without a url. A blocked site, a site behind a login, or a brand with no site: ask for a screenshot, the CSS, a brand guide or a PowerPoint template. Screenshots give sampled colours only (fonts need confirming); templates and brand guides give declared values.',
+            items: {
+              type: 'object',
+              properties: {
+                kind: { type: 'string', enum: ['screenshot', 'css', 'html', 'brandGuide', 'template'], description: 'screenshot: a PNG of the site or app. css: a stylesheet, a Tailwind theme or W3C design-tokens JSON. html: page source. brandGuide: a PDF, DOCX, PPTX or Markdown guide with colour codes and fonts. template: a PowerPoint template (.pptx or .potx).' },
+                path: { type: 'string', description: 'Workspace-relative path to the file.' },
+                text: { type: 'string', description: 'For css and html: the text itself (at most 2 MB).' },
+                data: { type: 'string', description: 'For a screenshot or template: the file as base64 (screenshot at most 4 MB, template 20 MB).' },
+                name: { type: 'string', description: 'Optional: a label for the source in the draft (e.g. "brand guide 2024").' },
+              },
+              required: ['kind'],
+            },
           },
           compareTo: {
             type: 'string',

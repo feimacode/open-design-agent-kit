@@ -25,6 +25,7 @@ export const REMOTE_AVAILABLE_TOOLS = new Set([
   'prepare_open_design_brief',
   'create_open_design_design_system',
   'export_open_design_design_system',
+  'extract_open_design_design_system',
   'get_open_design_artifact',
   'show_open_design_artifact',
   'show_open_design_examples',
@@ -67,7 +68,6 @@ export const REMOTE_HIDDEN_TOOLS: Record<string, string> = {
   publish_open_design_artifact_to_canva: "the user's own Canva connector",
   publish_open_design_artifact_to_shop: "the user's own shop connector",
   restore_open_design_artifact: 'a Claude artifact read on the user’s side',
-  extract_open_design_design_system: 'rendering any website from the server',
   audit_open_design_site: 'rendering any website from the server',
   compare_open_design_before_after: 'a redesign of a live website, which the hosted server doesn\'t render',
 };
@@ -76,6 +76,9 @@ export const REMOTE_HIDDEN_TOOLS: Record<string, string> = {
 export function remoteArgRefusal(tool: string, args: Record<string, unknown>): string | undefined {
   if (tool === 'create_open_design_design_system' && typeof args.sourceUrl === 'string' && args.sourceUrl.trim()) {
     return 'The hosted Open Design server does not fetch websites. Call create_open_design_design_system again without sourceUrl, and describe the brand in brief (colours, fonts, tone) from what the user tells you.';
+  }
+  if (tool === 'extract_open_design_design_system' && ['url', 'extraUrls', 'compareTo', 'content'].some((k) => args[k] !== undefined && args[k] !== '' && args[k] !== false)) {
+    return 'The hosted Open Design server does not fetch websites, so it can draft a design system only from sources. Fetch the page yourself and pass its HTML and stylesheets as sources ({ kind: "html", text } and { kind: "css", text }), or pass a screenshot, a brand guide or a PowerPoint template, and leave out url, extraUrls, compareTo and content.';
   }
   if (tool === 'export_open_design_artifact' && args.embedAssets === true) {
     return 'The hosted Open Design server does not download remote assets (embedAssets). Export again without embedAssets.';

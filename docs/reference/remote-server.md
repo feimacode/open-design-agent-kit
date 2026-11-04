@@ -49,9 +49,11 @@ Anonymous projects are deleted 7 days after their last use. Signed-in projects a
 
 Every tool has a `title` and a `readOnlyHint` or `destructiveHint`, as the Claude directory asks. Hosts that load no plugin skills get short server instructions with the main flow.
 
-Hidden, because they need the user's own computer or accounts, or would make the server fetch any website: `set_open_design_workspace`, `set_up_open_design_browser_pane`, `open_open_design_preview`, `port_open_design_artifact_to_app`, `prepare_open_design_component_library`, `read_open_design_source`, `start_open_design_job_run`, `finish_open_design_job_run`, `pull_open_design_figma_frame`, `push_open_design_artifact_to_figma`, `publish_open_design_artifact_to_canva`, `publish_open_design_artifact_to_shop`, `restore_open_design_artifact`, `extract_open_design_design_system`, `audit_open_design_site` and `compare_open_design_before_after` (it compares a redesign of a live site).
+Hidden, because they need the user's own computer or accounts, or would make the server fetch any website: `set_open_design_workspace`, `set_up_open_design_browser_pane`, `open_open_design_preview`, `port_open_design_artifact_to_app`, `prepare_open_design_component_library`, `read_open_design_source`, `start_open_design_job_run`, `finish_open_design_job_run`, `pull_open_design_figma_frame`, `push_open_design_artifact_to_figma`, `publish_open_design_artifact_to_canva`, `publish_open_design_artifact_to_shop`, `restore_open_design_artifact`, `audit_open_design_site` and `compare_open_design_before_after` (it compares a redesign of a live site).
 
-Refused arguments: `sourceUrl` on `create_open_design_design_system` and `embedAssets` on `export_open_design_artifact`.
+Refused arguments: `sourceUrl` on `create_open_design_design_system`, `embedAssets` on `export_open_design_artifact`, and `url`, `extraUrls`, `compareTo` and `content` on `extract_open_design_design_system`.
+
+`extract_open_design_design_system` works from [`sources`](tools.md#sources) only: a screenshot, a PowerPoint template, a brand guide written to the project, or CSS and page source the agent fetched itself and passed as text. The refusal for `url` tells the agent to do that.
 
 Exports return download links. They run through a queue of [`OPEN_DESIGN_EXPORT_CONCURRENCY`](settings-and-env.md#open_design_export_concurrency) slots. An export that takes longer than [`OPEN_DESIGN_EXPORT_WAIT_SECONDS`](settings-and-env.md#open_design_export_wait_seconds) returns a job id for [`get_open_design_export_status`](tools.md#get_open_design_export_status). PowerPoint, video, GIF, data and multi-preset exports always do.
 

@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { brandRefreshDiff, extractSite, formatExtractSiteResult, formatRefreshResult, refreshUrls, type ContentIndex, type ExtractionTheme } from '@feimacode/open-design-agent-kit-core';
+import { brandRefreshDiff, extractFromSources, extractSite, formatExtractSiteResult, formatRefreshResult, refreshUrls, validateSources, type ContentIndex, type ExtractionSource, type ExtractionTheme, type ExtractSiteResult } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot } from '../workspace/artifactWriter';
 
 interface ExtractDesignSystemInput {
@@ -12,6 +12,8 @@ interface ExtractDesignSystemInput {
   localizeImages?: boolean;
   /** A saved design system to compare with (openspec connect-brand-design-systems). */
   compareTo?: string;
+  /** Screenshots, CSS, page source, brand guides, PowerPoint templates (openspec add-brand-from-screenshot-or-css). */
+  sources?: unknown;
 }
 
 // Renders the site and measures it (core siteExtraction.ts); writes only the
@@ -23,6 +25,9 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<ExtractDesignSystemInput>,
   ): Promise<vscode.PreparedToolInvocation> {
+    if (!options.input.url && !options.input.compareTo && Array.isArray(options.input.sources)) {
+      return { invocationMessage: `Drafting a design system from ${options.input.sources.length} source(s)` };
+    }
     return {
       invocationMessage: options.input.url ? `Measuring the design system of ${options.input.url}` : `Measuring ${options.input.compareTo ?? 'the site'} again`,
       confirmationMessages: {
@@ -52,17 +57,33 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
         extraUrls = extraUrls ?? urls.extraUrls;
       }
     }
-    if (!url?.trim()) return text('Invalid arguments: url is required (or compareTo naming a saved design system).');
-    const result = await extractSite({ url, extraUrls, theme, content: content === true, localizeImages: localizeImages === true, workspaceRoot, outputDir: getOutputDirectory(), browserPath });
-    if (token.isCancellationRequested) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart('Extraction cancelled.')]);
+    let sources: ExtractionSource[] | undefined;
+    if (options.input.sources !== undefined) {
+      const checked = validateSources(options.input.sources);
+      if (!checked.ok) return text(`Invalid arguments: ${checked.error}`);
+      sources = checked.sources.length ? checked.sources : undefined;
+    }
+    if (!url?.trim() && sources) {
+      if (content) return text('Invalid arguments: content needs a url.');
+      const drafted = await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources });
+      return this.output(workspaceRoot, drafted, formatExtractSiteResult(drafted));
+    }
+    if (!url?.trim()) return text('Invalid arguments: url is required (or compareTo naming a saved design system, or sources).');
+    const measured = await extractSite({ url, extraUrls, theme, content: content === true, localizeImages: localizeImages === true, workspaceRoot, outputDir: getOutputDirectory(), browserPath });
+    if (token.isCancellationRequested) return text('Extraction cancelled.');
+    if (measured.status === 'invalid-args') return text(`Invalid arguments: ${measured.error}`);
+    const result = sources && 'bundleDir' in measured ? await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources, urlResult: measured }) : measured;
+    return this.output(
+      workspaceRoot,
+      result,
+      compareTo && previous ? formatRefreshResult(formatExtractSiteResult(result), await brandRefreshDiff(workspaceRoot, previous, result)) : formatExtractSiteResult(result),
+    );
+  }
+
+  private async output(workspaceRoot: string, result: ExtractSiteResult, body: string): Promise<vscode.LanguageModelToolResult> {
     if (result.status === 'invalid-args') return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(`Invalid arguments: ${result.error}`)]);
-    const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
+    const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.screenshots.find((s) => /source-\d+\.png$/.test(s)) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
     const image = shot ? await fs.readFile(path.join(workspaceRoot, shot)).catch(() => undefined) : undefined;
-    return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(
-        compareTo && previous ? formatRefreshResult(formatExtractSiteResult(result), await brandRefreshDiff(workspaceRoot, previous, result)) : formatExtractSiteResult(result),
-      ),
-      ...(image ? [vscode.LanguageModelDataPart.image(image, 'image/png')] : []),
-    ]);
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(body), ...(image ? [vscode.LanguageModelDataPart.image(image, 'image/png')] : [])]);
   }
 }

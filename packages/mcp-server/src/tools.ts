@@ -27,6 +27,10 @@ import {
   type PrepareExplorationInput,
   composeCustomDesignSystemInstructions,
   extractSite,
+  extractFromSources,
+  validateSources,
+  type ExtractionSource,
+  type ExtractSiteResult,
   auditSite as auditLiveSite,
   compareBeforeAfter as compareLiveBeforeAfter,
   formatBeforeAfterResult,
@@ -995,8 +999,20 @@ export async function exportDesignSystem(ctx: ToolContext, input: { designSystem
  */
 export async function extractDesignSystemFromSite(
   ctx: ToolContext,
-  input: { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean; compareTo?: string },
+  input: { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean; compareTo?: string; sources?: unknown },
 ): Promise<ToolOutput> {
+  // sources: screenshots, CSS, page source, brand guides and PowerPoint templates (openspec add-brand-from-screenshot-or-css).
+  let sources: ExtractionSource[] | undefined;
+  if (input.sources !== undefined) {
+    const checked = validateSources(input.sources);
+    if (!checked.ok) throw new Error(checked.error);
+    sources = checked.sources.length ? checked.sources : undefined;
+  }
+  if (sources && (typeof input.url !== 'string' || !input.url.trim()) && !input.compareTo) {
+    if (input.content) throw new Error('"content" needs a url: it copies the words from live pages.');
+    const result = await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources });
+    return await extractOutput(ctx, result, formatExtractSiteResult(result));
+  }
   // compareTo: measure again from the URLs a saved system recorded, and diff (openspec connect-brand-design-systems).
   const compareTo = typeof input.compareTo === 'string' && input.compareTo.trim() ? input.compareTo.trim() : undefined;
   const previous = compareTo ? await ctx.contentIndex.getDesignSystem(compareTo) : undefined;
@@ -1022,9 +1038,15 @@ export async function extractDesignSystemFromSite(
     allowHostsForTesting: evalAllowedHosts(),
   });
   if (result.status === 'invalid-args') throw new Error(result.error);
-  const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
+  const merged = sources && 'bundleDir' in result ? await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, urlResult: result }) : result;
+  const text = compareTo && previous ? formatRefreshResult(formatExtractSiteResult(merged), await brandRefreshDiff(ctx.workspaceRoot, previous, merged)) : formatExtractSiteResult(merged);
+  return await extractOutput(ctx, merged, text);
+}
+
+async function extractOutput(ctx: ToolContext, result: ExtractSiteResult, text: string): Promise<ToolOutput> {
+  if (result.status === 'invalid-args') throw new Error(result.error);
+  const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.screenshots.find((s) => /source-\d+\.png$/.test(s)) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
   const image = shot ? await fs.readFile(path.join(ctx.workspaceRoot, shot)).catch(() => undefined) : undefined;
-  const text = compareTo && previous ? formatRefreshResult(formatExtractSiteResult(result), await brandRefreshDiff(ctx.workspaceRoot, previous, result)) : formatExtractSiteResult(result);
   return { text, images: image ? [{ data: image, mime: 'image/png' }] : [] };
 }
 
