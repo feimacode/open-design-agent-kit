@@ -4,7 +4,7 @@
 Get a finished artifact into Canva through the user's Canva MCP connector when it's connected: an editable import via a briefly hosted export, or a private upload, chosen by the user each time. Keep Canva's manual import as the fallback. Our code never talks to Canva itself.
 ## Requirements
 ### Requirement: Connector-Aware Canva Instructions
-`publish_open_design_artifact_to_canva` SHALL be available on both the VS Code extension and the MCP server with the input `entryPath`, and SHALL compose instructions without writing files or contacting Canva. After deriving metadata and exporting (`pptx` for a deck, `pdf` otherwise), the instructions SHALL:
+`publish_open_design_artifact_to_canva` SHALL be available on both the VS Code extension and the MCP server with the input `entryPath`, and SHALL compose instructions without writing files or contacting Canva. After deriving metadata and exporting (`pptx` with `editable: true` for a deck, falling back to the picture `pptx` and telling the user when the editable export fails; `pdf` otherwise), the instructions SHALL:
 1. direct the agent to call `list_open_design_integrations` with `integration: "canva"`;
 2. have it check its own tools, including deferred ones, for Canva's tools.
 
@@ -26,6 +26,10 @@ When Canva isn't connected, they SHALL offer setup once per the integration rule
 #### Scenario: Manual fallback kept
 - **WHEN** Canva isn't connected and the user declines setup
 - **THEN** the instructions SHALL direct the agent to hand over the exported file with Canva's own Import a file steps
+
+#### Scenario: Deck goes to Canva as editable PPTX
+- **WHEN** the instructions are composed for a registered deck
+- **THEN** they SHALL export it with `format: "pptx"` and `editable: true`, and use the picture `pptx` only if that export fails, telling the user the Canva design will be pictures
 
 ### Requirement: Editable Import Route
 Route A SHALL host the exported file by calling `publish_open_design_artifact` with `includeFiles` set to the export, following that tool's own confirmation stage. It SHALL use `cloudflare-temporary` or one of the user's own hosts, and SHALL NOT use `netlify-temporary`, whose links Canva can't fetch.

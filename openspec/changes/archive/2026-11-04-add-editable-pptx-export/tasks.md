@@ -30,6 +30,6 @@
 - [x] 5.1 Browser tests (skipped without a browser): a fixture deck with heading, paragraph with a `<br>`, a bordered card, an image with `object-fit: contain`, a gradient slide, a rotated label and an SVG diagram; check text boxes, shapes, the background picture and the flattened list
 - [x] 5.2 Smoke test over the vendored deck examples: every editable export succeeds, and the text coverage holds on every slide
 - [x] 5.3 Render check with LibreOffice: done by hand during development (editable vs picture export side by side for four vendored decks), not added as a test
-- [ ] 5.4 Manual: rebuild the 21-slide deck from the 2026-11-04 test (or a vendored deck) and open it in PowerPoint; edit a heading, move a card, check notes (needs PowerPoint; LibreOffice opened and rendered every test file)
+- [x] 5.4 Manual: open editable exports in PowerPoint and edit them (done 2026-11-04 by Iven with the two sample decks; LibreOffice also rendered every test file)
 - [x] 5.5 Typecheck, lint and unit tests across the workspace; `scripts/test-npm-publish.mjs`
 - [x] 5.6 Update `vendored/SOURCE.md` (editable mode is our own, `dom-to-pptx` not adopted), READMEs, `reference/tools.md` and CHANGELOG
