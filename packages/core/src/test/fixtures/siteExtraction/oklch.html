@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ledgerly</title>
+<!-- Written the way Tailwind v4 and shadcn/ui write colours: oklch tokens, a display-p3 accent, color-mix states. -->
+<style>
+  :root {
+    --background: oklch(0.985 0.002 247.839);
+    --foreground: oklch(0.21 0.034 264.665);
+    --card: oklch(0.967 0.003 264.542);
+    --muted-foreground: oklch(0.551 0.027 264.364);
+    --primary: color(display-p3 0.1 0.45 1);
+    --primary-foreground: oklch(1 0 0);
+    --border: oklch(0.928 0.006 264.531);
+  }
+  body { margin: 0; background: var(--background); color: var(--foreground); font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 16px 32px; border-bottom: 1px solid var(--border); }
+  .container { max-width: 1040px; margin: 0 auto; padding: 0 32px; }
+  h1 { font-size: 48px; line-height: 56px; margin: 64px 0 16px; }
+  .lede { color: var(--muted-foreground); font-size: 18px; line-height: 28px; max-width: 560px; }
+  .btn { display: inline-block; background: var(--primary); color: var(--primary-foreground); padding: 12px 20px; border-radius: 8px; font-size: 16px; text-decoration: none; border: 0; }
+  .btn:hover { background: color-mix(in oklab, var(--primary), black 12%); }
+  .btn:active { background: color-mix(in oklab, var(--primary), black 20%); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin: 32px 0; }
+</style>
+</head>
+<body>
+<header><strong>Ledgerly</strong><a class="btn" href="/start">Start free</a></header>
+<main class="container">
+  <h1>Books that balance themselves</h1>
+  <p class="lede">Ledgerly reconciles your accounts every night, flags what looks wrong and keeps your accountant in the loop without another spreadsheet.</p>
+  <p>Connect a bank feed and Ledgerly starts matching on the first night. Receipts, invoices and payouts land in the right category, and anything it is unsure about waits for you in one short list instead of hiding in a month-end export.</p>
+  <p>Your accountant gets their own seat, sees the same books you do and can leave a note on any line. Nobody emails a spreadsheet back and forth, and nobody wonders which version is the real one.</p>
+  <a class="btn" href="/start">Start free</a>
+  <div class="card"><h3>Nightly reconciliation</h3><p class="lede">Every transaction matched against your bank feed before you wake up.</p></div>
+  <div class="card"><h3>Plain-language alerts</h3><p class="lede">When something looks off you get one sentence and a link, not a report.</p></div>
+</main>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stillwater</title>
+<!-- Tailwind-style blanket transition on everything; only the primary button moves, on hover, over 200ms ease-out. -->
+<style>
+  *, ::before, ::after { transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1); }
+  body { margin: 0; background: #ffffff; color: #1f2933; font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; }
+  main { max-width: 960px; margin: 0 auto; padding: 40px 32px; }
+  .cta { background: #0f766e; color: #fff; padding: 12px 24px; border: 0; border-radius: 6px; font-size: 16px; transition: transform 200ms ease-out, box-shadow 200ms ease-out; }
+  .cta:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2); }
+  .card { background: #f4f4f5; border-radius: 10px; padding: 24px; margin-top: 32px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Quiet tools for loud weeks</h1>
+  <p>Plan the week in one calm list, share it with your team and let the reminders do the nagging for you.</p>
+  <button class="cta">Try it free</button>
+  <div class="card"><h3>One list</h3><p>Everything due this week, in the order it matters, with nothing hidden in a second tab.</p></div>
+</main>
+</body>
+</html>

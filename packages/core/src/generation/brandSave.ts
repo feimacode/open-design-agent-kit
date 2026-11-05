@@ -37,6 +37,7 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
     name: input.name,
     descriptor: input.descriptor ? { moods: list(d.moods), industries: list(d.industries), surfaces: list(d.surfaces) } : undefined,
   };
+  let components: CapturedBrandKit['components'] | undefined;
   if (input.evidenceDir) {
     const extractRoot = path.posix.join(input.outputDir.split(path.sep).join('/'), '.extract') + '/';
     const rel = path.posix.normalize(input.evidenceDir.replace(/\\/g, '/')).replace(/\/$/, '');
@@ -50,6 +51,7 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
       urls = ev.pages?.map((p) => p.url).filter((u): u is string => typeof u === 'string') ?? (ev.url ? [ev.url] : undefined);
       measuredAt = ev.measuredAt;
       kit = ev.brandKit;
+      components = kit?.components;
     } catch {
       throw new Error(`No evidence.json in ${rel}. Pass the bundleDir that extract_open_design_design_system returned.`);
     }
@@ -66,7 +68,7 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
   if (!brand.sources?.bundleDir) return { brand };
   const review = path.posix.join(input.dirRel, BRAND_REVIEW_FILE);
   const evidence = path.posix.relative(input.dirRel, path.posix.join(brand.sources.bundleDir, 'evidence.json'));
-  await fs.writeFile(path.join(input.workspaceRoot, review), renderBrandReviewPage({ name: input.name, evidence, reference: brand.reference }));
+  await fs.writeFile(path.join(input.workspaceRoot, review), renderBrandReviewPage({ name: input.name, evidence, reference: brand.reference, components }));
   await writeArtifactManifest({ workspaceRoot: input.workspaceRoot, entryPath: review, artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: `${input.name}: review` } });
   return { brand, review };
 }
@@ -122,5 +124,6 @@ export async function brandKitRecord(kit: CapturedBrandKit, bundle: string, dir:
     components: kit.components,
     voice: own ? { samples, ...facts } : { samples: [], ...facts },
     imagery: kit.imagery,
+    motion: kit.motion,
   };
 }

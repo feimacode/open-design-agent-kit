@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Northlight</title>
+<!-- The hero fades in on load; three cards rise 24px over 600ms, 80ms apart, as they scroll in; both stop under reduced motion. -->
+<style>
+  body { margin: 0; background: #ffffff; color: #111827; font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; }
+  .hero { min-height: 1100px; padding: 80px 32px; animation: hero-in 500ms ease-out both; }
+  @keyframes hero-in { from { opacity: 0; } to { opacity: 1; } }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 960px; margin: 0 auto 400px; padding: 0 32px; }
+  .card { background: #f3f4f6; border-radius: 12px; padding: 24px; opacity: 0; transform: translateY(24px); transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1), transform 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .card:nth-child(2) { transition-delay: 80ms; }
+  .card:nth-child(3) { transition-delay: 160ms; }
+  .card.in { opacity: 1; transform: none; }
+  .go { background: #4f46e5; color: #fff; padding: 12px 24px; border: 0; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce) {
+    .hero { animation: none; }
+    .card { transition: none; opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+<section class="hero"><h1>Light for the long nights</h1><p>Lamps that dim with the sunset and wake you with a slow sunrise, made to last for decades.</p><button class="go">Shop lamps</button></section>
+<div class="cards">
+  <div class="card"><h3>Sunrise</h3><p>Thirty minutes of slow light before your alarm.</p></div>
+  <div class="card"><h3>Sunset</h3><p>Warmer and dimmer as the evening goes on.</p></div>
+  <div class="card"><h3>Repairable</h3><p>Every part can be replaced with a screwdriver.</p></div>
+</div>
+<script>
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.1 });
+  document.querySelectorAll('.card').forEach((c) => io.observe(c));
+</script>
+</body>
+</html>

@@ -14,12 +14,12 @@ The extraction SHALL choose `--accent` by ranking colours, not single buttons. A
 
 ### Requirement: Accent Confidence And Candidates
 
-The draft's source for `--accent` SHALL include a `confidence` between 0 and 1 and up to four `candidates`, each with its colour, score, chroma, control count, any declaring property name and a crop. The design-system skill SHALL ask the user to choose among the candidates when confidence is below 0.5.
+The draft's source for `--accent` SHALL include a `choiceConfidence` between 0 and 1 (named so as not to clash with the existing `confidence` level of a source) and up to four `candidates`, each with its colour, score, chroma, control count, any declaring property name and a crop. The design-system skill SHALL ask the user to choose among the candidates when confidence is below 0.5.
 
 #### Scenario: Close call
 - **WHEN** the top two colours score within 10% of each other
-- **THEN** confidence is below 0.5, and the agent shows both colours with their crops and asks which is the brand's
+- **THEN** `choiceConfidence` is below 0.5, and the agent shows both colours with their crops and asks which is the brand's
 
 #### Scenario: Clear winner
 - **WHEN** one colour backs every filled control and the declared `--primary`
-- **THEN** confidence is above 0.8 and the agent does not ask
+- **THEN** `choiceConfidence` is above 0.8 and the agent does not ask

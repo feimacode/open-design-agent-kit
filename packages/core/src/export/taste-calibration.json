@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "calibratedAt": null,
+  "maxFalseAlarm": 0.05,
+  "handMade": 0,
+  "aiDefault": 0,
+  "rules": {
+    "slop-glow": null,
+    "card-row": null,
+    "uniform-surface": null,
+    "intent": null,
+    "template-look": null
+  }
+}

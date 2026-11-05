@@ -248,6 +248,10 @@
             "limit": {
               "type": "number",
               "description": "How many to return, 3 to 5 (default 5)."
+            },
+            "like": {
+              "type": "string",
+              "description": "Rank by how close each system's tokens are in style to this one: a design system id, or the bundleDir an extraction returned. Use it for \"something like X but brand-free\"; the named system itself is left out."
             }
           }
         }
@@ -1245,6 +1249,10 @@
             "localizeImages": {
               "type": "boolean",
               "description": "With content: copy the images the pages loaded into the bundle. Only when the user says the site is theirs or the client has commissioned the work."
+            },
+            "discover": {
+              "type": "boolean",
+              "description": "With no extraUrls: also measure up to 3 pages linked from the home page's header and footer navigation (pricing, product or features, about, docs or blog first; never sign-in, sign-up, legal or careers pages, or pages robots.txt disallows), so tokens are elected by how many pages use them. Default true; false measures only url."
             },
             "compareTo": {
               "type": "string",

@@ -29,6 +29,7 @@ Call `audit_open_design_site` with `url` and `extraUrls` if there are any.
 Tell the user the top problems in plain words, in the audit's order: the title, where (page, phone or desktop), what it costs a visitor and the fix. Point to the report (`report`) and offer to open it in the preview.
 
 - Quote only what the audit found. Don't add a score, a speed rating, SEO advice or problems you guess at from the screenshots.
+- Don't call the site a template, generic or AI-made unless `top` or `otherGroups` has "Looks like a stock template". A single pattern (an indigo glow, a row of identical cards) is named for what it is. Patterns listed only in `notes` are common on hand-made sites too: leave them out of the problems, or mention them as such if asked.
 - If the report found nothing, say so plainly and list what was checked.
 - The audit looks at a site the user may not own. Keep the tone factual: this is evidence for a conversation, not a verdict.
 

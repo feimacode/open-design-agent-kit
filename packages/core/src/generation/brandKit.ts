@@ -60,6 +60,14 @@ export interface ComponentSpec {
   focus?: string;
   /** Nav: whether it sticks to the top. */
   sticky?: boolean;
+  /** px, as rendered. */
+  width?: number;
+  /** The visible text (or an input's placeholder), at most 40 characters. */
+  label?: string;
+  fontFamily?: string;
+  /** px. */
+  letterSpacing?: number;
+  textAlign?: string;
 }
 
 export interface BrandComponents {
@@ -86,6 +94,32 @@ export interface BrandImagery {
   icons?: { set: string; style?: 'outline' | 'filled'; strokeWidth?: number };
 }
 
+/** What moves on the site, observed in the browser (add-runtime-motion). A trigger that moved nothing is `none`. */
+export interface BrandMotion {
+  /** What changes when the pointer is over the primary control and the first card. */
+  hover?: MotionChange[] | 'none';
+  /** What changes when the primary control takes keyboard focus. */
+  focus?: MotionChange[] | 'none';
+  /** How sections and cards enter as they scroll into view. */
+  entrance?: { kind: 'fade' | 'rise' | 'scale' | 'slide'; distance?: number; duration: number; stagger?: number; easing?: string; targets: string[] } | 'none';
+  /** Whether something animates in the first seconds after load, and what. */
+  load?: { duration: number; targets: string[] } | 'none';
+  /** A motion library found on the page (gsap, framer-motion, aos, lenis, lottie…). */
+  library?: string;
+  /** True when the page's load and entrance animations stop under prefers-reduced-motion: reduce; absent when nothing moved to test. */
+  reducedMotion?: boolean;
+}
+
+export interface MotionChange {
+  /** button, card, link, input or other. */
+  target: string;
+  /** Animated properties with their start and end values, as `transform: none → translateY(-2px)`. */
+  changes: string[];
+  /** ms */
+  duration: number;
+  easing?: string;
+}
+
 export interface BrandRecord {
   version: 1;
   kind: BrandKind;
@@ -100,6 +134,7 @@ export interface BrandRecord {
   components?: BrandComponents;
   voice?: BrandVoice;
   imagery?: BrandImagery;
+  motion?: BrandMotion;
 }
 
 const strings = (v: unknown): string[] | undefined => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : undefined);

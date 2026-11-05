@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { findBrowser } from '../../export/browserDiscovery';
 import { cssColorToHex, draftTokensCss, evidenceToTokens, mapTypeScale, parseRingShadow, type PageEvidence } from '../../generation/evidenceToTokens';
-import { extractSite, extractionSlug, isPrivateAddress, registrableDomain, validateExtractionUrls } from '../../generation/siteExtraction';
+import { extractSite, extractionSlug, isPrivateAddress, pickNavPages, registrableDomain, validateExtractionUrls } from '../../generation/siteExtraction';
 
 const FIXTURES = path.resolve(__dirname, '../../../src/test/fixtures/siteExtraction');
 const publicDns = async (): Promise<string[]> => ['93.184.216.34'];
@@ -187,14 +187,48 @@ describe('evidenceToTokens', () => {
     assert.strictEqual(raised.tokens['--elev-ring'], undefined);
   });
 
-  it('keeps the first page\'s value and lists what other pages say', () => {
+  it('keeps the first page\'s value on an even split and lists what other pages say', () => {
     const pricing = page({
       url: 'https://example.com/pricing',
       roles: { accent: { value: 'rgb(255, 150, 0)', selector: 'button.btn-primary', count: 1, crop: 'crops/page-2-accent.png' }, bg: { value: 'rgb(255, 255, 255)', selector: 'body', count: 1 } },
     });
     const draft = evidenceToTokens({ pages: [page(), pricing] });
     assert.strictEqual(draft.tokens['--accent'], '#58cc02');
-    assert.deepStrictEqual(draft.conflicts, [{ token: '--accent', value: '#ff9600', page: 'https://example.com/pricing', selector: 'button.btn-primary', crop: 'crops/page-2-accent.png' }]);
+    assert.deepStrictEqual(draft.conflicts, [{ token: '--accent', value: '#ff9600', page: 'https://example.com/pricing', selector: 'button.btn-primary', crop: 'crops/page-2-accent.png', coverage: { pages: 1, of: 2 } }]);
+    assert.deepStrictEqual(draft.sources['--bg'].coverage, { pages: 2, of: 2 });
+    assert.strictEqual(draft.sources['--bg'].scope, 'site-wide');
+  });
+
+  it('elects each colour by how many pages use it, merging values within ΔE 3, and notes a first page that differs', () => {
+    const light = (n: number, bg = 'rgb(255, 255, 255)') => page({ url: `https://example.com/p${n}`, roles: { ...page().roles, bg: { value: bg, selector: 'body', count: 1 } } });
+    const home = page({ roles: { ...page().roles, bg: { value: 'rgb(11, 11, 15)', selector: 'body', count: 1 } } });
+    const draft = evidenceToTokens({ pages: [home, light(2), light(3, 'rgb(254, 254, 254)'), light(4)] });
+    assert.strictEqual(draft.tokens['--bg'], '#ffffff');
+    assert.deepStrictEqual(draft.sources['--bg'].coverage, { pages: 3, of: 4 });
+    assert.strictEqual(draft.sources['--bg'].scope, 'section');
+    const bgConflicts = draft.conflicts.filter((c) => c.token === '--bg');
+    assert.deepStrictEqual(bgConflicts.map((c) => [c.value, c.coverage]), [['#0b0b0f', { pages: 1, of: 4 }]]);
+    assert.ok(draft.notes.some((n) => /--bg: the first page uses #0b0b0f, but 3 of 4 pages use #ffffff/.test(n)), draft.notes.join('\n'));
+    assert.ok(draft.consistency?.outliers.some((o) => o.kind === 'colour' && o.value === '#0b0b0f'));
+  });
+
+  it('summarises consistency: shares on tokens and a one-page radius with its page and crop', () => {
+    const other = (n: number) => page({ url: `https://example.com/p${n}` });
+    const odd = page({ url: 'https://example.com/about', radii: [{ px: 12, count: 2, kind: 'button' }, { px: 20, count: 2, kind: 'card', selector: 'div.card', crop: 'crops/page-3-radius-card-20.png' }] });
+    const draft = evidenceToTokens({ pages: [page(), other(2), odd] });
+    assert.strictEqual(draft.tokens['--radius-md'], '16px');
+    const outlier = draft.consistency?.outliers.find((o) => o.kind === 'radius');
+    assert.deepStrictEqual(outlier, { kind: 'radius', value: '20px', page: 'https://example.com/about', selector: 'div.card', crop: 'crops/page-3-radius-card-20.png' });
+    assert.ok((draft.consistency?.radii ?? 0) < 1 && (draft.consistency?.radii ?? 0) > 0.7);
+    assert.strictEqual(draft.consistency?.fonts, 1);
+    assert.strictEqual(evidenceToTokens({ pages: [page()] }).consistency, undefined);
+  });
+
+  it('picks pages from the navigation: pricing, product, about, then docs; never sign-in, legal or careers', () => {
+    const main = new URL('https://example.com/');
+    const hrefs = ['https://example.com/', 'https://example.com/login', 'https://example.com/blog', 'https://example.com/about', 'https://example.com/privacy', 'https://example.com/pricing#faq', 'https://example.com/careers', 'https://other.com/pricing', 'https://example.com/press.pdf', 'https://example.com/features', 'https://example.com/sign-up'];
+    assert.deepStrictEqual(pickNavPages(main, hrefs), ['https://example.com/pricing', 'https://example.com/features', 'https://example.com/about']);
+    assert.deepStrictEqual(pickNavPages(main, hrefs, { allow: [], disallow: ['/pricing'] }), ['https://example.com/features', 'https://example.com/about', 'https://example.com/blog']);
   });
 
   it('notes gradients for DESIGN.md', () => {
@@ -239,11 +273,12 @@ describe('extractSite in a browser', function () {
   });
   after(() => server?.close());
 
-  const run = async (file: string, theme: 'light' | 'dark' | 'both' = 'light', extra: string[] = []) => {
+  const run = async (file: string, theme: 'light' | 'dark' | 'both' = 'light', extra: string[] = [], discover = false) => {
     const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'od-extract-'));
     const result = await extractSite({
       url: `${base}/${file}`,
       extraUrls: extra.map((f) => `${base}/${f}`),
+      discover,
       theme,
       workspaceRoot,
       outputDir: '.open-design',
@@ -338,6 +373,98 @@ describe('extractSite in a browser', function () {
     assert.strictEqual(t['--radius-lg'], '28px');
     assert.ok(result.notes.some((n) => /primary button paints a gradient/.test(n)), result.notes.join('\n'));
     assert.ok(result.notes.some((n) => /hero's background is a gradient/.test(n)), result.notes.join('\n'));
+  });
+
+  it('reads a site written in oklch, display-p3 and color-mix (Tailwind v4, shadcn/ui)', async () => {
+    const { result } = await run('oklch.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    const t = result.draft!.tokens;
+    assert.strictEqual(t['--bg'], '#f9fafb');
+    assert.strictEqual(t['--surface'], '#f3f4f6');
+    assert.strictEqual(t['--fg'], '#101828');
+    assert.strictEqual(t['--muted'], '#6a7282');
+    assert.strictEqual(t['--accent'], '#0075ff');
+    assert.strictEqual(t['--accent-on'], '#ffffff');
+    assert.strictEqual(t['--accent-hover'], '#0062df');
+    assert.strictEqual(t['--accent-active'], '#0055c5');
+    const accent = result.draft!.sources?.['--accent'];
+    assert.strictEqual(accent?.original, 'color(display-p3 0.1 0.45 1)');
+    assert.match(accent?.note ?? '', /wider than sRGB; #0075ff is its sRGB clip/);
+    assert.ok(!result.notes.some((n) => /couldn't be read, so roles/.test(n)), result.notes.join('\n'));
+  });
+
+  it('ranks accent colours: three brand buttons and a declared --brand beat a bigger near-black sign-in and a decorative blob', async () => {
+    const { result } = await run('accent-dark-signin.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    assert.strictEqual(result.draft!.tokens['--accent'], '#3ecf8e');
+    const src = result.draft!.sources['--accent'];
+    assert.ok((src.choiceConfidence ?? 0) > 0.8, JSON.stringify(src));
+    assert.strictEqual(src.candidates?.[0].hex, '#3ecf8e');
+    assert.strictEqual(src.candidates?.[0].controls, 3);
+    assert.strictEqual(src.candidates?.[0].declared, '--brand');
+    assert.match(src.candidates?.[0].crop ?? '', /^crops\/accent-candidate-1\.png$/);
+    assert.ok(!src.candidates?.some((c) => c.hex === '#ff2fd0'), 'a decorative shape is not a control');
+  });
+
+  it('counts a near-black button as barely colourful, and a declared --primary-color on a small button wins', async () => {
+    const { result } = await run('accent-near-black.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    assert.strictEqual(result.draft!.tokens['--accent'], '#0ea5e9');
+    const dark = result.draft!.sources['--accent'].candidates?.find((c) => c.hex === '#002533');
+    assert.ok(dark && dark.chroma < 0.06, JSON.stringify(dark));
+  });
+
+  it('calls a close call a close call: low confidence, both candidates with crops, and a note to ask', async () => {
+    const { result } = await run('accent-close-call.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    const src = result.draft!.sources['--accent'];
+    assert.ok((src.choiceConfidence ?? 1) < 0.5, JSON.stringify(src));
+    assert.deepStrictEqual(src.candidates?.map((c) => c.hex).sort(), ['#2563eb', '#ea580c']);
+    assert.ok(src.candidates?.every((c) => c.crop));
+    assert.ok(result.notes.some((n) => /close call/.test(n) && /#2563eb/.test(n) && /#ea580c/.test(n)), result.notes.join('\n'));
+  });
+
+  it('adds pages from the navigation when no extra pages are given, and lists them', async () => {
+    const { workspaceRoot, result } = await run('nav-home.html', 'light', [], true);
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    assert.deepStrictEqual(result.discovered, [`${base}/pricing`, `${base}/about`]);
+    assert.ok(result.screenshots.includes(`${result.bundleDir}/desktop.png`) && result.screenshots.includes(`${result.bundleDir}/page-2-desktop.png`), result.screenshots.join(' '));
+    assert.ok(result.notes.some((n) => /from the home page's navigation/.test(n)));
+    const radius = result.draft!.consistency?.outliers.find((o) => o.kind === 'radius' && o.value === '20px');
+    assert.strictEqual(radius?.page, `${base}/about`);
+    assert.ok(radius?.crop);
+    await fs.access(path.join(workspaceRoot, result.bundleDir, radius!.crop!));
+  });
+
+  it('takes motion tokens from what moved, not from a blanket transition, and records the hover', async () => {
+    const { result } = await run('motion-hover.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    assert.strictEqual(result.draft!.tokens['--motion-fast'], '200ms');
+    assert.strictEqual(result.draft!.tokens['--ease-standard'], 'ease-out');
+    assert.strictEqual(result.draft!.sources['--motion-fast'].basis, 'observed');
+    const hover = result.brandKit!.motion!.hover;
+    assert.ok(Array.isArray(hover), JSON.stringify(result.brandKit!.motion));
+    const button = (hover as Array<{ target: string; changes: string[]; duration: number }>).find((h) => h.target === 'button');
+    assert.ok(button && button.duration === 200 && button.changes.some((c) => /^transform: .* → matrix\(1, 0, 0, 1, 0, -2\)|^transform: none → translateY\(-2px\)/.test(c)), JSON.stringify(hover));
+    assert.strictEqual(result.brandKit!.motion!.entrance, 'none');
+    assert.strictEqual(result.brandKit!.motion!.reducedMotion, undefined);
+  });
+
+  it('records a staggered scroll reveal, the hero\'s load animation and that reduced motion is honoured', async () => {
+    const { result } = await run('motion-reveal.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    const motion = result.brandKit!.motion!;
+    assert.deepStrictEqual(typeof motion.entrance === 'object' ? { kind: motion.entrance.kind, distance: motion.entrance.distance, duration: motion.entrance.duration, stagger: motion.entrance.stagger } : motion.entrance, { kind: 'rise', distance: 24, duration: 600, stagger: 80 });
+    assert.ok(typeof motion.load === 'object' && motion.load.duration === 500, JSON.stringify(motion.load));
+    assert.strictEqual(motion.reducedMotion, true);
+    assert.strictEqual(result.draft!.tokens['--motion-base'], '600ms');
   });
 
   it('measures every page and reports where pages disagree', async () => {

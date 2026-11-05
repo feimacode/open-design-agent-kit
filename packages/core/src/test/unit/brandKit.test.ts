@@ -73,6 +73,16 @@ describe('brand records (connect-brand-design-systems)', () => {
     assert.ok(fonts.includes('fraunces') && fonts.includes('inter'));
   });
 
+  it('reads brand colours written in oklch and color-mix(in oklab, …)', () => {
+    const { colors } = brandTokensFromCss(':root{--primary:oklch(0.6 0.15 30);--accent:var(--primary);--accent-hover:color-mix(in oklab, var(--primary), black 10%);--ring:color(display-p3 0.4 0.5 0.7)}');
+    const hex = (n: string) => colors.find((c) => c.name === n)?.hex;
+    assert.strictEqual(hex('--primary'), '#ca5747');
+    assert.strictEqual(hex('--accent'), '#ca5747');
+    assert.match(hex('--accent-hover') ?? '', /^#[0-9a-f]{6}$/);
+    assert.notStrictEqual(hex('--accent-hover'), '#ca5747');
+    assert.match(hex('--ring') ?? '', /^#[0-9a-f]{6}$/);
+  });
+
   it('loads an own-brand context only for own brands', async () => {
     const own = await brandWorkspace('own');
     const ctx = await loadOwnBrandContext(own, '.open-design', 'user:acme');
@@ -122,6 +132,12 @@ describe('brand review fidelity', () => {
     assert.ok(off.some((f) => /Primary button colour: the site has #0b5fff, the design system gives #0047e0/.test(f.message)));
     assert.ok(off.some((f) => /Heading font: the site has Fraunces/.test(f.message)));
     assert.ok(off.some((f) => /Button radius: the site has 999px, the design system gives 8px/.test(f.message)));
+  });
+
+  it('compares a site measured in oklch with a sample measured in rgb', () => {
+    const site = expectedFromEvidence({ pages: [{ roles: { accent: { value: 'oklch(0.6 0.15 30)' } }, textRoles: [], radii: [] }] });
+    assert.deepStrictEqual(compareBrandSample(site, { accent: 'rgb(202, 87, 71)' }), []);
+    assert.strictEqual(compareBrandSample(site, { accent: 'rgb(0, 71, 224)' }).length, 1);
   });
 
   it('writes a review page that links tokens.css and its evidence', () => {

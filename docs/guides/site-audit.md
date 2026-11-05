@@ -16,7 +16,7 @@ Each page is rendered in your installed Chrome, Edge or Chromium at desktop (144
 |---|---|
 | Text that's hard to read (WCAG AA contrast) | desktop and phone |
 | Text that runs out of its box or is covered | desktop and phone |
-| Generic template looks: stock indigo glows, rows of identical cards, every card the same, main and destructive actions that look like the others | desktop and phone |
+| Stock patterns: indigo glows and gradients, rows of identical cards, every card the same, main and destructive actions that look like the others ([calibrated](#template-looks)) | desktop and phone |
 | The page scrolls sideways | phone, then 320 px wide (WCAG reflow) |
 | Buttons and links too small or too close to tap | phone |
 | Nothing to tap on the first screen | phone |
@@ -29,6 +29,10 @@ Each page is rendered in your installed Chrome, Edge or Chromium at desktop (144
 Cookie and consent banners are hidden first, so they don't cover the page; the report says when it hid one.
 
 Checks that only make sense for Open Design's own markup (states, flows, sample data, design tokens) don't run on a live site.
+
+### Template looks
+
+The pattern checks were written for Open Design's own designs, and plenty of hand-made sites use an indigo gradient or a row of three cards on purpose. So on a live site each one is held to a measured bar: it is run on about 40 hand-made sites (government, publishers, museums, studios and well-known brands), and it counts as a problem only if it fires on 5% of them or fewer. A check over the bar, or one not yet calibrated, is listed under **Notes** ("a common pattern, but many hand-made sites do this too"), not among the problems. A single pattern is named for what was seen ("Stock indigo glows and gradients"); the report says a page **looks like a stock template** only when two or more different patterns appear on it, and that combination is held to the same bar. The report names the date of the calibration it used. The [design check](../reference/tools.md#check_open_design_artifact) on your own designs is not affected.
 
 ## The report
 

@@ -36,8 +36,9 @@ import {
   type LiveBrowser,
 } from '../export/livePage';
 import { fetchSiteTexts, synthesizeBrandEvidence, type BrandEvidence } from './brandExtraction';
-import type { BrandComponents, BrandFont, BrandImagery, BrandMark, BrandVoice } from './brandKit';
+import type { BrandComponents, BrandFont, BrandImagery, BrandMark, BrandMotion, BrandVoice } from './brandKit';
 import { captureBrandKitInBrowser, componentRects, componentSpecs, fontAvailability, markEntry, pickIcons, VOICE_MAX_CHARS, voiceFacts, type CapturedKit } from './brandKitCapture';
+import { MOTION_RECORDER, honoursReducedMotion, movesOnLoadOrScroll, observeInteractions, readObservedMotion, summariseMotion, type MotionObservation } from './motionCapture';
 import { CONTENT_FILE, capPageContent, fetchRobots, readContentInventory, robotsDisallows, type ContentInventory, type PageContent } from './contentInventory';
 import {
   cssColorToHex,
@@ -78,6 +79,8 @@ export interface ExtractSiteInput {
   localizeImages?: boolean;
   /** Overrides fetch for robots.txt (tests). */
   fetchImpl?: typeof fetch;
+  /** With no extraUrls: add up to 3 same-site pages from the home page's header and footer navigation (default true). */
+  discover?: boolean;
   /** Test hook: fetches the page and stylesheets when there is no browser. */
   fetchSiteTexts?: typeof fetchSiteTexts;
 }
@@ -114,6 +117,12 @@ export type ExtractSiteResult =
       sourceCandidates?: Array<{ value: string; label?: string; source: string }>;
       /** Accents 1–6 of a PowerPoint template's theme. */
       chartPalette?: string[];
+      /** Pages added from the home page's navigation (no extraUrls given). */
+      discovered?: string[];
+      /** The three closest bundled design systems to the draft (add-nearest-design-system). */
+      nearest?: Array<{ id: string; name: string; distance: number; compared: number; differs: string[] }>;
+      /** What sets the draft apart from the bundled set, in plain words. */
+      distinctive?: string[];
       notes: string[];
     };
 
@@ -125,6 +134,8 @@ export interface CapturedBrandKit {
   voice: BrandVoice;
   imagery: BrandImagery;
   themeColor?: string;
+  /** What moves, observed in the browser (add-runtime-motion). */
+  motion?: BrandMotion;
 }
 
 // ── In-page measurement ─────────────────────────────────────────────────
@@ -140,13 +151,60 @@ interface MeasuredPage extends Omit<PageEvidence, 'url' | 'dark' | 'hiddenOverla
   logo?: { kind: 'svg'; markup: string } | { kind: 'img'; src: string };
   favicon?: string;
   stylesheetsUnreadable: number;
+  /** Colours Chrome reported in a modern format (oklch(), lab(), color(display-p3 …)), by the rgb() value they were read as. */
+  colorOriginals?: Record<string, string>;
+  /** Colour values the page used that couldn't be read. */
+  unreadColors?: string[];
+  /** Document-relative rects of each accent candidate's best control, keyed accent-candidate-<n>. */
+  candidateRects?: Record<string, { x: number; y: number; width: number; height: number }>;
+  /** Rects of the first element with each radius (buttons, inputs, cards, featured), keyed radius-<kind>-<px>. */
+  radiusRects?: Record<string, { x: number; y: number; width: number; height: number }>;
 }
 
 function measurePageInBrowser(): MeasuredPage {
   const MARK = 'data-od-extract';
   const doc = document;
   const win = window;
-  const cs = (el: Element): CSSStyleDeclaration => win.getComputedStyle(el);
+  // Chrome reports a colour in the format it was written in (oklch(), oklab(), lab(), lch(), hwb(), color(display-p3 …));
+  // every colour read here is turned into rgb() by painting it on a 1×1 canvas, which also clips it to sRGB.
+  const colorCanvas = doc.createElement('canvas');
+  colorCanvas.width = 1;
+  colorCanvas.height = 1;
+  const cctx = colorCanvas.getContext('2d', { willReadFrequently: true });
+  const colorCache = new Map<string, string>();
+  const colorOriginals: Record<string, string> = {};
+  const unreadColors = new Set<string>();
+  const MODERN = /\b(?:oklch|oklab|lab|lch|hwb|color)\([^()]*\)/gi;
+  const toLegacy = (value: string): string => {
+    const hit = colorCache.get(value);
+    if (hit) return hit;
+    let out = value;
+    if (cctx) {
+      cctx.clearRect(0, 0, 1, 1);
+      cctx.fillStyle = '#010203';
+      cctx.fillStyle = value;
+      if (String(cctx.fillStyle) === '#010203') unreadColors.add(value);
+      else {
+        cctx.fillRect(0, 0, 1, 1);
+        const d = cctx.getImageData(0, 0, 1, 1).data;
+        out = d[3] === 255 ? `rgb(${d[0]}, ${d[1]}, ${d[2]})` : `rgba(${d[0]}, ${d[1]}, ${d[2]}, ${Math.round((d[3] / 255) * 1000) / 1000})`;
+        colorOriginals[out] = value;
+      }
+    } else unreadColors.add(value);
+    colorCache.set(value, out);
+    return out;
+  };
+  const legacyColors = (v: string): string => (/(?:oklch|oklab|lab|lch|hwb|color)\(/i.test(v) ? v.replace(MODERN, toLegacy) : v);
+  const cs = (el: Element, pseudo?: string): CSSStyleDeclaration => {
+    const style = win.getComputedStyle(el, pseudo);
+    return new Proxy(style, {
+      get(target, prop) {
+        const v = Reflect.get(target, prop) as unknown;
+        if (typeof v === 'function') return (v as (...args: unknown[]) => unknown).bind(target);
+        return typeof v === 'string' ? legacyColors(v) : v;
+      },
+    });
+  };
   const visible = (el: Element): boolean => {
     const r = el.getBoundingClientRect();
     const s = cs(el);
@@ -294,25 +352,138 @@ function measurePageInBrowser(): MeasuredPage {
     const r = el.getBoundingClientRect();
     return !transparent(bgc) && bgc !== pageBg && bgc !== surface?.[0] && r.height >= 24 && r.height <= 120 && r.width <= 600 && (el.textContent ?? '').trim().length > 0;
   });
-  const scored = buttons
-    .map((el) => {
+  // Ranked by colour, not by one button (add-accent-candidates): filled controls
+  // are grouped by colour (OKLab distance under 0.05, about ΔE 4), and each
+  // colour scores on its best control's size and fold, how many controls and
+  // links use it, how colourful it is (near-black and grey count for little),
+  // a declared --brand/--primary/--accent with that value, and the logo's colour.
+  const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
+  const oklab = (c: string): number[] => {
+    const [r, g, b] = rgb(c).map((n) => {
+      const v = n / 255;
+      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const q = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * q, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * q, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * q];
+  };
+  const chromaOf = (c: string): number => {
+    const [, a, b] = oklab(c);
+    return Math.hypot(a, b);
+  };
+  const colourful = (c: string): number => {
+    const [L] = oklab(c);
+    return clamp01((chromaOf(c) - 0.03) / 0.12) * clamp01((L - 0.2) / 0.25);
+  };
+  const near = (x: string, y: string): boolean => {
+    const p = oklab(x);
+    const q = oklab(y);
+    return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < 0.05;
+  };
+  const asRgb = (value: string): string | undefined => {
+    let v = value.trim();
+    if (!v) return undefined;
+    if (/^[\d.]+\s+[\d.]+%\s+[\d.]+%$/.test(v)) v = `hsl(${v})`; // shadcn/ui v3 writes bare HSL components
+    if (/^rgba?\(/.test(v)) return v;
+    if (!cctx) return undefined;
+    cctx.clearRect(0, 0, 1, 1);
+    cctx.fillStyle = '#010203';
+    cctx.fillStyle = v;
+    if (String(cctx.fillStyle) === '#010203' && !/^#010203$/i.test(v)) return undefined;
+    cctx.fillRect(0, 0, 1, 1);
+    const d = cctx.getImageData(0, 0, 1, 1).data;
+    return d[3] < 200 ? undefined : `rgb(${d[0]}, ${d[1]}, ${d[2]})`;
+  };
+  type AccentGroup = { value: string; best?: { el: Element; score: number }; controls: number; links: number; declared?: string; logo: boolean; score: number };
+  const groups: AccentGroup[] = [];
+  const groupFor = (value: string): AccentGroup => {
+    const found = groups.find((g) => near(g.value, value));
+    if (found) return found;
+    const g: AccentGroup = { value, controls: 0, links: 0, logo: false, score: 0 };
+    groups.push(g);
+    return g;
+  };
+  for (const el of buttons) {
+    const r = el.getBoundingClientRect();
+    const fold = r.top + win.scrollY < win.innerHeight ? 2 : 1;
+    const tag = /^(button|input)$/i.test(el.tagName) || /btn|button|cta|primary/i.test(el.className.toString()) ? 1.5 : 1;
+    const score = Math.sqrt(r.width * r.height) * fold * tag;
+    const g = groupFor(fill(el));
+    g.controls++;
+    if (!g.best || score > g.best.score) g.best = { el, score };
+  }
+  for (const el of all('a[href]')) {
+    if (buttons.includes(el)) continue;
+    const c = cs(el).color;
+    const g = groups.find((x) => near(x.value, c));
+    if (g) g.links++;
+  }
+  // Declared brand properties on :root, resolved by the browser.
+  const rootStyle = win.getComputedStyle(doc.documentElement);
+  const brandNames = new Set<string>();
+  for (const sheet of Array.from(doc.styleSheets)) {
+    try {
+      for (const rule of Array.from(sheet.cssRules)) {
+        if (!(rule instanceof CSSStyleRule) || !/^(:root|html)$/i.test(rule.selectorText.trim())) continue;
+        for (let i = 0; i < rule.style.length; i++) {
+          const name = rule.style[i];
+          if (/^--(?:[\w-]*-)?(brand|primary|accent)(?:-(?:color|colour|500|600|base|default))?$/i.test(name)) brandNames.add(name);
+        }
+      }
+    } catch {
+      // Cross-origin sheet: counted elsewhere.
+    }
+  }
+  for (const name of brandNames) {
+    const value = asRgb(rootStyle.getPropertyValue(name));
+    if (!value || transparent(value)) continue;
+    const g = groupFor(value);
+    if (!g.declared || name.length < g.declared.length) g.declared = name;
+  }
+  // The logo's most used colourful fill, for an inline SVG logo.
+  const logoSvg = all('header [class*="logo" i] svg, header a[href="/"] svg, [class*="logo" i] svg, header svg').find((el) => el.getBoundingClientRect().top + win.scrollY < 240);
+  if (logoSvg) {
+    const fills = tally(Array.from(logoSvg.querySelectorAll('path, rect, circle, polygon, ellipse')), (el) => cs(el).fill, (el) => {
       const r = el.getBoundingClientRect();
-      const fold = r.top + win.scrollY < win.innerHeight ? 2 : 1;
-      const tag = /^(button|input)$/i.test(el.tagName) || /btn|button|cta|primary/i.test(el.className.toString()) ? 1.5 : 1;
-      return { el, score: Math.sqrt(r.width * r.height) * fold * tag * (0.4 + saturation(fill(el))) };
-    })
-    .sort((a, b) => b.score - a.score);
-  const primary = scored[0]?.el;
+      return r.width * r.height;
+    }).filter(([c]) => /^rgb/.test(c) && colourful(c) > 0.3);
+    if (fills[0]) {
+      const g = groups.find((x) => near(x.value, fills[0][0]));
+      if (g) g.logo = true;
+    }
+  }
+  for (const g of groups) {
+    // A colour needs a filled control or a declaration behind it; a declared-only colour starts from a small button's size.
+    if (!g.best && !g.declared) continue;
+    g.score = (g.best?.score ?? 70) * (0.25 + colourful(g.value)) * (1 + 0.3 * Math.min(g.controls - 1, 5)) * (1 + 0.04 * Math.min(g.links, 10)) * (g.declared ? 1.6 : 1) * (g.logo ? 1.3 : 1);
+  }
+  const ranked = groups.filter((g) => g.score > 0).sort((a, b) => b.score - a.score);
+  const accentCandidates: NonNullable<MeasuredPage['accentCandidates']> = [];
+  const candidateRects: Record<string, { x: number; y: number; width: number; height: number }> = {};
+  ranked.slice(0, 4).forEach((g, i) => {
+    accentCandidates.push({ value: g.value, score: Math.round(g.score), chroma: Math.round(chromaOf(g.value) * 1000) / 1000, controls: g.controls, links: g.links, declared: g.declared, logo: g.logo || undefined, selector: g.best ? selectorFor(g.best.el) : undefined });
+    if (g.best) candidateRects[`accent-candidate-${i + 1}`] = rectOf(g.best.el);
+  });
+  // Confidence from the gap between the top two: within 10% is a coin toss (≤ 0.25), a 40% lead or no rival is sure.
+  let accentConfidence: number | undefined = ranked[0] ? (ranked[1] ? Math.round(clamp01(((ranked[0].score - ranked[1].score) / ranked[0].score) * 2.5) * 100) / 100 : 1) : undefined;
+  const top = ranked[0];
+  const primary = top?.best?.el;
   const gradients: NonNullable<MeasuredPage['gradients']> = [];
-  if (primary) {
-    const value = fill(primary);
-    setRole('accent', value, primary, buttons.filter((b) => fill(b) === value).length);
+  if (top && primary) {
+    setRole('accent', top.value, primary, top.controls);
     if (/gradient\(/.test(cs(primary).backgroundImage)) gradients.push({ role: 'accent', value: cs(primary).backgroundImage });
     setRole('accent-on', cs(primary).color, primary, 1);
     primary.setAttribute(`${MARK}-primary`, '');
+  } else if (top?.declared) {
+    // Declared but on no control: the colour, with no button to read states from.
+    roles.accent = { value: top.value, selector: `:root ${top.declared}`, count: 0 };
   } else {
     const links = tally(all('a[href]'), (el) => cs(el).color).find(([c]) => c !== fg?.[0]);
-    if (links) setRole('accent', links[0], links[1].el, links[1].count);
+    if (links) {
+      setRole('accent', links[0], links[1].el, links[1].count);
+      accentConfidence = 0.3;
+    }
   }
 
   // Status colours, only from elements whose role, state or class names say
@@ -426,7 +597,8 @@ function measurePageInBrowser(): MeasuredPage {
     ...cards.filter((el) => area(el) < viewportArea * 0.15).slice(0, 60).map((el) => [el, 'card'] as [Element, RadiusKind]),
     ...featured.slice(0, 40).map((el) => [el, 'featured'] as [Element, RadiusKind]),
   ];
-  const radiusTally = new Map<string, { px: number; count: number; kind: RadiusKind }>();
+  const radiusTally = new Map<string, { px: number; count: number; kind: RadiusKind; selector?: string }>();
+  const radiusRects: Record<string, { x: number; y: number; width: number; height: number }> = {};
   for (const [el, kind] of radiusEls) {
     const r = parseFloat(cs(el).borderTopLeftRadius);
     if (!(r > 0)) continue;
@@ -434,7 +606,10 @@ function measurePageInBrowser(): MeasuredPage {
     const key = `${kind}:${rounded}`;
     const cur = radiusTally.get(key);
     if (cur) cur.count++;
-    else radiusTally.set(key, { px: rounded, count: 1, kind });
+    else {
+      radiusTally.set(key, { px: rounded, count: 1, kind, selector: kind === 'other' ? undefined : selectorFor(el) });
+      if (kind !== 'other' && Object.keys(radiusRects).length < 8) radiusRects[`radius-${kind}-${rounded}`] = rectOf(el);
+    }
   }
   const spacingTally = new Map<number, number>();
   const snap = (v: string) => {
@@ -561,6 +736,12 @@ function measurePageInBrowser(): MeasuredPage {
     logo,
     favicon: iconLink?.href,
     stylesheetsUnreadable,
+    colorOriginals: Object.keys(colorOriginals).length > 0 ? colorOriginals : undefined,
+    unreadColors: unreadColors.size > 0 ? [...unreadColors].slice(0, 12) : undefined,
+    accentCandidates: accentCandidates.length > 0 ? accentCandidates : undefined,
+    accentConfidence,
+    candidateRects,
+    radiusRects,
   };
 }
 
@@ -663,7 +844,7 @@ async function forcedStateStyle(
       const el = document.querySelector('[data-od-extract-primary]');
       if (!el) return undefined;
       const s = getComputedStyle(el);
-      const fill = s.backgroundColor === 'rgba(0, 0, 0, 0)' ? (/rgba?\([^)]*\)/.exec(s.backgroundImage)?.[0] ?? s.backgroundColor) : s.backgroundColor;
+      const fill = s.backgroundColor === 'rgba(0, 0, 0, 0)' ? (/(?:rgba?|oklch|oklab|lab|lch|hwb|color)\([^()]*\)/.exec(s.backgroundImage)?.[0] ?? s.backgroundColor) : s.backgroundColor;
       return { background: fill, outlineStyle: s.outlineStyle, outlineWidth: s.outlineWidth, outlineColor: s.outlineColor, boxShadow: s.boxShadow };
     });
     await client.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
@@ -673,6 +854,49 @@ async function forcedStateStyle(
   } finally {
     await client.detach().catch(() => undefined);
   }
+}
+
+/** In-page: the links in the header, nav and footer, as absolute URLs. Self-contained, for page.evaluate. */
+export function navLinksInBrowser(): string[] {
+  const out: string[] = [];
+  for (const a of Array.from(document.querySelectorAll('header a[href], nav a[href], footer a[href], [role="navigation"] a[href]'))) {
+    const href = (a as HTMLAnchorElement).href;
+    if (href && out.indexOf(href) < 0) out.push(href);
+  }
+  return out.slice(0, 300);
+}
+
+const NAV_SKIP = /(^|\/)(log-?in|sign-?in|sign-?up|signup|register|join|account|auth|sso|oauth|legal|privacy|terms|tos|cookies?|gdpr|imprint|impressum|careers?|jobs|cart|checkout|basket|search|status|contact-sales)(\/|$|\.|-)/i;
+const NAV_PREFER: RegExp[] = [/(^|\/)(pricing|plans|prices)(\/|$)/i, /(^|\/)(product|products|features|platform|solutions|how-it-works)(\/|$)/i, /(^|\/)(about|about-us|company|story)(\/|$)/i, /(^|\/)(docs|documentation|blog|resources|guides|news)(\/|$)/i];
+
+/**
+ * Up to three same-site pages to measure besides the home page, from its
+ * navigation links: pricing, then product or features, about, then docs or
+ * blog, before any other page. Skips sign-in, sign-up, legal and careers
+ * pages, files, and paths robots.txt disallows.
+ */
+export function pickNavPages(main: URL, hrefs: string[], robots?: Parameters<typeof robotsDisallows>[1]): string[] {
+  const seen = new Set<string>([main.pathname.replace(/\/$/, '') || '/']);
+  const candidates: Array<{ url: string; rank: number; order: number }> = [];
+  hrefs.forEach((raw, order) => {
+    let u: URL;
+    try {
+      u = new URL(raw);
+    } catch {
+      return;
+    }
+    if (u.origin !== main.origin || !/^https?:$/.test(u.protocol)) return;
+    const pathKey = u.pathname.replace(/\/$/, '') || '/';
+    if (seen.has(pathKey) || NAV_SKIP.test(u.pathname) || /\.(pdf|zip|png|jpe?g|gif|svg|webp|mp4|xml|json|txt)$/i.test(u.pathname)) return;
+    if (robots && robotsDisallows(u.pathname, robots)) return;
+    seen.add(pathKey);
+    const rank = NAV_PREFER.findIndex((re) => re.test(u.pathname));
+    candidates.push({ url: `${u.origin}${u.pathname}`, rank: rank < 0 ? NAV_PREFER.length : rank, order });
+  });
+  return candidates
+    .sort((a, b) => a.rank - b.rank || a.order - b.order)
+    .slice(0, 3)
+    .map((c) => c.url);
 }
 
 async function cropRoles(page: Page, rects: MeasuredPage['rects'], dir: string, prefix: string): Promise<Record<string, string>> {
@@ -742,31 +966,73 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   const contentPages: PageContent[] = [];
   /** Each measured page's screenshots, so a redesign's base screen can be traced back to its page. */
   const pageShots: Array<{ url: string; desktop: string; mobile: string }> = [];
-  const robots = input.content ? await fetchRobots(main.origin, input.fetchImpl) : undefined;
+  const discovering = (input.extraUrls ?? []).length === 0 && input.discover !== false;
+  const robots = input.content || discovering ? await fetchRobots(main.origin, input.fetchImpl) : undefined;
+  const urls = [...valid.urls];
+  const discovered: string[] = [];
+  let motion: MotionObservation | undefined;
+  let reducedRecorder: string | undefined;
   try {
     live = await launchLiveBrowser(browserPath, input.allowHostsForTesting ?? [], 'od-extract-profile-');
     const { page, images } = live;
 
-    for (const [i, url] of valid.urls.entries()) {
-      const prefix = valid.urls.length > 1 ? `page-${i + 1}-` : '';
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      const prefix = valid.urls.length > 1 || i > 0 ? `page-${i + 1}-` : '';
+      const wasDiscovered = i >= valid.urls.length;
       await page.setViewport(DESKTOP_VIEWPORT);
       await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
-      if (robots && robotsDisallows(url.pathname, robots)) {
+      if (robots && input.content && !wasDiscovered && robotsDisallows(url.pathname, robots)) {
         blocked.push({ url: url.toString(), reason: 'robots.txt disallows it' });
         continue;
       }
+      // Motion on the first page: record animations from the first frame (add-runtime-motion).
+      const recorder = i === 0 && !pages.length ? await page.evaluateOnNewDocument(MOTION_RECORDER).catch(() => undefined) : undefined;
       try {
         await gotoPage(page, url.toString());
       } catch (err) {
+        if (recorder) await page.removeScriptToEvaluateOnNewDocument(recorder.identifier).catch(() => undefined);
+        if (wasDiscovered) {
+          notes.push(`${url.toString()} (found in the navigation) didn't load, so it wasn't measured.`);
+          continue;
+        }
         blocked.push({ url: url.toString(), reason: `the page didn't load (${err instanceof Error ? err.message.split('\n')[0] : String(err)})` });
         continue;
+      }
+      if (wasDiscovered) {
+        const status = (await page.evaluate('(performance.getEntriesByType("navigation")[0] || {}).responseStatus || 0').catch(() => 0)) as number;
+        if (status >= 400) {
+          notes.push(`${url.toString()} (found in the navigation) answered ${status}, so it wasn't measured.`);
+          continue;
+        }
+      }
+      if (i === 0 && discovering) {
+        const hrefs = (await page.evaluate(`(${navLinksInBrowser.toString()})()`).catch(() => [])) as string[];
+        for (const next of pickNavPages(main, hrefs, robots)) {
+          urls.push(new URL(next));
+          discovered.push(next);
+        }
       }
       // Overlays first, so a consent button can't become the accent; then a
       // scroll so lazy and scroll-reveal sections count; then overlays that
       // appeared on the way.
       const hidden = new Set<string>();
       await quietOverlays(page, hidden);
+      if (recorder) await observeInteractions(page);
       await scrollThrough(page);
+      if (recorder) {
+        motion = await readObservedMotion(page);
+        await page.removeScriptToEvaluateOnNewDocument(recorder.identifier).catch(() => undefined);
+        if (movesOnLoadOrScroll(motion)) {
+          // Once more under prefers-reduced-motion, then back to the page as a visitor sees it.
+          await page.evaluateOnNewDocument(MOTION_RECORDER).then((r) => (reducedRecorder = r.identifier)).catch(() => undefined);
+          motion.reducedMotion = await honoursReducedMotion(page, url.toString(), motion, gotoPage, scrollThrough);
+          if (reducedRecorder) await page.removeScriptToEvaluateOnNewDocument(reducedRecorder).catch(() => undefined);
+          await gotoPage(page, url.toString()).catch(() => undefined);
+          await quietOverlays(page, hidden);
+          await scrollThrough(page);
+        }
+      }
       await quietOverlays(page, hidden);
       const desktopShot = `${prefix}desktop.png`;
       await page.screenshot({ path: path.join(bundleDir, desktopShot) });
@@ -796,6 +1062,21 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         measured.focusRing = await forcedFocusRing(page);
       }
       const crops = await cropRoles(page, measured.rects, path.join(bundleDir, 'crops'), prefix);
+      // Radius crops only matter when pages are compared.
+      if (urls.length > 1 && measured.radiusRects) {
+        const radiusCrops = await cropRoles(page, measured.radiusRects as MeasuredPage['rects'], path.join(bundleDir, 'crops'), prefix);
+        for (const r of measured.radii) {
+          const file = radiusCrops[`radius-${r.kind}-${r.px}`];
+          if (file) r.crop = `crops/${file}`;
+        }
+      }
+      if (measured.accentCandidates && measured.candidateRects) {
+        const candidateCrops = await cropRoles(page, measured.candidateRects as MeasuredPage['rects'], path.join(bundleDir, 'crops'), prefix);
+        measured.accentCandidates.forEach((c, n) => {
+          const file = candidateCrops[`accent-candidate-${n + 1}`];
+          if (file) c.crop = `crops/${file}`;
+        });
+      }
       for (const [role, sample] of Object.entries(measured.roles)) {
         const crop = crops[role.replace(/-(hover|active)$/, '')];
         if (sample && crop) sample.crop = `crops/${crop}`;
@@ -845,6 +1126,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         }
         if (kit) kitMarks.push(...(await saveKitMarks(page, live.images, kit, main, bundleDir, input.allowHostsForTesting ?? [])));
         if (themeColor) notes.push(`The site declares theme-color ${themeColor}.`);
+        if (measured.unreadColors?.length) notes.push(`${url.toString()}: ${measured.unreadColors.length} colour value(s) couldn't be read, so roles painted with them are missing: ${measured.unreadColors.slice(0, 4).join(', ')}.`);
         if (measured.stylesheetsUnreadable > 0) notes.push(`${measured.stylesheetsUnreadable} cross-origin stylesheet(s) couldn't be read, so their custom properties and @font-face sources are missing; computed values are unaffected.`);
       }
 
@@ -894,6 +1176,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
 
       pages.push({
         url: url.toString(),
+        colorOriginals: measured.colorOriginals,
         roles: measured.roles,
         textRoles: measured.textRoles,
         fonts: measured.fonts,
@@ -909,6 +1192,9 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         layout: measured.layout,
         hiddenOverlays: hidden.size > 0 ? [...hidden] : undefined,
         dark: pageDark,
+        accentCandidates: measured.accentCandidates,
+        accentConfidence: measured.accentConfidence,
+        motion: pages.length === 0 ? motion : undefined,
       });
       if (!dark && pageDark) dark = pageDark;
       if (hidden.size > 0) notes.push(`${url.toString()}: hid ${hidden.size} overlay(s) before measuring (consent banners or chat launchers, not clicked): ${[...hidden].slice(0, 5).join(', ')}.`);
@@ -953,7 +1239,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
       if (files.length > 0) f.files = files;
     }
     const capped = voiceSamples.slice(0, 60);
-    brandKit = { marks: kitMarks, fonts, components: kitComponents, voice: { samples: capped, ...voiceFacts(capped) }, imagery: kitImagery, themeColor };
+    brandKit = { marks: kitMarks, fonts, components: kitComponents, voice: { samples: capped, ...voiceFacts(capped) }, imagery: kitImagery, themeColor, motion: motion ? summariseMotion(motion) : undefined };
     const licensed = fonts.filter((f) => f.source === 'self-hosted' || f.source === 'adobe');
     if (licensed.length > 0) notes.push(`${licensed.map((f) => `${f.family} (${f.source}, free match ${f.freeMatch})`).join(', ')} may be licensed: ask before copying font files, and only for the user's own brand.`);
   }
@@ -963,7 +1249,9 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   if (theme !== 'light' && !dark && noDarkFound) notes.push('No dark theme was found: the site looks the same under prefers-color-scheme: dark and with a dark theme attribute on the root element. No dark values were returned.');
   if (draft && theme !== 'light' && dark && !draft.dark) notes.push('The dark theme changed nothing the draft measures, so no dark values were returned.');
   if (draft) notes.push(...draft.notes);
-  if (draft && draft.conflicts.length > 0) notes.push(`Pages disagree on ${[...new Set(draft.conflicts.map((c) => c.token))].join(', ')}: the draft keeps the first page's values; see draft.conflicts.`);
+  if (draft && draft.conflicts.length > 0) notes.push(`Pages disagree on ${[...new Set(draft.conflicts.map((c) => c.token))].join(', ')}: the draft takes the value most pages use (the first page's on a tie); see draft.conflicts.`);
+  const discoveredMeasured = discovered.filter((u) => pages.some((p) => p.url === u));
+  if (discoveredMeasured.length > 0) notes.push(`Also measured, from the home page's navigation: ${discoveredMeasured.join(', ')}. Pass discover: false to measure only the page given.`);
   const status = pages.length === 0 ? 'blocked' : 'ok';
   let contentRel: string | undefined;
   if (input.content && contentPages.length > 0) {
@@ -990,6 +1278,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
     marks,
     content: contentRel,
     brandKit,
+    discovered: discoveredMeasured.length > 0 ? discoveredMeasured : undefined,
     notes,
   };
 }
@@ -1109,6 +1398,15 @@ async function localizeContentImages(pages: PageContent[], images: Map<string, B
   return { copied, missing };
 }
 
+/** One line on how the accent was chosen: the winner, its confidence and the runner-up. */
+function accentChoice(src: DraftTokens['sources'][string] | undefined): string | undefined {
+  const [top, next] = src?.candidates ?? [];
+  if (!top || src?.choiceConfidence === undefined) return undefined;
+  const why = [`${top.controls} control${top.controls === 1 ? '' : 's'}`, top.declared ? `declared ${top.declared}` : '', top.logo ? 'the logo\'s colour' : ''].filter(Boolean).join(', ');
+  const ask = src.choiceConfidence < 0.5 ? ' Close call: ask the person which is the brand\'s colour, showing both crops.' : '';
+  return `${top.hex} (confidence ${src.choiceConfidence}; ${why})${next ? `, runner-up ${next.hex}${next.declared ? ` (declared ${next.declared})` : ''}` : ''}.${ask}`;
+}
+
 /** The tool's text: what was measured, from where, and what to do next. */
 export function formatExtractSiteResult(result: ExtractSiteResult): string {
   if (result.status === 'invalid-args') return JSON.stringify({ status: 'invalid-args', error: result.error }, null, 2);
@@ -1127,12 +1425,16 @@ export function formatExtractSiteResult(result: ExtractSiteResult): string {
       blocked: result.blocked,
       marks: result.marks,
       content: result.content,
+      discovered: result.discovered,
       brandKit: result.brandKit,
-      draft: result.draft ? { tokens: result.draft.tokens, dark: result.draft.dark, sources: result.draft.sources, unmeasured: result.draft.unmeasured, conflicts: result.draft.conflicts } : undefined,
+      draft: result.draft ? { tokens: result.draft.tokens, dark: result.draft.dark, sources: result.draft.sources, unmeasured: result.draft.unmeasured, conflicts: result.draft.conflicts, consistency: result.draft.consistency } : undefined,
       draftCss: result.draftCss,
+      accentChoice: accentChoice(result.draft?.sources['--accent']),
       candidates: result.candidates,
       sourceCandidates: result.sourceCandidates,
       chartPalette: result.chartPalette,
+      nearest: result.nearest,
+      distinctive: result.distinctive,
       notes: result.notes,
       next: result.content ? `${next} The site's content is in ${result.content}: for a redesign, pass redesign: { site } to prepare_open_design_brief, which binds it into the design.` : next,
     },

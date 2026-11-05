@@ -7,7 +7,8 @@ import { loadIntegrationRegistry, type IntegrationRegistry } from '../integratio
 import { loadPrintHouses, type PrintHouse } from '../poster/printHouses';
 import { DESIGN_SECTIONS_FILE, applyDesignSections } from './designSections';
 import { loadGallerySite, type GallerySite } from './gallerySite';
-import { computeDesignSystemFacets, loadDesignSystemDescriptors, matchesAllWords, rankDesignSystems, type DesignProfile, type DesignSystemDescriptor, type DesignSystemFacets, type MatchCandidate, type RecommendationResult } from './designSystemMatching';
+import { MIN_FEATURES, distinctiveFeatures, featureCount, styleVector, vectorDistance, vectorScale, type StyleVector, type VectorScale } from './styleVector';
+import { computeDesignSystemFacets, designSystemTokenMap, loadDesignSystemDescriptors, matchesAllWords, rankDesignSystems, type DesignProfile, type DesignSystemDescriptor, type DesignSystemFacets, type MatchCandidate, type RecommendationResult } from './designSystemMatching';
 
 export type SkillSource = 'skill' | 'design-template' | 'example' | 'community';
 // Priority order used both to decide which source keeps the plain public id
@@ -659,6 +660,8 @@ export class ContentIndex {
   private gallerySite: Promise<GallerySite | undefined> | undefined;
   private printHouses: Promise<PrintHouse[]> | undefined;
   private readonly facetCache = new Map<string, DesignSystemFacets>();
+  private readonly vectorCache = new Map<string, StyleVector>();
+  private scaleCache: VectorScale | undefined;
 
   constructor(
     private readonly assetsRoot: string,
@@ -895,7 +898,47 @@ export class ContentIndex {
    * Ranks design systems against a design profile (openspec add-design-system-matching).
    * Deterministic for a given catalog; never changes the active design system.
    */
-  async recommendDesignSystems(profile: DesignProfile | undefined, limit?: number): Promise<RecommendationResult> {
+  /** Style vectors of every design system (built-ins cached), and the bundled set's scale. */
+  private async styleVectors(): Promise<{ vectors: Map<string, { vector: StyleVector; detail: DesignSystemDetail }>; scale: VectorScale }> {
+    const designSystems = await this.loadedDesignSystems();
+    const vectors = new Map<string, { vector: StyleVector; detail: DesignSystemDetail }>();
+    for (const detail of designSystems.values()) {
+      let vector = detail.source === 'built-in' ? this.vectorCache.get(detail.id) : undefined;
+      if (!vector) {
+        vector = styleVector(designSystemTokenMap(detail));
+        if (detail.source === 'built-in') this.vectorCache.set(detail.id, vector);
+      }
+      vectors.set(detail.id, { vector, detail });
+    }
+    if (!this.scaleCache) this.scaleCache = vectorScale([...vectors.values()].filter((v) => v.detail.source === 'built-in').map((v) => v.vector));
+    return { vectors, scale: this.scaleCache };
+  }
+
+  /** A design system's tokens, for `like`; undefined for an unknown id. */
+  async designSystemTokens(id: string): Promise<Map<string, string> | undefined> {
+    const detail = (await this.loadedDesignSystems()).get(id);
+    return detail ? designSystemTokenMap(detail) : undefined;
+  }
+
+  /**
+   * The bundled design systems closest to a set of tokens (an extraction's
+   * draft), with what sets the tokens apart from the bundled set
+   * (openspec add-nearest-design-system). Needs MIN_FEATURES features.
+   */
+  async nearestDesignSystems(tokens: Map<string, string> | Record<string, string>, n = 3): Promise<{ nearest?: Array<{ id: string; name: string; distance: number; compared: number; differs: string[] }>; distinctive?: string[]; note?: string }> {
+    const target = styleVector(tokens);
+    const count = featureCount(target);
+    if (count < MIN_FEATURES) return { note: `Only ${count} style features were measured (at least ${MIN_FEATURES} are needed), too little to compare with the bundled design systems.` };
+    const { vectors, scale } = await this.styleVectors();
+    const ranked = [...vectors.values()]
+      .filter((v) => v.detail.source === 'built-in')
+      .map((v) => ({ id: v.detail.id, name: v.detail.name, ...vectorDistance(target, v.vector, scale) }))
+      .filter((d) => d.compared >= MIN_FEATURES)
+      .sort((a, b) => a.distance - b.distance || a.id.localeCompare(b.id));
+    return { nearest: ranked.slice(0, n), distinctive: distinctiveFeatures(target, scale) };
+  }
+
+  async recommendDesignSystems(profile: DesignProfile | undefined, limit?: number, like?: { tokens: Map<string, string> | Record<string, string>; id?: string }): Promise<RecommendationResult> {
     const designSystems = await this.loadedDesignSystems();
     const { descriptors } = await this.ensureLoaded();
     const candidates: MatchCandidate[] = [];
@@ -908,7 +951,15 @@ export class ContentIndex {
       }
       candidates.push({ detail, facets, descriptor: descriptors.get(detail.id) ?? brandDescriptor(detail) });
     }
-    return rankDesignSystems(candidates, profile, limit);
+    if (!like) return rankDesignSystems(candidates, profile, limit);
+    const target = styleVector(like.tokens);
+    const { vectors, scale } = await this.styleVectors();
+    const similarity = new Map<string, { distance: number; compared: number; differs: string[] }>();
+    for (const [id, v] of vectors) {
+      const d = vectorDistance(target, v.vector, scale);
+      if (d.compared >= MIN_FEATURES) similarity.set(id, d);
+    }
+    return rankDesignSystems(candidates, profile, limit, { similarity, excludeId: like.id });
   }
 
   /** User design systems whose brand.json says they are the user's own brand. */

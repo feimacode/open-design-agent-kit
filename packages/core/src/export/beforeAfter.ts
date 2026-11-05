@@ -189,10 +189,28 @@ export function pairFindings(groups: AuditGroup[], auditFindings: AuditFinding[]
 
 /** Contrast of the visible elements whose text starts with each given text. Self-contained. */
 function contrastOfTexts(texts: string[]): Array<number | null> {
+  // Modern colour syntaxes (oklch, lab, color(display-p3 …)): let the browser convert through a 1×1 canvas.
+  const canvasRgba = (c: string): number[] | undefined => {
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = 1;
+      cv.height = 1;
+      const ctx = cv.getContext('2d');
+      if (!ctx) return undefined;
+      ctx.fillStyle = '#010203';
+      ctx.fillStyle = c;
+      if (String(ctx.fillStyle) === '#010203') return undefined;
+      ctx.fillRect(0, 0, 1, 1);
+      const d = ctx.getImageData(0, 0, 1, 1).data;
+      return [d[0], d[1], d[2], d[3] / 255];
+    } catch {
+      return undefined;
+    }
+  };
   const parse = (c: string): { r: number; g: number; b: number; a: number } | null => {
     const m = /rgba?\(([^)]+)\)/.exec(c);
-    if (!m) return null;
-    const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number);
+    const p = m ? m[1].split(/[ ,/]+/).filter(Boolean).map(Number) : canvasRgba(c);
+    if (!p) return null;
     return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
   };
   const lum = (c: { r: number; g: number; b: number }) => {

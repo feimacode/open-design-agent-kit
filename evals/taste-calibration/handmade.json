@@ -1,0 +1,286 @@
+{
+  "description": "Hand-made sites: built by a team or studio, not from an AI or site-builder default. A taste rule's false-alarm rate is how often it fires here.",
+  "method": "Home page at 1440×900, consent banners hidden, the same taste rules the site audit runs (desktopPasses). collected is the date the entry was added; verified is the date a calibration run last loaded it.",
+  "sites": [
+    {
+      "site": "gov.uk",
+      "url": "https://www.gov.uk/",
+      "why": "government; its own design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "nhs.uk",
+      "url": "https://www.nhs.uk/",
+      "why": "government health service; its own design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "canada.ca",
+      "url": "https://www.canada.ca/en.html",
+      "why": "government; Canada.ca design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "nasa.gov",
+      "url": "https://www.nasa.gov/",
+      "why": "government agency; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "bbc.co.uk",
+      "url": "https://www.bbc.co.uk/",
+      "why": "publisher; its own design language (GEL)",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "theguardian.com",
+      "url": "https://www.theguardian.com/international",
+      "why": "publisher; custom design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "nytimes.com",
+      "url": "https://www.nytimes.com/",
+      "why": "publisher; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "economist.com",
+      "url": "https://www.economist.com/",
+      "why": "publisher; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "ft.com",
+      "url": "https://www.ft.com/",
+      "why": "publisher; Origami design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "wired.com",
+      "url": "https://www.wired.com/",
+      "why": "publisher; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "theverge.com",
+      "url": "https://www.theverge.com/",
+      "why": "publisher; custom site with a strong look",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "wikipedia.org",
+      "url": "https://www.wikipedia.org/",
+      "why": "non-profit; Codex design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "mozilla.org",
+      "url": "https://www.mozilla.org/en-US/",
+      "why": "non-profit; Protocol design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "metmuseum.org",
+      "url": "https://www.metmuseum.org/",
+      "why": "museum; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "moma.org",
+      "url": "https://www.moma.org/",
+      "why": "museum; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "tate.org.uk",
+      "url": "https://www.tate.org.uk/",
+      "why": "museum; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "pentagram.com",
+      "url": "https://www.pentagram.com/",
+      "why": "design studio; hand-made",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "apple.com",
+      "url": "https://www.apple.com/",
+      "why": "brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "stripe.com",
+      "url": "https://stripe.com/",
+      "why": "brand; custom site with gradients (design-extract's indigo-gradient fired here)",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "slack.com",
+      "url": "https://slack.com/",
+      "why": "brand; custom site (design-extract's indigo-gradient fired here)",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "shopify.com",
+      "url": "https://www.shopify.com/",
+      "why": "brand; custom site (design-extract's indigo-gradient fired here)",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "airbnb.com",
+      "url": "https://www.airbnb.com/",
+      "why": "brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "spotify.com",
+      "url": "https://www.spotify.com/",
+      "why": "brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "figma.com",
+      "url": "https://www.figma.com/",
+      "why": "brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "linear.app",
+      "url": "https://linear.app/",
+      "why": "brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "vercel.com",
+      "url": "https://vercel.com/",
+      "why": "brand; Geist design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "github.com",
+      "url": "https://github.com/",
+      "why": "brand; Primer design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "notion.so",
+      "url": "https://www.notion.so/",
+      "why": "brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "mailchimp.com",
+      "url": "https://mailchimp.com/",
+      "why": "brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "dropbox.com",
+      "url": "https://www.dropbox.com/",
+      "why": "brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "nike.com",
+      "url": "https://www.nike.com/",
+      "why": "retail brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "patagonia.com",
+      "url": "https://www.patagonia.com/home/",
+      "why": "retail brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "ikea.com",
+      "url": "https://www.ikea.com/us/en/",
+      "why": "retail brand; Skapa design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "lego.com",
+      "url": "https://www.lego.com/en-us",
+      "why": "retail brand; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "etsy.com",
+      "url": "https://www.etsy.com/",
+      "why": "marketplace; Collage design system",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "kickstarter.com",
+      "url": "https://www.kickstarter.com/",
+      "why": "platform; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "bandcamp.com",
+      "url": "https://bandcamp.com/",
+      "why": "platform; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "are.na",
+      "url": "https://www.are.na/",
+      "why": "small independent platform; hand-made",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "craigslist.org",
+      "url": "https://www.craigslist.org/",
+      "why": "deliberately plain, hand-made site",
+      "collected": "2026-11-05",
+      "verified": null
+    },
+    {
+      "site": "medium.com",
+      "url": "https://medium.com/",
+      "why": "platform; custom site",
+      "collected": "2026-11-05",
+      "verified": null
+    }
+  ]
+}

@@ -45,10 +45,28 @@ export function captureBrandKitInBrowser(voiceMax: number): CapturedKit {
     }
   };
   const transparent = (c: string) => c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c);
+  // Modern colour syntaxes (oklch, lab, color(display-p3 …)): let the browser convert through a 1×1 canvas.
+  const canvasRgba = (c: string): number[] | undefined => {
+    try {
+      const cv = doc.createElement('canvas');
+      cv.width = 1;
+      cv.height = 1;
+      const ctx = cv.getContext('2d');
+      if (!ctx) return undefined;
+      ctx.fillStyle = '#010203';
+      ctx.fillStyle = c;
+      if (String(ctx.fillStyle) === '#010203') return undefined;
+      ctx.fillRect(0, 0, 1, 1);
+      const d = ctx.getImageData(0, 0, 1, 1).data;
+      return [d[0], d[1], d[2], d[3] / 255];
+    } catch {
+      return undefined;
+    }
+  };
   const hex = (c: string): string | undefined => {
     const m = /rgba?\(([^)]+)\)/.exec(c);
-    if (!m) return undefined;
-    const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    const p = m ? m[1].split(/[\s,/]+/).filter(Boolean).map(Number) : canvasRgba(c);
+    if (!p) return undefined;
     if (p.length > 3 && p[3] < 0.5) return undefined;
     return `#${p.slice(0, 3).map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
   };
@@ -89,6 +107,11 @@ export function captureBrandKitInBrowser(voiceMax: number): CapturedKit {
       background: hex(s.backgroundColor),
       color: hex(s.color),
       shadow: s.boxShadow !== 'none' ? s.boxShadow : undefined,
+      width: Math.round(r.width),
+      label: (el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 40) || (el as HTMLInputElement).placeholder || undefined,
+      fontFamily: s.fontFamily || undefined,
+      letterSpacing: s.letterSpacing === 'normal' ? 0 : px(s.letterSpacing),
+      textAlign: s.textAlign || undefined,
     };
     return out;
   };

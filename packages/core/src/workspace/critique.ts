@@ -13,7 +13,7 @@ import { promises as fs } from 'node:fs';
 import { readCritique, validateCritique, type CritiqueRecord } from './critiqueTypes';
 import { loadAuditFixes } from '../generation/contentInventory';
 import { redesignSiteOf } from '../export/redesignChecks';
-import { BRAND_REFERENCE_FILE, readBrandRecord, type BrandComponents, type BrandVoice } from '../generation/brandKit';
+import { BRAND_REFERENCE_FILE, readBrandRecord, type BrandComponents, type BrandMotion, type BrandVoice } from '../generation/brandKit';
 
 export * from './critiqueTypes';
 
@@ -61,6 +61,8 @@ export interface CritiqueBrand {
   components?: BrandComponents;
   /** Voice facts (heading case, sentence length, person, exclamations) and a few real lines. */
   voice?: Omit<BrandVoice, 'samples'> & { samples?: string[] };
+  /** What moves on the brand's site: hover, focus, entrance, load (add-runtime-motion). */
+  motion?: BrandMotion;
 }
 
 /** The own brand's reference screenshot, component specs and voice, or undefined for any other design system. */
@@ -75,7 +77,7 @@ export async function critiqueBrand(workspaceRoot: string, outputDir: string, de
     .then(() => path.posix.join(rel, refFile))
     .catch(() => undefined);
   const voice = brand.voice ? { ...brand.voice, samples: brand.voice.samples?.filter((s) => s.kind !== 'nav').slice(0, 6).map((s) => s.text) } : undefined;
-  return { name: brand.name, reference, components: brand.components, voice };
+  return { name: brand.name, reference, components: brand.components, voice, motion: brand.motion };
 }
 
 export interface CritiqueTask {

@@ -134,8 +134,27 @@ export function mountDeviceShell(doc: Document, iframe: HTMLIFrameElement, spec:
   if (!s || !stage) return;
   // Bars take the page's background so they read as part of the app; text contrasts with it.
   const bg = spec.background && !/^(?:transparent|rgba\(0, 0, 0, 0\))$/i.test(spec.background) ? spec.background : spec.theme === 'dark' ? '#000' : '#fff';
+  // Modern colour syntaxes (oklch, lab, color(display-p3 …)): let the browser convert through a 1×1 canvas.
+  const canvasRgba = (c: string): number[] | undefined => {
+    try {
+      const cv = doc.createElement('canvas');
+      cv.width = 1;
+      cv.height = 1;
+      const ctx = cv.getContext('2d');
+      if (!ctx) return undefined;
+      ctx.fillStyle = '#010203';
+      ctx.fillStyle = c;
+      if (String(ctx.fillStyle) === '#010203') return undefined;
+      ctx.fillRect(0, 0, 1, 1);
+      const d = ctx.getImageData(0, 0, 1, 1).data;
+      return [d[0], d[1], d[2], d[3] / 255];
+    } catch {
+      return undefined;
+    }
+  };
   const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/i.exec(bg);
-  const lum = m ? (0.299 * Number(m[1]) + 0.587 * Number(m[2]) + 0.114 * Number(m[3])) / 255 : spec.theme === 'dark' ? 0 : 1;
+  const rgb = m ? [Number(m[1]), Number(m[2]), Number(m[3])] : canvasRgba(bg);
+  const lum = rgb ? (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255 : spec.theme === 'dark' ? 0 : 1;
   const ink = spec.theme === 'dark' ? '#fff' : spec.theme === 'light' ? '#111' : lum < 0.5 ? '#fff' : '#111';
   const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
   const icons = `<span class="od-device-icons"><svg width="17" height="11" viewBox="0 0 17 11" fill="${ink}"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg><svg width="15" height="11" viewBox="0 0 15 11" fill="${ink}"><path d="M7.5 2.2c2 0 3.9.8 5.3 2.1l1.1-1.1A9 9 0 0 0 7.5.6 9 9 0 0 0 1.1 3.2l1.1 1.1a7.5 7.5 0 0 1 5.3-2.1Zm0 3.1c1.2 0 2.3.5 3.1 1.2l1.1-1.1a6 6 0 0 0-8.4 0l1.1 1.1c.8-.7 1.9-1.2 3.1-1.2Zm0 3.1c.4 0 .8.2 1 .4L7.5 10 6.5 8.8c.2-.2.6-.4 1-.4Z"/></svg><svg width="25" height="12" viewBox="0 0 25 12" fill="none" stroke="${ink}"><rect x=".5" y=".5" width="21" height="11" rx="3" opacity=".4"/><rect x="2" y="2" width="16" height="8" rx="1.5" fill="${ink}" stroke="none"/><path d="M23 4v4" opacity=".4"/></svg></span>`;

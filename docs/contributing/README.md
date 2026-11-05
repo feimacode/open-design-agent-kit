@@ -42,3 +42,19 @@ It costs model tokens and isn't run in CI. Run it by hand:
 - A change counts as an improvement when the error total drops on both repeats and no brief gets worse by more than one error.
 
 Use `--only <id> --repeat 1` while iterating. For designs made in Claude Desktop or Codex, which the runner can't drive, use `--score-only <dir>`.
+
+### Extraction benchmark
+
+`npm run bench:extraction` runs the website extraction on about 110 real sites and scores the draft's `--accent` and `--font-body` against each site's truth (a colour hit is within ΔE 10, CIEDE2000; fonts match ignoring case, accents and `variable` suffixes). It needs network access and a browser, but no model tokens. See [evals/extraction/README.md](../../evals/extraction/README.md).
+
+- **A change to how the extraction picks roles** (`packages/core/src/generation/siteExtraction.ts`, `evidenceToTokens.ts`, their scoring rules) pastes the summary table from before and after into the PR description: `--label "before <change>"` on the base branch, then `--label "after <change>" --compare results/<before>.json` on yours.
+- A drop of two or more hits on the main set (net) is explained in the PR: which sites were lost and why the trade is worth it. `--compare` lists them.
+- The held-out set (`holdout.json`) is reported, never used to tune a rule or justify one.
+- To add a site, or fix one whose truth went stale, follow [Adding and re-checking a site](../../evals/extraction/README.md#adding-and-re-checking-a-site).
+
+### Taste calibration
+
+`npm run calibrate:taste` runs the site audit's taste rules (`slop-glow`, `card-row`, `uniform-surface`, `intent`, and two or more tells together) on about 40 hand-made sites and on pages built from AI defaults, and reports each rule's false-alarm and hit rates. On a live site a rule counts as a problem only at 5% false alarms or fewer; otherwise the audit lists it as a note. See [evals/taste-calibration/README.md](../../evals/taste-calibration/README.md).
+
+- **A change to a taste rule** (the `slop-glow`, `card-row`, `uniform-surface` or `intent` checks in `packages/core/src/poster/pageScripts.ts`) runs the calibration with `--write` and commits the updated `packages/core/src/export/taste-calibration.json` and `results/<date>.md` in the same PR.
+- The weekly benchmark job runs it too, and uploads the result.

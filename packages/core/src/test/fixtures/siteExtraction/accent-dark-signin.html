@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Basewell</title>
+<!-- The largest button above the fold is a near-black "Sign in"; the brand green is on three smaller buttons and declared as --brand. -->
+<style>
+  :root { --brand: #3ecf8e; --ink: #111111; }
+  body { margin: 0; background: #ffffff; color: #1f2933; font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 16px 32px; }
+  .signin { background: #111111; color: #fff; padding: 18px 48px; font-size: 18px; border: 0; border-radius: 6px; }
+  .go { background: var(--brand); color: #0b1f17; padding: 10px 18px; border: 0; border-radius: 6px; font-size: 15px; }
+  main { max-width: 960px; margin: 0 auto; padding: 0 32px; }
+  .blob { position: absolute; right: 40px; top: 120px; width: 380px; height: 100px; border-radius: 50%; background: #ff2fd0; }
+</style>
+</head>
+<body>
+<header><strong>Basewell</strong><button class="signin">Sign in</button></header>
+<div class="blob button-glow" aria-hidden="true"></div>
+<main>
+  <h1>The database that grows with you</h1>
+  <p>Start with a free project, add auth and storage when you need them, and never rewrite your queries when traffic arrives.</p>
+  <button class="go">Start a project</button>
+  <p>Every project gets daily backups, point-in-time restore and a dashboard that shows what is slow before your users notice it.</p>
+  <button class="go">See pricing</button>
+  <p>Talk to an engineer about migrating from your current provider. It usually takes an afternoon.</p>
+  <button class="go">Book a call</button>
+</main>
+</body>
+</html>

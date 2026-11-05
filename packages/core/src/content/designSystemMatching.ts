@@ -72,6 +72,8 @@ export interface Recommendation {
   kind: 'brand' | 'genre';
   reason: string;
   facets: DesignSystemFacets;
+  /** With `like`: style-vector distance to it (0 same, 1 opposite), how many features were compared, and where this one differs most. */
+  likeness?: { distance: number; compared: number; differs: string[] };
 }
 
 export interface RecommendationResult {
@@ -188,10 +190,15 @@ function pxOf(value: string | undefined): number | undefined {
 }
 
 /** Facets from a design system's resolved tokens (tokens.css, its override, else DESIGN.md heuristics). */
-export function computeDesignSystemFacets(detail: Pick<DesignSystemDetail, 'body' | 'tokensCss' | 'tokensOverrideCss'>): DesignSystemFacets {
-  const tokens = detail.tokensCss
+/** A design system's tokens: tokens.css with its override, else what DESIGN.md says. */
+export function designSystemTokenMap(detail: Pick<DesignSystemDetail, 'body' | 'tokensCss' | 'tokensOverrideCss'>): Map<string, string> {
+  return detail.tokensCss
     ? new Map([...parseTokensCss(detail.tokensCss), ...(detail.tokensOverrideCss ? parseTokensCss(detail.tokensOverrideCss) : [])])
     : resolveDesignSystemTokens({ designMd: detail.body, tokensCss: undefined }).tokens;
+}
+
+export function computeDesignSystemFacets(detail: Pick<DesignSystemDetail, 'body' | 'tokensCss' | 'tokensOverrideCss'>): DesignSystemFacets {
+  const tokens = designSystemTokenMap(detail);
   const get = (name: string) => resolveTokenValue(tokens, name);
 
   const bg = parseColor(get('--bg') ?? '');
@@ -537,20 +544,32 @@ function reasonFor(s: Scored, p: NormalizedProfile): string {
   return summary ? `${parts.join('; ')}. ${summary}` : parts.join('; ');
 }
 
-function toRecommendation(s: Scored, p: NormalizedProfile): Recommendation {
+function toRecommendation(s: Scored, p: NormalizedProfile, similarity?: Map<string, { distance: number; compared: number; differs: string[] }>): Recommendation {
+  const likeness = similarity?.get(s.c.detail.id);
   return {
     id: s.c.detail.id,
     name: s.c.detail.name,
     category: s.c.detail.category,
     kind: s.c.descriptor?.kind ?? 'genre',
-    reason: reasonFor(s, p),
+    reason: likeness ? `close to the look you pointed at (${likeness.differs.length ? `differs: ${likeness.differs.join(', ')}` : 'few differences'}); ${reasonFor(s, p)}` : reasonFor(s, p),
     facets: s.c.facets,
+    ...(likeness ? { likeness } : {}),
   };
 }
 
+/** How much closeness to `like` adds to a score: up to 1.5 for an identical look, nothing past a distance of 0.4. */
+const likeBonus = (distance: number): number => 1.5 * Math.max(0, 1 - distance / 0.4);
+
 /** Rank candidates against a profile. Same inputs, same output: no randomness, ties broken by completeness then id. */
-export function rankDesignSystems(candidates: MatchCandidate[], profile: DesignProfile | undefined, limit = 5): RecommendationResult {
+export function rankDesignSystems(
+  candidates: MatchCandidate[],
+  profile: DesignProfile | undefined,
+  limit = 5,
+  like?: { similarity: Map<string, { distance: number; compared: number; differs: string[] }>; excludeId?: string },
+): RecommendationResult {
   const p = normalizeDesignProfile(profile);
+  if (like) candidates = candidates.filter((c) => c.detail.id !== like.excludeId);
+  const similarity = like?.similarity;
   const max = Math.max(3, Math.min(5, limit));
   const briefWords = words(p.brief);
   // Fill empty fields from the brief's words, and from a named system's own descriptors so the rest of the shortlist resembles it.
@@ -566,7 +585,7 @@ export function rankDesignSystems(candidates: MatchCandidate[], profile: DesignP
   const pool = candidates.filter((c) => !avoided(c) && (p.theme === undefined || p.theme === 'either' || c.facets.theme === p.theme || namesSystem(p.likeBrands, c)));
 
   const signals = profileSignalCount(p);
-  if (signals === 0 && briefWords.length === 0) {
+  if (signals === 0 && briefWords.length === 0 && !similarity) {
     const byId = new Map(pool.map((c) => [c.detail.id, c]));
     const owned = pool.filter((c) => c.detail.brand?.kind === 'own').sort((a, b) => a.detail.id.localeCompare(b.detail.id));
     const picks = [...owned, ...FALLBACK_DESIGN_SYSTEMS.map((id) => byId.get(id)).filter((c): c is MatchCandidate => c !== undefined)];
@@ -579,7 +598,12 @@ export function rankDesignSystems(candidates: MatchCandidate[], profile: DesignP
     };
   }
 
-  const scored = pool.map((c) => scoreCandidate(c, scoring, briefWords));
+  const scored = pool.map((c) => {
+    const s = scoreCandidate(c, scoring, briefWords);
+    const near = similarity?.get(c.detail.id);
+    if (near) s.score += likeBonus(near.distance);
+    return s;
+  });
   scored.sort((a, b) => tier(a) - tier(b) || b.score - a.score || completeness(b.c) - completeness(a.c) || a.c.detail.id.localeCompare(b.c.detail.id));
   // Nothing scored for the tail: offer the starters there rather than whatever sorts first alphabetically.
   const top = scored.filter((s) => s.score > 0).slice(0, max);
@@ -591,7 +615,7 @@ export function rankDesignSystems(candidates: MatchCandidate[], profile: DesignP
   const s1 = top[0]?.score ?? 0;
   const s4 = scored[3]?.score ?? 0;
   const confidence: RecommendationResult['confidence'] = top[0]?.named || (s1 >= 0.5 && s1 - s4 >= 0.1) ? 'high' : s1 >= 0.3 ? 'medium' : 'low';
-  const result: RecommendationResult = { recommendations: top.map((s) => toRecommendation(s, scoring)), confidence };
+  const result: RecommendationResult = { recommendations: top.map((s) => toRecommendation(s, scoring, similarity)), confidence };
   if (signals < 2 && confidence === 'low') result.questions = matchQuestions(p);
   if (p.ignored.length) result.ignored = p.ignored;
   return result;
