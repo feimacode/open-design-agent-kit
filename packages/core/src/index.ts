@@ -6,6 +6,8 @@
 export * from './content/contentIndex';
 export * from './content/gallerySite';
 export * from './content/designSystemMatching';
+export * from './content/styleVector';
+export * from './content/nearestDesignSystem';
 export * from './content/listSkillsPayload';
 export * from './content/exampleHtml';
 export { startStaticServer, urlForPath, type StaticServer, type StaticServerOptions } from './export/staticServer';

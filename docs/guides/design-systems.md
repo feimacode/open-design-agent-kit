@@ -90,6 +90,10 @@ How it picks:
 
 Once you pick, it becomes the active design system, so this happens about once per workspace.
 
+### Something like a site, without its brand
+
+When you [extract a design system from a website](#take-one-from-a-website) only as a reference ("something like stripe.com"), the result names the three bundled systems closest to it in style, measured from about 20 token features (accent and background colour, radius, type scale, spacing, weights and shadows), and the draft's most unusual features. The agent can offer one of them as a brand-free starting point instead of saving the site's own look. You can also ask for this directly ("recommend something like Stripe, but not Stripe"): the recommender's `like` input ranks systems by closeness to a named system or an extraction, and leaves the named one out.
+
 ## Specify and switch
 
 ### By asking (every host)

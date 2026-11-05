@@ -36,6 +36,8 @@ import {
   formatBeforeAfterResult,
   formatAuditSiteResult,
   formatExtractSiteResult,
+  resolveLike,
+  withNearestDesignSystems,
   type ExtractionTheme,
   composeDesignSystemTokensInstructions,
   composeInstructions,
@@ -285,9 +287,17 @@ export async function listDesignSystems(ctx: ToolContext, input: { query?: strin
   }));
 }
 
-export async function recommendDesignSystems(ctx: ToolContext, input: DesignProfile & { limit?: number }): Promise<unknown> {
-  const { limit, ...profile } = input;
-  const result = await ctx.contentIndex.recommendDesignSystems(profile, limit);
+export async function recommendDesignSystems(ctx: ToolContext, input: DesignProfile & { limit?: number; like?: string }): Promise<unknown> {
+  const { limit, like, ...profile } = input;
+  // like: rank by closeness in style to a design system or an extraction (openspec add-nearest-design-system).
+  let likeTokens: { tokens: Map<string, string> | Record<string, string>; id?: string } | undefined;
+  if (like !== undefined) {
+    if (typeof like !== 'string' || !like.trim()) throw new Error('"like" must be a design system id or an extraction bundleDir.');
+    const resolved = await resolveLike(ctx.contentIndex, ctx.workspaceRoot, ctx.outputDir, like);
+    if (!resolved.ok) throw new Error(resolved.error);
+    likeTokens = { tokens: resolved.tokens, id: resolved.id };
+  }
+  const result = await ctx.contentIndex.recommendDesignSystems(profile, limit, likeTokens);
   const activeId = await ctx.store.get();
   return { ...result, activeDesignSystemId: activeId };
 }
@@ -1011,7 +1021,8 @@ export async function extractDesignSystemFromSite(
   if (sources && (typeof input.url !== 'string' || !input.url.trim()) && !input.compareTo) {
     if (input.content) throw new Error('"content" needs a url: it copies the words from live pages.');
     const result = await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources });
-    return await extractOutput(ctx, result, formatExtractSiteResult(result));
+    const near = await withNearestDesignSystems(result, ctx.contentIndex);
+    return await extractOutput(ctx, near, formatExtractSiteResult(near));
   }
   // compareTo: measure again from the URLs a saved system recorded, and diff (openspec connect-brand-design-systems).
   const compareTo = typeof input.compareTo === 'string' && input.compareTo.trim() ? input.compareTo.trim() : undefined;
@@ -1041,7 +1052,10 @@ export async function extractDesignSystemFromSite(
     allowHostsForTesting: evalAllowedHosts(),
   });
   if (result.status === 'invalid-args') throw new Error(result.error);
-  const merged = sources && 'bundleDir' in result ? await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, urlResult: result }) : result;
+  const merged = await withNearestDesignSystems(
+    sources && 'bundleDir' in result ? await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, urlResult: result }) : result,
+    ctx.contentIndex,
+  );
   const text = compareTo && previous ? formatRefreshResult(formatExtractSiteResult(merged), await brandRefreshDiff(ctx.workspaceRoot, previous, merged)) : formatExtractSiteResult(merged);
   return await extractOutput(ctx, merged, text);
 }

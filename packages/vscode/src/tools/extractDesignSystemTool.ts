@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { brandRefreshDiff, extractFromSources, extractSite, formatExtractSiteResult, formatRefreshResult, refreshUrls, validateSources, type ContentIndex, type ExtractionSource, type ExtractionTheme, type ExtractSiteResult } from '@feimacode/open-design-agent-kit-core';
+import { brandRefreshDiff, extractFromSources, extractSite, formatExtractSiteResult, formatRefreshResult, refreshUrls, validateSources, withNearestDesignSystems, type ContentIndex, type ExtractionSource, type ExtractionTheme, type ExtractSiteResult } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot } from '../workspace/artifactWriter';
 
 interface ExtractDesignSystemInput {
@@ -67,14 +67,14 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
     }
     if (!url?.trim() && sources) {
       if (content) return text('Invalid arguments: content needs a url.');
-      const drafted = await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources });
+      const drafted = await withNearestDesignSystems(await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources }), this.contentIndex);
       return this.output(workspaceRoot, drafted, formatExtractSiteResult(drafted));
     }
     if (!url?.trim()) return text('Invalid arguments: url is required (or compareTo naming a saved design system, or sources).');
     const measured = await extractSite({ url, extraUrls, theme, content: content === true, localizeImages: localizeImages === true, discover: discover ?? (compareTo ? false : undefined), workspaceRoot, outputDir: getOutputDirectory(), browserPath });
     if (token.isCancellationRequested) return text('Extraction cancelled.');
     if (measured.status === 'invalid-args') return text(`Invalid arguments: ${measured.error}`);
-    const result = sources && 'bundleDir' in measured ? await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources, urlResult: measured }) : measured;
+    const result = await withNearestDesignSystems(sources && 'bundleDir' in measured ? await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources, urlResult: measured }) : measured, this.contentIndex);
     return this.output(
       workspaceRoot,
       result,

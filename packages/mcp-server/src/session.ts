@@ -221,11 +221,12 @@ const TOOL_DEFS: ToolDef[] = [
           avoid: { type: 'array', items: { type: 'string' }, description: 'Design system ids or moods to leave out.' },
           brief: { type: 'string', description: "The request in the user's words." },
           limit: { type: 'number', description: 'How many to return, 3 to 5 (default 5).' },
+          like: { type: 'string', description: "Rank by how close each system's tokens are in style to this one: a design system id, or the bundleDir an extraction returned. Use it for \"something like X but brand-free\"; the named system itself is left out." },
         },
       },
     },
     handler: (ctx, args) =>
-      tools.recommendDesignSystems(ctx, args as DesignProfile & { limit?: number }).then((r) => JSON.stringify(r, null, 2)),
+      tools.recommendDesignSystems(ctx, args as DesignProfile & { limit?: number; like?: string }).then((r) => JSON.stringify(r, null, 2)),
   },
   {
     tool: {

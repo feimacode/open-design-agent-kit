@@ -119,6 +119,10 @@ export type ExtractSiteResult =
       chartPalette?: string[];
       /** Pages added from the home page's navigation (no extraUrls given). */
       discovered?: string[];
+      /** The three closest bundled design systems to the draft (add-nearest-design-system). */
+      nearest?: Array<{ id: string; name: string; distance: number; compared: number; differs: string[] }>;
+      /** What sets the draft apart from the bundled set, in plain words. */
+      distinctive?: string[];
       notes: string[];
     };
 
@@ -1429,6 +1433,8 @@ export function formatExtractSiteResult(result: ExtractSiteResult): string {
       candidates: result.candidates,
       sourceCandidates: result.sourceCandidates,
       chartPalette: result.chartPalette,
+      nearest: result.nearest,
+      distinctive: result.distinctive,
       notes: result.notes,
       next: result.content ? `${next} The site's content is in ${result.content}: for a redesign, pass redesign: { site } to prepare_open_design_brief, which binds it into the design.` : next,
     },
