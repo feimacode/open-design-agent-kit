@@ -258,9 +258,9 @@ async function testMcpServerResolution(scratchDir) {
     const call = await waitForResponse(3);
 
     assert(init?.result?.serverInfo?.name === 'open-design', 'initialize did not return the expected serverInfo');
-    // Expected names come from the server's own TOOL_DEFS source, so adding a
+    // Expected names come from the server's own TOOL_DEFS source (session.ts), so adding a
     // tool needs no change here; a published bundle missing one still fails.
-    const source = await fs.readFile(path.join(repoRoot, 'packages', 'mcp-server', 'src', 'index.ts'), 'utf8');
+    const source = await fs.readFile(path.join(repoRoot, 'packages', 'mcp-server', 'src', 'session.ts'), 'utf8');
     // The managed-workspace tools are listed only in a chat with no folder (home
     // folder, no roots); this test starts the server in a scratch project folder.
     const folderlessOnly = ['use_open_design_managed_workspace', 'write_open_design_file'];
@@ -273,7 +273,7 @@ async function testMcpServerResolution(scratchDir) {
       .filter((n) => n && !folderlessOnly.includes(n))
       .sort();
     const actual = (list?.result?.tools ?? []).map((t) => t.name).sort();
-    assert(expected.length > 0, 'found no tool names in packages/mcp-server/src/index.ts');
+    assert(expected.length > 0, 'found no tool names in packages/mcp-server/src/session.ts');
     assert(
       JSON.stringify(actual) === JSON.stringify(expected),
       `tools/list mismatch: missing [${expected.filter((n) => !actual.includes(n))}], unexpected [${actual.filter((n) => !expected.includes(n))}]`,
