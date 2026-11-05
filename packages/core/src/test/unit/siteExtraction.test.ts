@@ -359,6 +359,40 @@ describe('extractSite in a browser', function () {
     assert.ok(!result.notes.some((n) => /couldn't be read, so roles/.test(n)), result.notes.join('\n'));
   });
 
+  it('ranks accent colours: three brand buttons and a declared --brand beat a bigger near-black sign-in and a decorative blob', async () => {
+    const { result } = await run('accent-dark-signin.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    assert.strictEqual(result.draft!.tokens['--accent'], '#3ecf8e');
+    const src = result.draft!.sources['--accent'];
+    assert.ok((src.choiceConfidence ?? 0) > 0.8, JSON.stringify(src));
+    assert.strictEqual(src.candidates?.[0].hex, '#3ecf8e');
+    assert.strictEqual(src.candidates?.[0].controls, 3);
+    assert.strictEqual(src.candidates?.[0].declared, '--brand');
+    assert.match(src.candidates?.[0].crop ?? '', /^crops\/accent-candidate-1\.png$/);
+    assert.ok(!src.candidates?.some((c) => c.hex === '#ff2fd0'), 'a decorative shape is not a control');
+  });
+
+  it('counts a near-black button as barely colourful, and a declared --primary-color on a small button wins', async () => {
+    const { result } = await run('accent-near-black.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    assert.strictEqual(result.draft!.tokens['--accent'], '#0ea5e9');
+    const dark = result.draft!.sources['--accent'].candidates?.find((c) => c.hex === '#002533');
+    assert.ok(dark && dark.chroma < 0.06, JSON.stringify(dark));
+  });
+
+  it('calls a close call a close call: low confidence, both candidates with crops, and a note to ask', async () => {
+    const { result } = await run('accent-close-call.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    const src = result.draft!.sources['--accent'];
+    assert.ok((src.choiceConfidence ?? 1) < 0.5, JSON.stringify(src));
+    assert.deepStrictEqual(src.candidates?.map((c) => c.hex).sort(), ['#2563eb', '#ea580c']);
+    assert.ok(src.candidates?.every((c) => c.crop));
+    assert.ok(result.notes.some((n) => /close call/.test(n) && /#2563eb/.test(n) && /#ea580c/.test(n)), result.notes.join('\n'));
+  });
+
   it('measures every page and reports where pages disagree', async () => {
     const { result } = await run('light.html', 'light', ['pricing.html']);
     assert.strictEqual(result.status, 'ok');

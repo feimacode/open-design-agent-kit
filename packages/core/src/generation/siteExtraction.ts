@@ -144,6 +144,8 @@ interface MeasuredPage extends Omit<PageEvidence, 'url' | 'dark' | 'hiddenOverla
   colorOriginals?: Record<string, string>;
   /** Colour values the page used that couldn't be read. */
   unreadColors?: string[];
+  /** Document-relative rects of each accent candidate's best control, keyed accent-candidate-<n>. */
+  candidateRects?: Record<string, { x: number; y: number; width: number; height: number }>;
 }
 
 function measurePageInBrowser(): MeasuredPage {
@@ -337,25 +339,138 @@ function measurePageInBrowser(): MeasuredPage {
     const r = el.getBoundingClientRect();
     return !transparent(bgc) && bgc !== pageBg && bgc !== surface?.[0] && r.height >= 24 && r.height <= 120 && r.width <= 600 && (el.textContent ?? '').trim().length > 0;
   });
-  const scored = buttons
-    .map((el) => {
+  // Ranked by colour, not by one button (add-accent-candidates): filled controls
+  // are grouped by colour (OKLab distance under 0.05, about ΔE 4), and each
+  // colour scores on its best control's size and fold, how many controls and
+  // links use it, how colourful it is (near-black and grey count for little),
+  // a declared --brand/--primary/--accent with that value, and the logo's colour.
+  const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
+  const oklab = (c: string): number[] => {
+    const [r, g, b] = rgb(c).map((n) => {
+      const v = n / 255;
+      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const q = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * q, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * q, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * q];
+  };
+  const chromaOf = (c: string): number => {
+    const [, a, b] = oklab(c);
+    return Math.hypot(a, b);
+  };
+  const colourful = (c: string): number => {
+    const [L] = oklab(c);
+    return clamp01((chromaOf(c) - 0.03) / 0.12) * clamp01((L - 0.2) / 0.25);
+  };
+  const near = (x: string, y: string): boolean => {
+    const p = oklab(x);
+    const q = oklab(y);
+    return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < 0.05;
+  };
+  const asRgb = (value: string): string | undefined => {
+    let v = value.trim();
+    if (!v) return undefined;
+    if (/^[\d.]+\s+[\d.]+%\s+[\d.]+%$/.test(v)) v = `hsl(${v})`; // shadcn/ui v3 writes bare HSL components
+    if (/^rgba?\(/.test(v)) return v;
+    if (!cctx) return undefined;
+    cctx.clearRect(0, 0, 1, 1);
+    cctx.fillStyle = '#010203';
+    cctx.fillStyle = v;
+    if (String(cctx.fillStyle) === '#010203' && !/^#010203$/i.test(v)) return undefined;
+    cctx.fillRect(0, 0, 1, 1);
+    const d = cctx.getImageData(0, 0, 1, 1).data;
+    return d[3] < 200 ? undefined : `rgb(${d[0]}, ${d[1]}, ${d[2]})`;
+  };
+  type AccentGroup = { value: string; best?: { el: Element; score: number }; controls: number; links: number; declared?: string; logo: boolean; score: number };
+  const groups: AccentGroup[] = [];
+  const groupFor = (value: string): AccentGroup => {
+    const found = groups.find((g) => near(g.value, value));
+    if (found) return found;
+    const g: AccentGroup = { value, controls: 0, links: 0, logo: false, score: 0 };
+    groups.push(g);
+    return g;
+  };
+  for (const el of buttons) {
+    const r = el.getBoundingClientRect();
+    const fold = r.top + win.scrollY < win.innerHeight ? 2 : 1;
+    const tag = /^(button|input)$/i.test(el.tagName) || /btn|button|cta|primary/i.test(el.className.toString()) ? 1.5 : 1;
+    const score = Math.sqrt(r.width * r.height) * fold * tag;
+    const g = groupFor(fill(el));
+    g.controls++;
+    if (!g.best || score > g.best.score) g.best = { el, score };
+  }
+  for (const el of all('a[href]')) {
+    if (buttons.includes(el)) continue;
+    const c = cs(el).color;
+    const g = groups.find((x) => near(x.value, c));
+    if (g) g.links++;
+  }
+  // Declared brand properties on :root, resolved by the browser.
+  const rootStyle = win.getComputedStyle(doc.documentElement);
+  const brandNames = new Set<string>();
+  for (const sheet of Array.from(doc.styleSheets)) {
+    try {
+      for (const rule of Array.from(sheet.cssRules)) {
+        if (!(rule instanceof CSSStyleRule) || !/^(:root|html)$/i.test(rule.selectorText.trim())) continue;
+        for (let i = 0; i < rule.style.length; i++) {
+          const name = rule.style[i];
+          if (/^--(?:[\w-]*-)?(brand|primary|accent)(?:-(?:color|colour|500|600|base|default))?$/i.test(name)) brandNames.add(name);
+        }
+      }
+    } catch {
+      // Cross-origin sheet: counted elsewhere.
+    }
+  }
+  for (const name of brandNames) {
+    const value = asRgb(rootStyle.getPropertyValue(name));
+    if (!value || transparent(value)) continue;
+    const g = groupFor(value);
+    if (!g.declared || name.length < g.declared.length) g.declared = name;
+  }
+  // The logo's most used colourful fill, for an inline SVG logo.
+  const logoSvg = all('header [class*="logo" i] svg, header a[href="/"] svg, [class*="logo" i] svg, header svg').find((el) => el.getBoundingClientRect().top + win.scrollY < 240);
+  if (logoSvg) {
+    const fills = tally(Array.from(logoSvg.querySelectorAll('path, rect, circle, polygon, ellipse')), (el) => cs(el).fill, (el) => {
       const r = el.getBoundingClientRect();
-      const fold = r.top + win.scrollY < win.innerHeight ? 2 : 1;
-      const tag = /^(button|input)$/i.test(el.tagName) || /btn|button|cta|primary/i.test(el.className.toString()) ? 1.5 : 1;
-      return { el, score: Math.sqrt(r.width * r.height) * fold * tag * (0.4 + saturation(fill(el))) };
-    })
-    .sort((a, b) => b.score - a.score);
-  const primary = scored[0]?.el;
+      return r.width * r.height;
+    }).filter(([c]) => /^rgb/.test(c) && colourful(c) > 0.3);
+    if (fills[0]) {
+      const g = groups.find((x) => near(x.value, fills[0][0]));
+      if (g) g.logo = true;
+    }
+  }
+  for (const g of groups) {
+    // A colour needs a filled control or a declaration behind it; a declared-only colour starts from a small button's size.
+    if (!g.best && !g.declared) continue;
+    g.score = (g.best?.score ?? 70) * (0.25 + colourful(g.value)) * (1 + 0.3 * Math.min(g.controls - 1, 5)) * (1 + 0.04 * Math.min(g.links, 10)) * (g.declared ? 1.6 : 1) * (g.logo ? 1.3 : 1);
+  }
+  const ranked = groups.filter((g) => g.score > 0).sort((a, b) => b.score - a.score);
+  const accentCandidates: NonNullable<MeasuredPage['accentCandidates']> = [];
+  const candidateRects: Record<string, { x: number; y: number; width: number; height: number }> = {};
+  ranked.slice(0, 4).forEach((g, i) => {
+    accentCandidates.push({ value: g.value, score: Math.round(g.score), chroma: Math.round(chromaOf(g.value) * 1000) / 1000, controls: g.controls, links: g.links, declared: g.declared, logo: g.logo || undefined, selector: g.best ? selectorFor(g.best.el) : undefined });
+    if (g.best) candidateRects[`accent-candidate-${i + 1}`] = rectOf(g.best.el);
+  });
+  // Confidence from the gap between the top two: within 10% is a coin toss (≤ 0.25), a 40% lead or no rival is sure.
+  let accentConfidence: number | undefined = ranked[0] ? (ranked[1] ? Math.round(clamp01(((ranked[0].score - ranked[1].score) / ranked[0].score) * 2.5) * 100) / 100 : 1) : undefined;
+  const top = ranked[0];
+  const primary = top?.best?.el;
   const gradients: NonNullable<MeasuredPage['gradients']> = [];
-  if (primary) {
-    const value = fill(primary);
-    setRole('accent', value, primary, buttons.filter((b) => fill(b) === value).length);
+  if (top && primary) {
+    setRole('accent', top.value, primary, top.controls);
     if (/gradient\(/.test(cs(primary).backgroundImage)) gradients.push({ role: 'accent', value: cs(primary).backgroundImage });
     setRole('accent-on', cs(primary).color, primary, 1);
     primary.setAttribute(`${MARK}-primary`, '');
+  } else if (top?.declared) {
+    // Declared but on no control: the colour, with no button to read states from.
+    roles.accent = { value: top.value, selector: `:root ${top.declared}`, count: 0 };
   } else {
     const links = tally(all('a[href]'), (el) => cs(el).color).find(([c]) => c !== fg?.[0]);
-    if (links) setRole('accent', links[0], links[1].el, links[1].count);
+    if (links) {
+      setRole('accent', links[0], links[1].el, links[1].count);
+      accentConfidence = 0.3;
+    }
   }
 
   // Status colours, only from elements whose role, state or class names say
@@ -606,6 +721,9 @@ function measurePageInBrowser(): MeasuredPage {
     stylesheetsUnreadable,
     colorOriginals: Object.keys(colorOriginals).length > 0 ? colorOriginals : undefined,
     unreadColors: unreadColors.size > 0 ? [...unreadColors].slice(0, 12) : undefined,
+    accentCandidates: accentCandidates.length > 0 ? accentCandidates : undefined,
+    accentConfidence,
+    candidateRects,
   };
 }
 
@@ -841,6 +959,13 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         measured.focusRing = await forcedFocusRing(page);
       }
       const crops = await cropRoles(page, measured.rects, path.join(bundleDir, 'crops'), prefix);
+      if (measured.accentCandidates && measured.candidateRects) {
+        const candidateCrops = await cropRoles(page, measured.candidateRects as MeasuredPage['rects'], path.join(bundleDir, 'crops'), prefix);
+        measured.accentCandidates.forEach((c, n) => {
+          const file = candidateCrops[`accent-candidate-${n + 1}`];
+          if (file) c.crop = `crops/${file}`;
+        });
+      }
       for (const [role, sample] of Object.entries(measured.roles)) {
         const crop = crops[role.replace(/-(hover|active)$/, '')];
         if (sample && crop) sample.crop = `crops/${crop}`;
@@ -956,6 +1081,8 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         layout: measured.layout,
         hiddenOverlays: hidden.size > 0 ? [...hidden] : undefined,
         dark: pageDark,
+        accentCandidates: measured.accentCandidates,
+        accentConfidence: measured.accentConfidence,
       });
       if (!dark && pageDark) dark = pageDark;
       if (hidden.size > 0) notes.push(`${url.toString()}: hid ${hidden.size} overlay(s) before measuring (consent banners or chat launchers, not clicked): ${[...hidden].slice(0, 5).join(', ')}.`);
@@ -1156,6 +1283,15 @@ async function localizeContentImages(pages: PageContent[], images: Map<string, B
   return { copied, missing };
 }
 
+/** One line on how the accent was chosen: the winner, its confidence and the runner-up. */
+function accentChoice(src: DraftTokens['sources'][string] | undefined): string | undefined {
+  const [top, next] = src?.candidates ?? [];
+  if (!top || src?.choiceConfidence === undefined) return undefined;
+  const why = [`${top.controls} control${top.controls === 1 ? '' : 's'}`, top.declared ? `declared ${top.declared}` : '', top.logo ? 'the logo\'s colour' : ''].filter(Boolean).join(', ');
+  const ask = src.choiceConfidence < 0.5 ? ' Close call: ask the person which is the brand\'s colour, showing both crops.' : '';
+  return `${top.hex} (confidence ${src.choiceConfidence}; ${why})${next ? `, runner-up ${next.hex}${next.declared ? ` (declared ${next.declared})` : ''}` : ''}.${ask}`;
+}
+
 /** The tool's text: what was measured, from where, and what to do next. */
 export function formatExtractSiteResult(result: ExtractSiteResult): string {
   if (result.status === 'invalid-args') return JSON.stringify({ status: 'invalid-args', error: result.error }, null, 2);
@@ -1177,6 +1313,7 @@ export function formatExtractSiteResult(result: ExtractSiteResult): string {
       brandKit: result.brandKit,
       draft: result.draft ? { tokens: result.draft.tokens, dark: result.draft.dark, sources: result.draft.sources, unmeasured: result.draft.unmeasured, conflicts: result.draft.conflicts } : undefined,
       draftCss: result.draftCss,
+      accentChoice: accentChoice(result.draft?.sources['--accent']),
       candidates: result.candidates,
       sourceCandidates: result.sourceCandidates,
       chartPalette: result.chartPalette,

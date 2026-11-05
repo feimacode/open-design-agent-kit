@@ -94,6 +94,28 @@ export interface PageEvidence {
   hiddenOverlays?: string[];
   /** This page's dark-theme roles, when the site has a dark theme. */
   dark?: SiteEvidence['dark'];
+  /** The colours that competed for the accent, best first (at most 4), with crops of their best controls. */
+  accentCandidates?: AccentCandidate[];
+  /** How clearly the accent won, 0–1, from the gap between the top two candidates. */
+  accentConfidence?: number;
+}
+
+export interface AccentCandidate {
+  /** Computed colour (`rgb(…)`); a hex in the draft's sources. */
+  value: string;
+  score: number;
+  /** OKLCH chroma. */
+  chroma: number;
+  /** Filled controls painted this colour. */
+  controls: number;
+  /** Text links in this colour. */
+  links: number;
+  /** A `:root` custom property named for brand, primary or accent with this value. */
+  declared?: string;
+  /** The inline SVG logo's main colour is this one. */
+  logo?: boolean;
+  selector?: string;
+  crop?: string;
 }
 
 export interface LayoutSample {
@@ -117,7 +139,7 @@ export interface DraftTokens {
   /** Contract tokens with no measurement (left to the contract fallback). */
   unmeasured: string[];
   /** Token → where its value came from (selector and crop), and the site's own custom property with the same value. */
-  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; source?: string; note?: string; original?: string }>;
+  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; source?: string; note?: string; original?: string; choiceConfidence?: number; candidates?: Array<Omit<AccentCandidate, 'value'> & { hex: string }> }>;
   /** Values other pages (or their dark themes) gave for a drafted token; the draft keeps the first page's. */
   conflicts: Array<{ token: string; value: string; page: string; selector: string; crop?: string; theme?: 'dark'; confidence?: 'measured' | 'declared' | 'stated' | 'sampled' }>;
   /** Things the model should know when writing DESIGN.md (full gradients, an input radius that differs). */
@@ -238,6 +260,19 @@ export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
       } else if (tokens[name] !== value) conflicts.push({ token: name, value, page: page.url, selector: pageSources[name].selector, crop: pageSources[name].crop });
     }
   }
+  // How the accent was chosen: the page it came from ranked its candidates.
+  const accentPage = sources['--accent'] ? evidence.pages.find((p) => p.url === sources['--accent'].page) : undefined;
+  if (accentPage?.accentCandidates?.length) {
+    const candidates = accentPage.accentCandidates.flatMap(({ value, ...rest }) => {
+      const hex = cssColorToHex(value);
+      return hex ? [{ hex, ...rest }] : [];
+    });
+    sources['--accent'].candidates = candidates;
+    if (accentPage.accentConfidence !== undefined) sources['--accent'].choiceConfidence = accentPage.accentConfidence;
+    if (accentPage.accentConfidence !== undefined && accentPage.accentConfidence < 0.5 && candidates.length > 1) {
+      notes.push(`The accent was a close call (confidence ${accentPage.accentConfidence}): ${candidates.slice(0, 4).map((c) => `${c.hex}${c.declared ? ` (${c.declared})` : ''}${c.crop ? ` ${c.crop}` : ''}`).join(', ')}. Show these to the person and ask which is the brand's.`);
+    }
+  } else if (accentPage?.accentConfidence !== undefined) sources['--accent'].choiceConfidence = accentPage.accentConfidence;
 
   const textRoles = evidence.pages.flatMap((p) => p.textRoles);
   const fonts = evidence.pages.flatMap((p) => p.fonts);

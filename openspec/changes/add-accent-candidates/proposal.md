@@ -18,7 +18,7 @@ design-extract's published ranking also exposes its reasoning: the top candidate
   - a vote when the logo's dominant non-neutral colour matches it.
   The weights are fixed constants, tuned only with `add-extraction-benchmark` and reported there.
 - **A colour must be vouched for.** Every scored colour must be backed by at least one filled control or one declaration. A colourful decoration alone can't win.
-- **Candidates and confidence in the draft.** `draft.sources['--accent']` gains `confidence` (0–1, from the gap between first and second, and from whether a control backs the winner) and `candidates`: the top 4 colours with score, chroma, number of controls, declaration name and crop. Crops of the runner-ups go in the bundle.
+- **Candidates and confidence in the draft.** `draft.sources['--accent']` gains `choiceConfidence` (0–1, from the gap between first and second, and from whether a control backs the winner) and `candidates`: the top 4 colours with score, chroma, number of controls, declaration name and crop. Crops of the runner-ups go in the bundle.
 - **The skill asks when unsure.** With confidence below 0.5, the design-system skill shows the user the top candidates as swatches with their crops and asks which is the brand's, instead of drafting silently.
 - The formatted result lists the candidates in one line: `accent #3ecf8e (0.82), then #002533, #6366f1`.
 
