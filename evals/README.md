@@ -2,6 +2,8 @@
 
 A fixed set of briefs, run the same way before and after a change that claims to make designs better (checks, skills, craft docs), and scored with the kit's own tools. See the [contributing guide](../docs/contributing/README.md#evals) for when a PR needs one.
 
+For the website extraction's own benchmark (real sites, no agent), see [extraction/README.md](extraction/README.md).
+
 ## Briefs
 
 `briefs/*.yaml`, one file per brief, the file name matching its `id`. Fourteen cover the main surfaces (poster, landing page, deck, shop pack, card set, dashboard, an app settings screen, an orders table, an Android screen, an iPad screen, a sign-in flow, a billing screen designed from a small Next.js + shadcn app in `fixtures/acme-billing`, and a habit screen turned into NativeWind components for a small Expo app in `fixtures/habit-expo`, and a redesign of the small restaurant site in `fixtures/trattoria-site`) and two are deliberately vague, to see whether the agent asks the right few questions.

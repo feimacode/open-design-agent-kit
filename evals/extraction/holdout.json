@@ -1,0 +1,291 @@
+{
+  "description": "The held-out set: reported beside the main set, never used to tune or justify a scoring rule.",
+  "method": "accent: officially sourced brand colours that the live homepage paints within ΔE 3 (CIEDE2000) at 1440×900; empty when no sourced colour is painted or the brand is monochrome, and then colour is not scored. font: the family that renders body copy (the first family in the body text's computed stack with a loaded face), plus the official name where it agrees. verified: the date evidence.ts last confirmed the entry from this repository, or null.",
+  "credit": {
+    "from": "https://github.com/Manavarya09/design-extract/blob/main/bench/sites.json",
+    "licence": "MIT, Copyright (c) Manavarya09 and contributors",
+    "note": "Truth values and sources first collected by design-extract on 2026-11-04. Each entry is re-checked here with evidence.ts before it counts as verified."
+  },
+  "excluded": [],
+  "sites": [
+    {
+      "site": "ikea.com",
+      "url": "https://ikea.com/",
+      "accent": [
+        "#0058a3",
+        "#ffda1a"
+      ],
+      "font": [
+        "Noto IKEA"
+      ],
+      "sources": [
+        "https://www.ikea.com/ph/en/this-is-ikea/about-us/the-ikea-logo-history-and-design-pub55d85f50/"
+      ],
+      "evidence": "blue painted as #0159a3 (dE 0.9), yellow as #ffdb00 (dE 3); co-equal brand colours",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "atlassian.com",
+      "url": "https://atlassian.com/",
+      "accent": [
+        "#1868db"
+      ],
+      "font": [
+        "Charlie Text"
+      ],
+      "sources": [
+        "https://atlassian.design/foundations/typography",
+        "https://atlassian.design/foundations/color/color-palette"
+      ],
+      "evidence": "#1868db painted (dE 0); legacy #0052cc is not; body renders Charlie Text",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "hubspot.com",
+      "url": "https://hubspot.com/",
+      "accent": [
+        "#ff4800"
+      ],
+      "font": [
+        "HubSpot Sans"
+      ],
+      "sources": [
+        "https://www.hubspot.com/partners/technology/branding-guidelines"
+      ],
+      "evidence": "#ff4800 painted (dE 0); pre-2025 #ff7a59 is not",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "supabase.com",
+      "url": "https://supabase.com/",
+      "accent": [
+        "#3ecf8e"
+      ],
+      "font": [
+        "Inter"
+      ],
+      "sources": [
+        "https://supabase.com/brand-assets"
+      ],
+      "evidence": "#3ecf8e painted (dE 0, small area)",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "cloudflare.com",
+      "url": "https://cloudflare.com/",
+      "accent": [],
+      "font": [
+        "STK Bureau Sans"
+      ],
+      "sources": [
+        "https://www.cloudflare.com/brand/color/"
+      ],
+      "evidence": "Tangerine #f6821f is not painted (closest dE 16.9); Ruby #ff6633 closest dE 4.7",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "sentry.io",
+      "url": "https://sentry.io/",
+      "accent": [],
+      "font": [
+        "Rubik"
+      ],
+      "sources": [
+        "https://sentry.io/branding/"
+      ],
+      "evidence": "#6a5fc1 is painted (dE 0) but only palette aggregators / scraped design-token sites give the hex, so colour is not scored; branding page offers logos only, no hex",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "okta.com",
+      "url": "https://okta.com/",
+      "accent": [],
+      "font": [
+        "Aeonik",
+        "Aeonik Pro"
+      ],
+      "sources": [
+        "https://www.okta.com/blog/2022/11/behind-the-scenes-of-our-brand-evolution"
+      ],
+      "evidence": "no official hex published; Aeonik Pro is the official primary font and renders as Aeonik",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "vite.dev",
+      "url": "https://vite.dev/",
+      "accent": [],
+      "font": [
+        "Inter"
+      ],
+      "sources": [
+        "https://pub.dev/documentation/simple_icons/latest/simple_icons/SimpleIconColors/vite-constant.html"
+      ],
+      "evidence": "#646cff is not painted on the homepage (closest dE 33.3)",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "adyen.com",
+      "url": "https://adyen.com/",
+      "accent": [],
+      "font": [
+        "Adyen"
+      ],
+      "sources": [
+        "https://brandguidelines.adyen.com/design/colors"
+      ],
+      "evidence": "#00112c is painted (dE 0) but only palette aggregators / scraped design-token sites give the hex, so colour is not scored; Adyen Green #0abf53 is not (painted #00d16a, dE 7.6); official guidelines now gated",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "starbucks.com",
+      "url": "https://starbucks.com/",
+      "accent": [
+        "#006241"
+      ],
+      "font": [
+        "SoDoSans",
+        "Sodo Sans"
+      ],
+      "sources": [
+        "https://creative.starbucks.com/color/",
+        "https://madegooddesigns.com/?p=57207"
+      ],
+      "evidence": "Starbucks Green (official HEX 006241 on creative.starbucks.com) painted as #006242 (dE 0.6); #00704a is not (closest #00754a, dE 3.6)",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "npr.org",
+      "url": "https://npr.org/",
+      "accent": [],
+      "font": [
+        "NPRSans"
+      ],
+      "sources": [
+        "https://www.brandcolorcode.com/national-public-radio-npr"
+      ],
+      "evidence": "no official hex; secondary red #d62021 not painted (closest dE 24.4), blue #237bbd not painted (dE 13.3)",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "harvard.edu",
+      "url": "https://harvard.edu/",
+      "accent": [],
+      "font": [
+        "GT America Standard Regular"
+      ],
+      "sources": [
+        "https://www.harvard.edu:443/guidelines/wp-content/uploads/sites/10/2022/11/2021_09_15_harvard_graphic_identity_guidelines_1.pdf"
+      ],
+      "evidence": "crimson #a51c30 is not painted on the homepage (closest dE 64)",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "microsoft.com",
+      "url": "https://microsoft.com/",
+      "accent": [
+        "#0078d4"
+      ],
+      "font": [
+        "Segoe UI Variable Text",
+        "Segoe UI"
+      ],
+      "sources": [
+        "https://microsoft.github.io/fluentui-design-tokens/",
+        "https://learn.microsoft.com/en-us/typography/font-list/segoe-ui"
+      ],
+      "evidence": "Fluent Global-Color-Blue-Primary #0078d4 painted (dE 0); four-square logo colours are not painted as CSS (closest dE 81.8+)",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "bitwarden.com",
+      "url": "https://bitwarden.com/",
+      "accent": [
+        "#175ddc"
+      ],
+      "font": [],
+      "sources": [
+        "https://bitwarden.com/brand/"
+      ],
+      "evidence": "Bitwarden Blue #175ddc painted (dE 0); body stack 'DM sans' matches no loaded face (brand page names Inter), so no font",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "whatsapp.com",
+      "url": "https://whatsapp.com/",
+      "accent": [],
+      "font": [
+        "WhatsApp Sans Var"
+      ],
+      "sources": [
+        "https://www.meta.com/brand/resources/whatsapp/whatsapp-brand/"
+      ],
+      "evidence": "Meta brand page gives no hex (#25d366 is painted, dE 0, but only aggregator sites give it); font from rendering",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "astro.build",
+      "url": "https://astro.build/",
+      "accent": [
+        "#17191e"
+      ],
+      "font": [
+        "Inter"
+      ],
+      "sources": [
+        "https://astro.build/press/",
+        "https://astro.build/assets/press/astro-icon-dark.svg"
+      ],
+      "evidence": "press-kit logo dark #17191e painted (dE 0) as the page canvas",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "prisma.io",
+      "url": "https://prisma.io/",
+      "accent": [
+        "#00bbcb",
+        "#f34a60"
+      ],
+      "font": [
+        "Inter"
+      ],
+      "sources": [
+        "https://www.prisma.io/brand"
+      ],
+      "evidence": "Prism Cyan 500 #00bbcb and Prism Red 500 #f34a60 painted (dE 0, small areas); brand page names Inter for body",
+      "collected": "2026-11-04",
+      "verified": null
+    },
+    {
+      "site": "utoronto.ca",
+      "url": "https://utoronto.ca/",
+      "accent": [
+        "#1e3765"
+      ],
+      "font": [
+        "trade-gothic-next"
+      ],
+      "sources": [
+        "https://www.utm.utoronto.ca/communications/brand-resources/utm-signature-usage-guidelines"
+      ],
+      "evidence": "U of T Blue #1e3765 painted (dE 0); body renders trade-gothic-next",
+      "collected": "2026-11-04",
+      "verified": null
+    }
+  ]
+}

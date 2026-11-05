@@ -1,0 +1,92 @@
+name: Extraction benchmark
+
+# Runs the website extraction on the benchmark sites (evals/extraction) and
+# scores the drafts against their truth. Weekly and by hand; it reads public
+# sites, so it never runs on a pull request. The results are uploaded as an
+# artifact; commit them from your machine when they become the new baseline.
+# Opens an issue when the main set loses two or more hits (net) against the
+# latest committed result.
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Comma-separated sites to run (default: all)'
+        required: false
+        type: string
+      label:
+        description: 'A label for this run, e.g. "before add-accent-candidates"'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: extraction-benchmark
+  cancel-in-progress: false
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ubuntu-latest ships Google Chrome, which the extraction uses.
+      - name: Run the benchmark
+        id: run
+        env:
+          ONLY: ${{ inputs.only }}
+          LABEL: ${{ inputs.label }}
+        run: |
+          set +e
+          ARGS="--out ci"
+          if [ -n "$ONLY" ]; then ARGS="$ARGS --only $ONLY"; fi
+          if [ -n "$LABEL" ]; then ARGS="$ARGS --label \"$LABEL\""; fi
+          BASE=$(ls evals/extraction/results/*.json 2>/dev/null | grep -v '/ci.json$' | sort | tail -1)
+          if [ -n "$BASE" ]; then ARGS="$ARGS --compare $BASE"; fi
+          eval npm run -s bench:extraction -- $ARGS | tee bench.log
+          CODE=${PIPESTATUS[0]}
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          if [ "$CODE" != "0" ] && [ "$CODE" != "2" ]; then exit "$CODE"; fi
+          exit 0
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extraction-benchmark
+          path: |
+            evals/extraction/results/ci.json
+            evals/extraction/results/ci.md
+            bench.log
+
+      - name: Open an issue on a regression
+        if: steps.run.outputs.code == '2'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "The extraction benchmark's main set lost two or more hits (net) against the latest committed result."
+            echo
+            echo '```'
+            tail -n 20 bench.log
+            echo '```'
+            echo
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. A live site may have changed: re-check it with \`npm run bench:evidence -- --only <site>\` before treating it as a regression."
+          } > body.md
+          gh issue create --title "Extraction benchmark: hits dropped" --body-file body.md
