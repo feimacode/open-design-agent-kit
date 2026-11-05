@@ -2,7 +2,7 @@
   "name": "@feimacode/open-design-agent-kit-mcp",
   "version": "0.4.0-beta.3",
   "mcpName": "io.github.feimacode/open-design",
-  "description": "Open Design as an MCP server — the same skill/design-system/artifact tools the VS Code extension exposes, usable from any MCP-capable coding agent (Claude Code, Codex, and others).",
+  "description": "Open Design as an MCP server: make posters, flyers, social posts, slide decks, landing pages and prototypes from any MCP-capable agent (Claude Code, Codex, Cursor, GitHub Copilot and others), with 198 design systems, browser checks and PDF, PNG or PowerPoint export.",
   "license": "MIT",
   "engines": {
     "node": ">=18"
@@ -12,11 +12,28 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
     "model-context-protocol",
     "open-design",
+    "design",
+    "design-system",
     "design-systems",
+    "poster",
+    "flyer",
+    "social-media",
+    "instagram",
+    "slides",
+    "presentation",
+    "pitch-deck",
+    "landing-page",
+    "prototype",
+    "pdf",
+    "print",
+    "figma",
+    "canva",
     "claude-code",
     "codex",
+    "cursor",
     "ai-agent"
   ],
   "repository": {

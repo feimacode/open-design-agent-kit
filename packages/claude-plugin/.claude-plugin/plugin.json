@@ -1,11 +1,11 @@
 {
   "name": "open-design",
-  "description": "Generate design artifacts (landing pages, decks, prototypes, dashboards) using Open Design's bundled skills and design systems, directly in this workspace.",
+  "description": "Make posters, social posts, slides, landing pages and prototypes in your chat, with ready-made design systems, checks and PDF, PNG or PowerPoint exports.",
   "version": "0.3.2",
   "author": {
     "name": "feimacode"
   },
   "license": "MIT",
-  "keywords": ["design", "design-system", "prototype", "landing-page", "deck", "ui"],
+  "keywords": ["design", "design-system", "poster", "flyer", "social-media", "slides", "pitch-deck", "landing-page", "prototype", "ui", "pdf", "print"],
   "icon": ".claude-plugin/icon.png"
 }

@@ -1,6 +1,6 @@
 {
   "name": "open-design-agent-kit",
-  "description": "Open Design's design skills, design systems, and artifact workflow for Claude Code.",
+  "description": "Open Design for Claude Code: design skills, ready-made design systems, and tools to make, check and export posters, social posts, slides and landing pages.",
   "owner": {
     "name": "feimacode"
   },
@@ -8,10 +8,10 @@
     {
       "name": "open-design",
       "displayName": "Open Design",
-      "description": "Generate design artifacts (landing pages, decks, prototypes, dashboards) using Open Design's bundled skills and design systems, directly in your project.",
+      "description": "Make posters, social posts, slides, landing pages and prototypes in your chat, with ready-made design systems, checks and PDF, PNG or PowerPoint exports.",
       "source": "./packages/claude-plugin",
       "license": "MIT",
-      "keywords": ["design", "design-system", "prototype", "landing-page", "deck", "ui"],
+      "keywords": ["design", "design-system", "poster", "flyer", "social-media", "slides", "pitch-deck", "landing-page", "prototype", "ui", "pdf", "print"],
       "category": "productivity"
     }
   ]

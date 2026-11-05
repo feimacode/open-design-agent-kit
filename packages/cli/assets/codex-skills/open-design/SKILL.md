@@ -1,6 +1,6 @@
 ---
 name: open-design
-description: Generate design artifacts (landing pages, decks, prototypes, dashboards, components) using Open Design's bundled design skills and design systems. Use whenever the user asks to design, build, mock up, or generate something visual — a landing page, pitch deck, dashboard, prototype, or marketing page — even if they don't say "Open Design" explicitly.
+description: Make designs in the chat (posters and flyers, social posts and carousels, slide decks, landing pages, prototypes, dashboards, components) using Open Design's bundled design skills and ready-made design systems, then check them and export PDF, PNG or PowerPoint. Use whenever the user asks to design, build, mock up, or generate something visual — a poster, flyer, Instagram post, pitch deck, landing page, dashboard, prototype, or marketing page — even if they don't say "Open Design" explicitly.
 ---
 
 <!-- generated:open-design-agent-kit -->

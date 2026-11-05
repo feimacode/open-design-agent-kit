@@ -4,6 +4,8 @@ One version covers the VS Code extension and the npm packages (`content`, `mcp-s
 
 ## [Unreleased]
 
+- **Descriptions say what people make.** The listings, skill and package descriptions now name posters, flyers, social posts and slides next to landing pages and prototypes, the design system count is 198 everywhere, and the npm, VS Code and Claude plugin keywords add poster, flyer, social-media, instagram, slides, pdf and print. Directories, registries and agents' tool search read these words.
+
 ## [0.4.0-beta.3] - 2026-11-05
 
 A prerelease for testing: npm dist-tag `next`, and a GitHub pre-release with `open-design-0.4.0-beta.3.mcpb` and `open-design-chatgpt-plugin-0.4.0-beta.3.zip`. The Claude plugin stays on 0.3.0; to try this build in Claude, point a local copy of the plugin at `@feimacode/open-design-agent-kit-mcp@0.4.0-beta.3`. It is the first build with design systems from a website, template, guide, CSS or screenshot, export to Claude Design, and the extraction and audit changes below.
