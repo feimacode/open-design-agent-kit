@@ -51,3 +51,10 @@ Use `--only <id> --repeat 1` while iterating. For designs made in Claude Desktop
 - A drop of two or more hits on the main set (net) is explained in the PR: which sites were lost and why the trade is worth it. `--compare` lists them.
 - The held-out set (`holdout.json`) is reported, never used to tune a rule or justify one.
 - To add a site, or fix one whose truth went stale, follow [Adding and re-checking a site](../../evals/extraction/README.md#adding-and-re-checking-a-site).
+
+### Taste calibration
+
+`npm run calibrate:taste` runs the site audit's taste rules (`slop-glow`, `card-row`, `uniform-surface`, `intent`, and two or more tells together) on about 40 hand-made sites and on pages built from AI defaults, and reports each rule's false-alarm and hit rates. On a live site a rule counts as a problem only at 5% false alarms or fewer; otherwise the audit lists it as a note. See [evals/taste-calibration/README.md](../../evals/taste-calibration/README.md).
+
+- **A change to a taste rule** (the `slop-glow`, `card-row`, `uniform-surface` or `intent` checks in `packages/core/src/poster/pageScripts.ts`) runs the calibration with `--write` and commits the updated `packages/core/src/export/taste-calibration.json` and `results/<date>.md` in the same PR.
+- The weekly benchmark job runs it too, and uploads the result.

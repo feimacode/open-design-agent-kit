@@ -31,6 +31,7 @@ import {
 import { collectHorizontalScroll, collectTapTargets } from '../poster/pageScripts';
 import { runPreflight, type Finding } from '../poster/preflight';
 import { LARGE_TEXT_ROOT_PX, SCREEN_ECONOMY_SCRIPT } from './screenChecks';
+import { TASTE_CALIBRATION, applyTasteCalibration, calibrationLine } from './tasteCalibration';
 
 export const AUDITS_DIR = '.audits';
 const CARD_SELECTOR = '[data-od-card]';
@@ -62,10 +63,11 @@ export const AUDIT_CHECKS: ReadonlyArray<{ check: string; label: string }> = [
   { check: 'broken-asset', label: 'Images, styles and scripts that fail to load' },
   { check: 'missing-alt', label: 'Images without a text alternative' },
   { check: 'page-weight', label: 'Download size and request count on a phone' },
-  { check: 'slop-glow', label: 'Default-template look: stock indigo glows and gradients' },
-  { check: 'card-row', label: 'Default-template look: rows of identical cards' },
-  { check: 'uniform-surface', label: 'Default-template look: every card the same' },
+  { check: 'slop-glow', label: 'Stock indigo glows and gradients' },
+  { check: 'card-row', label: 'Rows of identical cards' },
+  { check: 'uniform-surface', label: 'Every card the same' },
   { check: 'intent', label: 'Destructive and primary actions look like what they do' },
+  { check: 'template-look', label: 'Template look: two or more of the three above on one page' },
 ];
 
 /** What the audit never measures; printed in every report. */
@@ -165,7 +167,7 @@ const COPY: Record<string, CheckCopy> = {
     weight: 2,
   },
   'slop-glow': {
-    title: 'Generic template look',
+    title: 'Stock indigo glows and gradients',
     cost: 'Stock indigo glows and gradients make the site look like every other template, not like this business.',
     fix: 'Use the brand’s own colours for accents and backgrounds.',
     weight: 1,
@@ -181,6 +183,13 @@ const COPY: Record<string, CheckCopy> = {
     cost: 'When every card has the same radius and shadow, nothing stands out.',
     fix: 'Give the most important block a different weight from the rest.',
     weight: 1,
+  },
+  // Only with two or more different tells on one page (openspec calibrate-site-audit-taste-checks).
+  'template-look': {
+    title: 'Looks like a stock template',
+    cost: 'Several stock patterns together make the page look like many others built from the same starting point, not like this business.',
+    fix: 'Keep one of the patterns at most, and build the rest from the brand’s own colours, layout and content.',
+    weight: 2,
   },
 };
 
@@ -652,10 +661,19 @@ export async function auditSite(input: AuditSiteInput): Promise<AuditSiteResult>
     await live?.close();
   }
 
-  const groups = groupFindings(findings);
+  // Taste rules over their calibrated false-alarm bar become notes; two or more tells make one template-look finding.
+  const taste = applyTasteCalibration(findings);
+  notes.push(...taste.notes);
+  const counted: AuditFinding[] = [
+    ...taste.findings,
+    ...taste.templateLook
+      .filter((t) => t.counted)
+      .map((t) => ({ check: 'template-look', severity: 'warning' as const, message: `${t.tells.length} template tells on this page: ${t.tells.join(', ')}.`, page: t.page, viewport: 'desktop' as const, region: 'page' as const, aboveFold: false })),
+  ];
+  const groups = groupFindings(counted);
   // Crops for the groups the report shows.
   for (const g of groups.slice(0, TOP_GROUPS)) {
-    const f = findings.find((x) => x.check === g.check && x.page === g.page && x.region === g.region && x.rect);
+    const f = counted.find((x) => x.check === g.check && x.page === g.page && x.region === g.region && x.rect);
     const shot = f ? shots.get(`${f.page}|${f.viewport}`) : undefined;
     if (!f?.rect || !shot) continue;
     try {
@@ -673,7 +691,7 @@ export async function auditSite(input: AuditSiteInput): Promise<AuditSiteResult>
   const result = { status, slug, auditDir: auditRel, report: reportRel, capturedAt, pages: audited, groups, findings, screenshots, blocked, pageWeight, notes } as const;
   await fs.writeFile(
     path.join(auditDir, 'audit.json'),
-    JSON.stringify({ url: main.toString(), capturedAt, status, pages: audited, pageShots, pageWeight, blocked, notes, checks: AUDIT_CHECKS.map((c) => c.check), notMeasured: NOT_MEASURED, groups, findings }, null, 2) + '\n',
+    JSON.stringify({ url: main.toString(), capturedAt, status, pages: audited, pageShots, pageWeight, blocked, notes, checks: AUDIT_CHECKS.map((c) => c.check), notMeasured: NOT_MEASURED, tasteCalibration: { calibratedAt: TASTE_CALIBRATION.calibratedAt, rules: TASTE_CALIBRATION.rules }, groups, findings }, null, 2) + '\n',
   );
   await fs.writeFile(path.join(auditDir, 'index.html'), renderAuditReport({ ...result, url: main.toString() }, auditRel));
   return result;
@@ -756,7 +774,7 @@ h1{font-size:clamp(28px,4vw,40px);line-height:1.15;margin:0 0 8px}h2{font-size:2
 .where{color:var(--muted);font-size:14px;margin:0 0 8px}.body p{margin:6px 0}details{margin-top:8px;color:var(--muted);font-size:14px}.ex{font-family:ui-monospace,monospace;font-size:13px}
 table{width:100%;border-collapse:collapse;font-size:15px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
 .shots{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}.shots figure{margin:0;flex:1 1 200px;max-width:560px}.shots img{width:100%;border:1px solid var(--line);border-radius:8px}
-figcaption{font-size:13px;color:var(--muted)}ul{padding-left:20px}.clean{color:var(--ok);font-weight:600}.scope{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+figcaption{font-size:13px;color:var(--muted)}.cal{color:var(--muted);font-size:14px}ul{padding-left:20px}.clean{color:var(--ok);font-weight:600}.scope{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
 </style>
 </head>
 <body>
@@ -770,7 +788,7 @@ ${blockedHtml}
 <h2>Screenshots</h2>
 <div class="shots">${shotsHtml}</div>
 <div class="scope">
-<section><h2>What this audit checked</h2><ul>${AUDIT_CHECKS.map((c) => `<li>${esc(c.label)}</li>`).join('')}</ul>${weightHtml ? `<p>Measured download size:</p><ul>${weightHtml}</ul>` : ''}</section>
+<section><h2>What this audit checked</h2><ul>${AUDIT_CHECKS.map((c) => `<li>${esc(c.label)}</li>`).join('')}</ul><p class="cal">${esc(calibrationLine())}</p>${weightHtml ? `<p>Measured download size:</p><ul>${weightHtml}</ul>` : ''}</section>
 <section><h2>What it doesn’t measure</h2><ul>${NOT_MEASURED.map((n) => `<li>${esc(n)}</li>`).join('')}</ul><p>No overall score is given: the findings above are the result.</p></section>
 </div>
 ${r.notes.length ? `<h2>Notes</h2><ul>${r.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}

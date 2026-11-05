@@ -1,7 +1,8 @@
 name: Extraction benchmark
 
 # Runs the website extraction on the benchmark sites (evals/extraction) and
-# scores the drafts against their truth. Weekly and by hand; it reads public
+# scores the drafts against their truth, then the site audit's taste
+# calibration (evals/taste-calibration). Weekly and by hand; it reads public
 # sites, so it never runs on a pull request. The results are uploaded as an
 # artifact; commit them from your machine when they become the new baseline.
 # Opens an issue when the main set loses two or more hits (net) against the
@@ -65,6 +66,13 @@ jobs:
           if [ "$CODE" != "0" ] && [ "$CODE" != "2" ]; then exit "$CODE"; fi
           exit 0
 
+      # The site audit's taste rules on hand-made and AI-default pages (evals/taste-calibration).
+      # Commit its result with --write from your machine when it becomes the new calibration.
+      - name: Run the taste calibration
+        if: always() && !inputs.only
+        continue-on-error: true
+        run: npm run -s calibrate:taste -- --out ci | tee calibrate.log
+
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
@@ -73,7 +81,10 @@ jobs:
           path: |
             evals/extraction/results/ci.json
             evals/extraction/results/ci.md
+            evals/taste-calibration/results/ci.json
+            evals/taste-calibration/results/ci.md
             bench.log
+            calibrate.log
 
       - name: Open an issue on a regression
         if: steps.run.outputs.code == '2'

@@ -19,6 +19,7 @@
     "evals": "tsx scripts/evals/run.mjs",
     "bench:evidence": "tsx evals/extraction/evidence.ts",
     "bench:extraction": "tsx evals/extraction/run.ts",
+    "calibrate:taste": "tsx evals/taste-calibration/run.ts",
     "version": "node scripts/bump-version.mjs"
   },
   "devDependencies": {

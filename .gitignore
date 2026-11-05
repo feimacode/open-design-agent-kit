@@ -11,3 +11,6 @@ packages/content/scripts/.ios-scaffold/
 evals/runs/*/*
 !evals/runs/*/contact-sheet.png
 scripts/probe-mcp-apps-host/dist/
+
+# Taste calibration page cache (evals/taste-calibration/run.ts); local only
+evals/taste-calibration/cache/
