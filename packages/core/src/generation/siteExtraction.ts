@@ -78,6 +78,8 @@ export interface ExtractSiteInput {
   localizeImages?: boolean;
   /** Overrides fetch for robots.txt (tests). */
   fetchImpl?: typeof fetch;
+  /** With no extraUrls: add up to 3 same-site pages from the home page's header and footer navigation (default true). */
+  discover?: boolean;
   /** Test hook: fetches the page and stylesheets when there is no browser. */
   fetchSiteTexts?: typeof fetchSiteTexts;
 }
@@ -114,6 +116,8 @@ export type ExtractSiteResult =
       sourceCandidates?: Array<{ value: string; label?: string; source: string }>;
       /** Accents 1–6 of a PowerPoint template's theme. */
       chartPalette?: string[];
+      /** Pages added from the home page's navigation (no extraUrls given). */
+      discovered?: string[];
       notes: string[];
     };
 
@@ -146,6 +150,8 @@ interface MeasuredPage extends Omit<PageEvidence, 'url' | 'dark' | 'hiddenOverla
   unreadColors?: string[];
   /** Document-relative rects of each accent candidate's best control, keyed accent-candidate-<n>. */
   candidateRects?: Record<string, { x: number; y: number; width: number; height: number }>;
+  /** Rects of the first element with each radius (buttons, inputs, cards, featured), keyed radius-<kind>-<px>. */
+  radiusRects?: Record<string, { x: number; y: number; width: number; height: number }>;
 }
 
 function measurePageInBrowser(): MeasuredPage {
@@ -584,7 +590,8 @@ function measurePageInBrowser(): MeasuredPage {
     ...cards.filter((el) => area(el) < viewportArea * 0.15).slice(0, 60).map((el) => [el, 'card'] as [Element, RadiusKind]),
     ...featured.slice(0, 40).map((el) => [el, 'featured'] as [Element, RadiusKind]),
   ];
-  const radiusTally = new Map<string, { px: number; count: number; kind: RadiusKind }>();
+  const radiusTally = new Map<string, { px: number; count: number; kind: RadiusKind; selector?: string }>();
+  const radiusRects: Record<string, { x: number; y: number; width: number; height: number }> = {};
   for (const [el, kind] of radiusEls) {
     const r = parseFloat(cs(el).borderTopLeftRadius);
     if (!(r > 0)) continue;
@@ -592,7 +599,10 @@ function measurePageInBrowser(): MeasuredPage {
     const key = `${kind}:${rounded}`;
     const cur = radiusTally.get(key);
     if (cur) cur.count++;
-    else radiusTally.set(key, { px: rounded, count: 1, kind });
+    else {
+      radiusTally.set(key, { px: rounded, count: 1, kind, selector: kind === 'other' ? undefined : selectorFor(el) });
+      if (kind !== 'other' && Object.keys(radiusRects).length < 8) radiusRects[`radius-${kind}-${rounded}`] = rectOf(el);
+    }
   }
   const spacingTally = new Map<number, number>();
   const snap = (v: string) => {
@@ -724,6 +734,7 @@ function measurePageInBrowser(): MeasuredPage {
     accentCandidates: accentCandidates.length > 0 ? accentCandidates : undefined,
     accentConfidence,
     candidateRects,
+    radiusRects,
   };
 }
 
@@ -838,6 +849,49 @@ async function forcedStateStyle(
   }
 }
 
+/** In-page: the links in the header, nav and footer, as absolute URLs. Self-contained, for page.evaluate. */
+export function navLinksInBrowser(): string[] {
+  const out: string[] = [];
+  for (const a of Array.from(document.querySelectorAll('header a[href], nav a[href], footer a[href], [role="navigation"] a[href]'))) {
+    const href = (a as HTMLAnchorElement).href;
+    if (href && out.indexOf(href) < 0) out.push(href);
+  }
+  return out.slice(0, 300);
+}
+
+const NAV_SKIP = /(^|\/)(log-?in|sign-?in|sign-?up|signup|register|join|account|auth|sso|oauth|legal|privacy|terms|tos|cookies?|gdpr|imprint|impressum|careers?|jobs|cart|checkout|basket|search|status|contact-sales)(\/|$|\.|-)/i;
+const NAV_PREFER: RegExp[] = [/(^|\/)(pricing|plans|prices)(\/|$)/i, /(^|\/)(product|products|features|platform|solutions|how-it-works)(\/|$)/i, /(^|\/)(about|about-us|company|story)(\/|$)/i, /(^|\/)(docs|documentation|blog|resources|guides|news)(\/|$)/i];
+
+/**
+ * Up to three same-site pages to measure besides the home page, from its
+ * navigation links: pricing, then product or features, about, then docs or
+ * blog, before any other page. Skips sign-in, sign-up, legal and careers
+ * pages, files, and paths robots.txt disallows.
+ */
+export function pickNavPages(main: URL, hrefs: string[], robots?: Parameters<typeof robotsDisallows>[1]): string[] {
+  const seen = new Set<string>([main.pathname.replace(/\/$/, '') || '/']);
+  const candidates: Array<{ url: string; rank: number; order: number }> = [];
+  hrefs.forEach((raw, order) => {
+    let u: URL;
+    try {
+      u = new URL(raw);
+    } catch {
+      return;
+    }
+    if (u.origin !== main.origin || !/^https?:$/.test(u.protocol)) return;
+    const pathKey = u.pathname.replace(/\/$/, '') || '/';
+    if (seen.has(pathKey) || NAV_SKIP.test(u.pathname) || /\.(pdf|zip|png|jpe?g|gif|svg|webp|mp4|xml|json|txt)$/i.test(u.pathname)) return;
+    if (robots && robotsDisallows(u.pathname, robots)) return;
+    seen.add(pathKey);
+    const rank = NAV_PREFER.findIndex((re) => re.test(u.pathname));
+    candidates.push({ url: `${u.origin}${u.pathname}`, rank: rank < 0 ? NAV_PREFER.length : rank, order });
+  });
+  return candidates
+    .sort((a, b) => a.rank - b.rank || a.order - b.order)
+    .slice(0, 3)
+    .map((c) => c.url);
+}
+
 async function cropRoles(page: Page, rects: MeasuredPage['rects'], dir: string, prefix: string): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
   await fs.mkdir(dir, { recursive: true });
@@ -905,24 +959,47 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   const contentPages: PageContent[] = [];
   /** Each measured page's screenshots, so a redesign's base screen can be traced back to its page. */
   const pageShots: Array<{ url: string; desktop: string; mobile: string }> = [];
-  const robots = input.content ? await fetchRobots(main.origin, input.fetchImpl) : undefined;
+  const discovering = (input.extraUrls ?? []).length === 0 && input.discover !== false;
+  const robots = input.content || discovering ? await fetchRobots(main.origin, input.fetchImpl) : undefined;
+  const urls = [...valid.urls];
+  const discovered: string[] = [];
   try {
     live = await launchLiveBrowser(browserPath, input.allowHostsForTesting ?? [], 'od-extract-profile-');
     const { page, images } = live;
 
-    for (const [i, url] of valid.urls.entries()) {
-      const prefix = valid.urls.length > 1 ? `page-${i + 1}-` : '';
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      const prefix = valid.urls.length > 1 || i > 0 ? `page-${i + 1}-` : '';
+      const wasDiscovered = i >= valid.urls.length;
       await page.setViewport(DESKTOP_VIEWPORT);
       await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
-      if (robots && robotsDisallows(url.pathname, robots)) {
+      if (robots && input.content && !wasDiscovered && robotsDisallows(url.pathname, robots)) {
         blocked.push({ url: url.toString(), reason: 'robots.txt disallows it' });
         continue;
       }
       try {
         await gotoPage(page, url.toString());
       } catch (err) {
+        if (wasDiscovered) {
+          notes.push(`${url.toString()} (found in the navigation) didn't load, so it wasn't measured.`);
+          continue;
+        }
         blocked.push({ url: url.toString(), reason: `the page didn't load (${err instanceof Error ? err.message.split('\n')[0] : String(err)})` });
         continue;
+      }
+      if (wasDiscovered) {
+        const status = (await page.evaluate('(performance.getEntriesByType("navigation")[0] || {}).responseStatus || 0').catch(() => 0)) as number;
+        if (status >= 400) {
+          notes.push(`${url.toString()} (found in the navigation) answered ${status}, so it wasn't measured.`);
+          continue;
+        }
+      }
+      if (i === 0 && discovering) {
+        const hrefs = (await page.evaluate(`(${navLinksInBrowser.toString()})()`).catch(() => [])) as string[];
+        for (const next of pickNavPages(main, hrefs, robots)) {
+          urls.push(new URL(next));
+          discovered.push(next);
+        }
       }
       // Overlays first, so a consent button can't become the accent; then a
       // scroll so lazy and scroll-reveal sections count; then overlays that
@@ -959,6 +1036,14 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         measured.focusRing = await forcedFocusRing(page);
       }
       const crops = await cropRoles(page, measured.rects, path.join(bundleDir, 'crops'), prefix);
+      // Radius crops only matter when pages are compared.
+      if (urls.length > 1 && measured.radiusRects) {
+        const radiusCrops = await cropRoles(page, measured.radiusRects as MeasuredPage['rects'], path.join(bundleDir, 'crops'), prefix);
+        for (const r of measured.radii) {
+          const file = radiusCrops[`radius-${r.kind}-${r.px}`];
+          if (file) r.crop = `crops/${file}`;
+        }
+      }
       if (measured.accentCandidates && measured.candidateRects) {
         const candidateCrops = await cropRoles(page, measured.candidateRects as MeasuredPage['rects'], path.join(bundleDir, 'crops'), prefix);
         measured.accentCandidates.forEach((c, n) => {
@@ -1137,7 +1222,9 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   if (theme !== 'light' && !dark && noDarkFound) notes.push('No dark theme was found: the site looks the same under prefers-color-scheme: dark and with a dark theme attribute on the root element. No dark values were returned.');
   if (draft && theme !== 'light' && dark && !draft.dark) notes.push('The dark theme changed nothing the draft measures, so no dark values were returned.');
   if (draft) notes.push(...draft.notes);
-  if (draft && draft.conflicts.length > 0) notes.push(`Pages disagree on ${[...new Set(draft.conflicts.map((c) => c.token))].join(', ')}: the draft keeps the first page's values; see draft.conflicts.`);
+  if (draft && draft.conflicts.length > 0) notes.push(`Pages disagree on ${[...new Set(draft.conflicts.map((c) => c.token))].join(', ')}: the draft takes the value most pages use (the first page's on a tie); see draft.conflicts.`);
+  const discoveredMeasured = discovered.filter((u) => pages.some((p) => p.url === u));
+  if (discoveredMeasured.length > 0) notes.push(`Also measured, from the home page's navigation: ${discoveredMeasured.join(', ')}. Pass discover: false to measure only the page given.`);
   const status = pages.length === 0 ? 'blocked' : 'ok';
   let contentRel: string | undefined;
   if (input.content && contentPages.length > 0) {
@@ -1164,6 +1251,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
     marks,
     content: contentRel,
     brandKit,
+    discovered: discoveredMeasured.length > 0 ? discoveredMeasured : undefined,
     notes,
   };
 }
@@ -1310,8 +1398,9 @@ export function formatExtractSiteResult(result: ExtractSiteResult): string {
       blocked: result.blocked,
       marks: result.marks,
       content: result.content,
+      discovered: result.discovered,
       brandKit: result.brandKit,
-      draft: result.draft ? { tokens: result.draft.tokens, dark: result.draft.dark, sources: result.draft.sources, unmeasured: result.draft.unmeasured, conflicts: result.draft.conflicts } : undefined,
+      draft: result.draft ? { tokens: result.draft.tokens, dark: result.draft.dark, sources: result.draft.sources, unmeasured: result.draft.unmeasured, conflicts: result.draft.conflicts, consistency: result.draft.consistency } : undefined,
       draftCss: result.draftCss,
       accentChoice: accentChoice(result.draft?.sources['--accent']),
       candidates: result.candidates,

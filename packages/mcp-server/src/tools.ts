@@ -999,7 +999,7 @@ export async function exportDesignSystem(ctx: ToolContext, input: { designSystem
  */
 export async function extractDesignSystemFromSite(
   ctx: ToolContext,
-  input: { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean; compareTo?: string; sources?: unknown },
+  input: { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean; discover?: boolean; compareTo?: string; sources?: unknown },
 ): Promise<ToolOutput> {
   // sources: screenshots, CSS, page source, brand guides and PowerPoint templates (openspec add-brand-from-screenshot-or-css).
   let sources: ExtractionSource[] | undefined;
@@ -1027,6 +1027,7 @@ export async function extractDesignSystemFromSite(
   }
   if (input.theme !== undefined && !['light', 'dark', 'both'].includes(input.theme)) throw new Error('"theme" must be light, dark or both.');
   if (input.localizeImages && !input.content) throw new Error('"localizeImages" needs content: true.');
+  if (input.discover !== undefined && typeof input.discover !== 'boolean') throw new Error('"discover" must be true or false.');
   const result = await extractSite({
     url: input.url.trim(),
     extraUrls: input.extraUrls,
@@ -1035,6 +1036,8 @@ export async function extractDesignSystemFromSite(
     outputDir: ctx.outputDir,
     content: input.content === true,
     localizeImages: input.localizeImages === true,
+    // A refresh compares like with like: only the pages the system was saved from, unless asked.
+    discover: input.discover ?? (compareTo ? false : undefined),
     allowHostsForTesting: evalAllowedHosts(),
   });
   if (result.status === 'invalid-args') throw new Error(result.error);

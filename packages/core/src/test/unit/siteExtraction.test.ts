@@ -6,7 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { findBrowser } from '../../export/browserDiscovery';
 import { cssColorToHex, draftTokensCss, evidenceToTokens, mapTypeScale, parseRingShadow, type PageEvidence } from '../../generation/evidenceToTokens';
-import { extractSite, extractionSlug, isPrivateAddress, registrableDomain, validateExtractionUrls } from '../../generation/siteExtraction';
+import { extractSite, extractionSlug, isPrivateAddress, pickNavPages, registrableDomain, validateExtractionUrls } from '../../generation/siteExtraction';
 
 const FIXTURES = path.resolve(__dirname, '../../../src/test/fixtures/siteExtraction');
 const publicDns = async (): Promise<string[]> => ['93.184.216.34'];
@@ -187,14 +187,48 @@ describe('evidenceToTokens', () => {
     assert.strictEqual(raised.tokens['--elev-ring'], undefined);
   });
 
-  it('keeps the first page\'s value and lists what other pages say', () => {
+  it('keeps the first page\'s value on an even split and lists what other pages say', () => {
     const pricing = page({
       url: 'https://example.com/pricing',
       roles: { accent: { value: 'rgb(255, 150, 0)', selector: 'button.btn-primary', count: 1, crop: 'crops/page-2-accent.png' }, bg: { value: 'rgb(255, 255, 255)', selector: 'body', count: 1 } },
     });
     const draft = evidenceToTokens({ pages: [page(), pricing] });
     assert.strictEqual(draft.tokens['--accent'], '#58cc02');
-    assert.deepStrictEqual(draft.conflicts, [{ token: '--accent', value: '#ff9600', page: 'https://example.com/pricing', selector: 'button.btn-primary', crop: 'crops/page-2-accent.png' }]);
+    assert.deepStrictEqual(draft.conflicts, [{ token: '--accent', value: '#ff9600', page: 'https://example.com/pricing', selector: 'button.btn-primary', crop: 'crops/page-2-accent.png', coverage: { pages: 1, of: 2 } }]);
+    assert.deepStrictEqual(draft.sources['--bg'].coverage, { pages: 2, of: 2 });
+    assert.strictEqual(draft.sources['--bg'].scope, 'site-wide');
+  });
+
+  it('elects each colour by how many pages use it, merging values within ΔE 3, and notes a first page that differs', () => {
+    const light = (n: number, bg = 'rgb(255, 255, 255)') => page({ url: `https://example.com/p${n}`, roles: { ...page().roles, bg: { value: bg, selector: 'body', count: 1 } } });
+    const home = page({ roles: { ...page().roles, bg: { value: 'rgb(11, 11, 15)', selector: 'body', count: 1 } } });
+    const draft = evidenceToTokens({ pages: [home, light(2), light(3, 'rgb(254, 254, 254)'), light(4)] });
+    assert.strictEqual(draft.tokens['--bg'], '#ffffff');
+    assert.deepStrictEqual(draft.sources['--bg'].coverage, { pages: 3, of: 4 });
+    assert.strictEqual(draft.sources['--bg'].scope, 'section');
+    const bgConflicts = draft.conflicts.filter((c) => c.token === '--bg');
+    assert.deepStrictEqual(bgConflicts.map((c) => [c.value, c.coverage]), [['#0b0b0f', { pages: 1, of: 4 }]]);
+    assert.ok(draft.notes.some((n) => /--bg: the first page uses #0b0b0f, but 3 of 4 pages use #ffffff/.test(n)), draft.notes.join('\n'));
+    assert.ok(draft.consistency?.outliers.some((o) => o.kind === 'colour' && o.value === '#0b0b0f'));
+  });
+
+  it('summarises consistency: shares on tokens and a one-page radius with its page and crop', () => {
+    const other = (n: number) => page({ url: `https://example.com/p${n}` });
+    const odd = page({ url: 'https://example.com/about', radii: [{ px: 12, count: 2, kind: 'button' }, { px: 20, count: 2, kind: 'card', selector: 'div.card', crop: 'crops/page-3-radius-card-20.png' }] });
+    const draft = evidenceToTokens({ pages: [page(), other(2), odd] });
+    assert.strictEqual(draft.tokens['--radius-md'], '16px');
+    const outlier = draft.consistency?.outliers.find((o) => o.kind === 'radius');
+    assert.deepStrictEqual(outlier, { kind: 'radius', value: '20px', page: 'https://example.com/about', selector: 'div.card', crop: 'crops/page-3-radius-card-20.png' });
+    assert.ok((draft.consistency?.radii ?? 0) < 1 && (draft.consistency?.radii ?? 0) > 0.7);
+    assert.strictEqual(draft.consistency?.fonts, 1);
+    assert.strictEqual(evidenceToTokens({ pages: [page()] }).consistency, undefined);
+  });
+
+  it('picks pages from the navigation: pricing, product, about, then docs; never sign-in, legal or careers', () => {
+    const main = new URL('https://example.com/');
+    const hrefs = ['https://example.com/', 'https://example.com/login', 'https://example.com/blog', 'https://example.com/about', 'https://example.com/privacy', 'https://example.com/pricing#faq', 'https://example.com/careers', 'https://other.com/pricing', 'https://example.com/press.pdf', 'https://example.com/features', 'https://example.com/sign-up'];
+    assert.deepStrictEqual(pickNavPages(main, hrefs), ['https://example.com/pricing', 'https://example.com/features', 'https://example.com/about']);
+    assert.deepStrictEqual(pickNavPages(main, hrefs, { allow: [], disallow: ['/pricing'] }), ['https://example.com/features', 'https://example.com/about', 'https://example.com/blog']);
   });
 
   it('notes gradients for DESIGN.md', () => {
@@ -239,11 +273,12 @@ describe('extractSite in a browser', function () {
   });
   after(() => server?.close());
 
-  const run = async (file: string, theme: 'light' | 'dark' | 'both' = 'light', extra: string[] = []) => {
+  const run = async (file: string, theme: 'light' | 'dark' | 'both' = 'light', extra: string[] = [], discover = false) => {
     const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'od-extract-'));
     const result = await extractSite({
       url: `${base}/${file}`,
       extraUrls: extra.map((f) => `${base}/${f}`),
+      discover,
       theme,
       workspaceRoot,
       outputDir: '.open-design',
@@ -391,6 +426,19 @@ describe('extractSite in a browser', function () {
     assert.deepStrictEqual(src.candidates?.map((c) => c.hex).sort(), ['#2563eb', '#ea580c']);
     assert.ok(src.candidates?.every((c) => c.crop));
     assert.ok(result.notes.some((n) => /close call/.test(n) && /#2563eb/.test(n) && /#ea580c/.test(n)), result.notes.join('\n'));
+  });
+
+  it('adds pages from the navigation when no extra pages are given, and lists them', async () => {
+    const { workspaceRoot, result } = await run('nav-home.html', 'light', [], true);
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    assert.deepStrictEqual(result.discovered, [`${base}/pricing`, `${base}/about`]);
+    assert.ok(result.screenshots.includes(`${result.bundleDir}/desktop.png`) && result.screenshots.includes(`${result.bundleDir}/page-2-desktop.png`), result.screenshots.join(' '));
+    assert.ok(result.notes.some((n) => /from the home page's navigation/.test(n)));
+    const radius = result.draft!.consistency?.outliers.find((o) => o.kind === 'radius' && o.value === '20px');
+    assert.strictEqual(radius?.page, `${base}/about`);
+    assert.ok(radius?.crop);
+    await fs.access(path.join(workspaceRoot, result.bundleDir, radius!.crop!));
   });
 
   it('measures every page and reports where pages disagree', async () => {

@@ -99,7 +99,7 @@ describe('brand kit capture (real browser; skipped when none is installed)', fun
 
   it('captures marks with variants, fonts, component specs, voice and imagery, and saves them into brand.json', async () => {
     const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'od-kit-'));
-    const result = await extractSite({ url: `${base}/`, theme: 'both', workspaceRoot, outputDir: '.open-design', executablePath, allowHostsForTesting: ['127.0.0.1'] });
+    const result = await extractSite({ url: `${base}/`, theme: 'both', discover: false, workspaceRoot, outputDir: '.open-design', executablePath, allowHostsForTesting: ['127.0.0.1'] });
     assert.strictEqual(result.status, 'ok');
     if (result.status !== 'ok') return;
     const kit = result.brandKit!;

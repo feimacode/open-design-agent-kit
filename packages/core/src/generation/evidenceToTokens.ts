@@ -10,7 +10,7 @@
 // (both MIT); the code here is our own.
 
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
-import { outOfSrgb, parseColor as parseCssColor } from './colorMix';
+import { deltaE2000, outOfSrgb, parseColor as parseCssColor } from './colorMix';
 
 /** One sampled element for a colour role. */
 export interface RoleSample {
@@ -73,7 +73,7 @@ export interface PageEvidence {
   /** Declared custom properties: `:root` and theme-scoped (`[data-theme=dark]`, `.dark`, `@media (prefers-color-scheme: dark)`). */
   customProperties: { root: Record<string, string>; themes: Record<string, Record<string, string>> };
   /** Distinct non-zero border radii in px with how many elements use each; ≥ 999 counts as pill. `featured` is a large container or hero media. */
-  radii: Array<{ px: number; count: number; kind: 'button' | 'input' | 'card' | 'featured' | 'other' }>;
+  radii: Array<{ px: number; count: number; kind: 'button' | 'input' | 'card' | 'featured' | 'other'; selector?: string; crop?: string }>;
   /** Padding/gap values snapped to 2px, with counts. */
   spacing: Array<{ px: number; count: number }>;
   /** px */
@@ -131,6 +131,23 @@ export interface SiteEvidence {
   dark?: { trigger: 'prefers-color-scheme' | 'toggle'; roles: Partial<Record<ColorRole, RoleSample>> };
 }
 
+/** How widely a drafted value is used: on 80% of pages or more, 40% or more, or fewer. */
+export type TokenScope = 'site-wide' | 'section' | 'page-local';
+
+export function scopeOf(pages: number, of: number): TokenScope {
+  return pages / of >= 0.8 ? 'site-wide' : pages / of >= 0.4 ? 'section' : 'page-local';
+}
+
+export interface Consistency {
+  /** Share (0–1) of measured values that fall on drafted tokens, per kind. */
+  colours?: number;
+  radii?: number;
+  fonts?: number;
+  spacing?: number;
+  /** Values used on one page only that no token holds. */
+  outliers: Array<{ kind: 'colour' | 'radius' | 'font'; value: string; token?: string; page: string; selector?: string; crop?: string }>;
+}
+
 export interface DraftTokens {
   /** Contract name → value, `:root` set. */
   tokens: Record<string, string>;
@@ -139,9 +156,11 @@ export interface DraftTokens {
   /** Contract tokens with no measurement (left to the contract fallback). */
   unmeasured: string[];
   /** Token → where its value came from (selector and crop), and the site's own custom property with the same value. */
-  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; source?: string; note?: string; original?: string; choiceConfidence?: number; candidates?: Array<Omit<AccentCandidate, 'value'> & { hex: string }> }>;
+  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; source?: string; note?: string; original?: string; choiceConfidence?: number; candidates?: Array<Omit<AccentCandidate, 'value'> & { hex: string }>; coverage?: { pages: number; of: number }; scope?: TokenScope }>;
   /** Values other pages (or their dark themes) gave for a drafted token; the draft keeps the first page's. */
-  conflicts: Array<{ token: string; value: string; page: string; selector: string; crop?: string; theme?: 'dark'; confidence?: 'measured' | 'declared' | 'stated' | 'sampled' }>;
+  conflicts: Array<{ token: string; value: string; page: string; selector: string; crop?: string; theme?: 'dark'; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; coverage?: { pages: number; of: number } }>;
+  /** With more than one page: how much of what was measured falls on the drafted tokens, and the one-page outliers. */
+  consistency?: Consistency;
   /** Things the model should know when writing DESIGN.md (full gradients, an input radius that differs). */
   notes: string[];
 }
@@ -249,16 +268,49 @@ export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
   const [first] = evidence.pages;
   if (!first) return { tokens, unmeasured: TOKEN_SCHEMA.map((t) => t.name), sources, conflicts, notes };
 
-  // Colours from the first page (the URL the person gave); later pages fill
-  // gaps, and a later page that disagrees is listed as a conflict.
-  for (const page of evidence.pages) {
+  // Colours elected by coverage (add-coverage-voting): each role takes the
+  // value most pages use, counting colours within ΔE 3 as one and drafting the
+  // most-used exact value; a tie goes to the earlier page (the URL the person
+  // gave comes first). Other values are listed as conflicts with their coverage.
+  const n = evidence.pages.length;
+  const perPage = evidence.pages.map((page) => {
     const pageSources: DraftTokens['sources'] = {};
-    for (const [name, value] of Object.entries(colorTokens(page.roles, page.url, pageSources, page.colorOriginals))) {
-      if (!(name in tokens)) {
-        tokens[name] = value;
-        sources[name] = pageSources[name];
-      } else if (tokens[name] !== value) conflicts.push({ token: name, value, page: page.url, selector: pageSources[name].selector, crop: pageSources[name].crop });
+    return { page, values: colorTokens(page.roles, page.url, pageSources, page.colorOriginals), sources: pageSources };
+  });
+  const order: string[] = [];
+  for (const p of perPage) for (const name of Object.keys(p.values)) if (!order.includes(name)) order.push(name);
+  for (const name of order) {
+    const clusters: Array<Array<{ index: number; hex: string }>> = [];
+    perPage.forEach((p, index) => {
+      const hex = p.values[name];
+      if (hex === undefined) return;
+      const cluster = clusters.find((c) => deltaE2000(c[0].hex, hex) < 3);
+      if (cluster) cluster.push({ index, hex });
+      else clusters.push([{ index, hex }]);
+    });
+    clusters.sort((a, b) => b.length - a.length || a[0].index - b[0].index);
+    const exact = (c: Array<{ index: number; hex: string }>) => {
+      const counts = new Map<string, number>();
+      for (const m of c) counts.set(m.hex, (counts.get(m.hex) ?? 0) + 1);
+      return [...counts].sort((x, y) => y[1] - x[1] || c.findIndex((m) => m.hex === x[0]) - c.findIndex((m) => m.hex === y[0]))[0][0];
+    };
+    const [won, ...lost] = clusters;
+    const hex = exact(won);
+    const at = won.find((m) => m.hex === hex)!;
+    tokens[name] = hex;
+    sources[name] = perPage[at.index].sources[name];
+    if (n > 1) {
+      sources[name].coverage = { pages: won.length, of: n };
+      sources[name].scope = scopeOf(won.length, n);
     }
+    for (const c of lost) {
+      const value = exact(c);
+      const m = c.find((x) => x.hex === value)!;
+      const src = perPage[m.index].sources[name];
+      conflicts.push({ token: name, value, page: perPage[m.index].page.url, selector: src.selector, crop: src.crop, ...(n > 1 ? { coverage: { pages: c.length, of: n } } : {}) });
+    }
+    const home = clusters.find((c) => c.some((m) => m.index === 0));
+    if (home && home !== won) notes.push(`${name}: the first page uses ${exact(home)}, but ${won.length} of ${n} pages use ${hex}, so the draft takes ${hex}. The first page may be a campaign or a different section.`);
   }
   // How the accent was chosen: the page it came from ranked its candidates.
   const accentPage = sources['--accent'] ? evidence.pages.find((p) => p.url === sources['--accent'].page) : undefined;
@@ -382,7 +434,57 @@ export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
     }
   }
 
-  return { tokens, dark, unmeasured: TOKEN_SCHEMA.map((t) => t.name).filter((n) => !(n in tokens)), sources, conflicts, notes };
+  const consistency = n > 1 ? consistencyOf(evidence.pages, tokens, conflicts) : undefined;
+  return { tokens, dark, unmeasured: TOKEN_SCHEMA.map((t) => t.name).filter((n) => !(n in tokens)), sources, conflicts, notes, ...(consistency ? { consistency } : {}) };
+}
+
+const share = (on: number, total: number): number | undefined => (total > 0 ? Math.round((on / total) * 100) / 100 : undefined);
+
+/** How much of what the pages use falls on the drafted tokens, and what only one page uses. */
+function consistencyOf(pages: PageEvidence[], tokens: Record<string, string>, conflicts: DraftTokens['conflicts']): Consistency {
+  const drafted = Object.entries(tokens);
+  const colourTokens = drafted.filter(([, v]) => /^#[0-9a-f]{6,8}$/i.test(v)).map(([, v]) => v);
+  let colourOn = 0;
+  let colourAll = 0;
+  for (const page of pages) {
+    for (const sample of Object.values(page.roles)) {
+      const hex = sample ? cssColorToHex(sample.value) : undefined;
+      if (!hex) continue;
+      colourAll++;
+      if (colourTokens.some((t) => deltaE2000(t, hex) < 3)) colourOn++;
+    }
+  }
+  const radiusTokens = drafted.filter(([k]) => k.startsWith('--radius')).map(([, v]) => parseFloat(v));
+  const radii = pages.flatMap((p) => p.radii.map((r) => ({ ...r, page: p.url })));
+  const radiusAll = radii.reduce((a, r) => a + r.count, 0);
+  const radiusOn = radii.filter((r) => radiusTokens.some((t) => Math.abs(t - r.px) <= 1 || (t >= 999 && r.px >= 999))).reduce((a, r) => a + r.count, 0);
+  const first = (stack: string) => stack.split(',')[0].trim().replace(/^["']|["']$/g, '').toLowerCase();
+  const fontTokens = drafted.filter(([k]) => k.startsWith('--font')).map(([, v]) => first(v));
+  const texts = pages.flatMap((p) => p.textRoles.map((t) => ({ ...t, page: p.url })));
+  const fontOn = texts.filter((t) => fontTokens.includes(first(t.fontFamily))).length;
+  const spaceTokens = drafted.filter(([k]) => k.startsWith('--space')).map(([, v]) => parseFloat(v));
+  const spacing = pages.flatMap((p) => p.spacing);
+  const spaceAll = spacing.reduce((a, s) => a + s.count, 0);
+  const spaceOn = spacing.filter((s) => spaceTokens.some((t) => Math.abs(t - s.px) <= 1)).reduce((a, s) => a + s.count, 0);
+
+  const outliers: Consistency['outliers'] = [];
+  for (const c of conflicts) if (c.coverage && c.coverage.pages === 1 && !c.theme) outliers.push({ kind: 'colour', value: c.value, token: c.token, page: c.page, selector: c.selector, crop: c.crop });
+  const radiusPages = new Map<number, Set<string>>();
+  for (const r of radii) radiusPages.set(r.px, (radiusPages.get(r.px) ?? new Set()).add(r.page));
+  for (const [px, on] of radiusPages) {
+    if (on.size !== 1 || radiusTokens.some((t) => Math.abs(t - px) <= 1 || (t >= 999 && px >= 999))) continue;
+    const r = radii.find((x) => x.px === px)!;
+    if (r.kind === 'other') continue;
+    outliers.push({ kind: 'radius', value: `${px}px`, page: r.page, selector: r.selector, crop: r.crop });
+  }
+  const fontPages = new Map<string, Set<string>>();
+  for (const t of texts) fontPages.set(first(t.fontFamily), (fontPages.get(first(t.fontFamily)) ?? new Set()).add(t.page));
+  for (const [font, on] of fontPages) {
+    if (on.size !== 1 || fontTokens.includes(font)) continue;
+    const t = texts.find((x) => first(x.fontFamily) === font)!;
+    outliers.push({ kind: 'font', value: t.fontFamily.split(',')[0].trim(), page: t.page, selector: t.selector });
+  }
+  return { colours: share(colourOn, colourAll), radii: share(radiusOn, radiusAll), fonts: share(fontOn, texts.length), spacing: share(spaceOn, spaceAll), outliers };
 }
 
 /** `rgb(229, 229, 229) 0px 0px 0px 1px` (a hairline ring) → `#e5e5e5`; anything else → undefined. */

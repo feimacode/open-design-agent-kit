@@ -10,6 +10,8 @@ interface ExtractDesignSystemInput {
   theme?: ExtractionTheme;
   content?: boolean;
   localizeImages?: boolean;
+  /** With no extraUrls: also measure up to 3 pages from the home page's navigation (default true). */
+  discover?: boolean;
   /** A saved design system to compare with (openspec connect-brand-design-systems). */
   compareTo?: string;
   /** Screenshots, CSS, page source, brand guides, PowerPoint templates (openspec add-brand-from-screenshot-or-css). */
@@ -43,7 +45,7 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
   ): Promise<vscode.LanguageModelToolResult> {
     const browserPath = vscode.workspace.getConfiguration('openDesign').get<string>('export.browserPath', '') || undefined;
     const workspaceRoot = getWorkspaceRoot();
-    const { theme, content, localizeImages } = options.input;
+    const { theme, content, localizeImages, discover } = options.input;
     let { url, extraUrls } = options.input;
     const text = (value: string) => new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(value)]);
     if (localizeImages && !content) return text('Invalid arguments: localizeImages needs content: true.');
@@ -69,7 +71,7 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
       return this.output(workspaceRoot, drafted, formatExtractSiteResult(drafted));
     }
     if (!url?.trim()) return text('Invalid arguments: url is required (or compareTo naming a saved design system, or sources).');
-    const measured = await extractSite({ url, extraUrls, theme, content: content === true, localizeImages: localizeImages === true, workspaceRoot, outputDir: getOutputDirectory(), browserPath });
+    const measured = await extractSite({ url, extraUrls, theme, content: content === true, localizeImages: localizeImages === true, discover: discover ?? (compareTo ? false : undefined), workspaceRoot, outputDir: getOutputDirectory(), browserPath });
     if (token.isCancellationRequested) return text('Extraction cancelled.');
     if (measured.status === 'invalid-args') return text(`Invalid arguments: ${measured.error}`);
     const result = sources && 'bundleDir' in measured ? await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources, urlResult: measured }) : measured;

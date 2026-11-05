@@ -875,6 +875,11 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'boolean',
             description: "With content: copy the images the pages loaded into the bundle. Only when the user says the site is theirs or the client has commissioned the work; otherwise images stay as the site's URLs.",
           },
+          discover: {
+            type: 'boolean',
+            description:
+              "With no extraUrls: also measure up to 3 pages linked from the home page's header and footer navigation (pricing, product or features, about, docs or blog first; never sign-in, sign-up, legal or careers pages, or pages robots.txt disallows), so tokens are elected by how many pages use them. Default true; false measures only url.",
+          },
           sources: {
             type: 'array',
             maxItems: 6,
@@ -900,7 +905,7 @@ const TOOL_DEFS: ToolDef[] = [
         },
       },
     },
-    handler: (ctx, args) => tools.extractDesignSystemFromSite(ctx, args as { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean; compareTo?: string }),
+    handler: (ctx, args) => tools.extractDesignSystemFromSite(ctx, args as { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean; discover?: boolean; compareTo?: string }),
   },
   {
     tool: {
