@@ -3,7 +3,7 @@
   "name": "open-design",
   "display_name": "Open Design",
   "version": "${VERSION}",
-  "description": "Design landing pages, decks, posters and more with Open Design's skills and design systems.",
+  "description": "Design posters, social posts, slides, landing pages and more with Open Design's skills and 198 design systems.",
   "long_description": "Open Design's MCP server for Claude Desktop, running on Desktop's own Node: no Node.js install, no npx, no download on first start. Install the Open Design plugin too for its skills. This extension does not update itself: install the newer .mcpb from the GitHub release to update.",
   "author": { "name": "feimacode", "url": "https://github.com/feimacode" },
   "repository": { "type": "git", "url": "https://github.com/feimacode/open-design-agent-kit" },
