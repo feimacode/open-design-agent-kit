@@ -441,6 +441,32 @@ describe('extractSite in a browser', function () {
     await fs.access(path.join(workspaceRoot, result.bundleDir, radius!.crop!));
   });
 
+  it('takes motion tokens from what moved, not from a blanket transition, and records the hover', async () => {
+    const { result } = await run('motion-hover.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    assert.strictEqual(result.draft!.tokens['--motion-fast'], '200ms');
+    assert.strictEqual(result.draft!.tokens['--ease-standard'], 'ease-out');
+    assert.strictEqual(result.draft!.sources['--motion-fast'].basis, 'observed');
+    const hover = result.brandKit!.motion!.hover;
+    assert.ok(Array.isArray(hover), JSON.stringify(result.brandKit!.motion));
+    const button = (hover as Array<{ target: string; changes: string[]; duration: number }>).find((h) => h.target === 'button');
+    assert.ok(button && button.duration === 200 && button.changes.some((c) => /^transform: .* → matrix\(1, 0, 0, 1, 0, -2\)|^transform: none → translateY\(-2px\)/.test(c)), JSON.stringify(hover));
+    assert.strictEqual(result.brandKit!.motion!.entrance, 'none');
+    assert.strictEqual(result.brandKit!.motion!.reducedMotion, undefined);
+  });
+
+  it('records a staggered scroll reveal, the hero\'s load animation and that reduced motion is honoured', async () => {
+    const { result } = await run('motion-reveal.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    const motion = result.brandKit!.motion!;
+    assert.deepStrictEqual(typeof motion.entrance === 'object' ? { kind: motion.entrance.kind, distance: motion.entrance.distance, duration: motion.entrance.duration, stagger: motion.entrance.stagger } : motion.entrance, { kind: 'rise', distance: 24, duration: 600, stagger: 80 });
+    assert.ok(typeof motion.load === 'object' && motion.load.duration === 500, JSON.stringify(motion.load));
+    assert.strictEqual(motion.reducedMotion, true);
+    assert.strictEqual(result.draft!.tokens['--motion-base'], '600ms');
+  });
+
   it('measures every page and reports where pages disagree', async () => {
     const { result } = await run('light.html', 'light', ['pricing.html']);
     assert.strictEqual(result.status, 'ok');

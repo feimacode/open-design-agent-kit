@@ -36,8 +36,9 @@ import {
   type LiveBrowser,
 } from '../export/livePage';
 import { fetchSiteTexts, synthesizeBrandEvidence, type BrandEvidence } from './brandExtraction';
-import type { BrandComponents, BrandFont, BrandImagery, BrandMark, BrandVoice } from './brandKit';
+import type { BrandComponents, BrandFont, BrandImagery, BrandMark, BrandMotion, BrandVoice } from './brandKit';
 import { captureBrandKitInBrowser, componentRects, componentSpecs, fontAvailability, markEntry, pickIcons, VOICE_MAX_CHARS, voiceFacts, type CapturedKit } from './brandKitCapture';
+import { MOTION_RECORDER, honoursReducedMotion, movesOnLoadOrScroll, observeInteractions, readObservedMotion, summariseMotion, type MotionObservation } from './motionCapture';
 import { CONTENT_FILE, capPageContent, fetchRobots, readContentInventory, robotsDisallows, type ContentInventory, type PageContent } from './contentInventory';
 import {
   cssColorToHex,
@@ -129,6 +130,8 @@ export interface CapturedBrandKit {
   voice: BrandVoice;
   imagery: BrandImagery;
   themeColor?: string;
+  /** What moves, observed in the browser (add-runtime-motion). */
+  motion?: BrandMotion;
 }
 
 // ── In-page measurement ─────────────────────────────────────────────────
@@ -963,6 +966,8 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   const robots = input.content || discovering ? await fetchRobots(main.origin, input.fetchImpl) : undefined;
   const urls = [...valid.urls];
   const discovered: string[] = [];
+  let motion: MotionObservation | undefined;
+  let reducedRecorder: string | undefined;
   try {
     live = await launchLiveBrowser(browserPath, input.allowHostsForTesting ?? [], 'od-extract-profile-');
     const { page, images } = live;
@@ -977,9 +982,12 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         blocked.push({ url: url.toString(), reason: 'robots.txt disallows it' });
         continue;
       }
+      // Motion on the first page: record animations from the first frame (add-runtime-motion).
+      const recorder = i === 0 && !pages.length ? await page.evaluateOnNewDocument(MOTION_RECORDER).catch(() => undefined) : undefined;
       try {
         await gotoPage(page, url.toString());
       } catch (err) {
+        if (recorder) await page.removeScriptToEvaluateOnNewDocument(recorder.identifier).catch(() => undefined);
         if (wasDiscovered) {
           notes.push(`${url.toString()} (found in the navigation) didn't load, so it wasn't measured.`);
           continue;
@@ -1006,7 +1014,21 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
       // appeared on the way.
       const hidden = new Set<string>();
       await quietOverlays(page, hidden);
+      if (recorder) await observeInteractions(page);
       await scrollThrough(page);
+      if (recorder) {
+        motion = await readObservedMotion(page);
+        await page.removeScriptToEvaluateOnNewDocument(recorder.identifier).catch(() => undefined);
+        if (movesOnLoadOrScroll(motion)) {
+          // Once more under prefers-reduced-motion, then back to the page as a visitor sees it.
+          await page.evaluateOnNewDocument(MOTION_RECORDER).then((r) => (reducedRecorder = r.identifier)).catch(() => undefined);
+          motion.reducedMotion = await honoursReducedMotion(page, url.toString(), motion, gotoPage, scrollThrough);
+          if (reducedRecorder) await page.removeScriptToEvaluateOnNewDocument(reducedRecorder).catch(() => undefined);
+          await gotoPage(page, url.toString()).catch(() => undefined);
+          await quietOverlays(page, hidden);
+          await scrollThrough(page);
+        }
+      }
       await quietOverlays(page, hidden);
       const desktopShot = `${prefix}desktop.png`;
       await page.screenshot({ path: path.join(bundleDir, desktopShot) });
@@ -1168,6 +1190,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         dark: pageDark,
         accentCandidates: measured.accentCandidates,
         accentConfidence: measured.accentConfidence,
+        motion: pages.length === 0 ? motion : undefined,
       });
       if (!dark && pageDark) dark = pageDark;
       if (hidden.size > 0) notes.push(`${url.toString()}: hid ${hidden.size} overlay(s) before measuring (consent banners or chat launchers, not clicked): ${[...hidden].slice(0, 5).join(', ')}.`);
@@ -1212,7 +1235,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
       if (files.length > 0) f.files = files;
     }
     const capped = voiceSamples.slice(0, 60);
-    brandKit = { marks: kitMarks, fonts, components: kitComponents, voice: { samples: capped, ...voiceFacts(capped) }, imagery: kitImagery, themeColor };
+    brandKit = { marks: kitMarks, fonts, components: kitComponents, voice: { samples: capped, ...voiceFacts(capped) }, imagery: kitImagery, themeColor, motion: motion ? summariseMotion(motion) : undefined };
     const licensed = fonts.filter((f) => f.source === 'self-hosted' || f.source === 'adobe');
     if (licensed.length > 0) notes.push(`${licensed.map((f) => `${f.family} (${f.source}, free match ${f.freeMatch})`).join(', ')} may be licensed: ask before copying font files, and only for the user's own brand.`);
   }

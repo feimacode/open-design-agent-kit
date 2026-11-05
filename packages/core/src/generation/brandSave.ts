@@ -124,5 +124,6 @@ export async function brandKitRecord(kit: CapturedBrandKit, bundle: string, dir:
     components: kit.components,
     voice: own ? { samples, ...facts } : { samples: [], ...facts },
     imagery: kit.imagery,
+    motion: kit.motion,
   };
 }

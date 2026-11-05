@@ -11,6 +11,7 @@
 
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
 import { deltaE2000, outOfSrgb, parseColor as parseCssColor } from './colorMix';
+import { observedMotionTokens, type MotionObservation } from './motionCapture';
 
 /** One sampled element for a colour role. */
 export interface RoleSample {
@@ -98,6 +99,8 @@ export interface PageEvidence {
   accentCandidates?: AccentCandidate[];
   /** How clearly the accent won, 0–1, from the gap between the top two candidates. */
   accentConfidence?: number;
+  /** Animations seen running on this page during load, hover, focus and scroll (the first page only). */
+  motion?: MotionObservation;
 }
 
 export interface AccentCandidate {
@@ -156,7 +159,7 @@ export interface DraftTokens {
   /** Contract tokens with no measurement (left to the contract fallback). */
   unmeasured: string[];
   /** Token → where its value came from (selector and crop), and the site's own custom property with the same value. */
-  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; source?: string; note?: string; original?: string; choiceConfidence?: number; candidates?: Array<Omit<AccentCandidate, 'value'> & { hex: string }>; coverage?: { pages: number; of: number }; scope?: TokenScope }>;
+  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; source?: string; note?: string; original?: string; choiceConfidence?: number; candidates?: Array<Omit<AccentCandidate, 'value'> & { hex: string }>; coverage?: { pages: number; of: number }; scope?: TokenScope; basis?: 'observed' | 'declared' }>;
   /** Values other pages (or their dark themes) gave for a drafted token; the draft keeps the first page's. */
   conflicts: Array<{ token: string; value: string; page: string; selector: string; crop?: string; theme?: 'dark'; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; coverage?: { pages: number; of: number } }>;
   /** With more than one page: how much of what was measured falls on the drafted tokens, and the one-page outliers. */
@@ -404,7 +407,24 @@ export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
   const hero = first.hero;
   if (hero) notes.push(`The hero's background is ${hero.background === 'gradient' ? `a gradient (${hero.value})` : `an ${hero.background}`}.`);
 
-  const durations = mergeCounts<number>(evidence.pages.map((p) => p.transitions.durations), 'ms').filter((d) => d.key > 0);
+  // Motion from what was seen moving (add-runtime-motion); declared transitions only when nothing moved.
+  const observed = observedMotionTokens(evidence.pages.find((p) => p.motion)?.motion);
+  const durations = observed ? [] : mergeCounts<number>(evidence.pages.map((p) => p.transitions.durations), 'ms').filter((d) => d.key > 0);
+  if (observed) {
+    const motionPage = evidence.pages.find((p) => p.motion)!.url;
+    if (observed.fast) {
+      tokens['--motion-fast'] = observed.fast;
+      sources['--motion-fast'] = { selector: observed.fastFrom ?? '', page: motionPage, basis: 'observed' };
+    }
+    if (observed.base) {
+      tokens['--motion-base'] = observed.base;
+      sources['--motion-base'] = { selector: observed.baseFrom ?? '', page: motionPage, basis: 'observed' };
+    }
+    if (observed.ease) {
+      tokens['--ease-standard'] = observed.ease;
+      sources['--ease-standard'] = { selector: observed.fastFrom ?? observed.baseFrom ?? '', page: motionPage, basis: 'observed' };
+    }
+  }
   if (durations.length > 0) {
     const sorted = durations.map((d) => d.key).sort((a, b) => a - b);
     tokens['--motion-fast'] = `${sorted[0]}ms`;
@@ -414,6 +434,7 @@ export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
   }
   const easing = mostCommon(mergeCounts<string>(evidence.pages.map((p) => p.transitions.easings), 'value'));
   if (easing && durations.length > 0) tokens['--ease-standard'] = easing.key;
+  for (const name of ['--motion-fast', '--motion-base', '--ease-standard']) if (tokens[name] && !sources[name]) sources[name] = { selector: '', page: first.url, basis: 'declared' };
 
   matchDeclaredProperties(evidence.pages, tokens, sources);
 
