@@ -11,6 +11,8 @@ import * as path from 'node:path';
 import type { Page } from 'puppeteer-core';
 import type { Finding } from '../poster/preflight';
 import { parseColor as parseCssColor } from '../generation/colorMix';
+import type { BrandComponents } from '../generation/brandKit';
+import { COMPONENT_BAND_CSS, componentFidelityFindings, renderComponentBand } from './componentFidelity';
 
 export const BRAND_REVIEW_FILE = 'review.html';
 export const BRAND_REVIEW_ATTR = 'data-od-brand-review';
@@ -21,8 +23,10 @@ const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', 
  * review.html for a design system folder. `evidence` and `reference` are
  * relative to that folder; `tokens.css` is read from beside it.
  */
-export function renderBrandReviewPage(input: { name: string; evidence: string; reference?: string }): string {
+export function renderBrandReviewPage(input: { name: string; evidence: string; reference?: string; components?: BrandComponents }): string {
   const name = esc(input.name);
+  // Crops are relative to the evidence bundle, which holds evidence.json.
+  const band = renderComponentBand(input.components, path.posix.dirname(input.evidence));
   const shot = input.reference
     ? `<img src="${esc(input.reference)}" alt="${name}: the site as measured">`
     : `<p class="none">No site screenshot was kept.</p>`;
@@ -55,7 +59,7 @@ export function renderBrandReviewPage(input: { name: string; evidence: string; r
   .ds label { display: grid; gap: var(--space-2, 8px); font-size: var(--text-sm, 14px); color: var(--fg-2, var(--fg, #111)); }
   .ds input { font: inherit; padding: var(--space-3, 12px); border: 1px solid var(--border, #ccc); border-radius: var(--radius-sm, 6px); background: var(--bg, #fff); color: var(--fg, #111); min-width: 220px; }
   .ds input:focus-visible { outline: none; box-shadow: var(--focus-ring, 0 0 0 3px rgba(0,0,0,.2)); }
-  @media (max-width: 900px) { .review { grid-template-columns: 1fr; } .site img { height: auto; } }
+  @media (max-width: 900px) { .review { grid-template-columns: 1fr; } .site img { height: auto; } }${band ? COMPONENT_BAND_CSS : ''}
 </style>
 </head>
 <body>
@@ -83,6 +87,7 @@ export function renderBrandReviewPage(input: { name: string; evidence: string; r
       </form>
     </div>
   </section>
+  ${band}
 </main>
 </body>
 </html>
@@ -241,5 +246,8 @@ export async function brandReviewFindings(page: Page, workspaceRoot: string, ent
     return [];
   }
   const sample = (await page.evaluate(measureBrandSample)) as SampleMeasure;
-  return compareBrandSample(expectedFromEvidence(ev), sample);
+  const findings = compareBrandSample(expectedFromEvidence(ev), sample);
+  // Components rebuilt from the tokens, against the site's crops (openspec add-component-restyle-review).
+  if (html.includes('id="od-components"')) findings.push(...(await componentFidelityFindings(page, path.dirname(file), warnings)));
+  return findings;
 }

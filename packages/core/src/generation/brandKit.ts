@@ -60,6 +60,14 @@ export interface ComponentSpec {
   focus?: string;
   /** Nav: whether it sticks to the top. */
   sticky?: boolean;
+  /** px, as rendered. */
+  width?: number;
+  /** The visible text (or an input's placeholder), at most 40 characters. */
+  label?: string;
+  fontFamily?: string;
+  /** px. */
+  letterSpacing?: number;
+  textAlign?: string;
 }
 
 export interface BrandComponents {

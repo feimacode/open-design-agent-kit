@@ -107,6 +107,11 @@ export function captureBrandKitInBrowser(voiceMax: number): CapturedKit {
       background: hex(s.backgroundColor),
       color: hex(s.color),
       shadow: s.boxShadow !== 'none' ? s.boxShadow : undefined,
+      width: Math.round(r.width),
+      label: (el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 40) || (el as HTMLInputElement).placeholder || undefined,
+      fontFamily: s.fontFamily || undefined,
+      letterSpacing: s.letterSpacing === 'normal' ? 0 : px(s.letterSpacing),
+      textAlign: s.textAlign || undefined,
     };
     return out;
   };

@@ -72,7 +72,9 @@ Write `DESIGN.md` at `suggestedEntryPath` and `tokens.css` beside it, **both fro
 
 The create call already wrote `review.html` (its `review`) and registered it: the site's screenshot on the left, and on the right a sample (a hero, a primary and secondary button, a card, a form row) styled only by the new `tokens.css`, so it shows each edit to `tokens.css` as you make it.
 
-Call `check_open_design_artifact` on it. Its `brand-fidelity` findings name each place the sample differs from what was measured on the site (the button colour, text colour, background, heading and body font, button and card radius), with both values: fix those in `tokens.css` unless you have a reason (say it). Compare the two columns yourself too (density, weight, shape), then show the user the review and ask whether it matches.
+Below the two columns, a **Components** band shows each of the site's captured components (buttons, badge, input, card, nav) beside a replica built only from the nearest tokens.
+
+Call `check_open_design_artifact` on it. **Fix the component findings first**: a `brand-fidelity` warning such as "Primary button 81%: spacing. The site pads 14px 28px; nearest tokens give 12px 24px" means a button rebuilt from your tokens doesn't look like the site's, and names the token family that costs the most with both values. Adjust that family in `tokens.css` (or, when no token can hold it, like a bold weight or a hard shadow, say it in DESIGN.md's Components section); `info` notes list properties no token covers. Then the other `brand-fidelity` findings, which name each place the sample differs from what was measured on the site (the button colour, text colour, background, heading and body font, button and card radius), with both values: fix those in `tokens.css` unless you have a reason (say it). Compare the two columns yourself too (density, weight, shape), then show the user the review and ask whether it matches.
 
 Apply what the user says ("the buttons are rounder on the site" → raise the radius tokens) in both files, rebuild the review and check again. Stop after **two rounds** of fixes: save then, and list anything still open.
 
