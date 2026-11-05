@@ -185,6 +185,16 @@ describe('taste checks in preflight (real browser; skipped when none is installe
     assert.deepStrictEqual(codes(await run(rows)), []);
   });
 
+  it('reads oklch and display-p3 colours for contrast: white on an oklch button passes, low oklch contrast is still caught', async () => {
+    const page = (fg: string, bg: string): string =>
+      `<html><body style="margin:0;background:oklch(0.985 0 0)"><main style="padding:40px"><button style="background:${bg};color:${fg};border:0;padding:12px 20px;font-size:16px">Start free</button></main></body></html>`;
+    const contrast = (findings: PageFinding[]): PageFinding[] => findings.filter((f) => f.check === 'contrast' && f.severity === 'warning');
+    assert.deepStrictEqual(contrast(await run(page('oklch(1 0 0)', 'oklch(0.21 0.034 264.665)'))), []);
+    assert.deepStrictEqual(contrast(await run(page('oklch(1 0 0)', 'color(display-p3 0.1 0.3 0.8)'))), []);
+    const low = contrast(await run(page('oklch(0.8 0.02 264)', 'oklch(0.97 0.003 264)')));
+    assert.strictEqual(low.length, 1, JSON.stringify(low));
+  });
+
   it('runs only slop-glow and intent on cards and slides', async () => {
     const html = (await fixture('card-row-bad.html')).replace('<body>', '<body><div data-od-card style="width:1200px;height:800px">').replace('</body>', '</div></body>');
     assert.deepStrictEqual(codes(await run(html)), []);

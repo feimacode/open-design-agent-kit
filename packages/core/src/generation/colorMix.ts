@@ -4,7 +4,7 @@
 // hue interpolated the shorter way in polar spaces, a powerless hue (zero
 // chroma) taking the other colour's. Results are clamped to the sRGB gamut.
 
-interface Rgba {
+export interface Rgba {
   /** Gamma-encoded sRGB channels, 0–1 (may stray outside before clamping). */
   r: number;
   g: number;
@@ -52,10 +52,58 @@ function fnArgs(body: string): { parts: string[]; alpha?: string } {
   return { parts: main.trim().split(/[\s,]+/).filter(Boolean), alpha: alpha?.trim() };
 }
 
-const num = (s: string, percentOf = 1): number => (s.endsWith('%') ? (parseFloat(s) / 100) * percentOf : parseFloat(s));
+const num = (s: string, percentOf = 1): number => (s === 'none' ? 0 : s.endsWith('%') ? (parseFloat(s) / 100) * percentOf : parseFloat(s));
+const hueOf = (s: string): number => (s === 'none' ? 0 : s.endsWith('turn') ? parseFloat(s) * 360 : s.endsWith('rad') ? (parseFloat(s) * 180) / Math.PI : s.endsWith('grad') ? parseFloat(s) * 0.9 : parseFloat(s));
+
+type Vec3 = [number, number, number];
+const mul = (m: number[][], v: Vec3): Vec3 => [0, 1, 2].map((i) => m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2]) as Vec3;
+const D50_TO_D65 = [
+  [0.955473421488075, -0.02309845494876471, 0.06325924320057072],
+  [-0.0283697093338637, 1.0099953980813041, 0.021041441191917323],
+  [0.012314014864481998, -0.020507649298898964, 1.330365926242124],
+];
+const XYZ65_TO_LINEAR_SRGB = [
+  [3.2409699419045226, -1.537383177570094, -0.4986107602930034],
+  [-0.9692436362808796, 1.8759675015077202, 0.04155505740717559],
+  [0.05563007969699366, -0.20397695888897652, 1.0569715142428786],
+];
+const LINEAR_P3_TO_XYZ65 = [
+  [0.4865709486482162, 0.26566769316909306, 0.1982172852343625],
+  [0.2289745640697488, 0.6917385218365064, 0.079286914093745],
+  [0, 0.04511338185890264, 1.043944368900976],
+];
+const LINEAR_REC2020_TO_XYZ65 = [
+  [0.6369580483012914, 0.14461690358620832, 0.1688809751641721],
+  [0.2627002120112671, 0.6779980715188708, 0.05930171646986196],
+  [0, 0.028072693049087428, 1.060985057710791],
+];
+
+function linearToRgba(lin: Vec3, a: number): Rgba {
+  return { r: toGamma(lin[0]), g: toGamma(lin[1]), b: toGamma(lin[2]), a };
+}
+
+/** CIE Lab (D50) to sRGB. */
+function labToRgb(L: number, A: number, B: number, a: number): Rgba {
+  const k = 24389 / 27;
+  const e = 216 / 24389;
+  const fy = (L + 16) / 116;
+  const fx = fy + A / 500;
+  const fz = fy - B / 200;
+  const xyz50: Vec3 = [
+    (fx ** 3 > e ? fx ** 3 : (116 * fx - 16) / k) * 0.3457 / 0.3585,
+    L > k * e ? fy ** 3 : L / k,
+    (fz ** 3 > e ? fz ** 3 : (116 * fz - 16) / k) * (1 - 0.3457 - 0.3585) / 0.3585,
+  ];
+  return linearToRgba(mul(XYZ65_TO_LINEAR_SRGB, mul(D50_TO_D65, xyz50)), a);
+}
+
+/** True when a parsed colour lies outside the sRGB gamut (before clamping). */
+export function outOfSrgb(c: Rgba): boolean {
+  return [c.r, c.g, c.b].some((v) => v < -0.002 || v > 1.002);
+}
 const alphaOf = (s: string | undefined): number => (s === undefined ? 1 : clamp01(num(s)));
 
-/** Parses a plain colour (hex, rgb(), hsl(), oklab(), oklch(), black/white/transparent). */
+/** Parses a plain colour: hex, rgb(), hsl(), hwb(), lab(), lch(), oklab(), oklch(), color(srgb | srgb-linear | display-p3 | rec2020 | xyz…), black/white/transparent. */
 export function parseColor(value: string): Rgba | undefined {
   const v = value.trim().toLowerCase();
   if (NAMED[v]) return { ...NAMED[v] };
@@ -65,12 +113,40 @@ export function parseColor(value: string): Rgba | undefined {
     const ch = [0, 2, 4, 6].map((i) => (i < full.length ? parseInt(full.slice(i, i + 2), 16) / 255 : 1));
     return { r: ch[0], g: ch[1], b: ch[2], a: ch[3] };
   }
-  const fn = /^(rgba?|hsla?|oklab|oklch)\(([^()]*)\)$/.exec(v);
+  const space = /^color\(\s*([a-z0-9-]+)\s+([^()]*)\)$/.exec(v);
+  if (space) {
+    const { parts, alpha } = fnArgs(space[2]);
+    if (parts.length < 3 || parts.slice(0, 3).some((p) => p !== 'none' && Number.isNaN(parseFloat(p)))) return undefined;
+    const c: Vec3 = [num(parts[0]), num(parts[1]), num(parts[2])];
+    const a = alphaOf(alpha);
+    const decode = (x: Vec3): Vec3 => x.map(toLinear) as Vec3;
+    switch (space[1]) {
+      case 'srgb':
+        return { r: c[0], g: c[1], b: c[2], a };
+      case 'srgb-linear':
+        return linearToRgba(c, a);
+      case 'display-p3':
+        return linearToRgba(mul(XYZ65_TO_LINEAR_SRGB, mul(LINEAR_P3_TO_XYZ65, decode(c))), a);
+      case 'rec2020': {
+        const A = 1.09929682680944;
+        const B = 0.018053968510807;
+        const lin = c.map((x) => (Math.abs(x) < B * 4.5 ? x / 4.5 : Math.sign(x) * ((Math.abs(x) + A - 1) / A) ** (1 / 0.45))) as Vec3;
+        return linearToRgba(mul(XYZ65_TO_LINEAR_SRGB, mul(LINEAR_REC2020_TO_XYZ65, lin)), a);
+      }
+      case 'xyz':
+      case 'xyz-d65':
+        return linearToRgba(mul(XYZ65_TO_LINEAR_SRGB, c), a);
+      case 'xyz-d50':
+        return linearToRgba(mul(XYZ65_TO_LINEAR_SRGB, mul(D50_TO_D65, c)), a);
+    }
+    return undefined;
+  }
+  const fn = /^(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(([^()]*)\)$/.exec(v);
   if (!fn) return undefined;
   const { parts, alpha } = fnArgs(fn[2]);
   // Legacy comma syntax carries alpha as a fourth argument.
   const a = alphaOf(alpha ?? parts[3]);
-  if (parts.length < 3 || parts.slice(0, 3).some((p) => Number.isNaN(parseFloat(p)))) return undefined;
+  if (parts.length < 3 || parts.slice(0, 3).some((p) => p !== 'none' && Number.isNaN(parseFloat(p)))) return undefined;
   switch (fn[1]) {
     case 'rgb':
     case 'rgba':
@@ -88,12 +164,36 @@ export function parseColor(value: string): Rgba | undefined {
       };
       return { r: hue(h + 1 / 3), g: hue(h), b: hue(h - 1 / 3), a };
     }
+    case 'hwb': {
+      const h = (((hueOf(parts[0]) % 360) + 360) % 360) / 360;
+      const w = num(parts[1], 100) / 100;
+      const bl = num(parts[2], 100) / 100;
+      if (w + bl >= 1) {
+        const grey = w / (w + bl);
+        return { r: grey, g: grey, b: grey, a };
+      }
+      const q = 1;
+      const p = 0;
+      const hue = (t: number): number => {
+        const x = ((t % 1) + 1) % 1;
+        return x < 1 / 6 ? p + (q - p) * 6 * x : x < 1 / 2 ? q : x < 2 / 3 ? p + (q - p) * (2 / 3 - x) * 6 : p;
+      };
+      const scale = 1 - w - bl;
+      return { r: hue(h + 1 / 3) * scale + w, g: hue(h) * scale + w, b: hue(h - 1 / 3) * scale + w, a };
+    }
+    case 'lab':
+      return labToRgb(num(parts[0], 100), num(parts[1], 125), num(parts[2], 125), a);
+    case 'lch': {
+      const C = num(parts[1], 150);
+      const H = (hueOf(parts[2]) * Math.PI) / 180;
+      return labToRgb(num(parts[0], 100), C * Math.cos(H), C * Math.sin(H), a);
+    }
     case 'oklab':
       return oklabToRgb(num(parts[0]), num(parts[1], 0.4), num(parts[2], 0.4), a);
     case 'oklch': {
       const L = num(parts[0]);
       const C = num(parts[1], 0.4);
-      const H = (parseFloat(parts[2]) * Math.PI) / 180;
+      const H = (hueOf(parts[2]) * Math.PI) / 180;
       return oklabToRgb(L, C * Math.cos(H), C * Math.sin(H), a);
     }
   }

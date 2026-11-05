@@ -10,6 +10,7 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { Page } from 'puppeteer-core';
 import type { Finding } from '../poster/preflight';
+import { parseColor as parseCssColor } from '../generation/colorMix';
 
 export const BRAND_REVIEW_FILE = 'review.html';
 export const BRAND_REVIEW_ATTR = 'data-od-brand-review';
@@ -159,7 +160,11 @@ function rgb(value: string | undefined): number[] | undefined {
   const h = /^#([0-9a-f]{6})$/i.exec(value.trim());
   if (h) return [0, 2, 4].map((i) => parseInt(h[1].slice(i, i + 2), 16));
   const m = /rgba?\(([^)]+)\)/.exec(value);
-  if (!m) return undefined;
+  if (!m) {
+    const c = parseCssColor(value.trim());
+    if (!c || c.a < 0.5) return undefined;
+    return [c.r, c.g, c.b].map((v) => Math.round(Math.max(0, Math.min(1, v)) * 255));
+  }
   const parts = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
   if (parts.length > 3 && parts[3] < 0.5) return undefined;
   return parts.slice(0, 3);

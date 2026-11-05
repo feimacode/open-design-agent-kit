@@ -340,6 +340,25 @@ describe('extractSite in a browser', function () {
     assert.ok(result.notes.some((n) => /hero's background is a gradient/.test(n)), result.notes.join('\n'));
   });
 
+  it('reads a site written in oklch, display-p3 and color-mix (Tailwind v4, shadcn/ui)', async () => {
+    const { result } = await run('oklch.html');
+    assert.strictEqual(result.status, 'ok');
+    if (result.status !== 'ok') return;
+    const t = result.draft!.tokens;
+    assert.strictEqual(t['--bg'], '#f9fafb');
+    assert.strictEqual(t['--surface'], '#f3f4f6');
+    assert.strictEqual(t['--fg'], '#101828');
+    assert.strictEqual(t['--muted'], '#6a7282');
+    assert.strictEqual(t['--accent'], '#0075ff');
+    assert.strictEqual(t['--accent-on'], '#ffffff');
+    assert.strictEqual(t['--accent-hover'], '#0062df');
+    assert.strictEqual(t['--accent-active'], '#0055c5');
+    const accent = result.draft!.sources?.['--accent'];
+    assert.strictEqual(accent?.original, 'color(display-p3 0.1 0.45 1)');
+    assert.match(accent?.note ?? '', /wider than sRGB; #0075ff is its sRGB clip/);
+    assert.ok(!result.notes.some((n) => /couldn't be read, so roles/.test(n)), result.notes.join('\n'));
+  });
+
   it('measures every page and reports where pages disagree', async () => {
     const { result } = await run('light.html', 'light', ['pricing.html']);
     assert.strictEqual(result.status, 'ok');

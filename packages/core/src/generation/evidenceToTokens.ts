@@ -10,6 +10,7 @@
 // (both MIT); the code here is our own.
 
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
+import { outOfSrgb, parseColor as parseCssColor } from './colorMix';
 
 /** One sampled element for a colour role. */
 export interface RoleSample {
@@ -63,6 +64,8 @@ export interface LoadedFont {
 
 export interface PageEvidence {
   url: string;
+  /** Colours the page wrote in a modern format (oklch(), lab(), color(display-p3 …)), by the rgb() value they were read as. */
+  colorOriginals?: Record<string, string>;
   /** The page's colour roles; a role nothing matched is absent. */
   roles: Partial<Record<ColorRole, RoleSample>>;
   textRoles: TextRoleSample[];
@@ -114,7 +117,7 @@ export interface DraftTokens {
   /** Contract tokens with no measurement (left to the contract fallback). */
   unmeasured: string[];
   /** Token → where its value came from (selector and crop), and the site's own custom property with the same value. */
-  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; source?: string; note?: string }>;
+  sources: Record<string, { selector: string; crop?: string; page: string; declared?: string; confidence?: 'measured' | 'declared' | 'stated' | 'sampled'; source?: string; note?: string; original?: string }>;
   /** Values other pages (or their dark themes) gave for a drafted token; the draft keeps the first page's. */
   conflicts: Array<{ token: string; value: string; page: string; selector: string; crop?: string; theme?: 'dark'; confidence?: 'measured' | 'declared' | 'stated' | 'sampled' }>;
   /** Things the model should know when writing DESIGN.md (full gradients, an input radius that differs). */
@@ -135,7 +138,14 @@ export function cssColorToHex(value: string): string | undefined {
   const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/.exec(v);
   if (short) return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`;
   const m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/.exec(v);
-  if (!m) return undefined;
+  if (!m) {
+    // oklch(), oklab(), lab(), lch(), hwb(), hsl(), color(display-p3 …): what Chrome reports for colours written that way.
+    const c = parseCssColor(v);
+    if (!c || c.a === 0) return undefined;
+    const ch = (n: number): string => hex2(Math.round(Math.min(1, Math.max(0, n)) * 255));
+    const base = `#${ch(c.r)}${ch(c.g)}${ch(c.b)}`;
+    return c.a < 1 ? `${base}${hex2(c.a * 255)}` : base;
+  }
   const alpha = m[4] === undefined ? 1 : m[4].endsWith('%') ? Number(m[4].slice(0, -1)) / 100 : Number(m[4]);
   if (alpha === 0) return undefined;
   const base = `#${hex2(Number(m[1]))}${hex2(Number(m[2]))}${hex2(Number(m[3]))}`;
@@ -187,13 +197,22 @@ function mergeCounts<K extends string | number>(lists: Array<Array<{ count: numb
   return [...tally].map(([k, count]) => ({ key: k, count }));
 }
 
-function colorTokens(roles: Partial<Record<ColorRole, RoleSample>>, page: string, sources?: DraftTokens['sources']): Record<string, string> {
+function colorTokens(roles: Partial<Record<ColorRole, RoleSample>>, page: string, sources?: DraftTokens['sources'], originals?: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [role, sample] of Object.entries(roles) as Array<[ColorRole, RoleSample]>) {
     const hex = cssColorToHex(sample.value);
     if (!hex) continue;
     out[`--${role}`] = hex;
-    if (sources) sources[`--${role}`] = { selector: sample.selector, crop: sample.crop, page };
+    if (sources) {
+      sources[`--${role}`] = { selector: sample.selector, crop: sample.crop, page };
+      // Wider than sRGB: keep what the site wrote, since the hex is its clipped version.
+      const original = originals?.[sample.value] ?? (/^rgba?\(/.test(sample.value) ? undefined : sample.value);
+      const parsed = original ? parseCssColor(original) : undefined;
+      if (original && parsed && outOfSrgb(parsed)) {
+        sources[`--${role}`].original = original;
+        sources[`--${role}`].note = `the site writes ${original}, wider than sRGB; ${hex} is its sRGB clip`;
+      }
+    }
   }
   // A hover or active state that doesn't change the colour isn't a measurement of a distinct state.
   for (const state of ['--accent-hover', '--accent-active']) if (out[state] && out[state] === out['--accent']) delete out[state];
@@ -212,7 +231,7 @@ export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
   // gaps, and a later page that disagrees is listed as a conflict.
   for (const page of evidence.pages) {
     const pageSources: DraftTokens['sources'] = {};
-    for (const [name, value] of Object.entries(colorTokens(page.roles, page.url, pageSources))) {
+    for (const [name, value] of Object.entries(colorTokens(page.roles, page.url, pageSources, page.colorOriginals))) {
       if (!(name in tokens)) {
         tokens[name] = value;
         sources[name] = pageSources[name];
@@ -384,7 +403,11 @@ function matchDeclaredProperties(pages: PageEvidence[], tokens: Record<string, s
 /** The draft as a tokens.css text, for the model to start from. */
 export function draftTokensCss(draft: DraftTokens, header: string): string {
   // The site's own name for a value, so DESIGN.md can use the brand's vocabulary.
-  const named = (k: string): string => (draft.sources[k]?.declared ? ` /* ${draft.sources[k].declared} */` : '');
+  const named = (k: string): string => {
+    const src = draft.sources[k];
+    const parts = [src?.declared, src?.original ? `site: ${src.original}` : undefined].filter(Boolean);
+    return parts.length ? ` /* ${parts.join('; ').replace(/\*\//g, '* /')} */` : '';
+  };
   const lines = (set: Record<string, string>, root = false): string => Object.entries(set).map(([k, v]) => `  ${k}: ${v};${root ? named(k) : ''}`).join('\n');
   let css = `/* ${header.replace(/\*\//g, '* /')} */\n:root {\n${lines(draft.tokens, true)}\n}\n`;
   if (draft.dark) css += `\n[data-theme="dark"] {\n${lines(draft.dark)}\n}\n`;

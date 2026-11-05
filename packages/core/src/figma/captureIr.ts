@@ -67,7 +67,24 @@ export function captureFigmaIr(iframeDoc: CaptureDocument, sourceMeta: FigmaCapt
   function parseColor(str: string | undefined): ParsedColor | null {
     if (!str) return null;
     const m = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,/\s]+([\d.]+))?\s*\)/i.exec(str);
-    if (!m) return null;
+    if (!m) {
+      // Modern colour syntaxes (oklch, lab, color(display-p3 …)): let the browser convert through a 1×1 canvas.
+      try {
+        const cv = iframeDoc.createElement('canvas');
+        cv.width = 1;
+        cv.height = 1;
+        const ctx = cv.getContext('2d');
+        if (!ctx) return null;
+        ctx.fillStyle = '#010203';
+        ctx.fillStyle = str;
+        if (String(ctx.fillStyle) === '#010203') return null;
+        ctx.fillRect(0, 0, 1, 1);
+        const d = ctx.getImageData(0, 0, 1, 1).data;
+        return { r: d[0] / 255, g: d[1] / 255, b: d[2] / 255, a: d[3] / 255 };
+      } catch {
+        return null;
+      }
+    }
     const a = m[4] === undefined ? 1 : Number(m[4]);
     return { r: Math.min(1, Number(m[1]) / 255), g: Math.min(1, Number(m[2]) / 255), b: Math.min(1, Number(m[3]) / 255), a: Number.isFinite(a) ? a : 1 };
   }
@@ -95,7 +112,7 @@ export function captureFigmaIr(iframeDoc: CaptureDocument, sourceMeta: FigmaCapt
   // than a missing fill, even though it flattens the gradient itself.
   function firstGradientColor(image: string): ParsedColor | null {
     if (!image || !/gradient\(/i.test(image)) return null;
-    const m = /rgba?\([^)]+\)|#[0-9a-fA-F]{3,8}/.exec(image);
+    const m = /(?:rgba?|oklch|oklab|lab|lch|hwb|color)\([^()]+\)|#[0-9a-fA-F]{3,8}/.exec(image);
     if (!m) return null;
     return m[0].startsWith('#') ? hexToColor(m[0]) : parseColor(m[0]);
   }
@@ -123,9 +140,9 @@ export function captureFigmaIr(iframeDoc: CaptureDocument, sourceMeta: FigmaCapt
     if (!boxShadow || boxShadow === 'none') return null;
     const first = boxShadow.split(/,(?![^(]*\))/)[0].trim();
     if (/\binset\b/.test(first)) return null;
-    const colorMatch = /rgba?\([^)]+\)|#[0-9a-f]{3,8}/i.exec(first);
+    const colorMatch = /(?:rgba?|oklch|oklab|lab|lch|hwb|color)\([^()]+\)|#[0-9a-f]{3,8}/i.exec(first);
     const color = parseColor(colorMatch ? colorMatch[0] : '');
-    const nums = (first.replace(/rgba?\([^)]+\)|#[0-9a-f]{3,8}/i, '').match(/-?[\d.]+px/g) || []).map(px);
+    const nums = (first.replace(/(?:rgba?|oklch|oklab|lab|lch|hwb|color)\([^()]+\)|#[0-9a-f]{3,8}/i, '').match(/-?[\d.]+px/g) || []).map(px);
     if (!color || nums.length < 2) return null;
     return {
       type: 'DROP_SHADOW',

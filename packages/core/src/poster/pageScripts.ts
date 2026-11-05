@@ -55,9 +55,29 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
   };
   const parseColor = (value: string): any => {
     const m = /rgba?\(([^)]+)\)/.exec(String(value || ''));
-    if (!m) return null;
-    const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
-    return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+    if (m) {
+      const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+      return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+    }
+    // Chrome reports colours as written (oklch(), oklab(), lab(), lch(), hwb(), color(display-p3 …)): paint those on a 1×1 canvas to read them as sRGB.
+    const modern = /(?:oklch|oklab|lab|lch|hwb|color)\([^()]*\)/i.exec(String(value || ''));
+    if (!modern) return null;
+    const g: any = window;
+    if (!g.__odColorCtx) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      g.__odColorCtx = canvas.getContext('2d', { willReadFrequently: true });
+    }
+    const ctx = g.__odColorCtx;
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.fillStyle = '#010203';
+    ctx.fillStyle = modern[0];
+    if (String(ctx.fillStyle) === '#010203') return null;
+    ctx.fillRect(0, 0, 1, 1);
+    const d = ctx.getImageData(0, 0, 1, 1).data;
+    return { r: d[0], g: d[1], b: d[2], a: d[3] / 255 };
   };
   const luminance = (c: any): number => {
     const ch = [c.r, c.g, c.b].map((v: number) => {
@@ -121,7 +141,7 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
     return { h, s, l };
   };
   const hex = (c: any): string => '#' + [c.r, c.g, c.b].map((v: number) => ('0' + Math.round(v).toString(16)).slice(-2)).join('');
-  const colorsIn = (value: string): any[] => (String(value || '').match(/rgba?\([^)]+\)/g) || []).map(parseColor).filter(Boolean);
+  const colorsIn = (value: string): any[] => (String(value || '').match(/(?:rgba?|oklch|oklab|lab|lch|hwb|color)\([^()]*\)/gi) || []).map(parseColor).filter(Boolean);
   const isRed = (c: any): boolean => {
     if (!c || c.a < 0.1) return false;
     const x = hsl(c);
@@ -275,20 +295,21 @@ export async function collectPreflight(opts: PagePreflightOptions): Promise<Page
           break;
         }
         const c = parseColor(acs.backgroundColor);
-        if (c && c.a >= 0.99) {
-          bg = c;
-          break;
-        }
-        if (c && c.a > 0.01) {
+        // A background this can't read is unknown, not the page's white behind it.
+        if (!c || (c && c.a > 0.01 && c.a < 0.99)) {
           skipped = true;
           break;
         }
+        if (c.a >= 0.99) {
+          bg = c;
+          break;
+        }
       }
-      if (skipped) contrastSkipped++;
+      const fg0 = skipped ? null : parseColor(cs.color);
+      if (skipped || !fg0) contrastSkipped++;
       else {
         if (!bg) bg = { r: 255, g: 255, b: 255, a: 1 };
-        const fg0 = parseColor(cs.color);
-        if (fg0) {
+        {
           const fg = { r: fg0.r * fg0.a + bg.r * (1 - fg0.a), g: fg0.g * fg0.a + bg.g * (1 - fg0.a), b: fg0.b * fg0.a + bg.b * (1 - fg0.a) };
           const l1 = luminance(fg);
           const l2 = luminance(bg);
@@ -962,9 +983,29 @@ export function compareStateStyles(state: string, baseline: StateLook[] | null):
   };
   const parseColor = (value: string): any => {
     const m = /rgba?\(([^)]+)\)/.exec(String(value || ''));
-    if (!m) return null;
-    const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
-    return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+    if (m) {
+      const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+      return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+    }
+    // Chrome reports colours as written (oklch(), oklab(), lab(), lch(), hwb(), color(display-p3 …)): paint those on a 1×1 canvas to read them as sRGB.
+    const modern = /(?:oklch|oklab|lab|lch|hwb|color)\([^()]*\)/i.exec(String(value || ''));
+    if (!modern) return null;
+    const g: any = window;
+    if (!g.__odColorCtx) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      g.__odColorCtx = canvas.getContext('2d', { willReadFrequently: true });
+    }
+    const ctx = g.__odColorCtx;
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.fillStyle = '#010203';
+    ctx.fillStyle = modern[0];
+    if (String(ctx.fillStyle) === '#010203') return null;
+    ctx.fillRect(0, 0, 1, 1);
+    const d = ctx.getImageData(0, 0, 1, 1).data;
+    return { r: d[0], g: d[1], b: d[2], a: d[3] / 255 };
   };
   const luminance = (c: any): number => {
     const ch = [c.r, c.g, c.b].map((v: number) => {

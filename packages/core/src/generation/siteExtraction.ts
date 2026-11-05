@@ -140,13 +140,56 @@ interface MeasuredPage extends Omit<PageEvidence, 'url' | 'dark' | 'hiddenOverla
   logo?: { kind: 'svg'; markup: string } | { kind: 'img'; src: string };
   favicon?: string;
   stylesheetsUnreadable: number;
+  /** Colours Chrome reported in a modern format (oklch(), lab(), color(display-p3 …)), by the rgb() value they were read as. */
+  colorOriginals?: Record<string, string>;
+  /** Colour values the page used that couldn't be read. */
+  unreadColors?: string[];
 }
 
 function measurePageInBrowser(): MeasuredPage {
   const MARK = 'data-od-extract';
   const doc = document;
   const win = window;
-  const cs = (el: Element): CSSStyleDeclaration => win.getComputedStyle(el);
+  // Chrome reports a colour in the format it was written in (oklch(), oklab(), lab(), lch(), hwb(), color(display-p3 …));
+  // every colour read here is turned into rgb() by painting it on a 1×1 canvas, which also clips it to sRGB.
+  const colorCanvas = doc.createElement('canvas');
+  colorCanvas.width = 1;
+  colorCanvas.height = 1;
+  const cctx = colorCanvas.getContext('2d', { willReadFrequently: true });
+  const colorCache = new Map<string, string>();
+  const colorOriginals: Record<string, string> = {};
+  const unreadColors = new Set<string>();
+  const MODERN = /\b(?:oklch|oklab|lab|lch|hwb|color)\([^()]*\)/gi;
+  const toLegacy = (value: string): string => {
+    const hit = colorCache.get(value);
+    if (hit) return hit;
+    let out = value;
+    if (cctx) {
+      cctx.clearRect(0, 0, 1, 1);
+      cctx.fillStyle = '#010203';
+      cctx.fillStyle = value;
+      if (String(cctx.fillStyle) === '#010203') unreadColors.add(value);
+      else {
+        cctx.fillRect(0, 0, 1, 1);
+        const d = cctx.getImageData(0, 0, 1, 1).data;
+        out = d[3] === 255 ? `rgb(${d[0]}, ${d[1]}, ${d[2]})` : `rgba(${d[0]}, ${d[1]}, ${d[2]}, ${Math.round((d[3] / 255) * 1000) / 1000})`;
+        colorOriginals[out] = value;
+      }
+    } else unreadColors.add(value);
+    colorCache.set(value, out);
+    return out;
+  };
+  const legacyColors = (v: string): string => (/(?:oklch|oklab|lab|lch|hwb|color)\(/i.test(v) ? v.replace(MODERN, toLegacy) : v);
+  const cs = (el: Element, pseudo?: string): CSSStyleDeclaration => {
+    const style = win.getComputedStyle(el, pseudo);
+    return new Proxy(style, {
+      get(target, prop) {
+        const v = Reflect.get(target, prop) as unknown;
+        if (typeof v === 'function') return (v as (...args: unknown[]) => unknown).bind(target);
+        return typeof v === 'string' ? legacyColors(v) : v;
+      },
+    });
+  };
   const visible = (el: Element): boolean => {
     const r = el.getBoundingClientRect();
     const s = cs(el);
@@ -561,6 +604,8 @@ function measurePageInBrowser(): MeasuredPage {
     logo,
     favicon: iconLink?.href,
     stylesheetsUnreadable,
+    colorOriginals: Object.keys(colorOriginals).length > 0 ? colorOriginals : undefined,
+    unreadColors: unreadColors.size > 0 ? [...unreadColors].slice(0, 12) : undefined,
   };
 }
 
@@ -663,7 +708,7 @@ async function forcedStateStyle(
       const el = document.querySelector('[data-od-extract-primary]');
       if (!el) return undefined;
       const s = getComputedStyle(el);
-      const fill = s.backgroundColor === 'rgba(0, 0, 0, 0)' ? (/rgba?\([^)]*\)/.exec(s.backgroundImage)?.[0] ?? s.backgroundColor) : s.backgroundColor;
+      const fill = s.backgroundColor === 'rgba(0, 0, 0, 0)' ? (/(?:rgba?|oklch|oklab|lab|lch|hwb|color)\([^()]*\)/.exec(s.backgroundImage)?.[0] ?? s.backgroundColor) : s.backgroundColor;
       return { background: fill, outlineStyle: s.outlineStyle, outlineWidth: s.outlineWidth, outlineColor: s.outlineColor, boxShadow: s.boxShadow };
     });
     await client.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
@@ -845,6 +890,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
         }
         if (kit) kitMarks.push(...(await saveKitMarks(page, live.images, kit, main, bundleDir, input.allowHostsForTesting ?? [])));
         if (themeColor) notes.push(`The site declares theme-color ${themeColor}.`);
+        if (measured.unreadColors?.length) notes.push(`${url.toString()}: ${measured.unreadColors.length} colour value(s) couldn't be read, so roles painted with them are missing: ${measured.unreadColors.slice(0, 4).join(', ')}.`);
         if (measured.stylesheetsUnreadable > 0) notes.push(`${measured.stylesheetsUnreadable} cross-origin stylesheet(s) couldn't be read, so their custom properties and @font-face sources are missing; computed values are unaffected.`);
       }
 
@@ -894,6 +940,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
 
       pages.push({
         url: url.toString(),
+        colorOriginals: measured.colorOriginals,
         roles: measured.roles,
         textRoles: measured.textRoles,
         fonts: measured.fonts,

@@ -11,6 +11,8 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { Page } from 'puppeteer-core';
 import { readBrandRecord } from '../generation/brandKit';
+import { resolveColorValue } from '../generation/colorMix';
+import { cssColorToHex } from '../generation/evidenceToTokens';
 import type { Finding } from '../poster/preflight';
 
 /** Painted colours under this share of the page aren't reported. */
@@ -56,7 +58,10 @@ function toHex(value: string): string | undefined {
     return v.length === 3 ? `#${v[0]}${v[0]}${v[1]}${v[1]}${v[2]}${v[2]}` : `#${v}`;
   }
   const m = RGB.exec(value);
-  if (!m) return undefined;
+  if (!m) {
+    const c = /\b(?:oklch|oklab|lab|lch|hwb|hsla?|color)\([^()]*\)/i.exec(value);
+    return c ? cssColorToHex(c[0])?.slice(0, 7) : undefined;
+  }
   return `#${[m[1], m[2], m[3]].map((n) => Math.max(0, Math.min(255, Number(n))).toString(16).padStart(2, '0')).join('')}`;
 }
 
@@ -64,8 +69,11 @@ function toHex(value: string): string | undefined {
 export function brandTokensFromCss(css: string): { colors: Array<{ name: string; hex: string }>; fonts: string[] } {
   const colors: Array<{ name: string; hex: string }> = [];
   const fonts = new Set<string>();
-  for (const m of css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/(--[\w-]+)\s*:\s*([^;}]+)/g)) {
-    const [, name, value] = m;
+  const declared = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/(--[\w-]+)\s*:\s*([^;}]+)/g)].map((m) => [m[1], m[2].trim()] as const);
+  const lookup = (n: string): string | undefined => declared.find(([k]) => k === `--${n}` || k === n)?.[1];
+  for (const [name, raw] of declared) {
+    // color-mix() and var() resolve against the file's own properties; a value that can't is left as written.
+    const value = /color-mix\(|var\(/.test(raw) ? (resolveColorValue(raw, lookup) ?? raw) : raw;
     if (name.startsWith('--font')) {
       for (const f of value.split(',')) {
         const family = f.trim().replace(/^["']|["']$/g, '').toLowerCase();
@@ -114,10 +122,28 @@ export function collectBrandFindings(opts: BrandPageOptions): Array<{ check: str
     const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
     return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
   };
+  // Modern colour syntaxes (oklch, lab, color(display-p3 …)): let the browser convert through a 1×1 canvas.
+  const canvasRgba = (c: string): number[] | undefined => {
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = 1;
+      cv.height = 1;
+      const ctx = cv.getContext('2d');
+      if (!ctx) return undefined;
+      ctx.fillStyle = '#010203';
+      ctx.fillStyle = c;
+      if (String(ctx.fillStyle) === '#010203') return undefined;
+      ctx.fillRect(0, 0, 1, 1);
+      const d = ctx.getImageData(0, 0, 1, 1).data;
+      return [d[0], d[1], d[2], d[3] / 255];
+    } catch {
+      return undefined;
+    }
+  };
   const parse = (c: string): { rgb: number[]; a: number } | undefined => {
     const m = /rgba?\(([^)]+)\)/.exec(c);
-    if (!m) return undefined;
-    const parts = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    const parts = m ? m[1].split(/[\s,/]+/).filter(Boolean).map(Number) : canvasRgba(c);
+    if (!parts) return undefined;
     return { rgb: parts.slice(0, 3), a: parts.length > 3 ? parts[3] : 1 };
   };
   const hexRgb = (h: string): number[] => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
