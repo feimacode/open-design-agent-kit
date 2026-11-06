@@ -175,7 +175,7 @@ export async function openPreviewWindow(url: string, options: OpenPreviewOptions
 
   if (env[PREVIEW_BROWSER_ENV]?.trim().toLowerCase() !== 'default') {
     const found = await findBrowser({ explicitPath: options.browserPath, env, platform });
-    if (found.ok) {
+    if (found.ok && !found.browserURL) {
       try {
         const window = await (options.launchAppWindow ?? launchAppWindow)(url, found.executablePath);
         return { how: 'app-window', window, browserPath: found.executablePath };
@@ -183,6 +183,9 @@ export async function openPreviewWindow(url: string, options: OpenPreviewOptions
         appWindowProblem = `The browser at ${found.executablePath} couldn't open a window (${err instanceof Error ? err.message : String(err)}).`;
         log(appWindowProblem);
       }
+    } else if (found.ok) {
+      // A shared remote browser has no windows to open; screenshots still work through check/export.
+      appWindowProblem = 'A shared remote browser is configured, so the preview opens in the default browser instead of an app window.';
     } else {
       appWindowProblem = 'No Chrome, Edge or Chromium was found, so comments are saved without screenshots unless one is installed.';
     }
