@@ -23,6 +23,10 @@ Long description (under 2,000 characters):
 >
 > It covers posters and flyers, social posts and carousels, slide decks, landing pages, menus, cards and more. You don't need an account: projects without one are kept for 7 days.
 
+## Claude plugin directory
+
+The plugin directory only accepts MCP servers that run on the user's computer from Verified organizations, so the submission points at [`claude-plugin-directory/`](../../claude-plugin-directory), not `packages/claude-plugin`. It's the same plugin (skills, design-critic agent, icon, version) with one HTTP server, the gateway URL above, and no package.json, lockfile or launcher. `npm run generate-skills --workspace=@feimacode/open-design-agent-kit-claude-plugin` rewrites it, and the plugin's `lint` fails when it's stale. The marketplace in this repository keeps installing `packages/claude-plugin` with the local server.
+
 ## Allowed link URIs (Claude)
 
 - `https://open-design.feimacode.com`, for download links
