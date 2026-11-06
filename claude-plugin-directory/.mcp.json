@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "open-design": {
+      "type": "http",
+      "url": "https://open-design.feimacode.com/mcp"
+    }
+  }
+}
