@@ -11,7 +11,7 @@ flowchart LR
   vscode["packages/vscode<br/>VS Code extension:<br/>LM tools, prompts, webviews"]
   mcp["packages/mcp-server<br/>MCP server (stdio)<br/>+ MCP App views"]
   cli["packages/cli<br/>init · install · export · check · render-video"]
-  plugin["packages/claude-plugin<br/>skills, critic agent, .mcp.json"]
+  plugin["packages/claude-plugin(-local)<br/>skills, critic agent, .mcp.json<br/>(hosted / local server)"]
   codex["packages/codex<br/>generates .agents/skills/"]
   mcpb["packages/desktop-extension<br/>open-design-X.Y.Z.mcpb"]
   gpt["packages/chatgpt-plugin<br/>open-design-chatgpt-plugin-X.Y.Z.zip"]
@@ -190,7 +190,7 @@ npm run compile        # builds the VS Code extension
 
 - **VS Code:** press F5 ("Run Extension") to start an Extension Development Host.
 - **MCP server:** `npm run compile --workspace=@feimacode/open-design-agent-kit-mcp`, then `node packages/mcp-server/out/index.js` (stdio).
-- **Claude plugin:** `claude --plugin-dir ./packages/claude-plugin`; validate with `claude plugin validate ./packages/claude-plugin` and `claude plugin validate .`.
+- **Claude plugin:** `claude --plugin-dir ./packages/claude-plugin-local` (local server; `./packages/claude-plugin` is the directory's copy with the hosted server); validate with `claude plugin validate ./packages/claude-plugin-local`, `claude plugin validate ./packages/claude-plugin` and `claude plugin validate .`.
 - **Desktop extension and ChatGPT plugin:** both bundle the content package's tarball. Run `npm pack --workspace=packages/content`, then `npm run build --workspace=packages/desktop-extension -- --content <content.tgz> --out /tmp/od.mcpb` (or `--workspace=packages/chatgpt-plugin … --out /tmp/od-chatgpt.zip`), and smoke-test with `node scripts/test-mcpb.mjs` or `node scripts/test-chatgpt-plugin.mjs` on the result.
 - **Gateway:** `npm run compile --workspace=@feimacode/open-design-gateway`, then `OPEN_DESIGN_LINK_SECRET=$(openssl rand -hex 16) node packages/mcp-gateway/out/index.js`, or build the container as in [deploy/README.md](../../deploy/README.md).
 - Core's export tests launch a real browser when one is installed and skip otherwise. Its deck smoke test exports ten bundled decks, which takes about a minute. As root (for example in a container), point `OPEN_DESIGN_BROWSER_PATH` at a wrapper that adds `--no-sandbox`.

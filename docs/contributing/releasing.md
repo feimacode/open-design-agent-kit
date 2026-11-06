@@ -41,18 +41,18 @@ Both workflows publish the artifacts already built for the GitHub Release, and b
 
 ## 4. Update the Claude Code plugin's MCP pin (manual, after npm publish)
 
-The Claude Code plugin (`packages/claude-plugin`) does not follow the release version automatically. It pins the MCP server to an exact version in its own `package.json` and `package-lock.json`, which Claude Code installs with `npm ci` when the plugin is installed (the Claude plugin directory requires this lockfile for its Verified badge). `.mcp.json` then starts `scripts/open-design-mcp.mjs`, which runs the server from the plugin's `node_modules`. Claude Desktop doesn't install plugin dependencies, so there the launcher runs `npx` with the same pinned version instead.
+The Claude Code plugin the marketplace installs (`packages/claude-plugin-local`) does not follow the release version automatically. It pins the MCP server to an exact version in its own `package.json` and `package-lock.json`, which Claude Code installs with `npm ci` when the plugin is installed. `.mcp.json` then starts `scripts/open-design-mcp.mjs`, which runs the server from the plugin's `node_modules`. Claude Desktop doesn't install plugin dependencies, so there the launcher runs `npx` with the same pinned version instead.
 
 Once the new `mcp-server` version is on npm:
 
 ```bash
-# set "@feimacode/open-design-agent-kit-mcp" to the new exact version (e.g. "0.2.0") in packages/claude-plugin/package.json, then:
+# set "@feimacode/open-design-agent-kit-mcp" to the new exact version (e.g. "0.2.0") in packages/claude-plugin-local/package.json, then:
 npm run update-lock --workspace=@feimacode/open-design-agent-kit-claude-plugin
 npm install                                   # refresh the root lockfile
 git commit -am "chore(claude-plugin): pin MCP server 0.2.0"
 ```
 
-`update-lock` resolves the plugin's standalone lockfile against the npm registry, so it only works after the version is published. The plugin's `lint` (`update-plugin-lock.mjs --check`) fails if the pin, the lockfile and `.mcp.json` disagree. It does not catch a pin that is still on the previous release, so don't skip this step.
+`update-lock` resolves the plugin's standalone lockfile against the npm registry, so it only works after the version is published. The plugin's `lint` (`update-plugin-lock.mjs --check`) fails if the pin, the lockfile and `.mcp.json` disagree. It does not catch a pin that is still on the previous release, so don't skip this step. `packages/claude-plugin`, the directory's copy, uses the hosted server and has no pin.
 
 ## 5. Update the hosted gateway (manual)
 

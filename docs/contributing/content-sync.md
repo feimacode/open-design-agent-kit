@@ -68,7 +68,7 @@ An entry gets a one-step command when upstream frontmatter has `featured`, `reco
 |---|---|
 | `packages/content/scripts/check-content-sync.mjs` | The pinned ref and `MANIFEST.json` disagree, an overlay file is missing or stale in `assets/`, a vendored `tokens.css` is missing, a token override repeats a value upstream now has (delete it), `craft-requires.json` names an unknown skill or craft id, a local craft doc's `Supersedes` quote no longer matches upstream, or a template design system whose `DESIGN.md` and `tokens.css` disagree has no confirmed decision or a stale generated overlay. |
 | `packages/vscode/scripts/check-content-mirror.mjs` | The VS Code mirror differs from `packages/content`. |
-| `packages/claude-plugin/scripts/check-skills-sync.mjs` | Generated Claude skills don't match the curated set and local prompts. |
+| `packages/claude-plugin-local/scripts/check-skills-sync.mjs` | Generated Claude skills don't match the curated set and local prompts. |
 | `packages/codex/scripts/check-codex-skills-sync.mjs` | Generated Codex skills don't match, or a local-prompt skill gained an explicit-only policy. |
 | `packages/cli/scripts/check-cli-assets-sync.mjs` | The CLI's copied skills are stale. |
 | `scripts/check-docs.mjs` | A tool, setting, env var, command or CLI flag is undocumented, or a docs link is broken. |
