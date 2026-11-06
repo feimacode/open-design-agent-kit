@@ -5,6 +5,7 @@ One version covers the VS Code extension and the npm packages (`content`, `mcp-s
 ## [Unreleased]
 
 - **Claude plugin directory variant.** `packages/claude-plugin`, the folder the Claude plugin directory reads, now connects to the hosted server at `https://open-design.feimacode.com/mcp`, because the directory refuses local servers from organizations that aren't Verified. The plugin you install from this repository's marketplace moved to `packages/claude-plugin-local` and still runs the server on your computer. Claude plugin 0.3.4.
+- **Skills name fewer local credentials.** The overview, design-system-from-url, recurring and site-audit skills no longer mention `gh pr view`, a Figma token fallback, inline `npx … init` setup commands, `OPEN_DESIGN_BROWSER_PATH` or sites behind a login; they link the setup guides instead. Claude plugin 0.3.5.
 - **Descriptions say what people make.** The listings, skill and package descriptions now name posters, flyers, social posts and slides next to landing pages and prototypes, the design system count is 198 everywhere, and the npm, VS Code and Claude plugin keywords add poster, flyer, social-media, instagram, slides, pdf and print. Directories, registries and agents' tool search read these words.
 
 ## [0.4.0-beta.3] - 2026-11-05
