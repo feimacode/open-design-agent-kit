@@ -4,10 +4,9 @@
 // network, relative paths only, so it works straight from `file://`.
 
 import { promises as fs } from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Browser } from 'puppeteer-core';
-import { findBrowser } from '../export/browserDiscovery';
+import { findBrowser, openHeadlessBrowser } from '../export/browserDiscovery';
 import { isStyleTileSkill } from '../generation/styleTiles';
 import { loadPage } from '../export/exportArtifact';
 import { startStaticServer, urlForPath } from '../export/staticServer';
@@ -185,18 +184,11 @@ export async function renderExplorationContactSheet(options: {
   if (!browser.ok) return { ok: false, reason: `Contact sheet skipped: ${browser.message}` };
 
   const warnings: string[] = [];
-  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-contact-sheet-'));
   const server = await startStaticServer(options.workspaceRoot);
-  let instance: Browser | undefined;
+  let target: { browser: Browser; close(): Promise<void> } | undefined;
   try {
-    const { default: puppeteer } = await import('puppeteer-core');
-    instance = await puppeteer.launch({
-      executablePath: browser.executablePath,
-      headless: true,
-      userDataDir: profileDir,
-      protocolTimeout: 60_000,
-      args: ['--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb'],
-    });
+    target = await openHeadlessBrowser({ executablePath: browser.executablePath });
+    const instance = target.browser;
     const page = await instance.newPage();
     await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
     await page.setViewport({ width: CONTACT_SHEET_WIDTH, height: 600, deviceScaleFactor: 1 });
@@ -209,8 +201,7 @@ export async function renderExplorationContactSheet(options: {
   } catch (err) {
     return { ok: false, reason: `Contact sheet failed: ${err instanceof Error ? err.message : String(err)}` };
   } finally {
-    await instance?.close().catch(() => undefined);
+    await target?.close();
     await server.close().catch(() => undefined);
-    await fs.rm(profileDir, { recursive: true, force: true }).catch(() => undefined);
   }
 }

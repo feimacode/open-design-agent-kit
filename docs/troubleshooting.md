@@ -91,6 +91,7 @@ The server fails with "could not start the MCP server with npx … Node.js 18 or
 
 - Install Google Chrome, Microsoft Edge or Chromium.
 - Point to an existing one with [`openDesign.export.browserPath`](reference/settings-and-env.md#opendesignexportbrowserpath) (VS Code), [`OPEN_DESIGN_BROWSER_PATH`](reference/settings-and-env.md#open_design_browser_path) (any host), or `--browser` (CLI).
+- Point at a shared browser instead with [`OPEN_DESIGN_BROWSER_URL`](reference/settings-and-env.md#open_design_browser_url) (e.g. `http://browser:9222`); nothing local is needed then.
 - On a headless server or in CI, install a headless shell once:
 
   ```bash

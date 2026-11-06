@@ -10,10 +10,17 @@
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { Browser } from 'puppeteer-core';
 
 export const BROWSER_PATH_ENV = 'OPEN_DESIGN_BROWSER_PATH';
+// Remote browser over Chrome DevTools Protocol (e.g. http://browser:9222 served by
+// a sidecar). When set, discovery short-circuits: no local executable is needed
+// and openHeadlessBrowser connects instead of launching (disconnecting, not closing).
+export const BROWSER_URL_ENV = 'OPEN_DESIGN_BROWSER_URL';
 
-export type BrowserDiscoveryResult = { ok: true; executablePath: string } | { ok: false; searched: string[]; message: string };
+export type BrowserDiscoveryResult =
+  | { ok: true; executablePath: string; browserURL?: string }
+  | { ok: false; searched: string[]; message: string };
 
 export interface BrowserDiscoveryOptions {
   /** Explicit path (e.g. a VS Code setting or a CLI flag); takes precedence over everything. */
@@ -129,6 +136,11 @@ export async function findBrowser(options: BrowserDiscoveryOptions = {}): Promis
   const listDir = options.listDir ?? defaultListDir;
 
   const explicit = options.explicitPath?.trim() || env[BROWSER_PATH_ENV]?.trim();
+  // A remote browser wins over any local install: it is the deliberate choice
+  // for browserless environments (containers, CI), and auto-detect must not
+  // shadow it with a stray system install.
+  const browserURL = env[BROWSER_URL_ENV]?.trim();
+  if (browserURL) return { ok: true, executablePath: '', browserURL };
   if (explicit) {
     if (await isExecutable(explicit)) return { ok: true, executablePath: explicit };
     return {
@@ -152,7 +164,68 @@ export async function findBrowser(options: BrowserDiscoveryOptions = {}): Promis
     searched: candidates,
     message:
       `No Chrome, Edge, or Chromium browser was found for image export. Install Google Chrome, set ${BROWSER_PATH_ENV} to an existing Chromium-family executable, ` +
+      `or point ${BROWSER_URL_ENV} at a running browser's DevTools HTTP endpoint (e.g. http://browser:9222), ` +
       `or (headless/CI machines) run \`npx @puppeteer/browsers install chrome-headless-shell@stable --path ~/.cache/puppeteer\` once. Searched:\n` +
       candidates.map((c) => `  - ${c}`).join('\n'),
+  };
+}
+
+export interface HeadlessBrowser {
+  browser: Browser;
+  /** True for a shared remote browser: close() detaches instead of closing it. */
+  shared: boolean;
+  close(): Promise<void>;
+}
+
+const DEFAULT_LAUNCH_ARGS = ['--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb'];
+
+/**
+ * Opens a headless browser for export/check flows. When OPEN_DESIGN_BROWSER_URL
+ * is set (a remote browser's DevTools HTTP endpoint, e.g. http://browser:9222),
+ * connects to it instead of launching; close() then only detaches, never
+ * closing the shared browser. Otherwise launches options.executablePath.
+ * extraArgs only apply to local launches: a shared remote browser already runs
+ * with its own flags (enable software WebGL there for 3D artifacts).
+ * As root the sandbox cannot apply, so --no-sandbox is added to local launches
+ * (same rule as generation/baseScreen.ts); without it every launch just crashes.
+ */
+export async function openHeadlessBrowser(options: { executablePath?: string; extraArgs?: string[] } = {}): Promise<HeadlessBrowser> {
+  const { default: puppeteer } = await import('puppeteer-core');
+  const browserURL = process.env[BROWSER_URL_ENV]?.trim();
+  if (browserURL) {
+    if (!/^https?:\/\//.test(browserURL)) {
+      throw new Error(`${BROWSER_URL_ENV} must be the browser's DevTools HTTP endpoint (e.g. http://browser:9222), got ${JSON.stringify(browserURL)}.`);
+    }
+    const browser = await puppeteer.connect({ browserURL, protocolTimeout: 60_000 });
+    return {
+      browser,
+      shared: true,
+      close: async () => {
+        await browser.disconnect().catch(() => undefined);
+      },
+    };
+  }
+  const executablePath = options.executablePath?.trim();
+  if (!executablePath) {
+    throw new Error(
+      `No local browser executable was provided and ${BROWSER_URL_ENV} is not set. Install Chrome, set ${BROWSER_PATH_ENV}, or point ${BROWSER_URL_ENV} at a running browser.`,
+    );
+  }
+  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-browser-profile-'));
+  const browser = await puppeteer.launch({
+    executablePath,
+    headless: true,
+    userDataDir: profileDir,
+    // A hung page (endless script, stalled frame) fails the export in a minute instead of blocking it.
+    protocolTimeout: 60_000,
+    args: [...DEFAULT_LAUNCH_ARGS, ...(options.extraArgs ?? []), ...(process.getuid?.() === 0 ? ['--no-sandbox'] : [])],
+  });
+  return {
+    browser,
+    shared: false,
+    close: async () => {
+      await browser.close().catch(() => undefined);
+      await fs.rm(profileDir, { recursive: true, force: true }).catch(() => undefined);
+    },
   };
 }

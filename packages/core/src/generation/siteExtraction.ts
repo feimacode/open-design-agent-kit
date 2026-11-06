@@ -931,8 +931,8 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   const rel = (file: string): string => path.posix.join(bundleRel, file);
   const notes: string[] = [];
 
-  const browserPath = input.executablePath ?? (await findBrowser({ explicitPath: input.browserPath }).then((r) => (r.ok ? r.executablePath : undefined)));
-  if (!browserPath) {
+  const found = await findBrowser({ explicitPath: input.browserPath });
+  if (!found.ok && !input.executablePath) {
     // No browser: the page source and its stylesheets, read as html and css sources (roles from names only).
     const fetched = await (input.fetchSiteTexts ?? fetchSiteTexts)(main.toString());
     const candidates = fetched.base ? synthesizeBrandEvidence(fetched.base, fetched.html, fetched.stylesheets.map((s) => s.text), fetched.warnings) : { fetchedUrl: main.toString(), colors: [], fonts: [], warnings: fetched.warnings };
@@ -948,6 +948,9 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
     const merged = await extractFromSources({ workspaceRoot: input.workspaceRoot, outputDir: input.outputDir, sources: textSources, urlResult: partial });
     return { ...merged, status: 'partial' };
   }
+
+  // In CDP mode found.executablePath is empty on purpose; the browser is reached via OPEN_DESIGN_BROWSER_URL.
+  const browserPath = input.executablePath ?? (found.ok ? found.executablePath : '');
 
   let live: LiveBrowser | undefined;
   const screenshots: string[] = [];
@@ -973,7 +976,7 @@ export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteR
   let motion: MotionObservation | undefined;
   let reducedRecorder: string | undefined;
   try {
-    live = await launchLiveBrowser(browserPath, input.allowHostsForTesting ?? [], 'od-extract-profile-');
+    live = await launchLiveBrowser(browserPath, input.allowHostsForTesting ?? []);
     const { page, images } = live;
 
     for (let i = 0; i < urls.length; i++) {
