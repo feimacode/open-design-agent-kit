@@ -37,8 +37,8 @@ You need the address. Up to 3 more pages on the same site are optional (a menu, 
 Call `audit_open_design_site` with `url` and `extraUrls` if there are any.
 
 - **`ok` or `partial`**: you get the top problems (`top`), the rest (`otherGroups`), page weight and the report path. `partial` means some pages were blocked; say which and why.
-- **`blocked`**: nothing could be audited (a bot check, a login wall or an empty page). Show the screenshot, say why, and ask for another public page. Don't retry with other settings.
-- An error about the browser means none is installed: say so, and suggest installing Chrome or setting `OPEN_DESIGN_BROWSER_PATH`.
+- **`blocked`**: nothing could be audited (a bot check, a members-only page or an empty page). Show the screenshot, say why, and ask for another public page. Don't retry with other settings.
+- An error about the browser means none is installed: say so, and suggest installing a browser such as Chrome ([troubleshooting](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/troubleshooting.md) has the details).
 
 ## 3. Report it
 
