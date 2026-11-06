@@ -306,9 +306,9 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
     } catch (err) {
       warnings.push(`Exported, but couldn't record the export in the manifest: ${err instanceof Error ? err.message : String(err)}`);
     }
-    return { ok: true, motion: options.format, files: [{ path: relOut, bytes, width, height }], fps, frames: total, durationMs, durationSource, warnings, ffmpegPath: ff.path, browserPath: browser.executablePath };
+    return { ok: true, motion: options.format, files: [{ path: relOut, bytes, width, height }], fps, frames: total, durationMs, durationSource, warnings, ffmpegPath: ff.path, browserPath: browser.browserURL ?? browser.executablePath };
   } catch (err) {
-    return fail('capture-failed', `Motion export failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
+    return fail('capture-failed', `Motion export failed using ${browser.browserURL ?? browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     await session?.close();
     await fs.rm(framesDir, { recursive: true, force: true }).catch(() => undefined);
