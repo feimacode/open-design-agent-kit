@@ -6,10 +6,8 @@
 
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
-import * as os from 'node:os';
-import * as path from 'node:path';
-import { promises as fs } from 'node:fs';
 import type { Browser, Page } from 'puppeteer-core';
+import { openHeadlessBrowser } from './browserDiscovery';
 
 export const MAX_EXTRA_URLS = 3;
 export const PAGE_TIMEOUT_MS = 20_000;
@@ -266,23 +264,9 @@ export interface LiveBrowser {
 }
 
 /** Launches the browser with a throwaway profile, a desktop user agent and the request guard. */
-export async function launchLiveBrowser(executablePath: string, allowHosts: string[] = [], profilePrefix = 'od-live-profile-'): Promise<LiveBrowser> {
-  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), profilePrefix));
-  const { default: puppeteer } = await import('puppeteer-core');
-  let browser: Browser;
-  try {
-    browser = await puppeteer.launch({
-      executablePath,
-      headless: true,
-      userDataDir: profileDir,
-      protocolTimeout: 60_000,
-      // Chrome refuses to start its sandbox as root (containers, CI); everywhere else the sandbox stays on.
-      args: ['--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb', '--disable-features=Translate', ...(process.getuid?.() === 0 ? ['--no-sandbox'] : [])],
-    });
-  } catch (err) {
-    await fs.rm(profileDir, { recursive: true, force: true }).catch(() => undefined);
-    throw err;
-  }
+export async function launchLiveBrowser(executablePath: string, allowHosts: string[] = []): Promise<LiveBrowser> {
+  const target = await openHeadlessBrowser({ executablePath, extraArgs: ['--disable-features=Translate'] });
+  const browser = target.browser;
   // A normal desktop user agent: the headless marker alone gets many sites to serve a stripped page.
   const userAgent = (await browser.userAgent()).replace(/HeadlessChrome/g, 'Chrome');
   const page = await browser.newPage();
@@ -297,8 +281,7 @@ export async function launchLiveBrowser(executablePath: string, allowHosts: stri
     images,
     fonts,
     close: async () => {
-      await browser.close().catch(() => undefined);
-      await fs.rm(profileDir, { recursive: true, force: true }).catch(() => undefined);
+      await target.close();
     },
   };
 }

@@ -252,9 +252,9 @@ export async function exportInline(options: InlineExportOptions): Promise<Inline
       warnings.push(`Exported, but couldn't record the export in the manifest: ${err instanceof Error ? err.message : String(err)}`);
     }
     for (const w of warnings) if (w.startsWith('Failed to load: ')) findings.push({ check: 'broken-asset', severity: 'warning', message: w.slice('Failed to load: '.length) });
-    return { ok: true, inline: options.format, target: options.target, files: written, findings, warnings, browserPath: browser.executablePath };
+    return { ok: true, inline: options.format, target: options.target, files: written, findings, warnings, browserPath: browser.browserURL ?? browser.executablePath };
   } catch (err) {
-    return { ok: false, code: 'capture-failed', error: `Export failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}` };
+    return { ok: false, code: 'capture-failed', error: `Export failed using ${browser.browserURL ?? browser.executablePath}: ${err instanceof Error ? err.message : String(err)}` };
   } finally {
     await session?.close();
   }

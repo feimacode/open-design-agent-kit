@@ -4,9 +4,8 @@
 // named after the design's entry file so the check can find it. Never
 // published: .bases/ is outside every design's folder.
 import { promises as fs } from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
-import { findBrowser } from '../export/browserDiscovery';
+import { findBrowser, openHeadlessBrowser } from '../export/browserDiscovery';
 
 export const BASES_DIR = '.bases';
 const IMAGE = /\.(?:png|jpe?g|webp)$/i;
@@ -62,14 +61,8 @@ export async function prepareBaseScreen(input: { workspaceRoot: string; outputDi
     const browser = await findBrowser({ explicitPath: input.browserPath });
     if (!browser.ok) return { ok: false, error: `baseScreen is a URL, and capturing it needs a browser: ${browser.message} Pass a screenshot of the screen instead.` };
     const out = `${stem}.png`;
-    const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-base-'));
-    const { default: puppeteer } = await import('puppeteer-core');
-    const instance = await puppeteer.launch({
-      executablePath: browser.executablePath,
-      headless: true,
-      userDataDir: profileDir,
-      args: ['--no-first-run', '--no-default-browser-check', '--hide-scrollbars', ...(process.getuid?.() === 0 ? ['--no-sandbox'] : [])],
-    });
+    const target = await openHeadlessBrowser({ executablePath: browser.executablePath });
+    const instance = target.browser;
     try {
       const page = await instance.newPage();
       await page.setViewport({ width: 1440, height: 900 });
@@ -80,8 +73,7 @@ export async function prepareBaseScreen(input: { workspaceRoot: string; outputDi
     } catch (err) {
       return { ok: false, error: `Couldn't capture ${base}: ${err instanceof Error ? err.message.split('\n')[0] : String(err)}. Is the app running? Pass a screenshot instead.` };
     } finally {
-      await instance.close().catch(() => undefined);
-      await fs.rm(profileDir, { recursive: true, force: true }).catch(() => undefined);
+      await target.close();
     }
   }
   const abs = path.resolve(input.workspaceRoot, base);

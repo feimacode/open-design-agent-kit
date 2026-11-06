@@ -376,7 +376,7 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
       slidesChecked: out.slidesChecked,
       scene3d: out.scene3d,
       warnings,
-      browserPath: browser.executablePath,
+      browserPath: browser.browserURL ?? browser.executablePath,
       };
     };
 
@@ -468,7 +468,7 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
     }
     return done('page', await branded('page', result));
   } catch (err) {
-    return fail('capture-failed', `Check failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
+    return fail('capture-failed', `Check failed using ${browser.browserURL ?? browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     await session?.close();
   }
