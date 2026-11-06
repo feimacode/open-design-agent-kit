@@ -25,7 +25,7 @@ Long description (under 2,000 characters):
 
 ## Claude plugin directory
 
-The plugin directory only accepts MCP servers that run on the user's computer from Verified organizations, so the submission points at [`claude-plugin-directory/`](../../claude-plugin-directory), not `packages/claude-plugin`. It's the same plugin (skills, design-critic agent, icon, version) with one HTTP server, the gateway URL above, and no package.json, lockfile or launcher. `npm run generate-skills --workspace=@feimacode/open-design-agent-kit-claude-plugin` rewrites it, and the plugin's `lint` fails when it's stale. The marketplace in this repository keeps installing `packages/claude-plugin` with the local server.
+The plugin directory only accepts MCP servers that run on the user's computer from Verified organizations. The submission is fixed to `packages/claude-plugin`, so that folder is the directory's plugin: skills, design-critic agent, icon and manifest, with one HTTP server (the gateway URL above) and no package.json, lockfile or launcher. The marketplace in this repository installs `packages/claude-plugin-local` instead: the same files, copied by `npm run generate-skills --workspace=@feimacode/open-design-agent-kit-claude-plugin` (its `lint` fails when they're stale), plus the local server.
 
 ## Allowed link URIs (Claude)
 

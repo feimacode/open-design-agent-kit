@@ -17,7 +17,9 @@ import { loadVoice, voiceRegionIsCurrent } from '../../content/scripts/voice.mjs
 import { rubricFromPrompts, rubricRegionIsCurrent } from '../../content/scripts/critiqueRubric.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const pluginRoot = path.resolve(__dirname, '..');
+// The skills and agent live in packages/claude-plugin, the plugin submitted to the
+// Claude plugin directory; build-local-plugin.mjs copies them into this one.
+const pluginRoot = path.resolve(__dirname, '..', '..', 'claude-plugin');
 const assetsRoot = path.resolve(pluginRoot, '..', 'content', 'assets', 'open-design');
 const committedSkillsDir = path.join(pluginRoot, 'skills');
 

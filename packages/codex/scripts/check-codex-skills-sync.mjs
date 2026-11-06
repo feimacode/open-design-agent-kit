@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Process safeguard, same family as packages/claude-plugin/scripts/check-skills-sync.mjs:
+// Process safeguard, same family as packages/claude-plugin-local/scripts/check-skills-sync.mjs:
 // recomputes what generate-codex-skills.mjs would produce right now and
 // diffs it in memory against what's actually committed under .agents/skills/,
 // so a content refresh (or an edit to the hand-authored overview skill)
