@@ -10,6 +10,31 @@
       "formats": [{ "format": "trading-card", "width": 822, "height": 1122, "type": "png", "dpi": 300 }],
       "backs": "per-card",
       "notes": "Upload one image per card face. Keep text and key art 36 px (0.12 in) inside the cut."
+    },
+    {
+      "id": "makeplayingcards",
+      "label": "MakePlayingCards",
+      "url": "https://www.makeplayingcards.com/",
+      "source": "https://www.makeplayingcards.com/design-center/",
+      "checkedAt": "2026-11-07",
+      "formats": [
+        { "format": "trading-card", "width": 889, "height": 635, "type": "png", "dpi": 300 },
+        { "format": "tarot-card", "width": 1016, "height": 1778, "type": "png", "dpi": 300 }
+      ],
+      "backs": "per-card",
+      "notes": "Premium card stock, custom finishes available. Upload PNG at 300 dpi."
+    },
+    {
+      "id": "stickermule",
+      "label": "Sticker Mule",
+      "url": "https://www.stickermule.com/",
+      "source": "https://www.stickermule.com/design-tool",
+      "checkedAt": "2026-11-07",
+      "formats": [
+        { "format": "sticker", "width": 1000, "height": 1000, "type": "png", "dpi": 300 }
+      ],
+      "backs": "none",
+      "notes": "Vinyl stickers, kiss-cut or die-cut. Upload PNG at 300 dpi. No back side for stickers."
     }
   ]
 }

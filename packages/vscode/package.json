@@ -2846,14 +2846,22 @@
         "title": "Get started with Open Design",
         "description": "Design decks, pages, dashboards and social posts in Copilot Chat, using Open Design's skills and brand design systems.",
         "steps": [
-          {
-            "id": "generate",
-            "title": "Generate your first design",
-            "description": "Describe what you want in Copilot Chat (agent mode). Copilot picks a recipe, writes the files and opens a live preview.\n[Try a sample request](command:workbench.action.chat.open?%7B%22query%22%3A%20%22Make%20me%20a%20pitch%20deck%20for%20a%20Series%20A%20fintech%20startup%2C%20editorial%20style.%22%2C%20%22isPartialQuery%22%3A%20true%7D)",
-            "media": {
-              "markdown": "media/walkthrough/generate.md"
-            }
-          },
+{
+                                                                  "id":  "generate",
+                                                                  "title":  "Generate your first design",
+                                                                  "description":  "Describe what you want in Copilot Chat (agent mode). Copilot picks a recipe, writes the files and opens a live preview.\n[Try a sample request](command:workbench.action.chat.open?%7B%22query%22%3A%20%22Make%20me%20a%20pitch%20deck%20for%20a%20Series%20A%20fintech%20startup%2C%20editorial%20style.%22%2C%20%22isPartialQuery%22%3A%20true%7D)",
+                                                                  "media":  {
+                                                                                  "markdown":  "media/walkthrough/generate.md"
+                                                                              }
+                                                              },
+                                                              {
+                                                                  "id":  "explore",
+                                                                  "title":  "Explore design directions",
+                                                                  "description":  "Build 2 to 4 different design directions side by side using /open-design-explore.\n[Learn more](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/explore-directions.md)",
+                                                                  "media":  {
+                                                                                  "markdown":  "media/walkthrough/explore.md"
+                                                                              }
+                                                              },
           {
             "id": "gallery",
             "title": "Start from a real example",
@@ -2865,17 +2873,28 @@
               "onCommand:openDesign.openGalleryGrid"
             ]
           },
-          {
-            "id": "designSystem",
-            "title": "Pick a design system",
-            "description": "Choose a brand look once; every design after that follows it.\n[Browse design systems](command:openDesign.browseDesignSystems)",
-            "media": {
-              "markdown": "media/walkthrough/design-system.md"
-            },
-            "completionEvents": [
-              "onCommand:openDesign.browseDesignSystems"
-            ]
-          },
+{
+                                                                  "id":  "designSystem",
+                                                                  "title":  "Pick a design system",
+                                                                  "description":  "Choose a brand look once; every design after that follows it.\n[Browse design systems](command:openDesign.browseDesignSystems)",
+                                                                  "media":  {
+                                                                                  "markdown":  "media/walkthrough/design-system.md"
+                                                                              },
+                                                                  "completionEvents":  [
+                                                                                           "onCommand:openDesign.browseDesignSystems"
+                                                                                     ]
+                                                               },
+                                                              {
+                                                                  "id":  "designSystemFromUrl",
+                                                                  "title":  "Design system from website",
+                                                                  "description":  "Import a design system from a website URL.\n[Take one from a website](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/guides/design-systems.md#take-one-from-a-website)",
+                                                                  "media":  {
+                                                                                  "markdown":  "media/walkthrough/design-system-from-url.md"
+                                                                              },
+                                                                  "completionEvents":  [
+                                                                                           "onCommand:openDesign.designSystemFromWebsite"
+                                                                                     ]
+                                                               },
           {
             "id": "socialPost",
             "title": "Make a social media post",

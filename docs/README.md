@@ -43,6 +43,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [Works with Impeccable](guides/impeccable.md): Open Design for the design, Impeccable for polishing the app code, sharing `PRODUCT.md` and `DESIGN.md`
 - [Build a component set](guides/component-library.md): reusable MUI (Material 3) or shadcn/ui components and a theme from a design
 - [Social media posts](guides/social-posts.md): X, Instagram, LinkedIn, Xiaohongshu, Stories, YouTube thumbnails
+- [Prompts to try](guides/prompts-to-try.md): copy-and-paste prompts for developers, founders, cafés and card makers
 - [HTML email](guides/html-email.md): newsletters and launch emails that render in real inboxes, ready to paste into your email tool
 - [Paste into WeChat, Notion and newsletters](guides/paste-html.md): HTML that keeps its look when pasted into another editor
 - [Posters and print](guides/posters.md): print-ready PDFs with bleed, preflight checks, real QR codes, other sizes, one per spreadsheet row, and cards for a print house
