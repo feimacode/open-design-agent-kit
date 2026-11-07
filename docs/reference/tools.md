@@ -326,6 +326,7 @@ When `.open-design/history.json` lists earlier designs, the instructions also ge
 | `og-image` | screen | 1200×630 px | 60 px | | | 5 MB |
 | `x-header` | screen | 1500×500 px | 60 px | | | 5 MB |
 | `linkedin-banner` | screen | 1584×396 px | 60 px | | | 8 MB |
+| `facebook-event-cover` | screen | 1920×1005 px | 80 px | | | 8 MB |
 | `email-header` | screen | 600×200 px, captured at 2× | 24 px | | | 1 MB |
 | `banner-mrec` | screen | 300×250 px | 12 px | | | 150 KB |
 | `banner-leaderboard` | screen | 728×90 px | 8 px | | | 150 KB |
