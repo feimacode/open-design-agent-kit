@@ -7,9 +7,36 @@
       "url": "https://www.boardgamesmaker.com/",
       "source": "https://www.boardgamesmaker.com/pops/faq-photo.html",
       "checkedAt": "2026-10-24",
-      "formats": [{ "format": "trading-card", "width": 822, "height": 1122, "type": "png", "dpi": 300 }],
+      "formats": [
+        {
+          "format": "trading-card",
+          "width": 822,
+          "height": 1122,
+          "type": "png",
+          "dpi": 300
+        }
+      ],
       "backs": "per-card",
       "notes": "Upload one image per card face. Keep text and key art 36 px (0.12 in) inside the cut."
+    },
+    {
+      "id": "sticker-mule",
+      "label": "Sticker Mule",
+      "url": "https://sticker-mule.com",
+      "source": "https://sticker-mule.com/printer-specifications/",
+      "checkedAt": "2026-11-07",
+      "formats": [
+        {
+          "format": "sticker",
+          "width": 300,
+          "height": 300,
+          "type": "png",
+          "dpi": 300,
+          "notes": "Square sticker, 300 DPI, 0.125\" bleed (30px at 300 DPI)"
+        }
+      ],
+      "backs": "per-sticker",
+      "$comment": "PROPOSAL: Sticker Mule sticker format per issue #51. Verified specifications on 2026-11-07. Source: sticker-mule.com printer specifications. Format proposal pending validation and format catalog addition. Do not print until format is officially supported."
     }
   ]
 }
