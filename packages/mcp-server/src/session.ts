@@ -1839,6 +1839,8 @@ export interface RemoteSession {
   readOnlyMessage?: string;
   /** Runs an export through the gateway's queue: its result, or a job id when it takes too long to wait for (openspec add-mcp-gateway). */
   runExport?(project: RemoteProject, args: Record<string, unknown>, run: () => Promise<ToolResult>): Promise<{ result: ToolResult } | { jobId: string }>;
+  /** Extra serverInfo fields (title, icons, websiteUrl) that hosts show for the connector. */
+  serverInfo?: { title?: string; websiteUrl?: string; icons?: { src: string; mimeType?: string; sizes?: string[] }[] };
 }
 
 const PROJECT_ARG_DESCRIPTION = 'The project handle from start_open_design_project (odp_…). Pass the same handle on every call in this conversation.';
@@ -1896,7 +1898,7 @@ export function createSession(remote?: RemoteSession): Server {
   if (!remote) console.error(`[open-design] ${SERVER_VERSION} started in ${process.cwd()}; workspace ${initial.root} (${initial.source})${problem ? `; ${problem}` : ''}`);
 
   const server = new Server(
-    { name: 'open-design', version: SERVER_VERSION },
+    { name: 'open-design', version: SERVER_VERSION, ...remote?.serverInfo },
     { capabilities: { tools: { listChanged: true }, prompts: {}, resources: {} }, ...(remote?.instructions ? { instructions: remote.instructions } : {}) },
   );
   const rendersMcpApps = (): boolean => clientSupportsMcpApps(server.getClientCapabilities());
