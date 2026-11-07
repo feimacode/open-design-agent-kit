@@ -39,6 +39,7 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 - [Browser preview and comments](guides/browser-preview.md) (Claude Code, Codex, Cursor)
 - [Inline preview in Claude Desktop Chat](guides/inline-preview.md)
 - [Figma](guides/figma.md): frame to code, and artifact to Figma layers
+- [Prompts to try](guides/prompts-to-try.md)
 - [Promote to app code](guides/promote-to-app-code.md): turn a prototype into real components
 - [Works with Impeccable](guides/impeccable.md): Open Design for the design, Impeccable for polishing the app code, sharing `PRODUCT.md` and `DESIGN.md`
 - [Build a component set](guides/component-library.md): reusable MUI (Material 3) or shadcn/ui components and a theme from a design
