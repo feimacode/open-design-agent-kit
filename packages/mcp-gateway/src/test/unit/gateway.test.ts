@@ -91,6 +91,22 @@ describe('hosted gateway over HTTP', function () {
     assert.strictEqual((await fetch(`${base}/mcp`)).status, 405);
   });
 
+  it('serves the Open Design icon and names it in serverInfo', async () => {
+    for (const [p, type] of [['/favicon.ico', 'image/x-icon'], ['/icon.svg', 'image/svg+xml'], ['/icon.png', 'image/png'], ['/apple-touch-icon.png', 'image/png']]) {
+      const r = await fetch(`${base}${p}`);
+      assert.strictEqual(r.status, 200, p);
+      assert.strictEqual(r.headers.get('content-type'), type, p);
+      assert.ok((await r.arrayBuffer()).byteLength > 100, p);
+    }
+    const home = await (await fetch(`${base}/`)).text();
+    assert.match(home, /<link rel="icon" href="\/favicon.ico"/);
+    const client = await connect();
+    const info = client.getServerVersion();
+    assert.strictEqual(info?.title, 'Open Design');
+    assert.deepStrictEqual(info?.icons?.map((i) => i.src), [`${base}/icon.svg`, `${base}/icon.png`]);
+    await client.close();
+  });
+
   it('lists titled tools with a project argument and hides local-only ones', async () => {
     const client = await connect();
     try {

@@ -3,6 +3,7 @@
 //
 //   POST /mcp                                   MCP over streamable HTTP
 //   GET  /healthz                               health check
+//   GET  /, /favicon.ico, /icon.svg, /icon.png   the Open Design icon, for connector screens and chat avatars
 //   GET  /files/<ref>/<path>?exp&sig            signed export downloads
 //   GET  /.well-known/openai-apps-challenge     OpenAI domain verification
 //   GET  /.well-known/oauth-protected-resource  sign-in metadata (when sign-in is on)
@@ -25,6 +26,7 @@ import { challengeHeader, protectedResourceMetadata, TokenVerifier } from './aut
 import type { GatewayConfig } from './config';
 import { ACCOUNT_TOOLS, gatewayTools, UNKNOWN_PROJECT, type CallContext } from './gatewayTools';
 import { GATEWAY_INSTRUCTIONS } from './guidance';
+import { FAVICON_ICO, ICON_PNG_180, ICON_PNG_512, ICON_SVG } from './icons';
 import { ExportJobs } from './jobs';
 import { downloadUrl, verifyDownload } from './links';
 import { ProjectStore, type GatewayUser, type ProjectRef } from './projects';
@@ -53,6 +55,42 @@ const DOWNLOAD_TYPES: Record<string, string> = {
 function send(res: ServerResponse, status: number, body: string, headers: Record<string, string> = {}): void {
   res.writeHead(status, { 'content-type': 'text/plain; charset=utf-8', ...headers });
   res.end(body);
+}
+
+const ICON_CACHE = 'public, max-age=86400';
+
+/** Hosts show this for the connector: Claude and ChatGPT read MCP serverInfo icons, and fall back to the host's favicon. */
+export function gatewayServerInfo(origin: string): NonNullable<RemoteSession['serverInfo']> {
+  return {
+    title: 'Open Design',
+    websiteUrl: 'https://github.com/feimacode/open-design-agent-kit',
+    icons: [
+      { src: `${origin}/icon.svg`, mimeType: 'image/svg+xml', sizes: ['any'] },
+      { src: `${origin}/icon.png`, mimeType: 'image/png', sizes: ['512x512'] },
+    ],
+  };
+}
+
+/** A minimal home page, so favicon lookups that read the page's <link rel="icon"> find ours, not the parent domain's. */
+const HOME_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Open Design</title>
+<link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>body{font:16px/1.5 system-ui,sans-serif;max-width:36rem;margin:15vh auto;padding:0 16px;background:#fff;color:#202020}img{width:64px;height:64px}a{color:inherit}@media (prefers-color-scheme:dark){body{background:#151515;color:#eee}}</style></head>
+<body><img src="/icon.svg" alt=""><h1>Open Design</h1><p>This is the Open Design MCP server. Add <code>/mcp</code> on this address as a connector in Claude or ChatGPT.</p><p><a href="https://github.com/feimacode/open-design-agent-kit">About Open Design</a></p></body></html>`;
+
+function sendIcon(res: ServerResponse, url: URL): boolean {
+  const icons: Record<string, [string, string | Buffer]> = {
+    '/favicon.ico': ['image/x-icon', FAVICON_ICO],
+    '/icon.svg': ['image/svg+xml', ICON_SVG],
+    '/favicon.svg': ['image/svg+xml', ICON_SVG],
+    '/icon.png': ['image/png', ICON_PNG_512],
+    '/apple-touch-icon.png': ['image/png', ICON_PNG_180],
+    '/apple-touch-icon-precomposed.png': ['image/png', ICON_PNG_180],
+  };
+  const icon = icons[url.pathname];
+  if (!icon) return false;
+  res.writeHead(200, { 'content-type': icon[0], 'cache-control': ICON_CACHE, 'access-control-allow-origin': '*', 'x-content-type-options': 'nosniff' });
+  res.end(icon[1]);
+  return true;
 }
 
 function sendJson(res: ServerResponse, status: number, value: unknown, headers: Record<string, string> = {}): void {
@@ -192,7 +230,7 @@ export async function startGateway(config: GatewayConfig, serverVersion: string,
     }
     if (req.method !== 'POST' || !isInitializeRequest(body)) return jsonRpcError(res, 400, 'Start with an initialize request (no Mcp-Session-Id yet).');
     const id = randomUUID();
-    const server = createSession(remote);
+    const server = createSession({ ...remote, serverInfo: gatewayServerInfo(origin) });
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => id,
       onsessioninitialized: (sid) => {
@@ -243,6 +281,10 @@ export async function startGateway(config: GatewayConfig, serverVersion: string,
         }
         if (url.pathname === '/healthz') {
           return sendJson(res, 200, { ok: true, version: serverVersion, sessions: sessions.size, readOnly: config.readOnly, signIn: Boolean(auth), viewer: Boolean(viewer) });
+        }
+        if ((req.method === 'GET' || req.method === 'HEAD') && sendIcon(res, url)) return;
+        if (url.pathname === '/' && (req.method === 'GET' || req.method === 'HEAD')) {
+          return send(res, 200, HOME_PAGE, { 'content-type': 'text/html; charset=utf-8', 'cache-control': ICON_CACHE });
         }
         if (url.pathname === '/.well-known/openai-apps-challenge') {
           if (!config.openaiChallenge) return send(res, 404, 'Not found');
