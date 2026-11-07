@@ -64,7 +64,7 @@
       {
         "name": "list_open_design_skills",
         "displayName": "List Open Design Skills",
-        "modelDescription": "Lists available Open Design skills, design templates, and remixable examples — reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio — pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', 'example', or 'community' (all interchangeable as skillId) — 'community' entries are fetched at runtime from a separate, unreviewed community repo (awesome-open-design) and should be flagged to the user as such if it matters to their request. Some results include an 'examplePrompt' — a curated, ready-to-use brief — which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with remixable: true has an actual rendered starting artifact, bundled inside this server and never a file you can find on disk — prefer remix_open_design_example (which copies it into the workspace for you) over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. SURFACES: when the user names a kind of thing to make — a prototype or landing page, mobile app, slides, document, wireframe, animation, résumé, research synthesis, data report, poster or flier, social post, diagram — call this tool with surface set to that surface's id first (call with surface \"list\" to see the ids) and pick from its entries; if the surface names a prompt, follow that flow. STUBS: an entry with stub: true only advertises an upstream skill and has no instructions here — never pick one; choose a non-stub entry instead. PAGING: with more than 40 matches the result is { total, offset, nextOffset, modes, note, entries }, 100 compact entries (id, name, one-line summary, mode, source) per page; narrow with mode, source, query or surface for the full entries, or pass nextOffset as offset for the next page. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
+        "modelDescription": "Lists available Open Design skills, design templates, and remixable examples \u00e2\u20ac\u201d reusable design-task recipes, rendering styles, and (for 'example' entries) actual starting artifacts (e.g. landing page, pitch deck, dashboard) bundled with this extension. Each result's id is namespaced as 'od:<mode>:<name>' (e.g. 'od:deck:guizang-ppt') where mode is one of: prototype, deck, design-system, image, video, template, utility, audio \u00e2\u20ac\u201d pass this full id as skillId to prepare_open_design_brief or remix_open_design_example. Note: mode 'design-system' means a skill that helps AUTHOR a design-system deliverable; it is unrelated to designSystemId, which selects from a separate library of ~150 prebuilt brand design systems. Each result's 'source' field is 'skill', 'design-template', 'example', or 'community' (all interchangeable as skillId) \u00e2\u20ac\u201d 'community' entries are fetched at runtime from a separate, unreviewed community repo (awesome-open-design) and should be flagged to the user as such if it matters to their request. Some results include an 'examplePrompt' \u00e2\u20ac\u201d a curated, ready-to-use brief \u00e2\u20ac\u201d which you should prefer verbatim (or lightly adapted) over inventing your own brief when the user's request closely matches one. A result with remixable: true has an actual rendered starting artifact, bundled inside this server and never a file you can find on disk \u00e2\u20ac\u201d prefer remix_open_design_example (which copies it into the workspace for you) over prepare_open_design_brief when the user wants to start from or riff on an existing example. Optionally filter by a free-text query matched against name/description/triggers, an exact mode, an exact source, and/or remixableOnly to see only entries with a rendered starting artifact. SURFACES: when the user names a kind of thing to make \u00e2\u20ac\u201d a prototype or landing page, mobile app, slides, document, wireframe, animation, r\u00c3\u00a9sum\u00c3\u00a9, research synthesis, data report, poster or flier, social post, diagram \u00e2\u20ac\u201d call this tool with surface set to that surface's id first (call with surface \"list\" to see the ids) and pick from its entries; if the surface names a prompt, follow that flow. STUBS: an entry with stub: true only advertises an upstream skill and has no instructions here \u00e2\u20ac\u201d never pick one; choose a non-stub entry instead. PAGING: with more than 40 matches the result is { total, offset, nextOffset, modes, note, entries }, 100 compact entries (id, name, one-line summary, mode, source) per page; narrow with mode, source, query or surface for the full entries, or pass nextOffset as offset for the next page. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog \u00e2\u20ac\u201d do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
         "userDescription": "Browse Open Design's bundled design skills",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-skills",
@@ -112,7 +112,7 @@
             },
             "surface": {
               "type": "string",
-              "description": "A kind of thing to make — returns that surface's entries in curated order (the recipe first, then its remixable example; never catalog stubs), plus the surface's own prompt and clarifying questions. Pass \"list\" to get the surfaces themselves (id, label, description, entryCount) and the goals (plain-language aims such as \"Promote an event\", each with the surfaces it leads to). Ignores the other filters."
+              "description": "A kind of thing to make \u00e2\u20ac\u201d returns that surface's entries in curated order (the recipe first, then its remixable example; never catalog stubs), plus the surface's own prompt and clarifying questions. Pass \"list\" to get the surfaces themselves (id, label, description, entryCount) and the goals (plain-language aims such as \"Promote an event\", each with the surfaces it leads to). Ignores the other filters."
             },
             "goal": {
               "type": "string",
@@ -124,7 +124,7 @@
       {
         "name": "list_open_design_design_systems",
         "displayName": "List Open Design Design Systems",
-        "modelDescription": "Lists available Open Design design systems — brand-inspired visual token sets (palette, typography, spacing, component rules) bundled with this extension, each with a 'category' (e.g. 'E-Commerce & Retail', 'AI & LLM', 'Fintech & Crypto' — call with no arguments to see which categories are present) and an 'active' flag marking the current active design system, if any. Use this to discover which designSystemId to pass to prepare_open_design_brief, or to check what's currently active before asking the user to repeat it. MOBILE: category 'Mobile Apps' holds systems adapted from real iOS apps (ids ending in '-ios', e.g. 'spotify-ios'). For phone screens prefer them, even over a same-brand web system ('spotify'), which stays the one for web pages. Optionally filter by a free-text query matched against name/summary/category, and/or an exact category. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog — do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
+        "modelDescription": "Lists available Open Design design systems \u00e2\u20ac\u201d brand-inspired visual token sets (palette, typography, spacing, component rules) bundled with this extension, each with a 'category' (e.g. 'E-Commerce & Retail', 'AI & LLM', 'Fintech & Crypto' \u00e2\u20ac\u201d call with no arguments to see which categories are present) and an 'active' flag marking the current active design system, if any. Use this to discover which designSystemId to pass to prepare_open_design_brief, or to check what's currently active before asking the user to repeat it. MOBILE: category 'Mobile Apps' holds systems adapted from real iOS apps (ids ending in '-ios', e.g. 'spotify-ios'). For phone screens prefer them, even over a same-brand web system ('spotify'), which stays the one for web pages. Optionally filter by a free-text query matched against name/summary/category, and/or an exact category. If a query returns few or no results, call this tool again with a broader query or no arguments at all to browse the full catalog \u00e2\u20ac\u201d do NOT search the filesystem, grep, or read any file (this catalog is not stored anywhere as a single readable file such as a content.json, index, or schema file; it exists only inside this extension's own runtime and is reachable exclusively through this tool).",
         "userDescription": "Browse Open Design's bundled design systems",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-design-systems",
@@ -146,7 +146,7 @@
       {
         "name": "recommend_open_design_design_systems",
         "displayName": "Recommend Open Design Design Systems",
-        "modelDescription": "Recommends 3 to 5 Open Design design systems for a design, ranked the same way every time, each with a one-line reason and its look (light or dark, accent, display type, corner shape). Use it before prepare_open_design_brief when the user hasn't named a design system or a look, no design system is active, and they want a new design (not an edit, remix or export). Fill the profile from the request, the conversation and the workspace; leave out what you don't know. If the result includes `questions`, ask them once, in one message, and accept \"you pick\" (then use the first recommendation). Otherwise use the first recommendation, say which one you used and that they can switch (or browse with the 'OpenDesign: Browse Design Systems' command). Does NOT change the active design system: pass the chosen id to prepare_open_design_brief. Product-named looks (Stripe, Linear…) are recommended only when the user names that product, via likeBrands or the brief.",
+        "modelDescription": "Recommends 3 to 5 Open Design design systems for a design, ranked the same way every time, each with a one-line reason and its look (light or dark, accent, display type, corner shape). Use it before prepare_open_design_brief when the user hasn't named a design system or a look, no design system is active, and they want a new design (not an edit, remix or export). Fill the profile from the request, the conversation and the workspace; leave out what you don't know. If the result includes `questions`, ask them once, in one message, and accept \"you pick\" (then use the first recommendation). Otherwise use the first recommendation, say which one you used and that they can switch (or browse with the 'OpenDesign: Browse Design Systems' command). Does NOT change the active design system: pass the chosen id to prepare_open_design_brief. Product-named looks (Stripe, Linear\u00e2\u20ac\u00a6) are recommended only when the user names that product, via likeBrands or the brief.",
         "userDescription": "Recommend a design system for what you're making",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-recommend-design-system",
@@ -302,7 +302,7 @@
       {
         "name": "prepare_open_design_brief",
         "displayName": "Prepare Open Design Brief",
-        "modelDescription": "Composes generation instructions for an Open Design artifact by combining the chosen skill's workflow, an optional design system's visual tokens, universal craft rules, and the user's brief. Returns an 'instructions' string you must follow, plus a 'suggestedEntryPath' for where to author the artifact's entry file in the current workspace. This tool does NOT write any files — after calling it, author the artifact's entry file (and any supporting files) yourself using your normal file-editing tools, following the returned instructions, then call register_open_design_artifact.",
+        "modelDescription": "Composes generation instructions for an Open Design artifact by combining the chosen skill's workflow, an optional design system's visual tokens, universal craft rules, and the user's brief. Returns an 'instructions' string you must follow, plus a 'suggestedEntryPath' for where to author the artifact's entry file in the current workspace. This tool does NOT write any files \u00e2\u20ac\u201d after calling it, author the artifact's entry file (and any supporting files) yourself using your normal file-editing tools, following the returned instructions, then call register_open_design_artifact.",
         "userDescription": "Prepare an Open Design generation brief",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-prepare-brief",
@@ -332,7 +332,7 @@
             },
             "screenRole": {
               "type": "string",
-              "description": "Required together with collectionId — this screen's short role label, e.g. \"splash\", \"value-prop\", \"checkout\"."
+              "description": "Required together with collectionId \u00e2\u20ac\u201d this screen's short role label, e.g. \"splash\", \"value-prop\", \"checkout\"."
             },
             "flow": {
               "type": "object",
@@ -477,7 +477,7 @@
                 "type": "string"
               },
               "maxItems": 10,
-              "description": "Workspace paths of documents to build the design from (1–10): reports, specs, spreadsheets, existing decks, or repository files such as CHANGELOG.md or docs/adr/*.md. When given, the instructions add the extracted material, a storyline-first workflow (write outline.md, get the user's approval, then build) and accuracy rules."
+              "description": "Workspace paths of documents to build the design from (1\u00e2\u20ac\u201c10): reports, specs, spreadsheets, existing decks, or repository files such as CHANGELOG.md or docs/adr/*.md. When given, the instructions add the extracted material, a storyline-first workflow (write outline.md, get the user's approval, then build) and accuracy rules."
             },
             "format": {
               "type": "string",
@@ -519,7 +519,7 @@
                 "poster-18x24",
                 "poster-24x36"
               ],
-              "description": "Optional canvas format. Adds a Canvas section with the exact size, units, safe area and, for print, bleed and minimum type size, so any skill can produce a post or poster at that size. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50), and shop images shop-product (2048×2048), shop-banner (1920×800), shop-collection (1920×600). Print (trim sizes, authored in mm with bleed): a4, a3, a2, a1, a0, a5, a6, a7, letter, tabloid, poster-18x24, poster-24x36, postcard-4x6, business-card, business-card-us, and cards with rounded corners trading-card, tarot-card, mini-card. Pass the same id as format to register_open_design_artifact."
+              "description": "Optional canvas format. Adds a Canvas section with the exact size, units, safe area and, for print, bleed and minimum type size, so any skill can produce a post or poster at that size. Screen: x-image (1600\u00c3\u2014900), ig-square (1080\u00c3\u20141080 per card), ig-portrait (1080\u00c3\u20141350), story (1080\u00c3\u20141920), xhs-card (1080\u00c3\u20141440 per card), yt-thumbnail (1280\u00c3\u2014720), linkedin-image (1200\u00c3\u2014627), og-image (1200\u00c3\u2014630), x-header (1500\u00c3\u2014500), linkedin-banner (1584\u00c3\u2014396), email-header (600\u00c3\u2014200, captured at 2\u00c3\u2014), and display ads banner-mrec (300\u00c3\u2014250), banner-leaderboard (728\u00c3\u201490), banner-skyscraper (160\u00c3\u2014600), banner-mobile (320\u00c3\u201450), and shop images shop-product (2048\u00c3\u20142048), shop-banner (1920\u00c3\u2014800), shop-collection (1920\u00c3\u2014600). Print (trim sizes, authored in mm with bleed): a4, a3, a2, a1, a0, a5, a6, a7, letter, tabloid, poster-18x24, poster-24x36, postcard-4x6, business-card, business-card-us, and cards with rounded corners trading-card, tarot-card, mini-card. Pass the same id as format to register_open_design_artifact."
             },
             "fluid": {
               "type": "boolean",
@@ -551,7 +551,7 @@
       {
         "name": "prepare_open_design_exploration",
         "displayName": "Prepare Open Design Exploration",
-        "modelDescription": "Use INSTEAD of prepare_open_design_brief when the user explicitly asks for options, directions, alternatives or several versions of a design. Assigns 2–4 deliberately different directions (visual styles when no design system is active, layout/narrative structures when one is, or labels you pass for a named axis), writes the exploration's plan, and returns sharedInstructions plus one short instructions block, entry path and directionId per direction. Directions are quick sketches; only the one the user picks is built out. Writes no design files: write each direction yourself (follow sharedInstructions + that direction's instructions), register it with explorationId and directionId, then call compare_open_design_exploration. STYLE TILES: with skillId od:design-system:style-tile the directions are compact color + type tiles (default 4, visual axis even with an active design system; axis \"custom\" with an active system evolves it). Choosing one with next \"save-design-system\" copies the tile's tokens verbatim.",
+        "modelDescription": "Use INSTEAD of prepare_open_design_brief when the user explicitly asks for options, directions, alternatives or several versions of a design. Assigns 2\u00e2\u20ac\u201c4 deliberately different directions (visual styles when no design system is active, layout/narrative structures when one is, or labels you pass for a named axis), writes the exploration's plan, and returns sharedInstructions plus one short instructions block, entry path and directionId per direction. Directions are quick sketches; only the one the user picks is built out. Writes no design files: write each direction yourself (follow sharedInstructions + that direction's instructions), register it with explorationId and directionId, then call compare_open_design_exploration. STYLE TILES: with skillId od:design-system:style-tile the directions are compact color + type tiles (default 4, visual axis even with an active design system; axis \"custom\" with an active system evolves it). Choosing one with next \"save-design-system\" copies the tile's tokens verbatim.",
         "userDescription": "Plan several different design directions to compare",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-explore",
@@ -571,7 +571,7 @@
               "type": "integer",
               "minimum": 2,
               "maximum": 6,
-              "description": "How many directions: 2–4, default 3; for the style-tile skill 2–6, default 4."
+              "description": "How many directions: 2\u00e2\u20ac\u201c4, default 3; for the style-tile skill 2\u00e2\u20ac\u201c6, default 4."
             },
             "axis": {
               "type": "string",
@@ -607,7 +607,7 @@
                   "brief"
                 ]
               },
-              "description": "For a user-named axis (e.g. \"three hero concepts\"): 2–4 directions (style tiles: up to 6), each a distinct label and a one-paragraph brief."
+              "description": "For a user-named axis (e.g. \"three hero concepts\"): 2\u00e2\u20ac\u201c4 directions (style tiles: up to 6), each a distinct label and a one-paragraph brief."
             },
             "designSystemId": {
               "type": "string",
@@ -708,7 +708,7 @@
       {
         "name": "register_open_design_artifact",
         "displayName": "Register Open Design Artifact",
-        "modelDescription": "Call this AFTER you have written an artifact's entry file (and any supporting files) into the workspace with your normal file-editing tools. Validates the artifact and writes its manifest sidecar (<entry>.artifact.json) next to the entry file, so it's recognized as an Open Design artifact. Fails clearly if entryPath does not exist yet — write the file first.",
+        "modelDescription": "Call this AFTER you have written an artifact's entry file (and any supporting files) into the workspace with your normal file-editing tools. Validates the artifact and writes its manifest sidecar (<entry>.artifact.json) next to the entry file, so it's recognized as an Open Design artifact. Fails clearly if entryPath does not exist yet \u00e2\u20ac\u201d write the file first.",
         "userDescription": "Register a generated file as an Open Design artifact",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-register-artifact",
@@ -1051,7 +1051,7 @@
       {
         "name": "get_open_design_artifact",
         "displayName": "Get Open Design Artifact",
-        "modelDescription": "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and the user's unaddressed preview comments ('openComments', status open or sent) from the Open Design Artifact Preview editor or the browser preview, with up to 4 comment screenshots attached. Use this to review what was generated, and check 'openComments' before telling the user you're done — address any pending ones, then pass their ids as resolvedCommentIds to register_open_design_artifact. With critique: true it instead returns what the design critic judges (the open-design-critique prompt): the recorded brief, title and skill id, the design system's DESIGN.md, the latest saved check run's findings and screenshot paths, and the last critique, with that run's screenshots attached.",
+        "modelDescription": "Reads back a registered Open Design artifact: its manifest, entry file content, supporting file list, and the user's unaddressed preview comments ('openComments', status open or sent) from the Open Design Artifact Preview editor or the browser preview, with up to 4 comment screenshots attached. Use this to review what was generated, and check 'openComments' before telling the user you're done \u00e2\u20ac\u201d address any pending ones, then pass their ids as resolvedCommentIds to register_open_design_artifact. With critique: true it instead returns what the design critic judges (the open-design-critique prompt): the recorded brief, title and skill id, the design system's DESIGN.md, the latest saved check run's findings and screenshot paths, and the last critique, with that run's screenshots attached.",
         "userDescription": "Read back an Open Design artifact",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-artifact",
@@ -1129,7 +1129,7 @@
             },
             "brief": {
               "type": "string",
-              "description": "A description of the brand — colors, tone, industry, anything distinctive — in the user's own words. Required unless existingDesignSystemId is given."
+              "description": "A description of the brand \u00e2\u20ac\u201d colors, tone, industry, anything distinctive \u00e2\u20ac\u201d in the user's own words. Required unless existingDesignSystemId is given."
             },
             "sourceUrl": {
               "type": "string",
@@ -1137,7 +1137,7 @@
             },
             "existingDesignSystemId": {
               "type": "string",
-              "description": "Optional: the id of an existing custom design system (user:…). Returns instructions to write only its tokens.css, from its current DESIGN.md; name, brief and sourceUrl are then ignored."
+              "description": "Optional: the id of an existing custom design system (user:\u00e2\u20ac\u00a6). Returns instructions to write only its tokens.css, from its current DESIGN.md; name, brief and sourceUrl are then ignored."
             },
             "kind": {
               "type": "string",
@@ -1256,7 +1256,7 @@
             },
             "compareTo": {
               "type": "string",
-              "description": "To refresh a saved design system (user:…): measure the site again (from the URLs its brand.json recorded when url is left out) and return, under refresh, the tokens, fonts, component specs and marks added, changed or removed. Changes nothing in the design system."
+              "description": "To refresh a saved design system (user:\u00e2\u20ac\u00a6): measure the site again (from the URLs its brand.json recorded when url is left out) and return, under refresh, the tokens, fonts, component specs and marks added, changed or removed. Changes nothing in the design system."
             },
             "sources": {
               "type": "array",
@@ -1350,7 +1350,7 @@
       {
         "name": "audit_open_design_site",
         "displayName": "Audit Website",
-        "modelDescription": "Audits a live website with Open Design's own checks, for a redesign pitch or an owner's own site. Renders each page in an installed Chrome, Edge or Chromium at desktop (1440×900) and phone (390×844) sizes and reports what a visitor runs into: text contrast, tap targets, sideways scrolling, 320 px reflow, layout with larger text, overflowing or covered text, the first phone screen with nothing to tap, broken images, styles or scripts, images without alt text, a missing viewport tag, download size and request count, and default-template looks. Checks that need Open Design markup (states, flows, sample data, tokens) don't run. Writes <output folder>/.audits/<site>/: audit.json with every finding, screenshots, crops of the top problems and index.html, a short plain-language report with the 5 biggest problems ranked by what they cost a visitor and a statement of what wasn't measured. Gives no score and makes no speed or SEO claims. Only public http(s) pages; at most 4 pages on one site, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot.",
+        "modelDescription": "Audits a live website with Open Design's own checks, for a redesign pitch or an owner's own site. Renders each page in an installed Chrome, Edge or Chromium at desktop (1440\u00c3\u2014900) and phone (390\u00c3\u2014844) sizes and reports what a visitor runs into: text contrast, tap targets, sideways scrolling, 320 px reflow, layout with larger text, overflowing or covered text, the first phone screen with nothing to tap, broken images, styles or scripts, images without alt text, a missing viewport tag, download size and request count, and default-template looks. Checks that need Open Design markup (states, flows, sample data, tokens) don't run. Writes <output folder>/.audits/<site>/: audit.json with every finding, screenshots, crops of the top problems and index.html, a short plain-language report with the 5 biggest problems ranked by what they cost a visitor and a statement of what wasn't measured. Gives no score and makes no speed or SEO claims. Only public http(s) pages; at most 4 pages on one site, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot.",
         "userDescription": "Check a live website for design and accessibility problems, with a plain-language report",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-audit-site",
@@ -1499,7 +1499,7 @@
       {
         "name": "share_open_design_artifact_to_community",
         "displayName": "Share Artifact to Community",
-        "modelDescription": "Composes instructions for packaging a finished Open Design artifact as a new entry in the community-contributed design catalog (awesome-open-design). Does NOT write any files and does NOT run any commands itself. The returned instructions direct the model to: (1) derive a slug/title/description/example_prompt from the artifact itself rather than asking the user to retype anything, (2) scaffold a local SKILL.md + example.html + open-design.json folder with its own file-editing tools, (3) explicitly check in with the user before publishing anything, since that step is public and hard to reverse, and only then (4) fork/branch/push/open a PR against the community repo using its own terminal tool under the user's own already-authenticated gh/git identity — never inventing a placeholder GitHub owner if gh auth is missing.",
+        "modelDescription": "Composes instructions for packaging a finished Open Design artifact as a new entry in the community-contributed design catalog (awesome-open-design). Does NOT write any files and does NOT run any commands itself. The returned instructions direct the model to: (1) derive a slug/title/description/example_prompt from the artifact itself rather than asking the user to retype anything, (2) scaffold a local SKILL.md + example.html + open-design.json folder with its own file-editing tools, (3) explicitly check in with the user before publishing anything, since that step is public and hard to reverse, and only then (4) fork/branch/push/open a PR against the community repo using its own terminal tool under the user's own already-authenticated gh/git identity \u00e2\u20ac\u201d never inventing a placeholder GitHub owner if gh auth is missing.",
         "userDescription": "Share a finished Open Design artifact to the community design catalog",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-share-to-community",
@@ -1549,7 +1549,7 @@
       {
         "name": "publish_open_design_artifact_to_shop",
         "displayName": "Put Open Design Designs in a Shop",
-        "modelDescription": "Gets finished shop designs into the user's online shop: the product images (and any other design filled per product) from the product list. For shop \"shopify\" it composes instructions and writes nothing: check whether Shopify's connector is connected (via list_open_design_integrations and your own tools), and if it is, show the product matches first, make the first three updates one at a time with the user's go-ahead, create new products only as drafts, leave price, stock and visibility alone unless asked, attach images only if a connector tool can, and report what changed per product. Otherwise, and for bigcartel, etsy and other shops, it exports each design once per product and writes <design folder>/for-<shop>/: images named <product>-1.png, <product>-2.png…, copy.md with each product's title, price and description, and for Shopify a products.csv in Shopify's import format (unpublished, image links empty), plus the shop's own upload steps to pass on. Cost, margin, supplier, stock and note columns are never used. This tool never contacts the shop.",
+        "modelDescription": "Gets finished shop designs into the user's online shop: the product images (and any other design filled per product) from the product list. For shop \"shopify\" it composes instructions and writes nothing: check whether Shopify's connector is connected (via list_open_design_integrations and your own tools), and if it is, show the product matches first, make the first three updates one at a time with the user's go-ahead, create new products only as drafts, leave price, stock and visibility alone unless asked, attach images only if a connector tool can, and report what changed per product. Otherwise, and for bigcartel, etsy and other shops, it exports each design once per product and writes <design folder>/for-<shop>/: images named <product>-1.png, <product>-2.png\u00e2\u20ac\u00a6, copy.md with each product's title, price and description, and for Shopify a products.csv in Shopify's import format (unpublished, image links empty), plus the shop's own upload steps to pass on. Cost, margin, supplier, stock and note columns are never used. This tool never contacts the shop.",
         "userDescription": "Put product images and copy into Shopify, Big Cartel or Etsy: through Shopify's connector, or as a folder ready to upload",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-shop",
@@ -1563,7 +1563,7 @@
                 "type": "string"
               },
               "minItems": 1,
-              "description": "Workspace-relative entry files of the registered designs to put in the shop, each with [data-od-field] fields filled per product (e.g. the product image, then a second angle). Their images become <product>-1, <product>-2… in that order."
+              "description": "Workspace-relative entry files of the registered designs to put in the shop, each with [data-od-field] fields filled per product (e.g. the product image, then a second angle). Their images become <product>-1, <product>-2\u00e2\u20ac\u00a6 in that order."
             },
             "shop": {
               "type": "string",
@@ -1597,7 +1597,7 @@
       {
         "name": "pull_open_design_figma_frame",
         "displayName": "Pull Figma Frame",
-        "modelDescription": "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. When the user's Figma MCP server is connected (checked via list_open_design_integrations), the instructions use Figma's own get_design_context, get_variable_defs and get_screenshot; no token needed. A Figma personal access token is optional: when one is configured, the frame's structural summary and a rendered image are fetched too and included as ground truth, and it's the fallback when Figma isn't connected. Does NOT write any files — author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\", with node-id), not a bare file link.",
+        "modelDescription": "Composes instructions for translating a Figma frame into a real code artifact with 1:1 visual fidelity. When the user's Figma MCP server is connected (checked via list_open_design_integrations), the instructions use Figma's own get_design_context, get_variable_defs and get_screenshot; no token needed. A Figma personal access token is optional: when one is configured, the frame's structural summary and a rendered image are fetched too and included as ground truth, and it's the fallback when Figma isn't connected. Does NOT write any files \u00e2\u20ac\u201d author the entry file yourself with your normal file-editing tools, then call register_open_design_artifact. figmaUrl must be a frame-scoped link (Figma's \"Copy link to selection\", with node-id), not a bare file link.",
         "userDescription": "Translate a Figma frame into a code artifact",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-pull-figma-frame",
@@ -1607,7 +1607,7 @@
           "properties": {
             "figmaUrl": {
               "type": "string",
-              "description": "A Figma frame URL, e.g. from \"Copy link to selection\" — must include a node-id."
+              "description": "A Figma frame URL, e.g. from \"Copy link to selection\" \u00e2\u20ac\u201d must include a node-id."
             },
             "designSystemId": {
               "type": "string",
@@ -1647,7 +1647,7 @@
       {
         "name": "export_open_design_artifact",
         "displayName": "Export Open Design Artifact",
-        "modelDescription": "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080×1080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); add editable: true for an editable PowerPoint instead (<name>-editable.pptx: real text boxes, shapes and pictures placed from the browser's layout, with gradients, SVG diagrams and effects on a background picture per slide; close to the deck, not identical; the result lists what stayed a picture and which web fonts PowerPoint will need). When a user wants slides to edit in PowerPoint, Keynote or Google Slides, use editable: true; never write your own conversion script. format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). PACKAGING (no browser needed): format \"standalone\" writes one self-contained .html with the page's local CSS, scripts, images and fonts inlined, to attach or send; format \"site\" writes a deploy-ready folder (exports/site/) — to put a design online, prefer publish_open_design_artifact, which builds it for you. Not for video — HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions. POSTERS AND PREFLIGHT: page exports run preflight checks (text overflow, safe area, print bleed size, minimum type size, contrast, emoji, image resolution for print, QR codes that don't decode, broken assets) and list findings, errors first; findings never block the export. Pass checkOnly: true to check without writing files, and fix every error before the real export. Pass preset with a format id (\"ig-portrait\", \"story\", \"a3\"…) rather than width/height/selector/maxBytes. Pass data with a spreadsheet to export one poster, card or certificate per row. FLUID POSTERS (cards with data-od-fluid): preset reflows the design to that shape in the rendered page (the file is unchanged); presets exports several shapes at once; shapeSheet shows them all in one image. EMAIL AND PASTE: format \"email\" writes an inbox-safe email (and checks for what breaks in Gmail and Outlook: flex/grid layout, SVG, transforms, local images, missing alt, width over 640px, size over 102 KB); format \"paste\" with target wechat|notion|newsletter|generic writes an inlined fragment. Both compute styles in the browser, so Tailwind or any runtime CSS is inlined. To use the result, the user opens the file in a browser, selects all, copies and pastes. VIDEO AND GIF: format \"mp4\", \"webm\" or \"gif\" renders animated HTML (CSS animations, requestAnimationFrame, timers, data-duration storyboards, WebGL) frame by frame and encodes it with an installed ffmpeg (never downloaded; a 'no-ffmpeg' or 'ffmpeg-missing-encoder' error says what to install). Up to 60 seconds. Use maxBytes for platform limits (re-encodes smaller). HyperFrames compositions still render with the HyperFrames CLI.",
+        "modelDescription": "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and writes upload-ready file(s) under the artifact's own exports/ folder. Does not modify the artifact's source files. IMAGES (png/jpeg): use after register_open_design_artifact whenever the user wants an image to post (X, Instagram, Xiaohongshu, a YouTube thumbnail, a poster). Size comes from explicit width/height, else the source skill's aspect hint, else each selected element's box, else 1080\u00c3\u20141080. For multi-card designs mark each card with data-od-card and pass selector \"[data-od-card]\" for one numbered image per card. Pass maxBytes with the platform's upload limit (X 5000000, YouTube thumbnail 2000000, Instagram 8000000) and images are re-encoded as JPEG until they fit. DECKS: format \"pptx\" gives a PowerPoint file with one full-bleed slide image per slide (pixel-perfect, not editable text); add editable: true for an editable PowerPoint instead (<name>-editable.pptx: real text boxes, shapes and pictures placed from the browser's layout, with gradients, SVG diagrams and effects on a background picture per slide; close to the deck, not identical; the result lists what stayed a picture and which web fonts PowerPoint will need). When a user wants slides to edit in PowerPoint, Keynote or Google Slides, use editable: true; never write your own conversion script. format \"pdf\" gives one page per slide. Slides are captured at the deck's own measured slide size, at scale 2 by default. Artifacts registered with kind \"deck\" (or made from an od:deck:* skill) are detected automatically; pass deck: true if a deck was registered as \"html\". Pass slides (1-based numbers) with format png/jpeg to export just those slides as images. PAGES: format \"pdf\" on an ordinary page prints it with the browser's print engine (vector, selectable text, A4 unless the page's CSS sets a size). PACKAGING (no browser needed): format \"standalone\" writes one self-contained .html with the page's local CSS, scripts, images and fonts inlined, to attach or send; format \"site\" writes a deploy-ready folder (exports/site/) \u00e2\u20ac\u201d to put a design online, prefer publish_open_design_artifact, which builds it for you. Not for video \u00e2\u20ac\u201d HyperFrames videos are rendered with the HyperFrames CLI per the brief's instructions. POSTERS AND PREFLIGHT: page exports run preflight checks (text overflow, safe area, print bleed size, minimum type size, contrast, emoji, image resolution for print, QR codes that don't decode, broken assets) and list findings, errors first; findings never block the export. Pass checkOnly: true to check without writing files, and fix every error before the real export. Pass preset with a format id (\"ig-portrait\", \"story\", \"a3\"\u00e2\u20ac\u00a6) rather than width/height/selector/maxBytes. Pass data with a spreadsheet to export one poster, card or certificate per row. FLUID POSTERS (cards with data-od-fluid): preset reflows the design to that shape in the rendered page (the file is unchanged); presets exports several shapes at once; shapeSheet shows them all in one image. EMAIL AND PASTE: format \"email\" writes an inbox-safe email (and checks for what breaks in Gmail and Outlook: flex/grid layout, SVG, transforms, local images, missing alt, width over 640px, size over 102 KB); format \"paste\" with target wechat|notion|newsletter|generic writes an inlined fragment. Both compute styles in the browser, so Tailwind or any runtime CSS is inlined. To use the result, the user opens the file in a browser, selects all, copies and pastes. VIDEO AND GIF: format \"mp4\", \"webm\" or \"gif\" renders animated HTML (CSS animations, requestAnimationFrame, timers, data-duration storyboards, WebGL) frame by frame and encodes it with an installed ffmpeg (never downloaded; a 'no-ffmpeg' or 'ffmpeg-missing-encoder' error says what to install). Up to 60 seconds. Use maxBytes for platform limits (re-encodes smaller). HyperFrames compositions still render with the HyperFrames CLI.",
         "userDescription": "Export an Open Design artifact to PNG/JPEG, PDF, PPTX, standalone HTML, an HTML email or paste-ready HTML",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-export",
@@ -1702,7 +1702,7 @@
               "type": "number",
               "minimum": 1,
               "maximum": 3,
-              "description": "Device scale factor (1–3). Default 2 for deck pptx/pdf (crisp when projected), 1 otherwise."
+              "description": "Device scale factor (1\u00e2\u20ac\u201c3). Default 2 for deck pptx/pdf (crisp when projected), 1 otherwise."
             },
             "selector": {
               "type": "string",
@@ -1790,7 +1790,7 @@
                 "poster-18x24",
                 "poster-24x36"
               ],
-              "description": "A canvas format id instead of hand-copied sizes. Screen formats (x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50), and shop images shop-product (2048×2048), shop-banner (1920×800), shop-collection (1920×600)) fill in width/height, selector \"[data-od-card]\" and the platform's byte budget. Print formats (a4, a3, a2, a1, a0, a5, a6, a7, letter, tabloid, poster-18x24, poster-24x36, postcard-4x6, business-card, business-card-us, and cards with rounded corners trading-card, tarot-card, mini-card) produce a print-ready PDF the size of the bleed box, with TrimBox and BleedBox set. Explicit arguments still win. Without preset, the format the artifact was registered with is used."
+              "description": "A canvas format id instead of hand-copied sizes. Screen formats (x-image (1600\u00c3\u2014900), ig-square (1080\u00c3\u20141080 per card), ig-portrait (1080\u00c3\u20141350), story (1080\u00c3\u20141920), xhs-card (1080\u00c3\u20141440 per card), yt-thumbnail (1280\u00c3\u2014720), linkedin-image (1200\u00c3\u2014627), og-image (1200\u00c3\u2014630), x-header (1500\u00c3\u2014500), linkedin-banner (1584\u00c3\u2014396), email-header (600\u00c3\u2014200, captured at 2\u00c3\u2014), and display ads banner-mrec (300\u00c3\u2014250), banner-leaderboard (728\u00c3\u201490), banner-skyscraper (160\u00c3\u2014600), banner-mobile (320\u00c3\u201450), and shop images shop-product (2048\u00c3\u20142048), shop-banner (1920\u00c3\u2014800), shop-collection (1920\u00c3\u2014600)) fill in width/height, selector \"[data-od-card]\" and the platform's byte budget. Print formats (a4, a3, a2, a1, a0, a5, a6, a7, letter, tabloid, poster-18x24, poster-24x36, postcard-4x6, business-card, business-card-us, and cards with rounded corners trading-card, tarot-card, mini-card) produce a print-ready PDF the size of the bleed box, with TrimBox and BleedBox set. Explicit arguments still win. Without preset, the format the artifact was registered with is used."
             },
             "bleed": {
               "type": "number",
@@ -1806,7 +1806,7 @@
               "type": "integer",
               "minimum": 150,
               "maximum": 600,
-              "description": "Print images only (PNG or JPEG of a print format): the resolution, 150–600 (default 300). The image is the bleed box at this dpi, and the dpi is written into the file. Can't be combined with scale; over 8192 px a side is refused, naming the largest dpi that fits."
+              "description": "Print images only (PNG or JPEG of a print format): the resolution, 150\u00e2\u20ac\u201c600 (default 300). The image is the bleed box at this dpi, and the dpi is written into the file. Can't be combined with scale; over 8192 px a side is refused, naming the largest dpi that fits."
             },
             "printHouse": {
               "type": "string",
@@ -1885,7 +1885,7 @@
             },
             "campaignSheet": {
               "type": "boolean",
-              "description": "Fluid designs: also write exports/campaign-sheet.png — the master at every shape in presets (default: the usual poster and social shapes), plus the first screen of every other piece registered in the master's collection (landing page, email…), each labelled and marked when it has preflight errors. Use it to show the user a whole campaign at a glance. With checkOnly: true it is the only file written."
+              "description": "Fluid designs: also write exports/campaign-sheet.png \u00e2\u20ac\u201d the master at every shape in presets (default: the usual poster and social shapes), plus the first screen of every other piece registered in the master's collection (landing page, email\u00e2\u20ac\u00a6), each labelled and marked when it has preflight errors. Use it to show the user a whole campaign at a glance. With checkOnly: true it is the only file written."
             },
             "target": {
               "type": "string",
@@ -1915,7 +1915,7 @@
             },
             "transparent": {
               "type": "boolean",
-              "description": "png only: capture without the page background, so everything the design doesn't paint is transparent — for cut-outs such as a 3D product shot to place on slides or pages. The page (and a 3D scene's renderer) must have a transparent background; a warning says so when every pixel came out opaque. PNGs aren't re-encoded to fit maxBytes when transparent."
+              "description": "png only: capture without the page background, so everything the design doesn't paint is transparent \u00e2\u20ac\u201d for cut-outs such as a 3D product shot to place on slides or pages. The page (and a 3D scene's renderer) must have a transparent background; a warning says so when every pixel came out opaque. PNGs aren't re-encoded to fit maxBytes when transparent."
             }
           },
           "required": []
@@ -1924,7 +1924,7 @@
       {
         "name": "check_open_design_artifact",
         "displayName": "Check Open Design Artifact",
-        "modelDescription": "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and returns what it looks like: screenshots attached as images, plus preflight findings (overflow and clipped text, contrast, text overlap, safe area, broken images/fonts, emoji, QR codes, and horizontal-scroll for pages that scroll sideways), taste warnings (slop-glow, card-row, uniform-surface, type-scale, intent: fix them unless the brief or design system asks for that look) and, for pages, accessibility in hover and focus states, tap targets, reflow at 320 px and reduced motion. Writes no files and leaves the manifest alone. Call it after creating or substantially editing an artifact and registering it, before telling the user it's done: fix every ERROR, look at the screenshots for what the checks can't measure (balance, hierarchy, crowded or empty areas, text over busy imagery), then re-check — at most two fix rounds; tell the user about anything left. For a 3D design with a review sheet, a clean check isn't the end: get the critique the result asks for, for up to three critique rounds. What it renders: a page without a [data-od-card] at each viewport (default desktop 1440×900 and mobile 390×844, findings tagged by viewport); a card design (poster, social post) at its registered format size; a deck slide by slide (findings tagged by slide, one contact sheet of up to 12 slides — pass slides to see others). Screenshots are JPEG with a long edge of at most 1568 px; maxImages (default 3, max 6) bounds how many are attached, and 0 returns findings only. Returns a 'no-browser' error when no browser is installed: then skip the check and tell the user once that visual checking needs Chrome, Edge or Chromium. For bulk data rows or shape sheets, use export_open_design_artifact with checkOnly instead. A 3D scene that exposes window.odScene.scene, camera and renderer (the 3d-object ready contract) also gets a review sheet, one image showing the overview, close-up, low-angle and wireframe views (placed second), plus 3D evidence (pixel metrics, renderer statistics) and a webgl-budget warning for scenes too heavy for software rendering; views picks which views go on the sheet, or false for none.",
+        "modelDescription": "Renders a registered Open Design artifact in a headless browser (an installed Chrome, Edge, or Chromium) and returns what it looks like: screenshots attached as images, plus preflight findings (overflow and clipped text, contrast, text overlap, safe area, broken images/fonts, emoji, QR codes, and horizontal-scroll for pages that scroll sideways), taste warnings (slop-glow, card-row, uniform-surface, type-scale, intent: fix them unless the brief or design system asks for that look) and, for pages, accessibility in hover and focus states, tap targets, reflow at 320 px and reduced motion. Writes no files and leaves the manifest alone. Call it after creating or substantially editing an artifact and registering it, before telling the user it's done: fix every ERROR, look at the screenshots for what the checks can't measure (balance, hierarchy, crowded or empty areas, text over busy imagery), then re-check \u00e2\u20ac\u201d at most two fix rounds; tell the user about anything left. For a 3D design with a review sheet, a clean check isn't the end: get the critique the result asks for, for up to three critique rounds. What it renders: a page without a [data-od-card] at each viewport (default desktop 1440\u00c3\u2014900 and mobile 390\u00c3\u2014844, findings tagged by viewport); a card design (poster, social post) at its registered format size; a deck slide by slide (findings tagged by slide, one contact sheet of up to 12 slides \u00e2\u20ac\u201d pass slides to see others). Screenshots are JPEG with a long edge of at most 1568 px; maxImages (default 3, max 6) bounds how many are attached, and 0 returns findings only. Returns a 'no-browser' error when no browser is installed: then skip the check and tell the user once that visual checking needs Chrome, Edge or Chromium. For bulk data rows or shape sheets, use export_open_design_artifact with checkOnly instead. A 3D scene that exposes window.odScene.scene, camera and renderer (the 3d-object ready contract) also gets a review sheet, one image showing the overview, close-up, low-angle and wireframe views (placed second), plus 3D evidence (pixel metrics, renderer statistics) and a webgl-budget warning for scenes too heavy for software rendering; views picks which views go on the sheet, or false for none.",
         "userDescription": "Render an Open Design artifact and check how it looks (screenshots plus preflight findings)",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-check",
@@ -1970,7 +1970,7 @@
             },
             "viewports": {
               "type": "array",
-              "description": "Pages without a card only: 1–4 viewports to check instead of the default desktop 1440×900 and mobile 390×844.",
+              "description": "Pages without a card only: 1\u00e2\u20ac\u201c4 viewports to check instead of the default desktop 1440\u00c3\u2014900 and mobile 390\u00c3\u2014844.",
               "items": {
                 "type": "object",
                 "properties": {
@@ -2129,7 +2129,7 @@
               },
               "minItems": 1,
               "maxItems": 6,
-              "description": "1–6 target canvas formats. Screen: x-image (1600×900), ig-square (1080×1080 per card), ig-portrait (1080×1350), story (1080×1920), xhs-card (1080×1440 per card), yt-thumbnail (1280×720), linkedin-image (1200×627), og-image (1200×630), x-header (1500×500), linkedin-banner (1584×396), email-header (600×200, captured at 2×), and display ads banner-mrec (300×250), banner-leaderboard (728×90), banner-skyscraper (160×600), banner-mobile (320×50), and shop images shop-product (2048×2048), shop-banner (1920×800), shop-collection (1920×600). Print: a4, a3, a2, a1, a0, a5, a6, a7, letter, tabloid, poster-18x24, poster-24x36, postcard-4x6, business-card, business-card-us, and cards with rounded corners trading-card, tarot-card, mini-card."
+              "description": "1\u00e2\u20ac\u201c6 target canvas formats. Screen: x-image (1600\u00c3\u2014900), ig-square (1080\u00c3\u20141080 per card), ig-portrait (1080\u00c3\u20141350), story (1080\u00c3\u20141920), xhs-card (1080\u00c3\u20141440 per card), yt-thumbnail (1280\u00c3\u2014720), linkedin-image (1200\u00c3\u2014627), og-image (1200\u00c3\u2014630), x-header (1500\u00c3\u2014500), linkedin-banner (1584\u00c3\u2014396), email-header (600\u00c3\u2014200, captured at 2\u00c3\u2014), and display ads banner-mrec (300\u00c3\u2014250), banner-leaderboard (728\u00c3\u201490), banner-skyscraper (160\u00c3\u2014600), banner-mobile (320\u00c3\u201450), and shop images shop-product (2048\u00c3\u20142048), shop-banner (1920\u00c3\u2014800), shop-collection (1920\u00c3\u2014600). Print: a4, a3, a2, a1, a0, a5, a6, a7, letter, tabloid, poster-18x24, poster-24x36, postcard-4x6, business-card, business-card-us, and cards with rounded corners trading-card, tarot-card, mini-card."
             },
             "notes": {
               "type": "string",
@@ -2806,7 +2806,7 @@
         "openDesign.activeDesignSystemId": {
           "type": "string",
           "default": "",
-          "markdownDescription": "The currently active Open Design design system id. Used as the default for `prepare_open_design_brief` when no `designSystemId` is given. Set via the \"Open Design: Browse Design Systems\" command, the `set_active_design_system` tool, or by generating with an explicit design system — leave empty for none."
+          "markdownDescription": "The currently active Open Design design system id. Used as the default for `prepare_open_design_brief` when no `designSystemId` is given. Set via the \"Open Design: Browse Design Systems\" command, the `set_active_design_system` tool, or by generating with an explicit design system \u00e2\u20ac\u201d leave empty for none."
         },
         "openDesign.communityContentEnabled": {
           "type": "boolean",
@@ -2836,7 +2836,7 @@
         "openDesign.share.badge": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Add a small, closeable \"Made with Open Design · Remix this\" footer badge to pages you publish (`publish_open_design_artifact`, export format `site`). It loads nothing from the internet and doesn't track viewers. Turn this off to never add it; a single publish can still leave it out with `badge: false`. Standalone HTML downloads never get it unless asked."
+          "markdownDescription": "Add a small, closeable \"Made with Open Design \u00c2\u00b7 Remix this\" footer badge to pages you publish (`publish_open_design_artifact`, export format `site`). It loads nothing from the internet and doesn't track viewers. Turn this off to never add it; a single publish can still leave it out with `badge: false`. Standalone HTML downloads never get it unless asked."
         }
       }
     },
@@ -2896,6 +2896,24 @@
             ]
           }
         ]
+      },
+      {
+        "id": "explore-design-directions",
+        "title": "Explore design directions",
+        "description": "Run `/open-design-explore` in Copilot Chat to build 2 to 4 different design directions side by side. Copilot will generate multiple design options, each with its own style and approach, so you can compare and choose the best one.",
+        "completionEvents": [
+          "onViewChanged"
+        ],
+        "sequence": 2
+      },
+      {
+        "id": "explore-design-directions",
+        "title": "Explore design directions",
+        "description": "Run `/open-design-explore` in Copilot Chat to build 2 to 4 different design directions side by side. Copilot will generate multiple design options, each with its own style and approach, so you can compare and choose the best one.",
+        "completionEvents": [
+          "onViewChanged"
+        ],
+        "sequence": 2
       }
     ]
   },
