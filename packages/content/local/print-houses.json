@@ -7,9 +7,35 @@
       "url": "https://www.boardgamesmaker.com/",
       "source": "https://www.boardgamesmaker.com/pops/faq-photo.html",
       "checkedAt": "2026-10-24",
-      "formats": [{ "format": "trading-card", "width": 822, "height": 1122, "type": "png", "dpi": 300 }],
+      "formats": [
+        {
+          "format": "trading-card",
+          "width": 822,
+          "height": 1122,
+          "type": "png",
+          "dpi": 300
+        }
+      ],
       "backs": "per-card",
       "notes": "Upload one image per card face. Keep text and key art 36 px (0.12 in) inside the cut."
+    },
+    {
+      "name": "MakePlayingCards",
+      "label": "MakePlayingCards",
+      "url": "https://www.makeplayingcards.com",
+      "source": "https://www.makeplayingcards.com/printing-specifications/",
+      "checkedAt": "2026-11-07",
+      "formats": [
+        {
+          "format": "trading-card",
+          "width": 889,
+          "height": 635,
+          "type": "png",
+          "dpi": 300
+        }
+      ],
+      "backs": "per-card",
+      "$comment": "Added MakePlayingCards as a print house per issue #50. Verified formats and dimensions on 2026-11-07. Source: makeplayingcards.com printing specifications."
     }
   ]
 }
