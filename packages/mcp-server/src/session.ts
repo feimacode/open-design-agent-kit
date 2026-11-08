@@ -1781,6 +1781,7 @@ const TOOL_DEFS: ToolDef[] = [
 const SERVER_VERSION: string = require('../package.json').version;
 
 const FOLDERLESS_TOOLS = new Set([MANAGED_WORKSPACE_TOOL, WRITE_FILE_TOOL]);
+const FOLDER_TOOLS = new Set([SET_WORKSPACE_TOOL, MANAGED_WORKSPACE_TOOL, WRITE_FILE_TOOL]);
 
 function buildContext(workspaceRoot: string, options: { managed?: boolean; layout?: WorkspaceLayout; managedDesignSlug?: string } = {}): ToolContext {
   const { layout, designsDir: outputDir } = options.layout ?? { layout: 'classic' as const, designsDir: getOutputDirectory() };
@@ -1880,7 +1881,7 @@ async function remotePublish(project: RemoteProject, args: Record<string, unknow
 /** One MCP server: the stdio process's only one, or one per hosted session. */
 export function createSession(remote?: RemoteSession): Server {
   const desktopExtension = !remote && isDesktopExtension();
-  // Folder rules follow the Claude Desktop extension for the ChatGPT desktop plugin and hosted sessions too; the lock below stays the extension's own.
+  // Folder rules follow the Claude Desktop extension for hosted sessions and for the ChatGPT desktop plugin started outside the user's folder; the lock below stays the extension's own.
   const folderlessAppHost = remote !== undefined || isFolderlessAppHost();
   const pluginLaunched = !remote && isPluginLaunched();
   const lockPath = extensionLockPath();
@@ -1955,7 +1956,9 @@ export function createSession(remote?: RemoteSession): Server {
       const title = TOOL_TITLES[d.tool.name];
       return { ...tool, title, annotations: { title, ...TOOL_ANNOTATIONS[d.tool.name] } };
     });
-    return { tools: [...(remote?.extraTools.map((t) => t.tool) ?? []), ...kit] };
+    // Folder tools first: a host that keeps only the first tools, or searches them, still offers the one the guard asks for.
+    const folderFirst = [...kit.filter((t) => FOLDER_TOOLS.has(t.name)), ...kit.filter((t) => !FOLDER_TOOLS.has(t.name))];
+    return { tools: [...(remote?.extraTools.map((t) => t.tool) ?? []), ...folderFirst] };
   });
 
   // The preview MCP App's page (openspec add-mcp-app-preview).

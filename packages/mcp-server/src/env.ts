@@ -98,12 +98,32 @@ export function launcherHost(env: NodeJS.ProcessEnv = process.env): 'claude' | '
 
 /**
  * Started by a desktop app that gives the server no folder of its own: the
- * Claude Desktop extension, or the ChatGPT desktop plugin (whose working
- * folder is the plugin's own install folder). Without roots or an override,
- * designs go to the managed folder, as in a Claude Desktop chat.
+ * Claude Desktop extension, or the ChatGPT desktop plugin when it was started
+ * outside a folder of the user's (home, or its own install folder). Without
+ * roots or an override, designs go to the managed folder, as in a Claude
+ * Desktop chat.
  */
-export function isFolderlessAppHost(env: NodeJS.ProcessEnv = process.env): boolean {
-  return isDesktopExtension(env) || isChatGptPlugin(env);
+export function isFolderlessAppHost(env: NodeJS.ProcessEnv = process.env, cwd: string = process.cwd(), serverDir: string = __dirname, home: string = os.homedir()): boolean {
+  if (isDesktopExtension(env)) return true;
+  return isChatGptPlugin(env) && !isUsersStartFolder(cwd, serverDir, home);
+}
+
+/**
+ * Whether the folder a host started the server in is the user's own folder:
+ * not the home folder, not a folder that holds this server (/, the plugin's
+ * install folder) and not one inside the server's own package. ChatGPT
+ * desktop starts the plugin's server in the folder the user selected for the
+ * thread, and offers no MCP roots, so that folder is the workspace.
+ */
+export function isUsersStartFolder(cwd: string, serverDir: string, home: string = os.homedir()): boolean {
+  const start = path.resolve(cwd);
+  if (isHomeFolder(start, home)) return false;
+  const within = (parent: string, child: string): boolean => {
+    const rel = path.relative(parent, child);
+    return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+  };
+  const server = path.resolve(serverDir);
+  return !within(start, server) && !within(path.resolve(server, '..', '..'), start);
 }
 
 /** $XDG_CONFIG_HOME/open-design, defaulting to ~/.config/open-design: the token file and the extension lock live here. */
