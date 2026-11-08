@@ -22,21 +22,20 @@
     {
       "id": "sticker-mule",
       "label": "Sticker Mule",
-      "url": "https://sticker-mule.com",
-      "source": "https://sticker-mule.com/printer-specifications/",
-      "checkedAt": "2026-11-07",
+      "url": "https://www.stickermule.com",
+      "source": "https://www.stickermule.com/faqs/stickermule/what-are-your-artwork-requirements-for-stickers-and-labels",
+      "checkedAt": "2026-11-08",
       "formats": [
         {
           "format": "sticker",
-          "width": 300,
-          "height": 300,
+          "width": 900,
+          "height": 900,
           "type": "png",
-          "dpi": 300,
-          "notes": "Square sticker, 300 DPI, 0.125\" bleed (30px at 300 DPI)"
+          "dpi": 300
         }
       ],
-      "backs": "per-sticker",
-      "$comment": "PROPOSAL: Sticker Mule sticker format per issue #51. Verified specifications on 2026-11-07. Source: sticker-mule.com printer specifications. Format proposal pending validation and format catalog addition. Do not print until format is officially supported."
+      "backs": "none",
+      "notes": "Die cut sticker uploaded as one image per sticker at 300 PPI (3 x 3 in = 900 x 900 px); Sticker Mule adds the 1/16 in bleed border around the cutline—keep key text inside the 0.1 in border."
     }
   ]
 }

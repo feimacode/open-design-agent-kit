@@ -81,6 +81,9 @@ const LIST: CanvasFormat[] = [
   { id: 'trading-card', label: 'Trading card 2.5×3.5 in', fileLabel: 'trading-card', medium: 'print', width: 63.5, height: 88.9, unit: 'mm', safeInset: 3.175, bleed: US_BLEED, cornerRadius: 3.175, minTypePt: 6, multiCard: true, skillHint: 'od:prototype:card-set', inDefaultSheet: false },
   { id: 'tarot-card', label: 'Tarot card 2.75×4.75 in', fileLabel: 'tarot-card', medium: 'print', width: 69.85, height: 120.65, unit: 'mm', safeInset: 3.175, bleed: US_BLEED, cornerRadius: 3.175, minTypePt: 6, multiCard: true, skillHint: 'od:prototype:card-set', inDefaultSheet: false },
   { id: 'mini-card', label: 'Mini card 1.75×2.5 in', fileLabel: 'mini-card', medium: 'print', width: 44.45, height: 63.5, unit: 'mm', safeInset: 3.175, bleed: US_BLEED, cornerRadius: 3.175, minTypePt: 5, multiCard: true, skillHint: 'od:prototype:card-set', inDefaultSheet: false },
+  // Stickers: die cut stickers are cut to the shape of the artwork.
+  // Sources: Sticker Mule artwork specs (300 PPI, 1/16 in bleed around the cutline, 0.1 in standard border, 6 pt minimum type).
+  { id: 'sticker', label: 'Sticker 3×3 in', fileLabel: 'sticker', medium: 'print', width: 76.2, height: 76.2, unit: 'mm', safeInset: 2.54, bleed: 1.5875, minTypePt: 6, inDefaultSheet: false },
   { id: 'letter', label: 'US Letter (8.5×11 in)', fileLabel: 'letter', medium: 'print', width: 215.9, height: 279.4, unit: 'mm', safeInset: 5, bleed: US_BLEED, minTypePt: 9, skillHint: 'od:prototype:poster-hero' },
   { id: 'tabloid', label: 'Tabloid (11×17 in)', fileLabel: 'tabloid', medium: 'print', width: 279.4, height: 431.8, unit: 'mm', safeInset: 5, bleed: US_BLEED, minTypePt: 10, skillHint: 'od:prototype:poster-hero' },
   { id: 'poster-18x24', label: 'Poster 18×24 in', fileLabel: 'poster-18x24in', medium: 'print', width: 457.2, height: 609.6, unit: 'mm', safeInset: 10, bleed: US_BLEED, minTypePt: 14, skillHint: 'od:prototype:poster-hero' },

@@ -51,6 +51,15 @@ describe('poster formats', () => {
     assert.match(composeFluidCanvasSection(card), /corner-clearance/);
   });
 
+  it('defines a sticker print format with bleed, safe border and minimum type', () => {
+    const sticker = getFormat('sticker')!;
+    assert.deepStrictEqual([sticker.medium, sticker.width, sticker.height, sticker.unit], ['print', 76.2, 76.2, 'mm']);
+    assert.deepStrictEqual([sticker.safeInset, sticker.minTypePt, sticker.inDefaultSheet], [2.54, 6, false]);
+    assert.deepStrictEqual(bleedBox(sticker), { width: 79.38, height: 79.38, bleed: 1.5875 });
+    assert.doesNotMatch(composeCanvasSection(sticker), /corners round/);
+    assert.match(composeCanvasSection(sticker), /6 pt/);
+  });
+
   it('lists valid ids for an unknown one', () => {
     assert.strictEqual(getFormat('a9-sticker'), undefined);
     const message = unknownFormatError('a9-sticker');
