@@ -2877,6 +2877,17 @@
             ]
           },
           {
+            "id": "designSystemFromWebsite",
+            "title": "Import a design system from a website",
+            "description": "Measure a live website and turn its colors, typography and spacing into a reusable design system.\n[Import from a website](command:workbench.action.chat.open?%7B%22query%22%3A%20%22/open-design-design-system-from-url%20%22%2C%20%22isPartialQuery%22%3A%20true%7D)",
+            "media": {
+              "markdown": "media/walkthrough/design-system-from-url.md"
+            },
+            "completionEvents": [
+              "onCommand:open-design.designSystemFromWebsite"
+            ]
+          },
+          {
             "id": "socialPost",
             "title": "Make a social media post",
             "description": "Design a post at the right size for X, Instagram, LinkedIn, Xiaohongshu, Stories or YouTube, and export it ready to upload.\n[Start a social post](command:workbench.action.chat.open?%7B%22query%22%3A%20%22/open-design-social-post%20%22%2C%20%22isPartialQuery%22%3A%20true%7D)",
