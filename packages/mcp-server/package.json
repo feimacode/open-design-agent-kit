@@ -1,6 +1,6 @@
 {
   "name": "@feimacode/open-design-agent-kit-mcp",
-  "version": "0.4.0-beta.3",
+  "version": "0.4.0",
   "mcpName": "io.github.feimacode/open-design",
   "description": "Open Design as an MCP server: make posters, flyers, social posts, slide decks, landing pages and prototypes from any MCP-capable agent (Claude Code, Codex, Cursor, GitHub Copilot and others), with 198 design systems, browser checks and PDF, PNG or PowerPoint export.",
   "license": "MIT",
