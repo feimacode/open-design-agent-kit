@@ -20,22 +20,22 @@
       "notes": "Upload one image per card face. Keep text and key art 36 px (0.12 in) inside the cut."
     },
     {
-      "name": "MakePlayingCards",
+      "id": "makeplayingcards",
       "label": "MakePlayingCards",
       "url": "https://www.makeplayingcards.com",
-      "source": "https://www.makeplayingcards.com/printing-specifications/",
-      "checkedAt": "2026-11-07",
+      "source": "https://www.makeplayingcards.com/pops/faq-photo.html",
+      "checkedAt": "2026-11-08",
       "formats": [
         {
           "format": "trading-card",
-          "width": 889,
-          "height": 635,
+          "width": 822,
+          "height": 1122,
           "type": "png",
           "dpi": 300
         }
       ],
       "backs": "per-card",
-      "$comment": "Added MakePlayingCards as a print house per issue #50. Verified formats and dimensions on 2026-11-07. Source: makeplayingcards.com printing specifications."
+      "notes": "Upload one image per card face at 300 DPI, portrait 2.5 x 3.5 in, including 36 px bleed per side; keep key art inside the safe area."
     }
   ]
 }
