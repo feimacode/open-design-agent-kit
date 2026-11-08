@@ -4,6 +4,8 @@ One version covers the VS Code extension and the npm packages (`content`, `mcp-s
 
 ## [Unreleased]
 
+- **Claude plugin 0.4.0** runs MCP server 0.4.0 (it ran 0.3.0). The directory's copy, which uses the hosted server, moves to 0.4.0 with it.
+
 ## [0.4.0] - 2026-11-08
 
 **Claude Desktop extension:** install `open-design-0.4.0.mcpb` from this release to update it. **ChatGPT desktop:** run `npx @feimacode/open-design-agent-kit install chatgpt`. **Claude plugin:** moves from MCP server 0.3.0 to 0.4.0.
