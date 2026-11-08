@@ -10,7 +10,7 @@
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { Browser } from 'puppeteer-core';
+import type { Browser, Page } from 'puppeteer-core';
 
 export const BROWSER_PATH_ENV = 'OPEN_DESIGN_BROWSER_PATH';
 // Remote browser over Chrome DevTools Protocol (e.g. http://browser:9222 served by
@@ -197,10 +197,20 @@ export async function openHeadlessBrowser(options: { executablePath?: string; ex
       throw new Error(`${BROWSER_URL_ENV} must be the browser's DevTools HTTP endpoint (e.g. http://browser:9222), got ${JSON.stringify(browserURL)}.`);
     }
     const browser = await puppeteer.connect({ browserURL, protocolTimeout: 60_000 });
+    // Track every page opened through this handle so close() leaves no tabs
+    // behind on the shared browser, no matter which caller opened them.
+    const pages = new Set<Page>();
+    const rawNewPage = browser.newPage.bind(browser);
+    browser.newPage = (async (...args: Parameters<typeof rawNewPage>) => {
+      const page = await rawNewPage(...args);
+      pages.add(page);
+      return page;
+    }) as typeof browser.newPage;
     return {
       browser,
       shared: true,
       close: async () => {
+        for (const page of [...pages]) await page.close().catch(() => undefined);
         await browser.disconnect().catch(() => undefined);
       },
     };
