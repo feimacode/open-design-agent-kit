@@ -2855,6 +2855,14 @@
             }
           },
           {
+            "id": "explore-design-directions",
+            "title": "Explore design directions",
+            "description": "Run `/open-design-explore` in Copilot Chat to build 2 to 4 different design directions side by side. Copilot generates several options, each with its own style and approach, so you can compare and choose the best one.\n[Start exploring](command:workbench.action.chat.open?%7B%22query%22%3A%20%22/open-design-explore%20%22%2C%20%22isPartialQuery%22%3A%20true%7D)",
+            "media": {
+              "markdown": "media/walkthrough/explore.md"
+            }
+          },
+          {
             "id": "gallery",
             "title": "Start from a real example",
             "description": "Browse 193 rendered examples and remix one instead of starting blank.\n[Open the gallery](command:openDesign.openGalleryGrid)",
