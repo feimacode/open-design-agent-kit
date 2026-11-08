@@ -14,7 +14,7 @@
       "interface": {
         "displayName": "Open Design",
         "shortDescription": "Posters, decks, pages, posts",
-        "longDescription": "Open Design gives ChatGPT design recipes, 198 design systems and remixable examples. Ask for a poster, a pitch deck, a landing page or an Instagram carousel: it's built as a real page in one consistent style, checked in a browser, and exported to PNG, PDF or PowerPoint. Designs are saved in your Documents/Open Design folder. Runs on your computer; needs Node.js 18 or later.",
+        "longDescription": "Open Design gives ChatGPT design recipes, 198 design systems and remixable examples. Ask for a poster, a pitch deck, a landing page or an Instagram carousel: it's built as a real page in one consistent style, checked in a browser, and exported to PNG, PDF or PowerPoint. Designs are saved in the folder you pick for the chat, or in your Documents/Open Design folder when there isn't one. Runs on your computer; needs Node.js 18 or later.",
         "developerName": "feimacode",
         "category": "Productivity",
         "capabilities": ["Read", "Write"],

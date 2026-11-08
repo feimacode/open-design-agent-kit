@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { figmaTokenFilePath, getFigmaToken, isChatGptPlugin, isFolderlessAppHost, isHomeFolder, isPluginLaunched, launcherHost, workspaceRootFromArg, workspaceRootFromClientRoots } from '../../env';
+import { figmaTokenFilePath, getFigmaToken, isChatGptPlugin, isFolderlessAppHost, isHomeFolder, isPluginLaunched, isUsersStartFolder, launcherHost, workspaceRootFromArg, workspaceRootFromClientRoots } from '../../env';
 
 describe('workspaceRootFromClientRoots', () => {
   const project = path.resolve('/tmp/od-project');
@@ -74,9 +74,23 @@ describe('launcher host (add-chatgpt-desktop-plugin)', () => {
     assert.strictEqual(isChatGptPlugin({ OPEN_DESIGN_LAUNCHER: 'chatgpt-plugin' }), true);
   });
 
-  it('treats the ChatGPT plugin and the desktop extension as hosts with no folder of their own', () => {
-    assert.strictEqual(isFolderlessAppHost({ OPEN_DESIGN_LAUNCHER: 'chatgpt-plugin' }), true);
-    assert.strictEqual(isFolderlessAppHost({ OPEN_DESIGN_HOST: 'claude-desktop-extension' }), true);
-    assert.strictEqual(isFolderlessAppHost({ OPEN_DESIGN_LAUNCHER: 'claude-plugin' }), false);
+  it('treats the desktop extension, and the ChatGPT plugin started outside the user\'s folder, as hosts with no folder of their own', () => {
+    const home = '/home/u';
+    const serverDir = '/home/u/.codex/plugins/open-design/server/out';
+    const chatgpt = { OPEN_DESIGN_LAUNCHER: 'chatgpt-plugin' };
+    assert.strictEqual(isFolderlessAppHost(chatgpt, home, serverDir, home), true);
+    assert.strictEqual(isFolderlessAppHost(chatgpt, '/', serverDir, home), true);
+    assert.strictEqual(isFolderlessAppHost(chatgpt, '/home/u/.codex/plugins/open-design', serverDir, home), true);
+    assert.strictEqual(isFolderlessAppHost(chatgpt, '/home/u/.codex/plugins/open-design/server', serverDir, home), true);
+    assert.strictEqual(isFolderlessAppHost({ OPEN_DESIGN_HOST: 'claude-desktop-extension' }, '/home/u/proj', serverDir, home), true);
+    assert.strictEqual(isFolderlessAppHost({ OPEN_DESIGN_LAUNCHER: 'claude-plugin' }, home, serverDir, home), false);
+  });
+
+  it('uses the folder ChatGPT desktop started its plugin in as the user\'s folder', () => {
+    const home = '/home/u';
+    const serverDir = '/home/u/.codex/plugins/open-design/server/out';
+    assert.strictEqual(isFolderlessAppHost({ OPEN_DESIGN_LAUNCHER: 'chatgpt-plugin' }, '/home/u/chatgpt-open-design', serverDir, home), false);
+    assert.strictEqual(isUsersStartFolder('/home/u/chatgpt-open-design', serverDir, home), true);
+    assert.strictEqual(isUsersStartFolder('/home/u/.codex/plugins', serverDir, home), false);
   });
 });

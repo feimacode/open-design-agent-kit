@@ -5,6 +5,7 @@ One version covers the VS Code extension and the npm packages (`content`, `mcp-s
 ## [Unreleased]
 
 - **Claude plugin 0.4.0** runs MCP server 0.4.0 (it ran 0.3.0). The directory's copy, which uses the hosted server, moves to 0.4.0 with it.
+- **Fix: ChatGPT desktop no longer stops at "I need a folder to save your designs in".** ChatGPT starts the plugin's server in the folder picked for the thread but reports no MCP roots, and 0.4.0 refused that folder and asked for `set_open_design_workspace`, which ChatGPT didn't offer the model. The server now works in the folder ChatGPT started it in, unless that's the home folder or the plugin's own install folder. The folder tools are also listed first, so hosts that keep or search only part of a long tool list still offer them.
 
 ## [0.4.0] - 2026-11-08
 
