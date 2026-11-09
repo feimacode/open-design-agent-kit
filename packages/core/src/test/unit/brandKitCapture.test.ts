@@ -153,4 +153,61 @@ describe('brand kit capture (real browser; skipped when none is installed)', fun
     assert.strictEqual(ref.brand.voice?.headingCase, 'sentence');
     await assert.rejects(fs.access(path.join(workspaceRoot, '.open-design/design-systems/acme-inspired/assets')));
   });
+
+  it('records a Figma-source draft as source "figma" in brand.json', async () => {
+    const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'od-kit-figma-'));
+    const bundleRel = '.open-design/.extract/sources-acme-figma';
+    await fs.mkdir(path.join(workspaceRoot, bundleRel), { recursive: true });
+    await fs.writeFile(
+      path.join(workspaceRoot, bundleRel, 'evidence.json'),
+      JSON.stringify({
+        version: 2,
+        measuredAt: '2026-11-09T10:00:00.000Z',
+        figma: {
+          source: 'figma',
+          file: 'https://www.figma.com/design/AbC123/Brand',
+          fileKey: 'AbC123',
+          frames: [{ nodeId: '12:345', name: 'Foundations', link: 'https://www.figma.com/design/AbC123/Brand?node-id=12-345' }],
+          readAt: '2026-11-09T10:00:00.000Z',
+        },
+      }),
+    );
+    const { brand } = await saveNewBrand({ workspaceRoot, outputDir: '.open-design', dirRel: '.open-design/design-systems/acme', name: 'Acme', kind: 'own', evidenceDir: bundleRel });
+    assert.strictEqual(brand.sources?.source, 'figma');
+    assert.strictEqual(brand.sources?.figma?.fileKey, 'AbC123');
+    assert.strictEqual(brand.sources?.figma?.frames?.[0]?.nodeId, '12:345');
+    assert.strictEqual(brand.sources?.extractedAt, '2026-11-09T10:00:00.000Z');
+    const saved = await readBrandRecord(path.join(workspaceRoot, '.open-design/design-systems/acme'));
+    assert.strictEqual(saved?.sources?.source, 'figma');
+  });
+
+  it('copies a Figma logo into assets/ and lists its fonts as needed', async () => {
+    const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'od-kit-figma-assets-'));
+    const bundleRel = '.open-design/.extract/sources-acme-figma';
+    await fs.mkdir(path.join(workspaceRoot, bundleRel, 'logos'), { recursive: true });
+    await fs.writeFile(path.join(workspaceRoot, bundleRel, 'logos', 'acme-logo.svg'), '<svg/>');
+    await fs.writeFile(
+      path.join(workspaceRoot, bundleRel, 'evidence.json'),
+      JSON.stringify({
+        version: 2,
+        measuredAt: '2026-11-09T10:00:00.000Z',
+        figma: {
+          source: 'figma',
+          file: 'https://www.figma.com/design/AbC123/Brand',
+          fileKey: 'AbC123',
+          frames: [{ nodeId: '12:345', name: 'Foundations' }],
+          readAt: '2026-11-09T10:00:00.000Z',
+          logos: [
+            { role: 'logo', name: 'acme-logo.svg', path: `${bundleRel}/logos/acme-logo.svg`, width: 120, height: 32, seenOn: '#ffffff' },
+            { role: 'icon', name: 'acme-icon.svg' },
+          ],
+          fonts: [{ family: 'Inter', weights: ['400', '600'], source: 'google' }],
+        },
+      }),
+    );
+    const { brand } = await saveNewBrand({ workspaceRoot, outputDir: '.open-design', dirRel: '.open-design/design-systems/acme', name: 'Acme', kind: 'own', evidenceDir: bundleRel });
+    assert.deepStrictEqual(brand.marks, [{ role: 'logo', path: 'assets/acme-logo.svg', width: 120, height: 32, seenOn: '#ffffff' }]);
+    assert.deepStrictEqual(brand.fonts, [{ family: 'Inter', weights: ['400', '600'], source: 'google', licence: 'unknown' }]);
+    assert.strictEqual(await fs.readFile(path.join(workspaceRoot, '.open-design/design-systems/acme/assets/acme-logo.svg'), 'utf8'), '<svg/>');
+  });
 });

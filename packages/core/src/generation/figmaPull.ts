@@ -171,12 +171,12 @@ function toHexByte(value: number): string {
     .padStart(2, '0');
 }
 
-function toHexColor(color: FigmaColor): string {
+export function toHexColor(color: FigmaColor): string {
   const hex = `#${toHexByte(color.r)}${toHexByte(color.g)}${toHexByte(color.b)}`;
   return color.a !== undefined && color.a < 1 ? `${hex}${toHexByte(color.a)}` : hex;
 }
 
-function firstSolidColor(paints?: FigmaPaint[]): string | undefined {
+export function firstSolidColor(paints?: FigmaPaint[]): string | undefined {
   const solid = paints?.find((p) => p.type === 'SOLID' && p.visible !== false && p.color);
   if (!solid?.color) return undefined;
   return toHexColor({ ...solid.color, a: solid.opacity ?? solid.color.a });
@@ -262,7 +262,7 @@ export function composePullFigmaInstructions(input: ComposePullFigmaInstructions
     ? `\`fileKey: "${figmaRef.fileKey}"\` and \`nodeId: "${figmaRef.nodeId}"\``
     : 'the file key and node id from the link';
   parts.push(
-    `\n\n## Step 1 — use Figma's own server when it's connected\n\nCall \`list_open_design_integrations\` with \`integration: "figma"\` and check your own tools, including deferred ones you can search for, for Figma's \`get_design_context\`.\n\nIf it's there:\n1. Load Figma's guidance first (Figma requires it): call \`get_figma_skill\` with \`uri: "skill://figma/figma-design-to-code/SKILL.md"\`.\n2. Call \`get_design_context\` with ${ids}, \`clientLanguages: "html,css"\` and \`clientFrameworks: "unknown"\`. It returns reference code, a screenshot and download URLs for the frame's assets.\n3. Call \`get_variable_defs\` with the same ids for the frame's colors, type and spacing variables.\n4. Download the assets the design uses right away (their URLs are short-lived) into the artifact's folder, and reference them by relative path.\n5. Treat the returned code as a **reference**, not the final file: rebuild it as one self-contained HTML entry file (CSS in a \`<style>\` block) following the rules below, using the variables' real values.\n6. When the artifact is written, call \`get_screenshot\` with the same ids and compare it with your result; fix any visible differences.${frameSummary ? '\n\nThe structural summary below (from the access token) is extra ground truth either way.' : ''}`,
+    `\n\n## Step 1 — use Figma's own server when it's connected\n\nCall \`list_open_design_integrations\` with \`integration: "figma"\` and check your own tools, including deferred ones you can search for, for Figma's \`get_design_context\`.\n\nIf it's there:\n0. If your Figma tools include \`create_session\`, call it first with the file key and a short task description, and pass the \`sessionId\` it returns on every later Figma call that takes one (Figma's server requires a session before its file tools).\n1. Load Figma's guidance first (Figma requires it): call \`get_figma_skill\` with \`uri: "skill://figma/figma-design-to-code/SKILL.md"\`.\n2. Call \`get_design_context\` with ${ids}, \`clientLanguages: "html,css"\` and \`clientFrameworks: "unknown"\`. It returns reference code, a screenshot and download URLs for the frame's assets.\n3. Call \`get_variable_defs\` with the same ids for the frame's colors, type and spacing variables.\n4. Download the assets the design uses right away (their URLs are short-lived) into the artifact's folder, and reference them by relative path.\n5. Treat the returned code as a **reference**, not the final file: rebuild it as one self-contained HTML entry file (CSS in a \`<style>\` block) following the rules below, using the variables' real values.\n6. When the artifact is written, call \`get_screenshot\` with the same ids and compare it with your result; fix any visible differences.${frameSummary ? '\n\nThe structural summary below (from the access token) is extra ground truth either way.' : ''}`,
   );
 
   if (frameSummary) {

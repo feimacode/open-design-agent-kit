@@ -10,6 +10,7 @@ import * as path from 'node:path';
 import { extractDocument, sourceKindFor } from '../vendored/documentExtract';
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
 import { draftTokensCss, type DraftTokens } from './evidenceToTokens';
+import { fetchFigmaStyles, figmaFileKey, figmaSourceLabel, figmaSourceRecord, parseFigmaSource, parseFigmaStyles, validateFigmaSource, FIGMA_LOGO_MAX_BYTES, type FigmaLogoInput, type FigmaLogoRecord, type FigmaSourceInput, type FigmaSourceRecord } from './figmaSource';
 import { cropPng, screenshotDraft, screenshotPalette, SCREENSHOT_MAX_BYTES } from './screenshotPalette';
 import type { ExtractSiteResult } from './siteExtraction';
 import { CONFIDENCE_ORDER, parseBrandGuideText, parseHtmlSource, parseStyleSource, type SourceDraft } from './sourceExtraction';
@@ -17,8 +18,8 @@ import { readPowerPointTemplate, TEMPLATE_MAX_BYTES } from './templateExtraction
 
 export const MAX_SOURCES = 6;
 export const TEXT_SOURCE_MAX = 2 * 1024 * 1024;
-export type ExtractionSourceKind = 'screenshot' | 'css' | 'html' | 'brandGuide' | 'template';
-export const SOURCE_KINDS: readonly ExtractionSourceKind[] = ['screenshot', 'css', 'html', 'brandGuide', 'template'];
+export type ExtractionSourceKind = 'screenshot' | 'css' | 'html' | 'brandGuide' | 'template' | 'figma';
+export const SOURCE_KINDS: readonly ExtractionSourceKind[] = ['screenshot', 'css', 'html', 'brandGuide', 'template', 'figma'];
 
 export interface ExtractionSource {
   kind: ExtractionSourceKind;
@@ -30,6 +31,8 @@ export interface ExtractionSource {
   data?: string;
   /** A label for pasted text or data, e.g. "pricing page". */
   name?: string;
+  /** A Figma file the host agent read through Figma's own server (openspec add-design-system-from-figma). */
+  figma?: FigmaSourceInput;
 }
 
 /** Validates the `sources` input; returns an error message or the list. */
@@ -43,6 +46,12 @@ export function validateSources(raw: unknown): { ok: true; sources: ExtractionSo
     const o = s as Record<string, unknown>;
     if (!SOURCE_KINDS.includes(o.kind as ExtractionSourceKind)) return { ok: false, error: `sources[${i}].kind must be one of ${SOURCE_KINDS.join(', ')}.` };
     const kind = o.kind as ExtractionSourceKind;
+    if (kind === 'figma') {
+      const checked = validateFigmaSource(o);
+      if (!checked.ok) return { ok: false, error: `sources[${i}]: ${checked.error}` };
+      out.push({ kind, name: typeof o.name === 'string' ? o.name : checked.source.name, figma: checked.source });
+      continue;
+    }
     const given = ['path', 'text', 'data'].filter((k) => typeof o[k] === 'string' && (o[k] as string).length > 0);
     if (given.length !== 1) return { ok: false, error: `sources[${i}] needs exactly one of path, text or data.` };
     if (o.text !== undefined && kind !== 'css' && kind !== 'html') return { ok: false, error: `sources[${i}]: text is for css and html; give a ${kind} as path or data.` };
@@ -68,6 +77,36 @@ function insideWorkspace(workspaceRoot: string, rel: string): string {
 
 const isPng = (b: Buffer) => b.length > 8 && b.readUInt32BE(0) === 0x89504e47;
 
+/** A logo file's format from its first bytes. */
+function sniffLogo(bytes: Buffer): string {
+  const head = bytes.subarray(0, 64).toString('utf8').trimStart();
+  if (head.startsWith('<')) return 'svg';
+  if (isPng(bytes)) return 'png';
+  if (bytes.subarray(0, 3).toString('latin1') === '\xff\xd8\xff') return 'jpg';
+  if (bytes.subarray(0, 4).toString('latin1') === 'RIFF') return 'webp';
+  return 'bin';
+}
+
+/**
+ * An exported logo into the bundle's logos/: the record with its bundle path,
+ * or a record with no path when only its role was listed (the hosted gateway).
+ */
+async function saveFigmaLogo(logo: FigmaLogoInput, bundleDir: string, rel: (f: string) => string, workspaceRoot: string): Promise<FigmaLogoRecord> {
+  const record: FigmaLogoRecord = { role: logo.role, name: logo.name, width: logo.width, height: logo.height, seenOn: logo.seenOn };
+  const bytes = logo.data
+    ? Buffer.from(logo.data.replace(/^data:[^,]*;base64,/i, '').replace(/\s+/g, ''), 'base64')
+    : logo.path
+      ? await fs.readFile(insideWorkspace(workspaceRoot, logo.path))
+      : undefined;
+  if (!bytes) return record;
+  if (bytes.length > FIGMA_LOGO_MAX_BYTES) throw new Error(`it is over ${FIGMA_LOGO_MAX_BYTES / 1024 / 1024} MB`);
+  const ext = (logo.path ? path.posix.extname(logo.path).slice(1) : '').toLowerCase() || sniffLogo(bytes);
+  const name = path.posix.basename(logo.name ?? `${logo.role}.${ext}`);
+  await fs.mkdir(path.join(bundleDir, 'logos'), { recursive: true });
+  await fs.writeFile(path.join(bundleDir, 'logos', name), bytes);
+  return { ...record, name, path: rel(`logos/${name}`) };
+}
+
 export interface ExtractFromSourcesInput {
   workspaceRoot: string;
   outputDir: string;
@@ -76,12 +115,34 @@ export interface ExtractFromSourcesInput {
   urlResult?: Extract<ExtractSiteResult, { bundleDir: string }>;
   /** Turns a JPEG or WebP screenshot into PNG (a local browser); undefined where none is available. */
   toPng?: (data: Buffer) => Promise<Buffer | undefined>;
+  /** A Figma access token for the published-styles fallback (the local server only; never the hosted one). */
+  figmaToken?: string;
+  /** Fetches Figma's REST replies (tests inject one). */
+  fetchImpl?: typeof fetch;
 }
 
 /** Reads every source, merges them with any URL measurement, and writes the evidence bundle. */
 export async function extractFromSources(input: ExtractFromSourcesInput): Promise<Extract<ExtractSiteResult, { bundleDir: string }>> {
-  const label = (s: ExtractionSource, i: number) => s.name ?? (s.path ? path.posix.basename(s.path) : s.kind === 'css' ? `pasted CSS ${i + 1}` : s.kind === 'html' ? `page source ${i + 1}` : `${s.kind} ${i + 1}`);
-  const slugBase = (input.sources[0].name ?? (input.sources[0].path ? path.posix.basename(input.sources[0].path, path.posix.extname(input.sources[0].path)) : input.sources[0].kind)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'sources';
+  const label = (s: ExtractionSource, i: number) =>
+    s.name ??
+    (s.kind === 'figma' && s.figma
+      ? figmaSourceLabel(s.figma)
+      : s.path
+        ? path.posix.basename(s.path)
+        : s.kind === 'css'
+          ? `pasted CSS ${i + 1}`
+          : s.kind === 'html'
+            ? `page source ${i + 1}`
+            : `${s.kind} ${i + 1}`);
+  const first = input.sources[0];
+  const slugBase = (
+    first.name ??
+    (first.kind === 'figma' && first.figma ? figmaSourceLabel(first.figma) : first.path ? path.posix.basename(first.path, path.posix.extname(first.path)) : first.kind)
+  )
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40) || 'sources';
   const bundleRel = input.urlResult?.bundleDir ?? path.posix.join(input.outputDir.split(path.sep).join('/'), '.extract', `sources-${slugBase}`);
   const bundleDir = path.join(input.workspaceRoot, bundleRel);
   if (!input.urlResult) await fs.rm(bundleDir, { recursive: true, force: true });
@@ -91,6 +152,7 @@ export async function extractFromSources(input: ExtractFromSourcesInput): Promis
   const drafts: SourceDraft[] = [];
   const notes: string[] = [];
   const marks: string[] = [...(input.urlResult?.marks ?? [])];
+  const figmaLogos: FigmaLogoRecord[] = [];
   const templateConflicts: DraftTokens['conflicts'] = [];
   let chartPalette: string[] | undefined;
   for (const [i, src] of input.sources.entries()) {
@@ -122,6 +184,22 @@ export async function extractFromSources(input: ExtractFromSourcesInput): Promis
           marks.push(rel(img.name));
         }
         for (const c of t.conflicts) templateConflicts.push({ token: c.token, value: c.value, page: `${name}, master "${c.master}"`, selector: 'theme', confidence: 'declared' });
+      } else if (src.kind === 'figma') {
+        const figma = src.figma!;
+        if ((figma.frames ?? []).length > 0) drafts.push(parseFigmaSource(figma));
+        if (figma.styles) {
+          if (!input.figmaToken) throw new Error('reading published styles needs a Figma access token configured on this machine; read the frames with the Figma connector instead');
+          const fileKey = figma.fileKey ?? figmaFileKey(figma.file);
+          if (!fileKey) throw new Error('reading published styles needs the file key: pass the Figma file link or its key in "file"');
+          drafts.push(parseFigmaStyles(await fetchFigmaStyles(fileKey, input.figmaToken, input.fetchImpl), figmaSourceLabel(figma)));
+        }
+        for (const logo of figma.logos ?? []) {
+          try {
+            figmaLogos.push(await saveFigmaLogo(logo, bundleDir, rel, input.workspaceRoot));
+          } catch (err) {
+            notes.push(`The ${logo.role} logo couldn't be saved: ${err instanceof Error ? err.message : String(err)}.`);
+          }
+        }
       } else if (src.kind === 'screenshot') {
         let png: Buffer = data!;
         if (png.length > SCREENSHOT_MAX_BYTES) throw new Error('it is over 4 MB');
@@ -178,12 +256,26 @@ export async function extractFromSources(input: ExtractFromSourcesInput): Promis
   if (conflicts.some((c) => c.confidence !== 'measured')) notes.push(`Sources disagree on ${[...new Set(conflicts.map((c) => c.token))].join(', ')}: the draft keeps the most trusted value (measured, then declared, stated, sampled); see draft.conflicts.`);
   const sourceCandidates = drafts.flatMap((d) => d.candidates.map((c) => ({ ...c, source: d.source }))).filter((c) => !Object.values(tokens).includes(c.value)).slice(0, 32);
   const status = Object.keys(tokens).length > 0 ? 'ok' : input.urlResult?.status === 'blocked' ? 'blocked' : 'partial';
+  const figma = input.sources.map((s) => s.figma).filter((f): f is FigmaSourceInput => Boolean(f));
+  if (figma.length > 0) notes.push(`Draft from Figma (${figma.map((f) => f.file).join(', ')}): the file, frame links and date are recorded as source "figma" in evidence.json.`);
+  const figmaFonts = figma.flatMap((f) => f.fonts ?? []);
+  const savedLogos = figmaLogos.filter((l) => l.path);
+  const neededLogos = figmaLogos.filter((l) => !l.path);
+  if (savedLogos.length) notes.push(`Logo files (${savedLogos.map((l) => l.name).join(', ')}) were saved into the bundle; saving the design system copies them into its assets/.`);
+  if (neededLogos.length) notes.push(`Logos listed as needed, to attach once the design system is saved: ${neededLogos.map((l) => l.name ?? l.role).join(', ')}.`);
+  if (figmaFonts.length) notes.push(`Font files are listed as needed: ${figmaFonts.map((f) => f.family).join(', ')}.`);
+  let figmaRecord: FigmaSourceRecord | undefined;
+  if (figma.length) {
+    figmaRecord = figmaSourceRecord(figma[0]);
+    if (figmaLogos.length) figmaRecord.logos = figmaLogos;
+    if (figmaFonts.length) figmaRecord.fonts = figmaFonts;
+  }
 
   // evidence.json: the URL's, with the sources added, or a new one.
   const evidencePath = path.join(bundleDir, 'evidence.json');
   const existing = input.urlResult ? (JSON.parse(await fs.readFile(evidencePath, 'utf8').catch(() => '{}')) as Record<string, unknown>) : { version: 2, measuredAt: new Date().toISOString() };
   const summary = input.sources.map((s, i) => ({ kind: s.kind, name: label(s, i), path: s.path }));
-  await fs.writeFile(evidencePath, JSON.stringify({ ...existing, status, sources: summary, sourceDrafts: drafts, chartPalette, marks, draft, notes: [...((existing.notes as string[]) ?? []), ...notes] }, null, 2) + '\n');
+  await fs.writeFile(evidencePath, JSON.stringify({ ...existing, status, sources: summary, figma: figmaRecord, sourceDrafts: drafts, chartPalette, marks, draft, notes: [...((existing.notes as string[]) ?? []), ...notes] }, null, 2) + '\n');
   return {
     status,
     slug: input.urlResult?.slug ?? `sources-${slugBase}`,

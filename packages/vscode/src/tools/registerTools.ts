@@ -59,7 +59,7 @@ export function registerTools(
     ['remix_open_design_example', new RemixExampleTool(contentIndex, assetsRoot, communityContentDir)],
     ['create_open_design_design_system', new CreateCustomDesignSystemTool(contentIndex)],
     ['export_open_design_design_system', new ExportDesignSystemTool(contentIndex)],
-    ['extract_open_design_design_system', new ExtractDesignSystemTool(contentIndex)],
+    ['extract_open_design_design_system', new ExtractDesignSystemTool(contentIndex, context)],
     ['audit_open_design_site', new AuditSiteTool()],
     ['compare_open_design_before_after', new BeforeAfterTool()],
     ['prepare_open_design_edit', new PrepareEditTool(contentIndex)],

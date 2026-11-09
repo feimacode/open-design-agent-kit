@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import { BRAND_REVIEW_FILE, renderBrandReviewPage } from '../export/brandReview';
 import { writeArtifactManifest } from '../vendored/artifactCreate';
 import { BRAND_REFERENCE_FILE, writeBrandRecord, type BrandKind, type BrandMark, type BrandRecord } from './brandKit';
+import type { FigmaSourceRecord } from './figmaSource';
 import type { CapturedBrandKit } from './siteExtraction';
 
 export interface SaveNewBrandInput {
@@ -46,17 +47,20 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
     let urls: string[] | undefined;
     let measuredAt: string | undefined;
     let kit: CapturedBrandKit | undefined;
+    let figma: FigmaSourceRecord | undefined;
     try {
-      const ev = JSON.parse(await fs.readFile(path.join(bundle, 'evidence.json'), 'utf8')) as { url?: string; measuredAt?: string; pages?: Array<{ url?: string }>; brandKit?: CapturedBrandKit };
+      const ev = JSON.parse(await fs.readFile(path.join(bundle, 'evidence.json'), 'utf8')) as { url?: string; measuredAt?: string; pages?: Array<{ url?: string }>; brandKit?: CapturedBrandKit; figma?: FigmaSourceRecord };
       urls = ev.pages?.map((p) => p.url).filter((u): u is string => typeof u === 'string') ?? (ev.url ? [ev.url] : undefined);
       measuredAt = ev.measuredAt;
       kit = ev.brandKit;
+      figma = ev.figma;
       components = kit?.components;
     } catch {
       throw new Error(`No evidence.json in ${rel}. Pass the bundleDir that extract_open_design_design_system returned.`);
     }
-    update.sources = { urls, extractedAt: measuredAt, bundleDir: rel };
+    update.sources = { urls, extractedAt: measuredAt, bundleDir: rel, ...(figma ? { source: 'figma' as const, figma } : {}) };
     if (kit) Object.assign(update, await brandKitRecord(kit, bundle, dir, input.kind, input.fontLicence === 'confirmed'));
+    if (figma) Object.assign(update, await figmaRecordParts(figma, input.workspaceRoot, dir, update, input.kind));
     const shot = await fs.readFile(path.join(bundle, 'desktop.png')).catch(() => fs.readFile(path.join(bundle, 'page-1-desktop.png')).catch(() => undefined));
     if (shot) {
       await fs.mkdir(dir, { recursive: true });
@@ -126,4 +130,37 @@ export async function brandKitRecord(kit: CapturedBrandKit, bundle: string, dir:
     imagery: kit.imagery,
     motion: kit.motion,
   };
+}
+
+/**
+ * The Figma part of brand.json: an own brand's exported logos copied into
+ * assets/ (a logo whose role a site capture already filled is left alone),
+ * and every font family listed, with its files still needed.
+ */
+export async function figmaRecordParts(figma: FigmaSourceRecord, workspaceRoot: string, dir: string, current: Partial<BrandRecord>, kind: BrandKind): Promise<Partial<BrandRecord>> {
+  const update: Partial<BrandRecord> = {};
+  if (kind === 'own' && figma.logos?.length) {
+    const marks: BrandMark[] = [...(current.marks ?? [])];
+    for (const logo of figma.logos) {
+      if (!logo.path || marks.some((m) => m.role === logo.role)) continue;
+      const name = path.posix.basename(logo.path);
+      try {
+        await fs.mkdir(path.join(dir, 'assets'), { recursive: true });
+        await fs.copyFile(path.join(workspaceRoot, logo.path), path.join(dir, 'assets', name));
+        marks.push({ role: logo.role, path: `assets/${name}`, width: logo.width, height: logo.height, seenOn: logo.seenOn });
+      } catch {
+        // A logo whose file is gone is left out.
+      }
+    }
+    if (marks.length) update.marks = marks;
+  }
+  if (figma.fonts?.length) {
+    const fonts = [...(current.fonts ?? [])];
+    for (const f of figma.fonts) {
+      if (fonts.some((x) => x.family.toLowerCase() === f.family.toLowerCase())) continue;
+      fonts.push({ family: f.family, weights: f.weights ?? [], source: f.source ?? 'self-hosted', licence: 'unknown' });
+    }
+    update.fonts = fonts;
+  }
+  return update;
 }

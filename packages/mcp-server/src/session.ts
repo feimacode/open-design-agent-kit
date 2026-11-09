@@ -852,11 +852,11 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'extract_open_design_design_system',
       description:
-        "Renders a website in an installed Chrome, Edge or Chromium (consent banners and chat launchers hidden, never clicked; each page scrolled once) and measures its design system: colour roles from the elements that carry them (page background, cards, text tiers, borders, the primary button and its forced :hover/:active/:focus-visible states, status colours from alerts and invalid fields), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url skill has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and stylesheets and marks the result partial. Also takes sources instead of, or as well as, a url: a screenshot, pasted CSS (custom properties, Tailwind theme or design-tokens JSON), page source, a brand guide document or a PowerPoint template (.pptx, .potx). Each value then carries a confidence (measured, declared, stated, sampled); where sources disagree the more confident value wins and the other is listed under conflicts.",
+        "Renders a website in an installed Chrome, Edge or Chromium (consent banners and chat launchers hidden, never clicked; each page scrolled once) and measures its design system: colour roles from the elements that carry them (page background, cards, text tiers, borders, the primary button and its forced :hover/:active/:focus-visible states, status colours from alerts and invalid fields), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url skill has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and stylesheets and marks the result partial. Also takes sources instead of, or as well as, a url: a screenshot, pasted CSS (custom properties, Tailwind theme or design-tokens JSON), page source, a brand guide document or a PowerPoint template (.pptx, .potx). Each value then carries a confidence (measured, declared, stated, sampled); where sources disagree the more confident value wins and the other is listed under conflicts. A Figma file or frame link in url is not fetched: the tool returns the steps to read the file with the Figma connector and call back with the replies as a figma source.",
       inputSchema: {
         type: 'object',
         properties: {
-          url: { type: 'string', description: 'The page to measure, e.g. the home page. Optional when sources are given.' },
+          url: { type: 'string', description: 'The page to measure, e.g. the home page; or a Figma file or frame link (the tool then returns what to read with the Figma connector). Optional when sources are given.' },
           extraUrls: {
             type: 'array',
             items: { type: 'string' },
@@ -886,15 +886,93 @@ const TOOL_DEFS: ToolDef[] = [
             type: 'array',
             maxItems: 6,
             description:
-              'Optional: up to 6 other sources to draft from, with or without a url. A blocked site, a site behind a login, or a brand with no site: ask for a screenshot, the CSS, a brand guide or a PowerPoint template. Screenshots give sampled colours only (fonts need confirming); templates and brand guides give declared values.',
+              'Optional: up to 6 other sources to draft from, with or without a url. A blocked site, a site behind a login, or a brand with no site: ask for a screenshot, the CSS, a brand guide or a PowerPoint template. Screenshots give sampled colours only (fonts need confirming); templates and brand guides give declared values. A figma source is the replies the agent read from a Figma file through Figma\'s connector: pass the file link, each token frame\'s get_variable_defs map, and the search_design_system items.',
             items: {
               type: 'object',
               properties: {
-                kind: { type: 'string', enum: ['screenshot', 'css', 'html', 'brandGuide', 'template'], description: 'screenshot: a PNG of the site or app. css: a stylesheet, a Tailwind theme or W3C design-tokens JSON. html: page source. brandGuide: a PDF, DOCX, PPTX or Markdown guide with colour codes and fonts. template: a PowerPoint template (.pptx or .potx).' },
+                kind: { type: 'string', enum: ['screenshot', 'css', 'html', 'brandGuide', 'template', 'figma'], description: 'screenshot: a PNG of the site or app. css: a stylesheet, a Tailwind theme or W3C design-tokens JSON. html: page source. brandGuide: a PDF, DOCX, PPTX or Markdown guide with colour codes and fonts. template: a PowerPoint template (.pptx or .potx). figma: a Figma file the agent read with Figma\'s connector (see file, frames and designSystem).' },
                 path: { type: 'string', description: 'Workspace-relative path to the file.' },
                 text: { type: 'string', description: 'For css and html: the text itself (at most 2 MB).' },
                 data: { type: 'string', description: 'For a screenshot or template: the file as base64 (screenshot at most 4 MB, template 20 MB).' },
                 name: { type: 'string', description: 'Optional: a label for the source in the draft (e.g. "brand guide 2024").' },
+                file: { type: 'string', description: 'For figma: the Figma file link (or its key).' },
+                frames: {
+                  type: 'array',
+                  description: 'For figma: each token frame and the primary button, with the get_variable_defs reply for that frame.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      nodeId: { type: 'string', description: 'The frame\'s id, e.g. "12:345".' },
+                      name: { type: 'string', description: 'The frame\'s name; it says which role the frame plays.' },
+                      link: { type: 'string', description: 'The frame\'s link, for the record.' },
+                      variables: { type: 'object', additionalProperties: true, description: 'The get_variable_defs reply: a resolved name-to-value map.' },
+                      fill: { type: 'string', description: 'For the primary button: its fill colour, when read directly.' },
+                      text: { type: 'string', description: 'For the primary button: the colour of the text on it.' },
+                    },
+                    required: ['nodeId', 'variables'],
+                  },
+                },
+                designSystem: {
+                  type: 'array',
+                  description: 'For figma: the search_design_system items: each variable\'s name, collection, scopes and description.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      collection: { type: 'string' },
+                      scopes: { type: 'array', items: { type: 'string' }, description: 'Figma scopes, e.g. FRAME_FILL, TEXT_FILL, STROKE_COLOR, CORNER_RADIUS.' },
+                      description: { type: 'string' },
+                      type: { type: 'string' },
+                      modes: { type: 'array', items: { type: 'string' } },
+                    },
+                    required: ['name'],
+                  },
+                },
+                styles: { type: 'boolean', description: 'For figma: read the file\'s published styles through Figma\'s REST API with this machine\'s token (local server only). Use when Figma is not connected.' },
+                modes: {
+                  type: 'array',
+                  description: 'For figma: the collections and modes the design-system search named.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      collection: { type: 'string' },
+                      modes: { type: 'array', items: { type: 'string' } },
+                      read: { type: 'string', description: 'The mode the frames show, when it is known.' },
+                    },
+                    required: ['collection', 'modes'],
+                  },
+                },
+                logos: {
+                  type: 'array',
+                  maxItems: 8,
+                  description: 'For figma: the logo frames you exported, one entry per role. The local server saves the files into the bundle; the hosted server lists them as needed, so pass role and name only there.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      role: { type: 'string', enum: ['logo', 'logo-dark', 'logo-on-dark', 'icon', 'touch-icon', 'manifest-icon', 'social'], description: 'Where the logo belongs in the design system.' },
+                      name: { type: 'string', description: 'The file name to save it as, e.g. "acme-logo.svg".' },
+                      data: { type: 'string', description: 'The exported file as base64 (at most 1 MB). Local server only.' },
+                      path: { type: 'string', description: 'A workspace-relative file you already wrote. Local server only.' },
+                      width: { type: 'number' },
+                      height: { type: 'number' },
+                      seenOn: { type: 'string', description: 'The background colour it was seen on, #rrggbb.' },
+                    },
+                    required: ['role'],
+                  },
+                },
+                fonts: {
+                  type: 'array',
+                  description: 'For figma: each font family the file names, with its weights. Figma holds no font files, so they are listed as needed.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      family: { type: 'string' },
+                      weights: { type: 'array', items: { type: 'string' }, description: 'e.g. ["400", "600"].' },
+                      source: { type: 'string', enum: ['google', 'adobe', 'self-hosted', 'system'] },
+                    },
+                    required: ['family'],
+                  },
+                },
               },
               required: ['kind'],
             },
@@ -907,7 +985,8 @@ const TOOL_DEFS: ToolDef[] = [
         },
       },
     },
-    handler: (ctx, args) => tools.extractDesignSystemFromSite(ctx, args as { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean; discover?: boolean; compareTo?: string }),
+    handler: (ctx, args) =>
+      tools.extractDesignSystemFromSite(ctx, args as { url?: string; extraUrls?: string[]; theme?: string; content?: boolean; localizeImages?: boolean; discover?: boolean; compareTo?: string; sources?: unknown }),
   },
   {
     tool: {
@@ -2101,7 +2180,7 @@ export function createSession(remote?: RemoteSession): Server {
     }
     const run = async (): Promise<ToolResult> => {
       try {
-        const callCtx = { ...ctx, figmaToken: remote ? undefined : getFigmaToken(), clientName: server.getClientVersion()?.name, rendersMcpApps: rendersMcpApps() };
+        const callCtx = { ...ctx, figmaToken: remote ? undefined : getFigmaToken(), hosted: remote ? true : undefined, clientName: server.getClientVersion()?.name, rendersMcpApps: rendersMcpApps() };
         if (project && name === 'publish_open_design_artifact') return await remotePublish(project, args);
         const exporting = project !== undefined && name === 'export_open_design_artifact';
         if (exporting && !(await project!.countExport())) {

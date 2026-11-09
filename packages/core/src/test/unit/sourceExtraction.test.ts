@@ -225,6 +225,95 @@ describe('design system from sources', () => {
     assert.match((validateSources(Array.from({ length: 7 }, () => ({ kind: 'css', text: 'a{}' }))) as { error: string }).error, /6/);
   });
 
+  it('accepts a figma source, and rejects one with no file or no frames', () => {
+    const checked = validateSources([{ kind: 'figma', file: 'https://www.figma.com/design/AbC123/Brand', frames: [{ nodeId: '1:2', variables: { 'color/bg/default': '#FFFFFF' } }] }]);
+    assert.ok(checked.ok);
+    assert.strictEqual(checked.sources[0].figma?.fileKey, 'AbC123');
+    assert.match((validateSources([{ kind: 'figma', frames: [] }]) as { error: string }).error, /file/);
+    assert.match((validateSources([{ kind: 'figma', file: 'AbC123', frames: [{ nodeId: '1:2' }] }]) as { error: string }).error, /variables/);
+  });
+
+  it('drafts from a figma source and records the file, frame links and date', async () => {
+    const result = await extractFromSources({
+      workspaceRoot: root,
+      outputDir: '.open-design',
+      sources: [{
+        kind: 'figma',
+        name: 'Acme Figma',
+        figma: {
+          kind: 'figma',
+          file: 'https://www.figma.com/design/AbC123/Brand?node-id=12-345',
+          frames: [{
+            nodeId: '12:345',
+            name: 'Foundations',
+            link: 'https://www.figma.com/design/AbC123/Brand?node-id=12-345',
+            variables: { 'color/bg/default': '#FFFFFF', 'color/text/primary': '#111111', 'brand/500': '#5B3DF5' },
+          }],
+        },
+      }],
+    });
+    assert.strictEqual(result.status, 'ok');
+    assert.strictEqual(result.draft?.tokens['--bg'], '#ffffff');
+    assert.strictEqual(result.draft?.sources['--bg']?.confidence, 'declared');
+    assert.ok(result.notes.some((n) => /Draft from Figma/.test(n)));
+    const evidence = JSON.parse(await fs.readFile(path.join(root, result.bundleDir, 'evidence.json'), 'utf8'));
+    assert.strictEqual(evidence.figma.source, 'figma');
+    assert.strictEqual(evidence.figma.file, 'https://www.figma.com/design/AbC123/Brand?node-id=12-345');
+    assert.strictEqual(evidence.figma.fileKey, 'AbC123');
+    assert.deepStrictEqual(evidence.figma.frames, [{ nodeId: '12:345', name: 'Foundations', link: 'https://www.figma.com/design/AbC123/Brand?node-id=12-345' }]);
+    assert.ok(evidence.figma.readAt);
+  });
+
+  it('saves exported logos into the bundle, and lists fonts and role-only logos as needed', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"/>';
+    const result = await extractFromSources({
+      workspaceRoot: root,
+      outputDir: '.open-design',
+      sources: [{
+        kind: 'figma',
+        figma: {
+          kind: 'figma',
+          file: 'AbC123',
+          frames: [{ nodeId: '1:2', variables: { 'color/bg/default': '#FFFFFF' } }],
+          logos: [
+            { role: 'logo', name: 'acme-logo.svg', data: Buffer.from(svg).toString('base64'), width: 120, height: 32 },
+            { role: 'icon', name: 'acme-icon.svg' },
+          ],
+          fonts: [{ family: 'Inter', weights: ['400', '600'] }],
+        },
+      }],
+    });
+    assert.strictEqual(result.status, 'ok');
+    assert.ok(result.notes.some((n) => /Logo files \(acme-logo\.svg\) were saved/.test(n)));
+    assert.ok(result.notes.some((n) => /Logos listed as needed.*acme-icon\.svg/.test(n)));
+    assert.ok(result.notes.some((n) => /Font files are listed as needed: Inter/.test(n)));
+    assert.strictEqual(await fs.readFile(path.join(root, result.bundleDir, 'logos', 'acme-logo.svg'), 'utf8'), svg);
+    const evidence = JSON.parse(await fs.readFile(path.join(root, result.bundleDir, 'evidence.json'), 'utf8'));
+    assert.deepStrictEqual(evidence.figma.logos.map((l: { role: string }) => l.role), ['logo', 'icon']);
+    assert.strictEqual(evidence.figma.logos[0].path, `${result.bundleDir}/logos/acme-logo.svg`);
+    assert.strictEqual(evidence.figma.logos[0].width, 120);
+    assert.strictEqual(evidence.figma.logos[1].path, undefined);
+    assert.deepStrictEqual(evidence.figma.fonts, [{ family: 'Inter', weights: ['400', '600'] }]);
+  });
+
+  it('reads published styles only with a token, and never without one', async () => {
+    const source = { kind: 'figma' as const, figma: { kind: 'figma' as const, file: 'AbC123', styles: true } };
+    const without = await extractFromSources({ workspaceRoot: root, outputDir: '.open-design', sources: [source] });
+    assert.notStrictEqual(without.status, 'ok');
+    assert.ok(without.notes.some((n) => /needs a Figma access token/.test(n)));
+    const seen: string[] = [];
+    const fetchImpl = (async (url: string | URL | Request) => {
+      seen.push(String(url));
+      const body = String(url).includes('/nodes')
+        ? { nodes: { '10:1': { document: { id: '10:1', name: 'Primary/500', type: 'RECTANGLE', fills: [{ type: 'SOLID', color: { r: 91 / 255, g: 61 / 255, b: 245 / 255 } }] } } } }
+        : { meta: { styles: [{ key: 'S:1', name: 'Primary/500', style_type: 'FILL', node_id: '10:1' }] } };
+      return new Response(JSON.stringify(body), { status: 200 });
+    }) as typeof fetch;
+    const withToken = await extractFromSources({ workspaceRoot: root, outputDir: '.open-design', sources: [source], figmaToken: 'tok', fetchImpl });
+    assert.ok(withToken.sourceCandidates?.some((c) => c.value === '#5b3df5' && c.label === 'Primary/500'));
+    assert.deepStrictEqual(seen.map((u) => new URL(u).pathname), ['/v1/files/AbC123/styles', '/v1/files/AbC123/nodes']);
+  });
+
   it('merges sources by confidence, lists disagreements as conflicts, and writes the bundle', async () => {
     await fs.writeFile(path.join(root, 'guide.md'), GUIDE.replace('CMYK 0 100 80 5', 'HEX #c8102e'));
     await fs.writeFile(path.join(root, 'acme.potx'), await template());

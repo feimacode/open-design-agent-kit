@@ -1213,7 +1213,7 @@
       {
         "name": "extract_open_design_design_system",
         "displayName": "Extract Design System from Website",
-        "modelDescription": "Renders a website in an installed Chrome, Edge or Chromium (consent banners and chat launchers hidden, never clicked; each page scrolled once) and measures its design system: colour roles from the elements that carry them (page background, cards, text tiers, borders, the primary button and its forced :hover/:active/:focus-visible states, status colours from alerts and invalid fields), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url prompt has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and marks the result partial.",
+        "modelDescription": "Renders a website in an installed Chrome, Edge or Chromium (consent banners and chat launchers hidden, never clicked; each page scrolled once) and measures its design system: colour roles from the elements that carry them (page background, cards, text tiers, borders, the primary button and its forced :hover/:active/:focus-visible states, status colours from alerts and invalid fields), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url prompt has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and marks the result partial. A Figma file or frame link in url is not opened: the tool returns the steps to read the file with the Figma connector and call back with the replies as a figma source.",
         "userDescription": "Measure a website's colours, fonts and spacing as a starting design system",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-extract-design-system",
@@ -1223,7 +1223,7 @@
           "properties": {
             "url": {
               "type": "string",
-              "description": "The page to measure, e.g. the home page. Optional when sources are given."
+              "description": "The page to measure, e.g. the home page; or a Figma file or frame link (the tool then returns what to read with the Figma connector). Optional when sources are given."
             },
             "extraUrls": {
               "type": "array",
@@ -1261,7 +1261,7 @@
             "sources": {
               "type": "array",
               "maxItems": 6,
-              "description": "Optional: up to 6 other sources to draft from, with or without a url: a screenshot, CSS (custom properties, a Tailwind theme or design-tokens JSON), page source, a brand guide or a PowerPoint template. Each value carries a confidence (measured, declared, stated, sampled); disagreements are listed under conflicts.",
+              "description": "Optional: up to 6 other sources to draft from, with or without a url: a screenshot, CSS (custom properties, a Tailwind theme or design-tokens JSON), page source, a brand guide, a PowerPoint template, or a Figma file the agent read with Figma's connector. Each value carries a confidence (measured, declared, stated, sampled); disagreements are listed under conflicts.",
               "items": {
                 "type": "object",
                 "properties": {
@@ -1272,7 +1272,8 @@
                       "css",
                       "html",
                       "brandGuide",
-                      "template"
+                      "template",
+                      "figma"
                     ]
                   },
                   "path": {
@@ -1290,6 +1291,194 @@
                   "name": {
                     "type": "string",
                     "description": "Optional label for the source."
+                  },
+                  "file": {
+                    "type": "string",
+                    "description": "For figma: the Figma file link (or its key)."
+                  },
+                  "frames": {
+                    "type": "array",
+                    "description": "For figma: each token frame and the primary button, with the get_variable_defs reply for that frame.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "nodeId": {
+                          "type": "string",
+                          "description": "The frame's id, e.g. \"12:345\"."
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "The frame's name; it says which role the frame plays."
+                        },
+                        "link": {
+                          "type": "string",
+                          "description": "The frame's link, for the record."
+                        },
+                        "variables": {
+                          "type": "object",
+                          "additionalProperties": true,
+                          "description": "The get_variable_defs reply: a resolved name-to-value map."
+                        },
+                        "fill": {
+                          "type": "string",
+                          "description": "For the primary button: its fill colour, when read directly."
+                        },
+                        "text": {
+                          "type": "string",
+                          "description": "For the primary button: the colour of the text on it."
+                        }
+                      },
+                      "required": [
+                        "nodeId",
+                        "variables"
+                      ]
+                    }
+                  },
+                  "designSystem": {
+                    "type": "array",
+                    "description": "For figma: the search_design_system items: each variable's name, collection, scopes and description.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "collection": {
+                          "type": "string"
+                        },
+                        "scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Figma scopes, e.g. FRAME_FILL, TEXT_FILL, STROKE_COLOR, CORNER_RADIUS."
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "modes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  },
+                  "styles": {
+                    "type": "boolean",
+                    "description": "For figma: read the file's published styles through Figma's REST API with this machine's token. Use when Figma is not connected."
+                  },
+                  "modes": {
+                    "type": "array",
+                    "description": "For figma: the collections and modes the design-system search named.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "collection": {
+                          "type": "string"
+                        },
+                        "modes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "read": {
+                          "type": "string",
+                          "description": "The mode the frames show, when it is known."
+                        }
+                      },
+                      "required": [
+                        "collection",
+                        "modes"
+                      ]
+                    }
+                  },
+                  "logos": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "description": "For figma: the logo frames you exported, one entry per role. The local server saves the files into the bundle; the hosted server lists them as needed, so pass role and name only there.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "logo",
+                            "logo-dark",
+                            "logo-on-dark",
+                            "icon",
+                            "touch-icon",
+                            "manifest-icon",
+                            "social"
+                          ],
+                          "description": "Where the logo belongs in the design system."
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "The file name to save it as, e.g. \"acme-logo.svg\"."
+                        },
+                        "data": {
+                          "type": "string",
+                          "description": "The exported file as base64 (at most 1 MB). Local server only."
+                        },
+                        "path": {
+                          "type": "string",
+                          "description": "A workspace-relative file you already wrote. Local server only."
+                        },
+                        "width": {
+                          "type": "number"
+                        },
+                        "height": {
+                          "type": "number"
+                        },
+                        "seenOn": {
+                          "type": "string",
+                          "description": "The background colour it was seen on, #rrggbb."
+                        }
+                      },
+                      "required": [
+                        "role"
+                      ]
+                    }
+                  },
+                  "fonts": {
+                    "type": "array",
+                    "description": "For figma: each font family the file names, with its weights. Figma holds no font files, so they are listed as needed.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "family": {
+                          "type": "string"
+                        },
+                        "weights": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "e.g. [\"400\", \"600\"]."
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "google",
+                            "adobe",
+                            "self-hosted",
+                            "system"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "family"
+                      ]
+                    }
                   }
                 },
                 "required": [

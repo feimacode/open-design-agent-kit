@@ -198,6 +198,19 @@ The review is `review.html` in the design system's folder: the site's screenshot
 
 For a reference site, the design system is named "<Name>-inspired" and no logos or images are copied. Dark values are only measured when the site has a dark theme. A page behind a bot check or login comes back as blocked, with its screenshot; give the agent the CSS or a screenshot instead. Without a browser, the agent reads the page source and stylesheets, takes roles from the names the CSS gives them, and asks you to confirm the brand colour and font.
 
+### Take one from Figma
+
+> Make a design system from my Figma file: https://www.figma.com/design/…
+
+The same skill does it. Open Design never contacts Figma: the agent reads the file through Figma's own MCP server (the [Figma connector](integrations.md)) and the tool maps what it returns. Pass a link to the whole file, or to the frame that holds the foundations.
+
+1. **The tool asks for the read.** Called with the link, [`extract_open_design_design_system`](../reference/tools.md#extract_open_design_design_system) returns `status: "needs-figma-read"` and the steps: check the connector, find the token, logo and primary-button frames, read their variables, read the variable collections and scopes, export the logos, and name the fonts. The agent follows them with its Figma tools (`get_metadata`, `get_variable_defs`, `search_design_system`, `get_screenshot`, `get_design_context`) and calls the tool again with a `figma` source.
+2. **Roles come from names and scopes.** Variable names decide most roles (`color/bg/default` → `--bg`, `radius/md` → `--radius-md`); a Figma scope decides the ones a name leaves open (a fill scoped for text is a text colour, a stroke colour is `--border`). The accent is a variable named for it, or else the primary button's fill. Numbers map to the type scale, spacing and radius, and colours no role claims stay candidates with their Figma names. One mode per collection is read and the others are listed as not read; aliases arrive from Figma already resolved.
+3. **Logos are files; fonts are families.** The agent exports each logo it needs (logo, dark-background logo, icon, social image) and passes the files. On the local server they're copied into the design system's `assets/` for your own brand. On the hosted connector they're listed as needed and you attach them once it's saved. Figma holds no font files, so each family is listed, with a free match named where one exists.
+4. **Review and save** work as for a site: `review.html` puts a sample in the new tokens beside the file's screenshot, `check_open_design_artifact` compares them, and the system saves as `user:<name>` with `source: "figma"` in `brand.json`, with the file link, the frames read and the date.
+
+Without the connector, the local server can read the file's published fill and text styles with a [Figma access token](../reference/settings-and-env.md#open_design_figma_token). The hosted connector has no token, so it can't. Variable modes and aliases aren't followed beyond what Figma returns, components aren't rebuilt, and nothing syncs later: ask again to refresh.
+
 ### Take one from a template, brand guide, CSS or screenshot
 
 > Make a design system from our PowerPoint template, brand/Acme.potx.
@@ -206,6 +219,7 @@ Not every brand has a website you can open. The same tool takes up to six other 
 
 | Source | What it gives | How sure |
 |---|---|---|
+| Figma file (link) | Variables with their scopes and modes, published styles, exported logos, font families | declared |
 | PowerPoint template (`.pptx`, `.potx`) | Theme colours, heading and body fonts, text sizes, the logo on the master, the chart colours | declared |
 | CSS, a Tailwind theme, `tokens.json` | Colours and fonts the file names (`--color-primary`, `background`) | declared |
 | Brand guide (PDF, DOCX, PPTX, Markdown) | Labelled colour codes (CMYK converted and marked), typefaces | stated |

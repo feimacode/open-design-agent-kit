@@ -40,7 +40,7 @@ describe('style vector (add-nearest-design-system)', () => {
 
   it('a thin draft gets a note and no nearest', async () => {
     const result = { status: 'ok', notes: [], draft: { tokens: { '--bg': '#ffffff', '--accent': '#e11d48' } } } as unknown as ExtractSiteResult;
-    const out = (await withNearestDesignSystems(result, index)) as Extract<ExtractSiteResult, { notes: string[] }>;
+    const out = (await withNearestDesignSystems(result, index)) as Extract<ExtractSiteResult, { slug: string }>;
     assert.strictEqual(out.nearest, undefined);
     assert.ok(out.notes.some((n: string) => /too little to compare/.test(n)), JSON.stringify(out.notes));
   });
