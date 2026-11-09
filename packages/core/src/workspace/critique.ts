@@ -12,6 +12,7 @@ import { checkRunsDir, listCheckRuns } from '../export/checkHistory';
 import { promises as fs } from 'node:fs';
 import { readCritique, validateCritique, type CritiqueRecord } from './critiqueTypes';
 import { loadAuditFixes } from '../generation/contentInventory';
+import { editLogOf } from '../generation/steeringEdits';
 import { redesignSiteOf } from '../export/redesignChecks';
 import { BRAND_REFERENCE_FILE, readBrandRecord, type BrandComponents, type BrandMotion, type BrandVoice } from '../generation/brandKit';
 
@@ -52,6 +53,8 @@ export interface CritiqueInput {
   auditFixes?: Array<{ id: string; title: string; where: string; fix: string }>;
   /** For a design on the person's own brand: what `fit` is judged against (openspec connect-brand-design-systems). */
   brand?: CritiqueBrand;
+  /** The last steering edits (openspec add-steering-edits), newest last: how the design got here, so fixes don't undo what the user asked for. */
+  edits?: Array<{ verb: string; scope: string; at: string; status: string }>;
 }
 
 export interface CritiqueBrand {
@@ -165,6 +168,14 @@ export async function buildCritiqueInput(options: {
     tasks: await critiqueTasks(options.workspaceRoot, options.entryPath, manifest, metadata),
     auditFixes: await redesignAuditFixes(options.workspaceRoot, options.outputDir, options.entryPath),
     brand: await critiqueBrand(options.workspaceRoot, options.outputDir, options.designSystem?.id ?? str(manifest?.designSystemId)),
+    edits: steeringEditsOf(manifest),
   };
 }
 
+function steeringEditsOf(manifest: JsonRecord | null): CritiqueInput['edits'] {
+  const log = editLogOf(manifest)
+    .filter((e) => e.status !== 'undone' && e.status !== 'dropped')
+    .slice(-5)
+    .map((e) => ({ verb: e.verb, scope: e.scope, at: e.at, status: e.status }));
+  return log.length > 0 ? log : undefined;
+}

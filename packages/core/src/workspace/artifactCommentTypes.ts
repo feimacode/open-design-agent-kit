@@ -1,6 +1,7 @@
 // The comment record stored in `<entry>.comments.json`. Kept free of node:
 // imports so the browser-target preview modules (src/preview) can share it
 // with the fs side (artifactComments.ts).
+import type { SteeringVerb } from '../generation/steeringVerbs';
 
 export type ArtifactCommentStatus = 'open' | 'sent' | 'resolved';
 
@@ -32,6 +33,8 @@ export interface ArtifactComment {
   /** True when the crop was re-rendered headless rather than taken from the window the user saw. */
   screenshotRerendered?: boolean;
   host?: 'vscode' | 'browser' | 'mcp-app';
+  /** Set by a preview verb button: the comment asks for a steering edit with this verb (openspec add-steering-edits). */
+  verb?: SteeringVerb;
 }
 
 /** Unaddressed comments: not yet resolved by the agent. */

@@ -5,6 +5,7 @@
 // comments are persisted (its host transport) and owns the panel element,
 // the selection highlight and the bridge.
 import type { ArtifactComment } from '../workspace/artifactCommentTypes';
+import { STEERING_VERB_HINTS, STEERING_VERB_LABELS, STEERING_VERBS, verbCommentNote, type SteeringVerb } from '../generation/steeringVerbs';
 import { escapeHtml, hostRectOf } from './overlays';
 import type { BridgeRect, ElementSnapshot, ToBridge } from './protocol';
 
@@ -23,6 +24,11 @@ export interface CommentControllerOptions {
   onAdded?(comment: ArtifactComment, target: ElementSnapshot): void;
   /** Clicking a pin opens its details with Resolve and Delete (the browser preview). */
   pinDetails?: boolean;
+  /**
+   * Shows the steering verbs in the comment panel (openspec add-steering-edits):
+   * a verb saves a comment with that verb and hands it here to send at once.
+   */
+  sendVerb?(comment: ArtifactComment): void;
 }
 
 export interface CommentController {
@@ -48,8 +54,9 @@ function newCommentId(): string {
 }
 
 /** A new comment for the clicked element: the robust selector, text excerpt, document rect and viewport; never an invented id. */
-export function commentFromSnapshot(target: ElementSnapshot, note: string, host: NonNullable<ArtifactComment['host']>, now = new Date().toISOString()): ArtifactComment {
+export function commentFromSnapshot(target: ElementSnapshot, note: string, host: NonNullable<ArtifactComment['host']>, now = new Date().toISOString(), verb?: SteeringVerb): ArtifactComment {
   return {
+    ...(verb ? { verb } : {}),
     id: newCommentId(),
     ...(target.sourceElementId ? { elementId: target.sourceElementId } : {}),
     selector: target.selector,
@@ -83,6 +90,13 @@ export function createCommentController(options: CommentControllerOptions): Comm
     </div>
     <div class="od-panel-body">
       <textarea id="od-comment-text" class="od-textarea" rows="3" placeholder="What should change here?"></textarea>
+      ${
+        options.sendVerb
+          ? `<div class="od-verbs" role="group" aria-label="Or steer this part">${STEERING_VERBS.map(
+              (v) => `<button type="button" class="od-btn od-verb" data-od-verb="${v}" title="${escapeHtml(STEERING_VERB_HINTS[v])}">${STEERING_VERB_LABELS[v]}</button>`,
+            ).join('')}</div>`
+          : ''
+      }
     </div>
     <div class="od-panel-footer">
       <span class="od-spacer"></span>
@@ -90,6 +104,17 @@ export function createCommentController(options: CommentControllerOptions): Comm
       <button id="od-comment-save" class="od-btn od-btn-primary">Add</button>
     </div>
   `;
+    panel.querySelectorAll<HTMLButtonElement>('[data-od-verb]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const verb = button.dataset.odVerb as SteeringVerb;
+        const comment = commentFromSnapshot(target, verbCommentNote(verb), options.host, undefined, verb);
+        comments.push(comment);
+        changed([comment]);
+        options.closePanel();
+        options.onAdded?.(comment, target);
+        options.sendVerb?.(comment);
+      });
+    });
     const textarea = document.getElementById('od-comment-text') as HTMLTextAreaElement;
     textarea.focus();
     const save = (): void => {

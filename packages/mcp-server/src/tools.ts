@@ -33,6 +33,8 @@ import {
   type ExtractSiteResult,
   auditSite as auditLiveSite,
   compareBeforeAfter as compareLiveBeforeAfter,
+  prepareEdit as prepareSteeringEdit,
+  formatPrepareEditResult,
   formatBeforeAfterResult,
   formatAuditSiteResult,
   formatExtractSiteResult,
@@ -1290,7 +1292,7 @@ export async function listIntegrations(ctx: ToolContext, input: ListIntegrations
 /** check_open_design_artifact: renders the artifact and returns findings plus screenshots; writes nothing. */
 export async function checkArtifact(
   ctx: ToolContext,
-  input: { entryPath?: string; collectionId?: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number; at?: number[]; views?: ReviewView[] | false; states?: boolean },
+  input: { entryPath?: string; collectionId?: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number; at?: number[]; views?: ReviewView[] | false; states?: boolean; editId?: string },
 ): Promise<ToolOutput> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
   const lookupAspectHint = async (id: string) => (await ctx.contentIndex.getSkill(id))?.aspectHint;
@@ -1310,6 +1312,13 @@ export async function checkArtifact(
     lookupAspectHint,
   });
   return { text: formatCheckResult(result), images: result.ok ? result.images : [] };
+}
+
+/** prepare_open_design_edit: a steering edit's instructions and snapshot, or an undo (openspec add-steering-edits). */
+export async function prepareEditTool(ctx: ToolContext, input: { entryPath: string; verb?: string; scope?: unknown; notes?: string; undo?: string }): Promise<string> {
+  const verbsDoc = (await ctx.contentIndex.craftSections()).find((c) => c.id === 'steering-verbs')?.body;
+  const result = await prepareSteeringEdit({ ...input, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, verbsDoc, managedWorkspace: ctx.managedWorkspace });
+  return formatPrepareEditResult(result);
 }
 
 /** adapt_open_design_artifact: per-format re-composition instructions; writes only the master's collection membership. */

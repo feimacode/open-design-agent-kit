@@ -38,6 +38,23 @@ import { redesignFindings } from './redesignChecks';
 import { applyBrandChecks, loadOwnBrandContext } from './brandChecks';
 import { BRAND_REVIEW_ATTR, brandReviewFindings } from './brandReview';
 import { appDesignSystemStaleness, parseAppComponentsFile, tokenFindings } from '../generation/appDesignSystem';
+import { BEFORE_DATA_FILE, editLogOf, hashHtml, readEditRecord, screenDataFile, updateEditLog, type EditGuardResult } from '../generation/steeringEdits';
+import { writeArtifactManifest } from '../vendored/artifactCreate';
+import {
+  captureForGuard,
+  comparePixelsOutsideScope,
+  compareMarkupOutsideScope,
+  composeEditSheet,
+  countedFindings,
+  GUARD_VIEWPORTS,
+  hardeningSignals,
+  leakCrop,
+  newFindings,
+  verbEffect,
+  writeWorkspaceFile,
+  type Capture,
+  type GuardViewportName,
+} from './editGuard';
 
 export interface CheckViewport {
   name: string;
@@ -88,6 +105,8 @@ export interface CheckArtifactOptions {
   states?: boolean;
   /** App screens: also fill a copy with long and extreme content (stress-overflow, stress-truncation). Default true (openspec add-states-board). */
   stress?: boolean;
+  /** A steering edit to prove: compare with its snapshot outside the scope, its effect and new findings (openspec add-steering-edits). */
+  editId?: string;
 }
 
 export interface CheckImage {
@@ -121,6 +140,8 @@ export type CheckArtifactResult =
       browserPath: string;
       /** Where the run's images and findings were saved, and the run before it. */
       savedRun?: SavedCheckRun;
+      /** A steering edit's outcome, with editId (openspec add-steering-edits). */
+      editSummary?: string;
     }
   | { ok: false; code: ExportErrorCode; error: string };
 
@@ -237,6 +258,14 @@ function brokenAssetFindings(warnings: string[]): Finding[] {
 
 export async function checkArtifact(options: CheckArtifactOptions): Promise<CheckArtifactResult> {
   const result = await runCheck(options);
+  if (result.ok) {
+    try {
+      if (options.editId) await guardEdit(options, result);
+      else await noteUncheckedEdit(options, result);
+    } catch (err) {
+      result.warnings.push(`The edit check didn't run: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   if (!result.ok || options.saveRun === false) return result;
   try {
     const entryPath = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath)).split(path.sep).join('/');
@@ -472,6 +501,177 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
   } finally {
     await session?.close();
   }
+}
+
+function relEntryOf(options: CheckArtifactOptions): string {
+  return path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath)).split(path.sep).join('/');
+}
+
+/** A prepared steering edit that nobody checked yet gets a one-line note, so the guard isn't skipped silently. */
+async function noteUncheckedEdit(options: CheckArtifactOptions, result: Extract<CheckArtifactResult, { ok: true }>): Promise<void> {
+  const artifact = await readArtifact({ workspaceRoot: options.workspaceRoot, entryPath: relEntryOf(options) });
+  const pending = editLogOf(artifact?.manifest ?? null).filter((e) => e.status === 'prepared').at(-1);
+  if (!pending) return;
+  result.findings.push({
+    check: 'edit-unchecked',
+    severity: 'info',
+    message: `The ${pending.verb} edit on ${pending.scope} (${pending.id}) hasn't been checked. Run the check again with editId "${pending.id}" to prove it changed only that part.`,
+  });
+}
+
+type GuardCaptures = Map<GuardViewportName, Capture>;
+
+/**
+ * The edit guard (openspec add-steering-edits): the design against its
+ * snapshot. Markup and pixels outside the scope, the verb's effect inside it,
+ * and findings the snapshot didn't have. The snapshot is checked from a
+ * temporary copy beside the entry, so its relative assets resolve.
+ */
+async function guardEdit(options: CheckArtifactOptions, result: Extract<CheckArtifactResult, { ok: true }>): Promise<void> {
+  const outputDir = options.outputDir ?? '.open-design';
+  const entryPath = relEntryOf(options);
+  const editId = options.editId!.trim();
+  const saved = await readEditRecord(options.workspaceRoot, outputDir, entryPath, editId);
+  if (!saved) {
+    result.findings.push({ check: 'edit-unknown', severity: 'error', message: `No steering edit "${editId}" for ${entryPath}. Use the editId prepare_open_design_edit returned for this design.` });
+    return;
+  }
+  const { record } = saved;
+  const artifact = await readArtifact({ workspaceRoot: options.workspaceRoot, entryPath });
+  if (!artifact?.manifest) return;
+  const afterHtml = artifact.entryContent;
+  const scopeId = record.scope.page ? undefined : record.scope.id;
+  const findings: Finding[] = [];
+
+  const markup = compareMarkupOutsideScope(saved.before, afterHtml, scopeId);
+  for (const change of markup.changes) findings.push({ check: 'edit-out-of-scope', severity: 'error', message: change });
+
+  const browser = await findBrowser({ explicitPath: options.browserPath });
+  if (!browser.ok) {
+    result.warnings.push(`The edit was compared in the markup only: ${browser.message}`);
+    result.findings.push(...findings);
+    return;
+  }
+  const tempRel = path.posix.join(path.posix.dirname(entryPath), `.od-edit-before-${editId}.html`);
+  const absTemp = path.join(options.workspaceRoot, tempRel);
+  const tempData = absTemp.replace(/\.html$/, '.data.json');
+  const ready = options.readyTimeoutMs ?? 15000;
+  const loader = async (page: Page, url: string): Promise<void> => loadPage(page, url, ready, 300, []);
+  let before: GuardCaptures | string | undefined;
+  let after: GuardCaptures | string | undefined;
+  let beforeFindings: Finding[] = [];
+  let sheet: Buffer | undefined;
+  let sheetImage: CheckImage | undefined;
+  try {
+    await fs.writeFile(absTemp, saved.before);
+    // The snapshot binds to the same sample data the screen had: the copy taken at prepare time, else today's file.
+    const beforeData = path.join(options.workspaceRoot, saved.dir, BEFORE_DATA_FILE);
+    const screenData = screenDataFile(options.workspaceRoot, entryPath);
+    await fs.copyFile(beforeData, tempData).catch(() => fs.copyFile(screenData, tempData).catch(() => undefined));
+    await writeArtifactManifest({ workspaceRoot: options.workspaceRoot, entryPath: tempRel, artifactManifest: artifact.manifest });
+    // The snapshot's own findings, checked once per edit.
+    const cache = path.join(options.workspaceRoot, saved.dir, 'before-findings.json');
+    try {
+      beforeFindings = JSON.parse(await fs.readFile(cache, 'utf8')) as Finding[];
+    } catch {
+      const snapshotCheck = await runCheck({ ...options, entryPath: tempRel, maxImages: 0, saveRun: false, editId: undefined, at: undefined });
+      beforeFindings = snapshotCheck.ok ? snapshotCheck.findings : [];
+      await fs.writeFile(cache, JSON.stringify(beforeFindings));
+    }
+    for (const [rel, assign] of [
+      [tempRel, (c: GuardCaptures | string) => (before = c)],
+      [entryPath, (c: GuardCaptures | string) => (after = c)],
+    ] as const) {
+      const session = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry: rel, executablePath: browser.executablePath });
+      try {
+        assign(await captureForGuard(session.page, session.url, scopeId, loader));
+        if (rel === entryPath && before && typeof before !== 'string' && after && typeof after !== 'string') {
+          sheet = await composeEditSheet(session.browser, composeReviewSheet, before, after);
+          if ((options.maxImages ?? DEFAULT_MAX_IMAGES) > 0) sheetImage = await toCheckImage(session.browser, `edit ${record.verb}: ${record.scope.label}, before and after`, sheet);
+        }
+      } finally {
+        await session.close();
+      }
+    }
+  } finally {
+    await fs.rm(absTemp, { force: true });
+    await fs.rm(`${absTemp}.artifact.json`, { force: true });
+    await fs.rm(tempData, { force: true });
+  }
+
+  if (typeof after === 'string') findings.push({ check: 'edit-out-of-scope', severity: 'error', message: after });
+  else if (before && typeof before !== 'string' && after && scopeId && !markup.scopeMissing) {
+    for (const v of GUARD_VIEWPORTS) {
+      const b = before.get(v.name);
+      const a = after.get(v.name);
+      if (!b || !a) continue;
+      // Shown on one side only: the rows don't line up, so a pixel diff would blame the whole page.
+      if ((b.scope.height > 0) !== (a.scope.height > 0)) {
+        result.warnings.push(`At ${v.name} width the edited part is ${a.scope.height > 0 ? 'hidden before the edit and shown after it' : 'shown before the edit and hidden after it'}, so the rest of the page wasn't compared pixel by pixel there.`);
+        continue;
+      }
+      for (const leak of comparePixelsOutsideScope(b, a)) {
+        const crop = `${saved.dir}/leak-${v.name}-${leak.where}.png`;
+        await writeWorkspaceFile(options.workspaceRoot, crop, leakCrop(a.png, leak));
+        findings.push({
+          check: 'edit-out-of-scope',
+          severity: 'error',
+          viewport: v.name,
+          message: `${leak.where === 'above' ? 'Above' : 'Below'} the edited part, the page looks different at ${v.name} width (${leak.pixels} pixels changed, around y=${leak.box.y}, outlined in ${crop}). Something outside the edit moved or restyled; scope the change to [data-od-id="${scopeId}"].`,
+        });
+      }
+    }
+  }
+
+  // The verb's direction, measured at desktop width.
+  const afterCounted = countedFindings(result.findings);
+  const beforeCounted = countedFindings(beforeFindings);
+  let moved: string[] = [];
+  if (before && typeof before !== 'string' && after && typeof after !== 'string') {
+    const b = before.get('desktop');
+    const a = after.get('desktop');
+    if (b && a) {
+      moved = verbEffect(record.verb, {
+        before: b.measurements,
+        after: a.measurements,
+        findingsBefore: beforeCounted,
+        findingsAfter: afterCounted,
+        signalsBefore: hardeningSignals(saved.before),
+        signalsAfter: hardeningSignals(afterHtml),
+      });
+      if (moved.length === 0) {
+        findings.push({
+          check: 'edit-no-effect',
+          severity: 'warning',
+          message: `Nothing measurable moved in the "${record.verb}" direction inside ${record.scope.label}. Look at the before and after image; if it really looks the same, go one step further.`,
+        });
+      }
+    }
+  }
+  for (const f of newFindings(beforeFindings, result.findings)) {
+    findings.push({ ...f, check: 'edit-regression', severity: 'error', message: `New since the edit (${f.check}): ${f.message}` });
+  }
+
+  let image: string | undefined;
+  if (sheet) {
+    image = `${saved.dir}/compare.png`;
+    await writeWorkspaceFile(options.workspaceRoot, image, sheet);
+    if (sheetImage) {
+      // Before and after first: it's what the user asked about.
+      result.images.unshift(sheetImage);
+      while (result.images.length > (options.maxImages ?? DEFAULT_MAX_IMAGES)) result.omitted.push(result.images.pop()!.label);
+    }
+  }
+  result.findings.push(...findings);
+  const outOfScope = findings.filter((f) => f.check === 'edit-out-of-scope').length;
+  const regressions = findings.filter((f) => f.check === 'edit-regression').length;
+  const guard: EditGuardResult = { checkedAt: new Date().toISOString(), outOfScope, noEffect: findings.some((f) => f.check === 'edit-no-effect'), regressions, hash: hashHtml(afterHtml), ...(image ? { image } : {}) };
+  result.editSummary = (
+    outOfScope + regressions === 0
+      ? `Edit ${editId} (${record.verb} on ${record.scope.label}): only that part changed${moved.length ? `; ${moved.join(', ')}` : ''}.${image ? ` Before and after: ${image}.` : ''}`
+      : `Edit ${editId} (${record.verb} on ${record.scope.label}): ${outOfScope} change(s) outside it, ${regressions} new finding(s); fix them and check again with the same editId.${image ? ` Before and after: ${image}.` : ''}`
+  );
+  await updateEditLog(options.workspaceRoot, outputDir, entryPath, editId, { status: 'checked', result: guard });
 }
 
 /** token-undefined, token-hardcoded and app-design-system-stale for a design on a user design system saved from an app. */
@@ -835,6 +1035,7 @@ export function formatCheckResult(result: CheckArtifactResult): string {
         ? 'the design at its card size'
         : `the page at ${(result.viewports ?? []).map((v) => `${v.name} ${v.width}×${v.height}`).join(' and ')}`;
   const lines = [`Checked ${what}.${result.savedRun ? '' : ' No files were written.'}`];
+  if (result.editSummary) lines.push(result.editSummary);
   lines.push(...formatPreflight(result.findings, 're-check'));
   if (result.images.length > 0) {
     lines.push(`Screenshots (${result.images.length}, attached in this order): ${result.images.map((i) => `${i.label} ${i.width}×${i.height}`).join('; ')}.`);

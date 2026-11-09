@@ -197,6 +197,23 @@ async function runBrief(brief, repeat, ctx) {
     questions += Math.max(1, countQuestions(t.result.result ?? t.texts.at(-1) ?? ''));
     message = answerMessage(brief);
   }
+  // Later turns of the same conversation, once a design exists (openspec add-steering-edits).
+  for (const followUp of !error && sessionId ? (brief.followUps ?? []) : []) {
+    rounds++;
+    const args = ['-p', followUp, '--output-format', 'stream-json', '--verbose', '--model', ctx.model, '--max-turns', String(ctx.maxTurns), '--plugin-dir', ctx.plugin, '--permission-mode', 'bypassPermissions', '--setting-sources', 'project', '--append-system-prompt', EVAL_SYSTEM_PROMPT, '--disallowedTools', 'AskUserQuestion', '--resume', sessionId];
+    if (ctx.maxBudgetUsd) args.push('--max-budget-usd', ctx.maxBudgetUsd);
+    const res = await exec('claude', args, { cwd: tmp, env: ctx.agentEnv, timeoutMs: DEFAULTS.roundTimeoutMinutes * 60_000 });
+    await fs.appendFile(transcriptFile, res.stdout);
+    const t = parseTranscript(res.stdout);
+    texts.push(...t.texts);
+    toolUses.push(...t.toolUses);
+    sessionId = t.result?.session_id ?? sessionId;
+    costUsd += t.result?.total_cost_usd ?? 0;
+    if (res.timedOut) error = `follow-up "${followUp}" timed out`;
+    else if (!t.result) error = `claude exited ${res.code} on a follow-up: ${res.stderr.trim().split('\n').slice(-2).join(' ') || 'no result'}`;
+    else if (t.result.is_error) error = String(t.result.result || t.result.subtype || 'agent error').trim();
+    if (error) break;
+  }
   site?.close();
   const wallSeconds = (Date.now() - started) / 1000;
   const workspace = path.join(caseDir, 'workspace');

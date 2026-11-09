@@ -341,3 +341,101 @@ Must notes (ticked by the reviewer from the contact sheet):
 - [ ] redesign-trattoria: The audit's top problems are fixed: the booking button is readable and on the first phone screen, and nothing scrolls sideways on a phone
 - [ ] redesign-trattoria: Every page shows the concept ribbon (data-od-concept), and any rewritten text has data-od-copy-edit with its original
 - [ ] redesign-trattoria: A before/after page compares old and new at desktop and phone sizes; its fixed findings are re-checked, and every summary line cites a fixed finding
+
+## 2026-11-09 — add-steering-edits: steer-table
+
+- Kit: 0.4.0 (claude/project-thread-fldkhh ec95358)
+- Mode: agent claude (2.1.319 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-09-08-33-24/`
+- Contact sheet: [runs/2026-11-09-08-33-24/contact-sheet.png](runs/2026-11-09-08-33-24/contact-sheet.png)
+
+- Designs: 1 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 1.
+- Critic: n/a (no critique recorded).
+- Steering edits: 1; checked and in scope with no new findings 0; unchecked 0; no measurable effect 0.
+- Agent cost: $2.01.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| steer-table | 1 | .open-design/orders-list/orders.html | od:prototype:app-table | 0 | — | 0 (—) | n/a | 0 | 5 | 27 | 308s | #2f6feb / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] steer-table: The table has more space between rows and cells, with every order still there
+- [ ] steer-table: Nothing outside the table changed (edit log: checked, 0 out of scope, no new findings)
+- [ ] steer-table: Buttons and links in the table still big enough to tap
+
+## 2026-11-09 — steering edits: landing
+
+- Kit: 0.4.0 (claude/project-thread-fldkhh ec95358, local changes)
+- Mode: agent claude (2.1.319 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-09-08-46-53/`
+- Contact sheet: [runs/2026-11-09-08-46-53/contact-sheet.png](runs/2026-11-09-08-46-53/contact-sheet.png)
+
+- Designs: 1 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 1.
+- Critic: n/a (no critique recorded).
+- Steering edits: 2; checked and in scope with no new findings 0; unchecked 1; no measurable effect 0.
+- Agent cost: $1.16.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| steer-landing | 1 | .open-design/ledgerly-landing/index.html | od:prototype:saas-landing | 0 | — | 0 (—) | n/a | 0 | 4 | 30 | 202s | #fad4c0 / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] steer-landing: The pricing section is clearly bolder: a bigger price or heading, or a stronger main button
+- [ ] steer-landing: Nothing outside the pricing section changed (edit log: checked, 0 out of scope)
+- [ ] steer-landing: The before and after image of the pricing section was shown
+
+## 2026-11-09 — steering edits: table, after guard fixes
+
+- Kit: 0.4.0 (claude/project-thread-fldkhh ec95358, local changes)
+- Mode: agent claude (2.1.319 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-09-08-55-19/`
+- Contact sheet: [runs/2026-11-09-08-55-19/contact-sheet.png](runs/2026-11-09-08-55-19/contact-sheet.png)
+
+- Designs: 1 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 1.
+- Critic: n/a (no critique recorded).
+- Steering edits: 1; checked and in scope with no new findings 1; unchecked 0; undone 0; no measurable effect 0.
+- Agent cost: $1.38.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| steer-table | 1 | .open-design/orders-list/orders-list.html | od:prototype:app-table | 0 | — | 2 (stress-overflow×2) | n/a | 0 | 5 | 23 | 249s | #2f6feb / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] steer-table: The table has more space between rows and cells, with every order still there
+- [ ] steer-table: Nothing outside the table changed (edit log: checked, 0 out of scope, no new findings)
+- [ ] steer-table: Buttons and links in the table still big enough to tap
+
+## 2026-11-09 — steering edits: landing, after guard fixes
+
+- Kit: 0.4.0 (claude/project-thread-fldkhh ec95358, local changes)
+- Mode: agent claude (2.1.319 (Claude Code)), repeat 1, model claude-sonnet-5-5
+- Run folder (not committed): `runs/2026-11-09-08-59-44/`
+- Contact sheet: [runs/2026-11-09-08-59-44/contact-sheet.png](runs/2026-11-09-08-59-44/contact-sheet.png)
+
+- Designs: 1 from 1 run(s); runs with no design: 0.
+- Check errors by repeat: #1 0.
+- Distinct look signatures: 1 of 1.
+- Critic: n/a (no critique recorded).
+- Steering edits: 2; checked and in scope with no new findings 1; unchecked 1; undone 0; no measurable effect 0.
+- Agent cost: $1.09.
+
+| Brief | # | Design | Skill | Errors | Error codes | Warnings | Critic | Questions | Assumptions | Tool calls | Time | Signature (accent / display / body / theme) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| steer-landing | 1 | .open-design/build-a-landing-page-for-ledgerly-our-bookkeeping-app-for-fr/build-a-landing-page-for-ledgerly-our-bookkeeping-app-for-fr.html | od:prototype:saas-landing | 0 | — | 1 (overlap) | n/a | 0 | 4 | 22 | 163s | #fad4c0 / - / - / light |
+
+Must notes (ticked by the reviewer from the contact sheet):
+
+- [ ] steer-landing: The pricing section is clearly bolder: a bigger price or heading, or a stronger main button
+- [ ] steer-landing: Nothing outside the pricing section changed (edit log: checked, 0 out of scope)
+- [ ] steer-landing: The before and after image of the pricing section was shown
+
+Notes on the steering-edit runs: the first two runs' out-of-scope errors were false alarms in the guard, fixed before the reruns. The before snapshot lost the screen's own sample data (`orders.data.json`), so the table rendered empty. Content below a part that grew by a fraction of a pixel was rounded onto neighbouring rows. A heading with its own `data-od-id` was picked instead of its section. Rechecking the recorded edits with the fixes gives no out-of-scope errors. In the last landing run the "unchecked 1" is an attempt the agent re-scoped before changing anything; such edits are now logged as `dropped`.

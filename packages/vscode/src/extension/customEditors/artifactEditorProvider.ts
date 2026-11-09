@@ -41,6 +41,7 @@ import {
   type ArtifactComment,
   type FigmaCaptureDocument,
   type StaticServer,
+  steerCommentMessage,
 } from '@feimacode/open-design-agent-kit-core';
 import type { ILogService } from '../log/logService';
 import { OD_TOKENS_CSS, odFontFaceCss } from '../webviews/openDesignTheme';
@@ -74,7 +75,9 @@ function resolveEntryPath(document: vscode.TextDocument): { workspaceRoot: strin
   return { workspaceRoot, entryPath };
 }
 
-function formatCommentsForChat(comments: ArtifactComment[]): string {
+function formatCommentsForChat(comments: ArtifactComment[], entryPath?: string): string {
+  // A verb button's comment asks for a steering edit (openspec add-steering-edits).
+  if (comments.length === 1 && comments[0].verb && entryPath) return steerCommentMessage(entryPath, comments[0]);
   const items = comments
     .map((c, i) => `${i + 1}. On \`${c.selector || c.elementId || 'unknown element'}\` (${c.htmlHint}): ${c.note}`)
     .join('\n');
@@ -444,7 +447,7 @@ export class ArtifactEditorProvider implements vscode.CustomTextEditorProvider {
         case 'send-comments-to-chat':
           this.log.info(`ArtifactEditorProvider: sending ${(message.comments as ArtifactComment[]).length} comment(s) to chat`);
           await vscode.commands.executeCommand('workbench.action.chat.open', {
-            query: formatCommentsForChat(message.comments as ArtifactComment[]),
+            query: formatCommentsForChat(message.comments as ArtifactComment[], location?.entryPath),
             isPartialQuery: true,
           });
           break;

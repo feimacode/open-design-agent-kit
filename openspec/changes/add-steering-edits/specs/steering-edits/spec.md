@@ -30,7 +30,7 @@ An edit SHALL apply to exactly one element and its contents, given as a `data-od
 
 ### Requirement: Prepare an Edit
 
-The system SHALL expose `prepare_open_design_edit` in every host (MCP tool and VS Code `languageModelTool`), taking a registered HTML artifact's `entryPath`, `verb`, `scope` and optional `notes`. It SHALL save a snapshot of the design under `<entry dir>/.edits/<editId>/` and return an `editId` and instructions: the verb's definition, the scope's current HTML, the relevant design-system tokens, and the scope rules (change only inside the scope; keep every `data-od-*` attribute; keep the copy unless the verb's definition allows otherwise; add CSS only in rules that match inside the scope). The instructions SHALL say to call `check_open_design_artifact` with the `editId` afterwards. The tool SHALL NOT write design content.
+The system SHALL expose `prepare_open_design_edit` in every host (MCP tool and VS Code `languageModelTool`), taking a registered HTML artifact's `entryPath`, `verb`, `scope` and optional `notes`. It SHALL save a snapshot of the design under `<outputDir>/.edits/<design>/<editId>/`, outside the design's folder so publishing never includes it, and return an `editId` and instructions: the verb's definition, the scope's current HTML, the relevant design-system tokens, and the scope rules (change only inside the scope; keep every `data-od-*` attribute; keep the copy unless the verb's definition allows otherwise; add CSS only in rules that match inside the scope). The instructions SHALL say to call `check_open_design_artifact` with the `editId` afterwards. The tool SHALL NOT write design content.
 
 #### Scenario: Prepared edit
 - **WHEN** a `quieter` edit is prepared on the hero of a registered landing page

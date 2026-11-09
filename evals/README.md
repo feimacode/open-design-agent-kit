@@ -6,7 +6,7 @@ For the website extraction's own benchmark (real sites, no agent), see [extracti
 
 ## Briefs
 
-`briefs/*.yaml`, one file per brief, the file name matching its `id`. Fourteen cover the main surfaces (poster, landing page, deck, shop pack, card set, dashboard, an app settings screen, an orders table, an Android screen, an iPad screen, a sign-in flow, a billing screen designed from a small Next.js + shadcn app in `fixtures/acme-billing`, and a habit screen turned into NativeWind components for a small Expo app in `fixtures/habit-expo`, and a redesign of the small restaurant site in `fixtures/trattoria-site`) and two are deliberately vague, to see whether the agent asks the right few questions.
+`briefs/*.yaml`, one file per brief, the file name matching its `id`. Sixteen cover the main surfaces (poster, landing page, deck, shop pack, card set, dashboard, an app settings screen, an orders table, an Android screen, an iPad screen, a sign-in flow, a billing screen designed from a small Next.js + shadcn app in `fixtures/acme-billing`, and a habit screen turned into NativeWind components for a small Expo app in `fixtures/habit-expo`, a redesign of the small restaurant site in `fixtures/trattoria-site`, and two that steer one part of a finished design with a follow-up message: the pricing section of a landing page made bolder, an orders table made roomier) and two are deliberately vague, to see whether the agent asks the right few questions.
 
 ```yaml
 id: gig-poster
@@ -21,6 +21,8 @@ fixture: acme-billing              # optional; a folder in evals/fixtures/ copie
 site: trattoria-site               # optional; a folder in evals/fixtures/ served on 127.0.0.1 for the run, its address put where the request says {{site}} (a website to audit or redesign)
 answers:                           # what the "user" says when asked; anything else is "you pick"
   where: "Both: A3 print for the venue and a version for Instagram"
+followUps:                         # optional; later messages in the same conversation, sent once a design exists (e.g. a steering edit)
+  - "Make the headline bolder"
 must:                              # two or three things a reviewer ticks on the contact sheet
   - "Date, time and venue readable from 3 m"
 ```

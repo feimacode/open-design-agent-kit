@@ -55,6 +55,21 @@ function countCodes(findings, severity) {
   return counts;
 }
 
+/** A design's steering edits and their guard results (openspec add-steering-edits), oldest first. */
+export function steeringEdits(manifest) {
+  const log = Array.isArray(manifest?.metadata?.edits) ? manifest.metadata.edits : [];
+  if (log.length === 0) return undefined;
+  return log.map((e) => ({
+    verb: e.verb,
+    scope: e.scope,
+    status: e.status,
+    checked: e.status === 'checked' && Boolean(e.result),
+    outOfScope: e.result?.outOfScope ?? 0,
+    regressions: e.result?.regressions ?? 0,
+    noEffect: Boolean(e.result?.noEffect),
+  }));
+}
+
 /**
  * Scores every registered design in one workspace. `run` carries what only an
  * agent run knows (transcript, rounds, wall time); without it those columns are n/a.
@@ -86,6 +101,7 @@ export async function scoreWorkspace({ workspaceRoot, shotsDir, brief, run, env 
       critic: critique && typeof critique.verdict === 'string' ? { verdict: critique.verdict, findings: Array.isArray(critique.findings) ? critique.findings.length : 0 } : undefined,
       assumptions: assumptions ?? (transcript ? countAssumptionLines(transcript.texts) : undefined),
       signature: await lookSignature(workspaceRoot, entryPath),
+      edits: steeringEdits(manifest),
       screenshot: checked.ok ? checked.images?.[0]?.file : undefined,
     });
   }

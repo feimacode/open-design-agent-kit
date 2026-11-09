@@ -35,6 +35,7 @@ Two rules apply to every tool (and over MCP every tool declares `readOnlyHint`, 
 | [`export_open_design_artifact`](#export_open_design_artifact) | `#od-export` | yes | Export to PNG, JPEG, PDF, PowerPoint, MP4, WebM, GIF, standalone HTML, a site folder, email HTML or paste-ready HTML; check a design; one file per data row |
 | [`add_open_design_diagram_runtime`](#add_open_design_diagram_runtime) | `#od-diagram-runtime` | yes | Add or update the layout runtime in a diagram |
 | [`adapt_open_design_artifact`](#adapt_open_design_artifact) | `#od-adapt` | yes | Instructions to re-compose a design for other sizes |
+| [`prepare_open_design_edit`](#prepare_open_design_edit) | `#od-edit` | yes | Steer one part of a design (bolder, quieter, denser…) and change nothing else, or undo it |
 | [`create_open_design_qr_code`](#create_open_design_qr_code) | `#od-qr-code` | yes | Make a real QR code for a design |
 | [`list_open_design_print_houses`](#list_open_design_print_houses) | `#od-print-houses` | yes | The card and sticker printers whose upload sizes the kit knows |
 | [`publish_open_design_artifact`](#publish_open_design_artifact) | `#od-publish` | yes | Package for hosting and get instructions to publish a link |
@@ -837,12 +838,23 @@ What it renders depends on the artifact:
 | `at` | number[] (up to 6) | no | Animations: also capture the artifact at these times in seconds, on a virtual clock, labelled `t=<seconds>s`. They come first and share `maxImages`. |
 | `views` | (`overview` · `closeup` · `low` · `wireframe`)[] or `false` | no | 3D scenes that expose their handles (below): which review views go on the review sheet. Default all four; `false` for no sheet. |
 | `states` | boolean | no | Pages: run the [state accessibility checks](#taste-and-accessibility-checks) (hover and focus, tap targets, 320 px reflow, reduced motion). Default `true`; `false` for a faster check. |
+| `editId` | string | no | After a [steering edit](#prepare_open_design_edit): also compare the design with the snapshot taken before it (below). |
 
 Screenshots are JPEG, at most 1568 px on the long edge. A page's first screen at each viewport comes first; further screens down a tall page fill the remaining images, and the result lists what was left out.
 
 **Result:** text with the findings (errors first), the attached screenshots' labels and sizes, what wasn't attached, and any warnings; then the screenshots. In VS Code they're image parts of the tool result; over MCP they're `image` content items after the text. A client that ignores images still gets every finding in the text.
 
 When the artifact was registered with `sources` and any of them changed since, the findings include `stale-sources` (info).
+
+**With `editId`**, the check also proves the steering edit, against the snapshot `prepare_open_design_edit` took (checked once, from a temporary copy beside the design):
+
+| Finding | Severity | When |
+|---|---|---|
+| `edit-out-of-scope` | error | Something outside the edited part changed: in the markup (the part replaced by a placeholder in both versions; a CSS rule may change only when every selector it has matches inside the part, by its `data-od-id` or a class used only there), or on screen at desktop 1440 and phone 390 px (the part masked; what comes after it compared after shifting by its change in height, with the changed area outlined in a crop under `.open-design/.edits/`). |
+| `edit-no-effect` | warning | None of the verb's measured signals moved inside the part (for example `bolder`: the largest text size or weight, or the brand-colour area; `denser`: mean spacing, or height with every item kept). |
+| `edit-regression` | error | A finding the snapshot didn't have, matched by check, viewport and element. |
+
+The edited part before and after, at desktop and phone width, is attached first and written as `compare.png` beside the snapshot; a line at the top of the result says what moved. Without `editId`, a design with a prepared edit nobody checked gets `edit-unchecked` (info), naming the edit.
 
 #### Taste and accessibility checks
 
@@ -1030,6 +1042,24 @@ For a **fluid** master (`data-od-fluid`), which already reflows to every shape, 
 **Result:** a short header, then `{ mode, collectionId?, adaptations: [{ mode, formatId, formatLabel, instructions, suggestedEntryPath?, registerArgs? }] }`. For a fixed master (`mode: "new-file"`), each entry's instructions include the master's HTML, that format's Canvas section and the re-composition rules. Write the file at `suggestedEntryPath` (`<master>-<formatId>.html`, next to the master) and register it with exactly `registerArgs`.
 
 **Errors:** a missing or unregistered master, a renderer other than HTML, and unknown, repeated or too many formats.
+
+### prepare_open_design_edit
+
+A **steering edit**: one verb on one part of a registered HTML design, and nothing else changes. It returns instructions for the agent and an `editId`; [`check_open_design_artifact`](#check_open_design_artifact) with that `editId` proves the edit. See [Steer one part of a design](../guides/steer-a-design.md).
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | yes | The registered design. |
+| `verb` | `bolder` · `quieter` · `denser` · `roomier` · `distill` · `polish` · `harden` | yes, unless `undo` | The direction. Each verb's meaning is in the [steering verbs craft doc](../../packages/content/local/craft/steering-verbs.md). |
+| `scope` | object or string | yes, unless `undo` | Exactly one of `heading` (the section whose heading has that text), `region` (`header`, `hero`, `main`, `footer`, or `page` for `polish` and `harden` only), `selector` (matching one element), `id` (a `data-od-id`) or `commentId` (a preview comment's element). A string is read as a region name or a heading. |
+| `notes` | string | no | The user's own words, passed into the instructions. |
+| `undo` | string | no | An `editId` to undo: restores the design to the snapshot taken before that edit. Edits made after it must be undone first. |
+
+What it writes: a `data-od-id` on the part when it has none (only that attribute, so the check can find the part after the edit), the snapshot and `edit.json` under `.open-design/.edits/<design>/<editId>/`, and the edit in the manifest's `metadata.edits` (the last 20; older snapshots are removed). It never writes the edit itself.
+
+**Result:** `{ editId, verb, scope, snapshot }`, then the instructions: what the verb means (change, keep, avoid), the part's current HTML, the design's `:root` tokens, the scope rules (change only that part; keep its `data-od-id` and the copy; put CSS in rules that match only inside it, such as `[data-od-id="edit-pricing"] h2`), and the steps (edit, check with the `editId`, show the before and after, offer undo).
+
+**Errors:** an unregistered or non-HTML design, an unknown verb, a scope that matches nothing or several parts (with candidates listed), a part of the shared navigation (`data-od-include`), a page-wide `bolder`, `quieter`, `denser`, `roomier` or `distill`, and an undo blocked by a later edit.
 
 ### create_open_design_qr_code
 

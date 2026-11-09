@@ -123,6 +123,8 @@ export const PREVIEW_CHROME_CSS = `
   .od-color-input { height: 30px; padding: 2px; cursor: pointer; }
   .od-panel-footer { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-top: 1px solid var(--od-border-soft); }
   .od-panel-footer .od-spacer { flex: 1; }
+  .od-verbs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .od-verbs .od-verb { height: 26px; padding: 0 9px; font-size: 11px; border-radius: 13px; }
   .od-panel-footer button { height: 30px; padding: 0 14px; }
   .od-errors { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 5; max-width: min(720px, calc(100% - 24px)); display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 12px; border: 1px solid var(--od-red); border-radius: 8px; background: var(--od-bg); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 12px; }
   .od-errors[hidden] { display: none; }

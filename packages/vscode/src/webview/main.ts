@@ -111,6 +111,11 @@ const comments = createCommentController({
     sendCommentsToBridge();
     renderOverlays();
   },
+  // A verb button opens chat with a steering edit for that part (openspec add-steering-edits).
+  sendVerb: (comment: ArtifactComment) => {
+    vscode.postMessage({ type: 'send-comments-to-chat', comments: [comment] });
+    comments.patch(comment.id, { status: 'sent' });
+  },
 });
 // Hover/selection state, ported (simplified) from open-design's own
 // comment-mode overlay approach (apps/web/src/runtime/srcdoc.ts's
