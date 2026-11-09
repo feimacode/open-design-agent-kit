@@ -10,7 +10,7 @@
 //   handles, signed links and sweeps live in packages/mcp-gateway.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { parseFigmaUrl } from '@feimacode/open-design-agent-kit-core';
+import { parseCanvaUrl, parseFigmaUrl } from '@feimacode/open-design-agent-kit-core';
 
 export const REMOTE_PROFILE = 'remote';
 
@@ -81,7 +81,8 @@ export function remoteArgRefusal(tool: string, args: Record<string, unknown>): s
   }
   if (tool === 'extract_open_design_design_system') {
     const url = typeof args.url === 'string' ? args.url.trim() : '';
-    if (url && !parseFigmaUrl(url)) {
+    // A Figma or Canva link is never opened: it returns the steps to read or export the design.
+    if (url && !parseFigmaUrl(url) && !parseCanvaUrl(url)) {
       return 'The hosted Open Design server does not fetch websites, so it can draft a design system only from sources. Fetch the page yourself and pass its HTML and stylesheets as sources ({ kind: "html", text } and { kind: "css", text }), or pass a screenshot, a brand guide or a PowerPoint template, and leave out url, extraUrls, compareTo and content.';
     }
     if (['extraUrls', 'compareTo', 'content'].some((k) => args[k] !== undefined && args[k] !== '' && args[k] !== false)) {

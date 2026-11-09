@@ -51,6 +51,10 @@ describe('remote profile (add-remote-mcp-server)', () => {
     assert.match(remoteArgRefusal('extract_open_design_design_system', { sources: [{ kind: 'figma', figma: { kind: 'figma', file: 'AbC123', frames: [{ nodeId: '1:2', variables: {} }], logos: [{ role: 'logo', data: 'AAAA' }] } }] }) ?? '', /cannot store Figma logo exports/);
     assert.match(remoteArgRefusal('extract_open_design_design_system', { sources: [{ kind: 'figma', figma: { kind: 'figma', file: 'AbC123', frames: [{ nodeId: '1:2', variables: {} }], logos: [{ role: 'logo', path: 'exports/logo.svg' }] } }] }) ?? '', /cannot store Figma logo exports/);
     assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { sources: [{ kind: 'figma', figma: { kind: 'figma', file: 'AbC123', frames: [{ nodeId: '1:2', variables: {} }], logos: [{ role: 'logo', name: 'logo.svg' }], fonts: [{ family: 'Inter' }] } }] }), undefined);
+    // A Canva link is never opened, and its export links come as fileUrl sources (openspec add-design-system-from-canva).
+    assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { url: 'https://www.canva.com/design/DAHXIhXhUfw/AbCd/edit' }), undefined);
+    assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { url: 'https://canva.link/abc123', sources: [{ kind: 'template', fileUrl: 'https://export-download.canva.com/a/b.pptx' }] }), undefined);
+    assert.match(remoteArgRefusal('extract_open_design_design_system', { url: 'https://www.canva.com/pricing/' }) ?? '', /does not fetch websites/);
   });
 
   it('reads limits from the environment, ignoring bad values', () => {

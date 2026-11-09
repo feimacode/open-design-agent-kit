@@ -105,6 +105,16 @@ export type ExtractSiteResult =
       notes: string[];
     }
   | {
+      status: 'needs-canva-export';
+      /** The Canva link as given. */
+      link: string;
+      /** The design id when the link names one (`D…`). */
+      designId?: string;
+      /** What to export with the Canva connector, and how to call back (openspec add-design-system-from-canva). */
+      instructions: string;
+      notes: string[];
+    }
+  | {
       status: 'ok' | 'partial' | 'blocked';
       slug: string;
       /** Workspace-relative evidence bundle folder. */
@@ -138,8 +148,13 @@ export type ExtractSiteResult =
 
 /** The tool layer's answer for a Figma link, before the agent reads the file. */
 export type FigmaReadResult = Extract<ExtractSiteResult, { status: 'needs-figma-read' }>;
-/** What measuring a site returns: `extractSite` never asks for a Figma read. */
-export type MeasuredSiteResult = Exclude<ExtractSiteResult, FigmaReadResult>;
+/** The tool layer's answer for a Canva link, before the agent exports the design. */
+export type CanvaExportResult = Extract<ExtractSiteResult, { status: 'needs-canva-export' }>;
+/** What measuring a site returns: `extractSite` never asks for a Figma read or a Canva export. */
+export type MeasuredSiteResult = Exclude<ExtractSiteResult, FigmaReadResult | CanvaExportResult>;
+/** A result that is steps for the agent rather than a draft. */
+export const isInstructionResult = (result: ExtractSiteResult): result is FigmaReadResult | CanvaExportResult =>
+  result.status === 'needs-figma-read' || result.status === 'needs-canva-export';
 
 export interface CapturedBrandKit {
   /** Paths relative to the evidence bundle. */
@@ -1428,6 +1443,9 @@ function accentChoice(src: DraftTokens['sources'][string] | undefined): string |
 /** The tool's text: what was measured, from where, and what to do next. */
 export function formatExtractSiteResult(result: ExtractSiteResult): string {
   if (result.status === 'invalid-args') return JSON.stringify({ status: 'invalid-args', error: result.error }, null, 2);
+  if (result.status === 'needs-canva-export') {
+    return JSON.stringify({ status: result.status, link: result.link, designId: result.designId, instructions: result.instructions, notes: result.notes }, null, 2);
+  }
   if (result.status === 'needs-figma-read') {
     return JSON.stringify(
       { status: result.status, fileKey: result.fileKey, nodeId: result.nodeId, link: result.link, instructions: result.instructions, notes: result.notes },

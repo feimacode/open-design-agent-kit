@@ -1213,7 +1213,7 @@
       {
         "name": "extract_open_design_design_system",
         "displayName": "Extract Design System from Website",
-        "modelDescription": "Renders a website in an installed Chrome, Edge or Chromium (consent banners and chat launchers hidden, never clicked; each page scrolled once) and measures its design system: colour roles from the elements that carry them (page background, cards, text tiers, borders, the primary button and its forced :hover/:active/:focus-visible states, status colours from alerts and invalid fields), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url prompt has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and marks the result partial. A Figma file or frame link in url is not opened: the tool returns the steps to read the file with the Figma connector and call back with the replies as a figma source.",
+        "modelDescription": "Renders a website in an installed Chrome, Edge or Chromium (consent banners and chat launchers hidden, never clicked; each page scrolled once) and measures its design system: colour roles from the elements that carry them (page background, cards, text tiers, borders, the primary button and its forced :hover/:active/:focus-visible states, status colours from alerts and invalid fields), declared CSS custom properties, the fonts it loaded, text sizes, radii, spacing, container width and motion. Writes an evidence bundle (evidence.json, screenshots, one crop per role, the logo) under <output folder>/.extract/<site>/ and returns a draft token set on the Open Design token contract, with where each value came from and which tokens nothing measured. Does NOT write DESIGN.md or tokens.css: write both from the draft, keeping measured values as measured (the open-design-design-system-from-url prompt has the steps), then save it as a custom design system. Only public http(s) pages; at most 4 pages, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot. With no browser installed, falls back to reading the page source and marks the result partial. A Figma file or frame link in url is not opened: the tool returns the steps to read the file with the Figma connector and call back with the replies as a figma source. A Canva design link in url is not opened either: the tool returns the steps to export the design with the Canva connector (PPTX plus up to 4 PNG pages) and call back with the export links as template and screenshot sources (fileUrl).",
         "userDescription": "Measure a website's colours, fonts and spacing as a starting design system",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-extract-design-system",
@@ -1223,7 +1223,7 @@
           "properties": {
             "url": {
               "type": "string",
-              "description": "The page to measure, e.g. the home page; or a Figma file or frame link (the tool then returns what to read with the Figma connector). Optional when sources are given."
+              "description": "The page to measure, e.g. the home page; or a Figma file or frame link, or a Canva design link (the tool then returns what to read or export with that connector). Optional when sources are given."
             },
             "extraUrls": {
               "type": "array",
@@ -1261,7 +1261,7 @@
             "sources": {
               "type": "array",
               "maxItems": 6,
-              "description": "Optional: up to 6 other sources to draft from, with or without a url: a screenshot, CSS (custom properties, a Tailwind theme or design-tokens JSON), page source, a brand guide, a PowerPoint template, or a Figma file the agent read with Figma's connector. Each value carries a confidence (measured, declared, stated, sampled); disagreements are listed under conflicts.",
+              "description": "Optional: up to 6 other sources to draft from, with or without a url: a screenshot, CSS (custom properties, a Tailwind theme or design-tokens JSON), page source, a brand guide, a PowerPoint template, or a Figma file the agent read with Figma's connector. Each value carries a confidence (measured, declared, stated, sampled); disagreements are listed under conflicts, or a Canva design's exports given by fileUrl.",
               "items": {
                 "type": "object",
                 "properties": {
@@ -1287,6 +1287,27 @@
                   "data": {
                     "type": "string",
                     "description": "For a screenshot or template: the file as base64."
+                  },
+                  "fileUrl": {
+                    "type": "string",
+                    "description": "For a screenshot or template exported from Canva: export-design's download link, as Canva returned it. Downloaded only from Canva's export host (export-download.canva.com), at most 20 MB; any other host is refused."
+                  },
+                  "canva": {
+                    "type": "object",
+                    "description": "For a screenshot or template exported from Canva: which design (its link) and, for a screenshot, which page numbers. Turns on reading fonts from the slides.",
+                    "properties": {
+                      "design": {
+                        "type": "string",
+                        "description": "The Canva design link."
+                      },
+                      "pages": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "description": "Exported page numbers, from 1."
+                      }
+                    }
                   },
                   "name": {
                     "type": "string",

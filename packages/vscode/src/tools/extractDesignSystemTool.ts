@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { brandRefreshDiff, composeFigmaReadInstructions, extractFromSources, extractSite, formatExtractSiteResult, formatRefreshResult, parseFigmaUrl, refreshUrls, validateSources, withNearestDesignSystems, type ContentIndex, type ExtractionSource, type ExtractionTheme, type ExtractSiteResult } from '@feimacode/open-design-agent-kit-core';
+import { brandRefreshDiff, composeCanvaExportInstructions, composeFigmaReadInstructions, DEFAULT_CANVA_EXPORT_HOSTS, parseCanvaUrl, extractFromSources, extractSite, formatExtractSiteResult, formatRefreshResult, parseFigmaUrl, refreshUrls, validateSources, withNearestDesignSystems, type ContentIndex, type ExtractionSource, type ExtractionTheme, type ExtractSiteResult } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot } from '../workspace/artifactWriter';
 import { getFigmaToken } from '../workspace/figmaTokenStore';
 
@@ -38,8 +38,8 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
     if (!options.input.url && !options.input.compareTo && Array.isArray(sources)) {
       return { invocationMessage: `Drafting a design system from ${sources.length} source(s)` };
     }
-    if (options.input.url && parseFigmaUrl(options.input.url)) {
-      return { invocationMessage: `Working out what to read from ${options.input.url}` };
+    if (options.input.url && (parseFigmaUrl(options.input.url) || parseCanvaUrl(options.input.url))) {
+      return { invocationMessage: Array.isArray(sources) ? `Drafting a design system from ${sources.length} source(s)` : `Working out what to read from ${options.input.url}` };
     }
     return {
       invocationMessage: options.input.url ? `Measuring the design system of ${options.input.url}` : `Measuring ${options.input.compareTo ?? 'the site'} again`,
@@ -71,8 +71,11 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
       }
     }
     let sources: ExtractionSource[] | undefined;
+    const registry = await this.contentIndex.getIntegrationRegistry();
+    const listedHosts = registry.integrations.flatMap((i) => i.exportHosts ?? []);
+    const exportHosts = listedHosts.length ? listedHosts : DEFAULT_CANVA_EXPORT_HOSTS;
     if (options.input.sources !== undefined) {
-      const checked = validateSources(options.input.sources);
+      const checked = validateSources(options.input.sources, { exportHosts });
       if (!checked.ok) return text(`Invalid arguments: ${checked.error}`);
       sources = checked.sources.length ? checked.sources : undefined;
     }
@@ -93,12 +96,24 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
         };
         return this.output(workspaceRoot, result, formatExtractSiteResult(result));
       }
+      // A Canva link: the editor agent exports the design with Canva's connector and calls back with the export links. Nothing contacts Canva here.
+      const canva = parseCanvaUrl(link);
+      if (canva && !sources) {
+        const result: ExtractSiteResult = {
+          status: 'needs-canva-export',
+          link,
+          designId: canva.designId,
+          instructions: composeCanvaExportInstructions({ link, ref: canva }),
+          notes: canva.kind === 'template' ? ['This is a public template, not a design: ask for a design made from it.'] : [],
+        };
+        return this.output(workspaceRoot, result, formatExtractSiteResult(result));
+      }
       if (figmaSource && !ref) return text('Invalid arguments: url with a figma source must be the same Figma link or left out: the tool does not open a website when drafting from a Figma file.');
     }
-    if (sources && (figmaSource || !url?.trim() || parseFigmaUrl(url.trim()))) {
+    if (sources && (figmaSource || !url?.trim() || parseFigmaUrl(url.trim()) || parseCanvaUrl(url.trim()))) {
       if (content) return text('Invalid arguments: content needs a url.');
       const drafted = await withNearestDesignSystems(
-        await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources, figmaToken: figmaSource ? await getFigmaToken(this.context) : undefined }),
+        await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources, figmaToken: figmaSource ? await getFigmaToken(this.context) : undefined, exportHosts }),
         this.contentIndex,
       );
       return this.output(workspaceRoot, drafted, formatExtractSiteResult(drafted));
@@ -107,7 +122,7 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
     const measured = await extractSite({ url, extraUrls, theme, content: content === true, localizeImages: localizeImages === true, discover: discover ?? (compareTo ? false : undefined), workspaceRoot, outputDir: getOutputDirectory(), browserPath });
     if (token.isCancellationRequested) return text('Extraction cancelled.');
     if (measured.status === 'invalid-args') return text(`Invalid arguments: ${measured.error}`);
-    const result = await withNearestDesignSystems(sources && 'bundleDir' in measured ? await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources, urlResult: measured }) : measured, this.contentIndex);
+    const result = await withNearestDesignSystems(sources && 'bundleDir' in measured ? await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources, urlResult: measured, exportHosts }) : measured, this.contentIndex);
     return this.output(
       workspaceRoot,
       result,
@@ -117,7 +132,7 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
 
   private async output(workspaceRoot: string, result: ExtractSiteResult, body: string): Promise<vscode.LanguageModelToolResult> {
     if (result.status === 'invalid-args') return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(`Invalid arguments: ${result.error}`)]);
-    if (result.status === 'needs-figma-read') return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(body)]);
+    if (result.status === 'needs-figma-read' || result.status === 'needs-canva-export') return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(body)]);
     const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.screenshots.find((s) => /source-\d+\.png$/.test(s)) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
     const image = shot ? await fs.readFile(path.join(workspaceRoot, shot)).catch(() => undefined) : undefined;
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(body), ...(image ? [vscode.LanguageModelDataPart.image(image, 'image/png')] : [])]);
