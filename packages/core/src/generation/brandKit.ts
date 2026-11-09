@@ -8,6 +8,7 @@
 
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import type { FigmaSourceRecord } from './figmaSource';
 
 export const BRAND_FILE = 'brand.json';
 /** The site screenshot an extracted brand keeps beside DESIGN.md, for the critic and the review. */
@@ -124,7 +125,14 @@ export interface BrandRecord {
   version: 1;
   kind: BrandKind;
   name?: string;
-  sources?: { urls?: string[]; extractedAt?: string; bundleDir?: string };
+  sources?: {
+    urls?: string[];
+    extractedAt?: string;
+    bundleDir?: string;
+    /** A draft built from a Figma file (openspec add-design-system-from-figma). */
+    source?: 'figma';
+    figma?: FigmaSourceRecord;
+  };
   /** Recommender descriptor, as for bundled systems (design-system-descriptors.json). */
   descriptor?: { moods?: string[]; industries?: string[]; surfaces?: string[] };
   /** Site screenshot beside DESIGN.md (BRAND_REFERENCE_FILE), when one was kept. */

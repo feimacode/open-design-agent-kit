@@ -125,6 +125,8 @@ import {
   composePublishCanvaTemplateInstructions,
   uploadToCanva,
   preparePullFigmaFrame,
+  composeFigmaReadInstructions,
+  parseFigmaUrl,
   prepareFigmaPush,
   formatIntegrations,
   type ListIntegrationsInput,
@@ -187,6 +189,8 @@ export interface ToolContext {
   outputDir: string;
   assetsRoot: string;
   figmaToken?: string;
+  /** True on the hosted gateway: no local disk of the user's and no Figma token (openspec add-design-system-from-figma). */
+  hosted?: boolean;
   /** The client name from the MCP initialize handshake (e.g. "claude-code", "codex-mcp-client"). */
   clientName?: string;
   /** True when the client renders MCP Apps (it lists the io.modelcontextprotocol/ui extension). */
@@ -1020,11 +1024,32 @@ export async function extractDesignSystemFromSite(
     if (!checked.ok) throw new Error(checked.error);
     sources = checked.sources.length ? checked.sources : undefined;
   }
-  if (sources && (typeof input.url !== 'string' || !input.url.trim()) && !input.compareTo) {
+  const figmaSource = sources?.some((s) => s.kind === 'figma') === true;
+  const link = typeof input.url === 'string' ? input.url.trim() : '';
+  if (figmaSource && link && !parseFigmaUrl(link)) {
+    throw new Error('"url" with a figma source must be the same Figma link or left out: the tool does not open a website when drafting from a Figma file.');
+  }
+  // Sources only: no url, or a figma source (the Figma link is the url there, and is never fetched).
+  if (sources && (figmaSource || !link) && !input.compareTo) {
     if (input.content) throw new Error('"content" needs a url: it copies the words from live pages.');
-    const result = await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources });
+    const result = await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, figmaToken: ctx.figmaToken });
     const near = await withNearestDesignSystems(result, ctx.contentIndex);
     return await extractOutput(ctx, near, formatExtractSiteResult(near));
+  }
+  // A Figma link: the agent reads the file with Figma's own server and calls back with a figma source (openspec add-design-system-from-figma). Nothing contacts Figma here.
+  if (link) {
+    const ref = parseFigmaUrl(link);
+    if (ref) {
+      const result: ExtractSiteResult = {
+        status: 'needs-figma-read',
+        fileKey: ref.fileKey,
+        nodeId: ref.nodeId,
+        link,
+        instructions: composeFigmaReadInstructions({ link, ref, tokenConfigured: Boolean(ctx.figmaToken), hosted: ctx.hosted }),
+        notes: ctx.figmaToken ? [] : ['No Figma access token is configured on this machine, so the styles fallback needs one set first.'],
+      };
+      return { text: formatExtractSiteResult(result), images: [] };
+    }
   }
   // compareTo: measure again from the URLs a saved system recorded, and diff (openspec connect-brand-design-systems).
   const compareTo = typeof input.compareTo === 'string' && input.compareTo.trim() ? input.compareTo.trim() : undefined;
@@ -1064,6 +1089,7 @@ export async function extractDesignSystemFromSite(
 
 async function extractOutput(ctx: ToolContext, result: ExtractSiteResult, text: string): Promise<ToolOutput> {
   if (result.status === 'invalid-args') throw new Error(result.error);
+  if (result.status === 'needs-figma-read') return { text, images: [] };
   const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.screenshots.find((s) => /source-\d+\.png$/.test(s)) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
   const image = shot ? await fs.readFile(path.join(ctx.workspaceRoot, shot)).catch(() => undefined) : undefined;
   return { text, images: image ? [{ data: image, mime: 'image/png' }] : [] };

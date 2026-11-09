@@ -10,6 +10,7 @@
 //   handles, signed links and sweeps live in packages/mcp-gateway.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { parseFigmaUrl } from '@feimacode/open-design-agent-kit-core';
 
 export const REMOTE_PROFILE = 'remote';
 
@@ -78,8 +79,25 @@ export function remoteArgRefusal(tool: string, args: Record<string, unknown>): s
   if (tool === 'create_open_design_design_system' && typeof args.sourceUrl === 'string' && args.sourceUrl.trim()) {
     return 'The hosted Open Design server does not fetch websites. Call create_open_design_design_system again without sourceUrl, and describe the brand in brief (colours, fonts, tone) from what the user tells you.';
   }
-  if (tool === 'extract_open_design_design_system' && ['url', 'extraUrls', 'compareTo', 'content'].some((k) => args[k] !== undefined && args[k] !== '' && args[k] !== false)) {
-    return 'The hosted Open Design server does not fetch websites, so it can draft a design system only from sources. Fetch the page yourself and pass its HTML and stylesheets as sources ({ kind: "html", text } and { kind: "css", text }), or pass a screenshot, a brand guide or a PowerPoint template, and leave out url, extraUrls, compareTo and content.';
+  if (tool === 'extract_open_design_design_system') {
+    const url = typeof args.url === 'string' ? args.url.trim() : '';
+    if (url && !parseFigmaUrl(url)) {
+      return 'The hosted Open Design server does not fetch websites, so it can draft a design system only from sources. Fetch the page yourself and pass its HTML and stylesheets as sources ({ kind: "html", text } and { kind: "css", text }), or pass a screenshot, a brand guide or a PowerPoint template, and leave out url, extraUrls, compareTo and content.';
+    }
+    if (['extraUrls', 'compareTo', 'content'].some((k) => args[k] !== undefined && args[k] !== '' && args[k] !== false)) {
+      return 'The hosted Open Design server does not fetch websites, so it can draft a design system only from sources. Fetch the page yourself and pass its HTML and stylesheets as sources ({ kind: "html", text } and { kind: "css", text }), or pass a screenshot, a brand guide or a PowerPoint template, and leave out url, extraUrls, compareTo and content.';
+    }
+    const sources = Array.isArray(args.sources) ? (args.sources as unknown[]) : [];
+    const figma = sources
+      .filter((s) => s !== null && typeof s === 'object' && (s as { kind?: unknown }).kind === 'figma')
+      .map((s) => ((s as { figma?: unknown }).figma !== null && typeof (s as { figma?: unknown }).figma === 'object' ? (s as { figma: Record<string, unknown> }).figma : (s as Record<string, unknown>)));
+    if (figma.some((f) => f.styles === true)) {
+      return 'The hosted Open Design server does not call Figma\'s REST API with a token, so a figma source cannot use styles: true. Read the frames with the Figma connector instead and pass their get_variable_defs replies in frames, with styles left out or false.';
+    }
+    const logoFiles = figma.some((f) => Array.isArray(f.logos) && (f.logos as unknown[]).some((l) => l !== null && typeof l === 'object' && ((typeof (l as { data?: unknown }).data === 'string' && (l as { data: string }).data.length > 0) || (typeof (l as { path?: unknown }).path === 'string' && (l as { path: string }).path.length > 0))));
+    if (logoFiles) {
+      return 'The hosted Open Design server cannot store Figma logo exports: it has no copy of the user\'s files and no Figma token. List each logo as needed instead (logos: [{ role, name }], with no data or path), and ask the person to export and attach them once the design system is saved.';
+    }
   }
   if (tool === 'export_open_design_artifact' && args.embedAssets === true) {
     return 'The hosted Open Design server does not download remote assets (embedAssets). Export again without embedAssets.';

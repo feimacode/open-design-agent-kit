@@ -9,7 +9,7 @@ import type { ExtractSiteResult } from '../generation/siteExtraction';
 
 /** The extraction result with `nearest` and `distinctive` added (or a note saying why not). */
 export async function withNearestDesignSystems<T extends ExtractSiteResult>(result: T, index: ContentIndex): Promise<T> {
-  if (result.status === 'invalid-args' || !result.draft || Object.keys(result.draft.tokens).length === 0) return result;
+  if (result.status === 'invalid-args' || result.status === 'needs-figma-read' || !result.draft || Object.keys(result.draft.tokens).length === 0) return result;
   const near = await index.nearestDesignSystems(result.draft.tokens);
   if (!near.nearest) return { ...result, notes: [...result.notes, near.note!] };
   return { ...result, nearest: near.nearest, distinctive: near.distinctive };

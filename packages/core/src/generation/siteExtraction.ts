@@ -95,6 +95,16 @@ export interface BlockedPage {
 export type ExtractSiteResult =
   | { status: 'invalid-args'; error: string }
   | {
+      status: 'needs-figma-read';
+      /** The Figma file the link names. */
+      fileKey: string;
+      nodeId?: string;
+      link: string;
+      /** What to read with the Figma connector, and how to call back. */
+      instructions: string;
+      notes: string[];
+    }
+  | {
       status: 'ok' | 'partial' | 'blocked';
       slug: string;
       /** Workspace-relative evidence bundle folder. */
@@ -125,6 +135,11 @@ export type ExtractSiteResult =
       distinctive?: string[];
       notes: string[];
     };
+
+/** The tool layer's answer for a Figma link, before the agent reads the file. */
+export type FigmaReadResult = Extract<ExtractSiteResult, { status: 'needs-figma-read' }>;
+/** What measuring a site returns: `extractSite` never asks for a Figma read. */
+export type MeasuredSiteResult = Exclude<ExtractSiteResult, FigmaReadResult>;
 
 export interface CapturedBrandKit {
   /** Paths relative to the evidence bundle. */
@@ -918,7 +933,7 @@ async function cropRoles(page: Page, rects: MeasuredPage['rects'], dir: string, 
 const darkSignature = (roles: Partial<Record<ColorRole, RoleSample>>): string => `${roles.bg?.value}|${roles.fg?.value}`;
 
 /** Renders the pages and measures them. Never throws for a site problem; reports it. */
-export async function extractSite(input: ExtractSiteInput): Promise<ExtractSiteResult> {
+export async function extractSite(input: ExtractSiteInput): Promise<MeasuredSiteResult> {
   const valid = await validateLiveUrls(input.url, input.extraUrls ?? [], input.resolveHost, input.allowHostsForTesting);
   if (!valid.ok) return { status: 'invalid-args', error: valid.error };
   const [main] = valid.urls;
@@ -1413,6 +1428,13 @@ function accentChoice(src: DraftTokens['sources'][string] | undefined): string |
 /** The tool's text: what was measured, from where, and what to do next. */
 export function formatExtractSiteResult(result: ExtractSiteResult): string {
   if (result.status === 'invalid-args') return JSON.stringify({ status: 'invalid-args', error: result.error }, null, 2);
+  if (result.status === 'needs-figma-read') {
+    return JSON.stringify(
+      { status: result.status, fileKey: result.fileKey, nodeId: result.nodeId, link: result.link, instructions: result.instructions, notes: result.notes },
+      null,
+      2,
+    );
+  }
   const next =
     result.status === 'ok'
       ? 'Write DESIGN.md and tokens.css together from this draft, keeping every measured value as measured (the open-design-design-system-from-url skill has the steps). Unmeasured tokens are left to the contract fallbacks: omit them, don\'t invent them. Look at the screenshots before writing the prose.'

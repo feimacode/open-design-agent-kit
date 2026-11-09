@@ -1,12 +1,12 @@
 ---
 name: "open-design-design-system-from-url"
-description: Make a design system from a website — measure its real colours, fonts, spacing and button states in a browser, write DESIGN.md and tokens.css that agree, and check the result side by side with the site before saving
+description: Make a design system from a website or a Figma file — measure its real colours, fonts, spacing and button states, write DESIGN.md and tokens.css that agree, and check the result side by side with the source before saving
 mode: agent
 ---
 
-Make an Open Design design system from a website: measure the rendered site, write `DESIGN.md` and `tokens.css` from one set of measurements, and check the result against the site before saving it.
+Make an Open Design design system from a website or a Figma file: measure the rendered site (or read the file's variables), write `DESIGN.md` and `tokens.css` from one set of measurements, and check the result against the source before saving it.
 
-Request: ${input:brief:Which website should the design system come from?}
+Request: ${input:brief:Which website or Figma file should the design system come from?}
 
 **How to talk to the user.** Many people using Open Design don't write code, so:
 - Use the user's own words. If they say "artifact", "design tokens" or give a file path, use those terms back; otherwise use the plain words below.
@@ -31,14 +31,15 @@ Request: ${input:brief:Which website should the design system come from?}
 
 Three things decide the run. Take each from the request when it says so, and ask only about the ones it leaves open, in one message:
 
-1. **The address** (and, optionally, up to 3 more pages on the same site, such as a pricing or product page).
+1. **The address** (and, optionally, up to 3 more pages on the same site, such as a pricing or product page) — or a link to a Figma file or frame.
 2. **Light, dark or both.** Default to light if the user doesn't care.
 3. **Their own brand, or a reference?** For a reference site the design system is named "<Name>-inspired" and no logos or images are copied.
 
 If the request already answers all three ("make a dark design system from https://example.com, it's our brand"), ask nothing and go straight on.
 
-**No website, or not one this can open?** The brand may live elsewhere: a page that isn't public (an intranet or a members-only page), a native app, or a brand with only a PowerPoint template or a brand guide. Ask which of these the user has, and pass them as `sources` (up to 6, with or without `url`):
+**No website, or not one this can open?** The brand may live elsewhere: a Figma file, a page that isn't public (an intranet or a members-only page), a native app, or a brand with only a PowerPoint template or a brand guide. Ask which of these the user has, and pass them as `sources` (up to 6, with or without `url`):
 
+- `{ kind: "figma", ... }`: the user's Figma file or frame. Pass its link as `url` first: see "From a Figma file" below.
 - `{ kind: "template", path }`: a PowerPoint template (`.pptx` or `.potx`). Its theme colours, fonts, text sizes and the logo on its master. A legacy `.ppt` must be saved as `.pptx` first; a template still on the stock Office theme has no brand to take.
 - `{ kind: "brandGuide", path }`: a PDF, DOCX, PPTX or Markdown brand guide. Colour codes with their labels (Primary, Background, Text map to roles; CMYK is converted and marked so; a Pantone-only colour is noted, ask for its hex) and the typefaces it names.
 - `{ kind: "css", text | path }`: a stylesheet, a Tailwind theme or a `tokens.json` (W3C design tokens). Roles come only from names the file gives (`--color-primary`, `background`).
@@ -46,6 +47,8 @@ If the request already answers all three ("make a dark design system from https:
 - `{ kind: "screenshot", path | data }`: a PNG of the site or app. Colours are sampled, and fonts can't be read from pixels: ask the user to confirm them.
 
 Each value in `sources` then carries a `confidence`: `measured` (a rendered page), `declared` (CSS, tokens, a template), `stated` (a brand guide) or `sampled` (a screenshot). Where sources disagree the draft keeps the more trusted value and lists the other under `conflicts`: show the user those and ask which is the brand's. `sourceCandidates` are colours with no role yet, and `chartPalette` (from a template) is the brand's order for chart series; mention it in DESIGN.md.
+
+**From a Figma file.** Call `extract_open_design_design_system` with the file or frame link as `url`. It returns `status: "needs-figma-read"` and `instructions`: the steps to read the file through your Figma connector (or a local access token). Follow them, and pass the replies back unchanged as a `figma` source with the same `url`. In short: check the connector with `list_open_design_integrations` and your own Figma tools, load Figma's guidance with `get_figma_skill`, find the token, logo and primary-button frames in `get_metadata`, read their variables with `get_variable_defs`, read the collections and scopes with `search_design_system`, then export the logos (`get_screenshot` for a PNG, or the SVG URL `get_design_context` returns) and name each font family under `fonts`. If the frames hold no token variables, ask the user for the link to the file's foundations page rather than guessing colours from the canvas. If there is no connector, offer to connect Figma once, and only after they say yes; otherwise fall back as the instructions say (published styles with a token, or a screenshot of the foundations page). On the hosted server, pass each logo's `role` and `name` only and don't call Figma's variables REST API. The draft that comes back is used like any other: same review in step 4, and `brand.json` records `source: "figma"` with the file link, the frames read and the date.
 
 **If the tool refuses `url`** because it runs on a hosted server that doesn't open websites: fetch the page yourself, with your own web tool if you have one, and pass its HTML and its main stylesheets as `html` and `css` sources. If you can't fetch, ask the user for a screenshot, the CSS, a brand guide or a template.
 
@@ -63,6 +66,7 @@ Call `extract_open_design_design_system` with `url`, `extraUrls` if there are an
 - **`partial`** (no browser installed): the page source and its stylesheets were read instead, so roles come only from the names the CSS gives them. Tell the user, show the draft and the candidates, and ask them to confirm the brand colour and font, or to install a browser for a full measurement.
 - **`blocked`**: show the user the screenshot and the reason. Ask for a screenshot of the page they mean, the site's CSS, a brand guide or a template, and call again with them as `sources`, or try another public page. Don't retry the same page.
 - An invalid-args error (a private address, an extra page on another site): tell the user what was refused and why.
+- **`needs-figma-read`**: the link is a Figma file. Its `instructions` are the reading steps described under "From a Figma file" in step 1: follow them, then call again with a `figma` source. Don't write `DESIGN.md` or `tokens.css` from the link alone.
 - **`nearest`** (reference sites): the three bundled design systems closest to the draft in style, each with the axes where it differs, and `distinctive`, the draft's most unusual features. Before writing a "<Name>-inspired" system, offer the closest one as a brand-free starting point ("`vercel` is close: same near-black text and tight radius, but a different accent. Start from it, or keep going with the site's own look?"). If the user picks it, set it active instead and stop. For the user's own brand, don't offer them; use `distinctive` in DESIGN.md's atmosphere instead.
 - **`brandKit`**: the brand kit the page shows. `marks` with roles (`logo`, `logo-dark`, `logo-on-dark`, `icon`, `touch-icon`, `manifest-icon`, `social`) and the background each was seen on; `fonts` with their source (`google` with a stylesheet, `adobe`, `self-hosted`, `system`), and for a self-hosted or Adobe face a `freeMatch`; `components` (primary, secondary and ghost buttons, the input and its focus style, card, nav, badge, in px with a crop each); `voice` (sampled lines and counted facts: heading case, sentence length, person, exclamations, emoji); and `imagery` (hero kind, image radius and ratios, the icon set with its style and stroke). The create call puts it into `brand.json`.
 
@@ -82,7 +86,7 @@ Write `DESIGN.md` at `suggestedEntryPath` and `tokens.css` beside it, **both fro
 - **Components**: write a Components section from `brandKit.components` as numbers ("Primary button: 44px high, 0 24px padding, weight 600, sentence case, pill radius, no border"), one line each for the buttons, the input (with its focus style), the card, the nav (sticky or not) and the badge. Leave out what wasn't measured.
 - **Voice**: describe the tone from `brandKit.voice`'s facts and samples (sentence case, short sentences, speaks to "you", no exclamation marks). For the user's own brand you may quote a line or two as examples; for a reference site, describe the tone and copy no lines.
 - **Imagery**: from `brandKit.imagery`, say what the hero uses (photo, illustration, 3D, video), the image corner radius and ratios, and the icon set ("Lucide, outline, 1.5 stroke"). These are hints from the page, so call them that if the screenshots disagree.
-- **Marks**: for the user's own brand the create call copies `brandKit.marks` into `assets/` beside `DESIGN.md` (its `brand.json` lists them); mention them in DESIGN.md (which logo goes on light, which on dark). For a reference site, none are copied.
+- **Marks**: for the user's own brand the create call copies `brandKit.marks` (or, from Figma, the logos you passed as a `figma` source) into `assets/` beside `DESIGN.md` (its `brand.json` lists them); mention them in DESIGN.md (which logo goes on light, which on dark). For a reference site, none are copied. A Figma draft's fonts are listed by family, as on a site.
 
 ## 4. Review it side by side
 

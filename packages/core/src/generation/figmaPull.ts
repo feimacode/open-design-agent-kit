@@ -171,12 +171,12 @@ function toHexByte(value: number): string {
     .padStart(2, '0');
 }
 
-function toHexColor(color: FigmaColor): string {
+export function toHexColor(color: FigmaColor): string {
   const hex = `#${toHexByte(color.r)}${toHexByte(color.g)}${toHexByte(color.b)}`;
   return color.a !== undefined && color.a < 1 ? `${hex}${toHexByte(color.a)}` : hex;
 }
 
-function firstSolidColor(paints?: FigmaPaint[]): string | undefined {
+export function firstSolidColor(paints?: FigmaPaint[]): string | undefined {
   const solid = paints?.find((p) => p.type === 'SOLID' && p.visible !== false && p.color);
   if (!solid?.color) return undefined;
   return toHexColor({ ...solid.color, a: solid.opacity ?? solid.color.a });

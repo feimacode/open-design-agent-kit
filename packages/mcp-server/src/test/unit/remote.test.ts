@@ -42,6 +42,15 @@ describe('remote profile (add-remote-mcp-server)', () => {
     assert.match(remoteArgRefusal('extract_open_design_design_system', { url: 'https://example.com' }) ?? '', /pass its HTML and stylesheets as sources/);
     assert.match(remoteArgRefusal('extract_open_design_design_system', { compareTo: 'user:acme', sources: [] }) ?? '', /does not fetch websites/);
     assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { sources: [{ kind: 'css', text: ':root{--brand:#e4002b}' }], content: false }), undefined);
+    // A Figma link is allowed: nothing is fetched, the agent reads the file through its own connector.
+    assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { url: 'https://www.figma.com/design/AbC123/Brand?node-id=1-2' }), undefined);
+    assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { url: 'https://www.figma.com/design/AbC123/Brand', sources: [{ kind: 'figma', figma: { kind: 'figma', file: 'AbC123', frames: [{ nodeId: '1:2', variables: {} }] } }] }), undefined);
+    // Published styles need the local token, so the hosted server refuses that fallback.
+    assert.match(remoteArgRefusal('extract_open_design_design_system', { sources: [{ kind: 'figma', figma: { kind: 'figma', file: 'AbC123', styles: true } }] }) ?? '', /cannot use styles: true/);
+    // Logo files are the user's own; the hosted server lists them as needed instead.
+    assert.match(remoteArgRefusal('extract_open_design_design_system', { sources: [{ kind: 'figma', figma: { kind: 'figma', file: 'AbC123', frames: [{ nodeId: '1:2', variables: {} }], logos: [{ role: 'logo', data: 'AAAA' }] } }] }) ?? '', /cannot store Figma logo exports/);
+    assert.match(remoteArgRefusal('extract_open_design_design_system', { sources: [{ kind: 'figma', figma: { kind: 'figma', file: 'AbC123', frames: [{ nodeId: '1:2', variables: {} }], logos: [{ role: 'logo', path: 'exports/logo.svg' }] } }] }) ?? '', /cannot store Figma logo exports/);
+    assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { sources: [{ kind: 'figma', figma: { kind: 'figma', file: 'AbC123', frames: [{ nodeId: '1:2', variables: {} }], logos: [{ role: 'logo', name: 'logo.svg' }], fonts: [{ family: 'Inter' }] } }] }), undefined);
   });
 
   it('reads limits from the environment, ignoring bad values', () => {

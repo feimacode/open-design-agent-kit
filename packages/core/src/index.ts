@@ -52,6 +52,7 @@ export * from './generation/publishInstructions';
 export * from './generation/publishProviders';
 export * from './generation/structuralDirections';
 export * from './generation/figmaPull';
+export * from './generation/figmaSource';
 export * from './generation/githubImport';
 export * from './generation/hostOverrides';
 export * from './generation/portToAppInstructions';

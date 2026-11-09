@@ -1,8 +1,9 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { brandRefreshDiff, extractFromSources, extractSite, formatExtractSiteResult, formatRefreshResult, refreshUrls, validateSources, withNearestDesignSystems, type ContentIndex, type ExtractionSource, type ExtractionTheme, type ExtractSiteResult } from '@feimacode/open-design-agent-kit-core';
+import { brandRefreshDiff, composeFigmaReadInstructions, extractFromSources, extractSite, formatExtractSiteResult, formatRefreshResult, parseFigmaUrl, refreshUrls, validateSources, withNearestDesignSystems, type ContentIndex, type ExtractionSource, type ExtractionTheme, type ExtractSiteResult } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot } from '../workspace/artifactWriter';
+import { getFigmaToken } from '../workspace/figmaTokenStore';
 
 interface ExtractDesignSystemInput {
   url?: string;
@@ -22,13 +23,23 @@ interface ExtractDesignSystemInput {
 // evidence bundle under <output>/.extract/<site>/, never DESIGN.md or
 // tokens.css, which the model writes from the returned draft.
 export class ExtractDesignSystemTool implements vscode.LanguageModelTool<ExtractDesignSystemInput> {
-  constructor(private readonly contentIndex: ContentIndex) {}
+  constructor(
+    private readonly contentIndex: ContentIndex,
+    private readonly context: vscode.ExtensionContext,
+  ) {}
 
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<ExtractDesignSystemInput>,
   ): Promise<vscode.PreparedToolInvocation> {
-    if (!options.input.url && !options.input.compareTo && Array.isArray(options.input.sources)) {
-      return { invocationMessage: `Drafting a design system from ${options.input.sources.length} source(s)` };
+    const sources = options.input.sources;
+    if (Array.isArray(sources) && sources.some((s) => s && typeof s === 'object' && (s as { kind?: string }).kind === 'figma')) {
+      return { invocationMessage: 'Drafting a design system from a Figma file' };
+    }
+    if (!options.input.url && !options.input.compareTo && Array.isArray(sources)) {
+      return { invocationMessage: `Drafting a design system from ${sources.length} source(s)` };
+    }
+    if (options.input.url && parseFigmaUrl(options.input.url)) {
+      return { invocationMessage: `Working out what to read from ${options.input.url}` };
     }
     return {
       invocationMessage: options.input.url ? `Measuring the design system of ${options.input.url}` : `Measuring ${options.input.compareTo ?? 'the site'} again`,
@@ -65,9 +76,30 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
       if (!checked.ok) return text(`Invalid arguments: ${checked.error}`);
       sources = checked.sources.length ? checked.sources : undefined;
     }
-    if (!url?.trim() && sources) {
+    const figmaSource = sources?.some((s) => s.kind === 'figma') === true;
+    if (url?.trim()) {
+      // A Figma link: the editor agent reads the file with Figma's connector and calls back with a figma source. Nothing contacts Figma here.
+      const link = url.trim();
+      const ref = parseFigmaUrl(link);
+      if (ref && !figmaSource) {
+        const result: ExtractSiteResult = {
+          status: 'needs-figma-read',
+          fileKey: ref.fileKey,
+          nodeId: ref.nodeId,
+          link,
+          instructions: composeFigmaReadInstructions({ link, ref, tokenConfigured: Boolean(await getFigmaToken(this.context)) }),
+          notes: [],
+        };
+        return this.output(workspaceRoot, result, formatExtractSiteResult(result));
+      }
+      if (figmaSource && !ref) return text('Invalid arguments: url with a figma source must be the same Figma link or left out: the tool does not open a website when drafting from a Figma file.');
+    }
+    if (sources && (figmaSource || !url?.trim())) {
       if (content) return text('Invalid arguments: content needs a url.');
-      const drafted = await withNearestDesignSystems(await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources }), this.contentIndex);
+      const drafted = await withNearestDesignSystems(
+        await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources, figmaToken: figmaSource ? await getFigmaToken(this.context) : undefined }),
+        this.contentIndex,
+      );
       return this.output(workspaceRoot, drafted, formatExtractSiteResult(drafted));
     }
     if (!url?.trim()) return text('Invalid arguments: url is required (or compareTo naming a saved design system, or sources).');
@@ -84,6 +116,7 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
 
   private async output(workspaceRoot: string, result: ExtractSiteResult, body: string): Promise<vscode.LanguageModelToolResult> {
     if (result.status === 'invalid-args') return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(`Invalid arguments: ${result.error}`)]);
+    if (result.status === 'needs-figma-read') return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(body)]);
     const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.screenshots.find((s) => /source-\d+\.png$/.test(s)) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
     const image = shot ? await fs.readFile(path.join(workspaceRoot, shot)).catch(() => undefined) : undefined;
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(body), ...(image ? [vscode.LanguageModelDataPart.image(image, 'image/png')] : [])]);
