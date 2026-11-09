@@ -427,6 +427,28 @@ describe('mcp-server tools', () => {
     assert.match(suggestedEntryPath, /figma\/frame-1-2\.html$/);
   });
 
+  it('extractDesignSystemFromSite returns Figma read steps for a Figma link, starting with a Figma session', async () => {
+    const ctx = await makeContext();
+    const out = await tools.extractDesignSystemFromSite(ctx, { url: 'https://www.figma.com/design/AbC123/Brand' });
+    const result = JSON.parse(out.text);
+    assert.strictEqual(result.status, 'needs-figma-read');
+    assert.match(result.instructions, /`create_session`[\s\S]*`fileKey: "AbC123"`/);
+    assert.match(result.notes.join(' '), /No Figma access token/);
+    const hosted = JSON.parse((await tools.extractDesignSystemFromSite({ ...ctx, hosted: true }, { url: 'https://www.figma.com/design/AbC123/Brand' })).text);
+    assert.deepStrictEqual(hosted.notes, []);
+  });
+
+  it('extractDesignSystemFromSite drafts from other sources given with a Figma link instead of asking for the read again', async () => {
+    const ctx = await makeContext();
+    const out = await tools.extractDesignSystemFromSite(ctx, {
+      url: 'https://www.figma.com/design/AbC123/Brand',
+      sources: [{ kind: 'css', text: ':root { --color-background: #ffffff; --color-primary: #5b3df5; }' }],
+    });
+    const result = JSON.parse(out.text);
+    assert.notStrictEqual(result.status, 'needs-figma-read');
+    assert.ok(result.draft, 'expected a draft from the css source');
+  });
+
   it('pullFigmaFrame reports clearly for a non-Figma URL', async () => {
     const ctx = { ...(await makeContext()), figmaToken: 'fake-token' };
     const raw = await tools.pullFigmaFrame(ctx, { figmaUrl: 'https://example.com/nope' });

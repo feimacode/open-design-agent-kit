@@ -336,10 +336,10 @@ export function composeFigmaReadInstructions(input: ComposeFigmaReadInstructions
     ? `\`fileKey: "${ref.fileKey}"\` and \`nodeId: "${ref.nodeId}"\``
     : `\`fileKey: "${ref.fileKey}"\``;
   const fallback = input.hosted
-    ? 'If they would rather not connect it, ask for a screenshot of the file\'s foundations page and pass it as a `screenshot` source. The hosted server cannot read the file itself, so don\'t call Figma\'s variables REST API, and don\'t guess the design from the link alone.'
+    ? 'If they would rather not connect it, ask for a screenshot of the file\'s foundations page and pass it as a `screenshot` source (the Figma link may stay in `url`; it is never opened). The hosted server cannot read the file itself, so don\'t call Figma\'s variables REST API, and don\'t guess the design from the link alone.'
     : input.tokenConfigured
       ? 'If they would rather not connect it, call again with the same `url` and `sources: [{ "kind": "figma", "file": "<the link>", "styles": true }]`: the local server reads the file\'s published fill and text styles with the access token this machine already has. Don\'t call Figma\'s variables REST API; only published styles are read that way.'
-      : 'If they would rather not connect it: when this host has a Figma access token configured, call again with the same `url` and `sources: [{ "kind": "figma", "file": "<the link>", "styles": true }]` to read the published fill and text styles. Otherwise ask for a screenshot of the file\'s foundations page and pass it as a `screenshot` source. Don\'t call Figma\'s variables REST API, and don\'t guess the design from the link alone.';
+      : 'If they would rather not connect it: when this host has a Figma access token configured, call again with the same `url` and `sources: [{ "kind": "figma", "file": "<the link>", "styles": true }]` to read the published fill and text styles. Otherwise ask for a screenshot of the file\'s foundations page and pass it as a `screenshot` source (the Figma link may stay in `url`; it is never opened). Don\'t call Figma\'s variables REST API, and don\'t guess the design from the link alone.';
   const sourceOfReading = input.hosted ? 'read the file with the Figma connector' : 'read the file with the Figma connector (or a local access token)';
   const logoBytes = input.hosted
     ? 'This is the hosted server, so pass each logo\'s `role` and a `name` only: the design system lists them as needed, and the person attaches the files once it is saved.'
@@ -356,9 +356,11 @@ Call \`list_open_design_integrations\` with \`integration: "figma"\`, and check 
 
 If they aren't there, offer to connect Figma once, using the setup steps the integrations list returned, and only after the person says yes. ${fallback}
 
-## Step 2 — load Figma's guidance first
+## Step 2 — open a Figma session and load Figma's guidance
 
-Figma requires it: call \`get_figma_skill\` with \`uri: "skill://figma/figma-design-to-code/SKILL.md"\`.
+If your Figma tools include \`create_session\`, call it first with \`fileKey: "${ref.fileKey}"\` and a short task description (for example "Read this file's design-system variables"); Figma's server requires it before \`search_design_system\` and its other file tools. Pass the \`sessionId\` it returns on every later Figma call that takes one.
+
+Then, as Figma requires: call \`get_figma_skill\` with \`uri: "skill://figma/figma-design-to-code/SKILL.md"\`.
 
 ## Step 3 — find the frames
 
@@ -558,6 +560,46 @@ function lengthValue(value: string): string {
   return px === undefined ? value : `${px}px`;
 }
 
+/** A line height as written: unitless when it already is a ratio, px otherwise. */
+function lineHeightValue(value: string): string {
+  const n = parsePx(value);
+  if (n === undefined) return value;
+  return !/px$/i.test(value.trim()) && n <= 4 ? String(n) : `${n}px`;
+}
+
+/**
+ * Figma line heights are usually px ("24"), but --leading-* is a ratio applied at
+ * every text size: a fixed 24px would overlap lines on larger text. A px value is
+ * divided by the size it belongs with (body by --text-base, tight by the largest
+ * drafted heading size); with no such size, or an implausible ratio, it is left
+ * out with a note (candidates are colours only).
+ */
+function leadingAsRatios(draft: SourceDraft): void {
+  const sizeOf = (token: string) => {
+    const value = draft.tokens[token]?.value;
+    return value === undefined ? undefined : parsePx(value);
+  };
+  const pairs: Array<[string, string[]]> = [
+    ['--leading-body', ['--text-base']],
+    ['--leading-tight', ['--text-4xl', '--text-3xl', '--text-2xl', '--text-xl']],
+  ];
+  for (const [role, sizes] of pairs) {
+    const token = draft.tokens[role];
+    if (!token || !/px$/i.test(token.value)) continue;
+    const px = parsePx(token.value)!;
+    const sizeToken = sizes.find((size) => sizeOf(size) !== undefined);
+    const size = sizeToken ? sizeOf(sizeToken) : undefined;
+    const ratio = size ? Math.round((px / size) * 100) / 100 : undefined;
+    if (ratio !== undefined && ratio >= 0.9 && ratio <= 2.5) {
+      draft.tokens[role] = { ...token, value: String(ratio) };
+      draft.notes.push(`${role} is ${token.value} in Figma ("${token.where}"); drafted as ${ratio}, its ratio to ${sizeToken} (${size}px).`);
+    } else {
+      delete draft.tokens[role];
+      draft.notes.push(`${role} is ${token.value} in Figma ("${token.where}") with no matching font size to turn it into a ratio, so it is left out; set it by hand as a unitless ratio.`);
+    }
+  }
+}
+
 /** Notes for the collections and modes the design-system search named. */
 function oneModeNotes(source: FigmaSourceInput, frameKeys: Set<string>): string[] {
   interface Collection { name: string; modes: string[]; read?: string; touched: boolean; }
@@ -650,7 +692,7 @@ export function parseFigmaSource(source: FigmaSourceInput): SourceDraft {
       const px = parsePx(resolved);
       if (px !== undefined) {
         for (const role of [...nameNumberRoles(key, resolved), ...scopeRoles(scopes, key, resolved)]) {
-          add(role, lengthValue(resolved), key);
+          add(role, role.startsWith('--leading-') ? lineHeightValue(resolved) : lengthValue(resolved), key);
         }
         continue;
       }
@@ -661,6 +703,8 @@ export function parseFigmaSource(source: FigmaSourceInput): SourceDraft {
       }
     }
   }
+
+  leadingAsRatios(draft);
 
   // The button carries the accent even when no variable is named "primary".
   const buttons = frames.filter((frame) => /button|btn|cta/i.test(frame.name ?? ''));

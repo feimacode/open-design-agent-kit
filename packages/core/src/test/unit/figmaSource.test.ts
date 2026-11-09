@@ -162,6 +162,24 @@ describe('parseFigmaStyles', () => {
 });
 
 describe('parseFigmaSource', () => {
+  it('turns px line heights into ratios of their font size, and leaves them out when there is none', () => {
+    const withSize = parseFigmaSource({
+      kind: 'figma',
+      file: 'AbC123',
+      frames: [{ nodeId: '1:1', name: 'Type', variables: { 'font-size/base': '16', 'line-height/body': '24', 'font-size/3xl': '40', 'line-height/heading': '44' } }],
+    });
+    assert.strictEqual(withSize.tokens['--text-base']?.value, '16px');
+    assert.strictEqual(withSize.tokens['--leading-body']?.value, '1.5');
+    assert.strictEqual(withSize.tokens['--leading-tight']?.value, '1.1');
+
+    const unitless = parseFigmaSource({ kind: 'figma', file: 'AbC123', frames: [{ nodeId: '1:1', variables: { 'line-height/body': '1.5' } }] });
+    assert.strictEqual(unitless.tokens['--leading-body']?.value, '1.5');
+
+    const alone = parseFigmaSource({ kind: 'figma', file: 'AbC123', frames: [{ nodeId: '1:1', variables: { 'line-height/body': '24' } }] });
+    assert.strictEqual(alone.tokens['--leading-body'], undefined);
+    assert.ok(alone.notes.some((n) => /--leading-body is 24px[\s\S]*left out/.test(n)));
+  });
+
   it('maps variable names to roles and keeps the Figma name', () => {
     const checked = validateFigmaSource({
       kind: 'figma',

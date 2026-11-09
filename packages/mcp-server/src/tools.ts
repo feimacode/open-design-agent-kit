@@ -1029,8 +1029,10 @@ export async function extractDesignSystemFromSite(
   if (figmaSource && link && !parseFigmaUrl(link)) {
     throw new Error('"url" with a figma source must be the same Figma link or left out: the tool does not open a website when drafting from a Figma file.');
   }
-  // Sources only: no url, or a figma source (the Figma link is the url there, and is never fetched).
-  if (sources && (figmaSource || !link) && !input.compareTo) {
+  // Sources only: no url, or a Figma link (never fetched) with any sources, such as a figma
+  // source or the screenshot the Figma read steps fall back to. Without this, a Figma link
+  // plus a screenshot would return needs-figma-read again and the agent would loop.
+  if (sources && (figmaSource || !link || parseFigmaUrl(link)) && !input.compareTo) {
     if (input.content) throw new Error('"content" needs a url: it copies the words from live pages.');
     const result = await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, figmaToken: ctx.figmaToken });
     const near = await withNearestDesignSystems(result, ctx.contentIndex);
@@ -1046,7 +1048,7 @@ export async function extractDesignSystemFromSite(
         nodeId: ref.nodeId,
         link,
         instructions: composeFigmaReadInstructions({ link, ref, tokenConfigured: Boolean(ctx.figmaToken), hosted: ctx.hosted }),
-        notes: ctx.figmaToken ? [] : ['No Figma access token is configured on this machine, so the styles fallback needs one set first.'],
+        notes: ctx.figmaToken || ctx.hosted ? [] : ['No Figma access token is configured on this machine, so the styles fallback needs one set first.'],
       };
       return { text: formatExtractSiteResult(result), images: [] };
     }

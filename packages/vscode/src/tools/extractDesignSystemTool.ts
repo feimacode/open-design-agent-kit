@@ -81,7 +81,8 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
       // A Figma link: the editor agent reads the file with Figma's connector and calls back with a figma source. Nothing contacts Figma here.
       const link = url.trim();
       const ref = parseFigmaUrl(link);
-      if (ref && !figmaSource) {
+      // With any sources (a figma source, or the screenshot the read steps fall back to), draft from them instead of asking again.
+      if (ref && !sources) {
         const result: ExtractSiteResult = {
           status: 'needs-figma-read',
           fileKey: ref.fileKey,
@@ -94,7 +95,7 @@ export class ExtractDesignSystemTool implements vscode.LanguageModelTool<Extract
       }
       if (figmaSource && !ref) return text('Invalid arguments: url with a figma source must be the same Figma link or left out: the tool does not open a website when drafting from a Figma file.');
     }
-    if (sources && (figmaSource || !url?.trim())) {
+    if (sources && (figmaSource || !url?.trim() || parseFigmaUrl(url.trim()))) {
       if (content) return text('Invalid arguments: content needs a url.');
       const drafted = await withNearestDesignSystems(
         await extractFromSources({ workspaceRoot, outputDir: getOutputDirectory(), sources, figmaToken: figmaSource ? await getFigmaToken(this.context) : undefined }),
