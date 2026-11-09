@@ -394,8 +394,10 @@ export async function compareBeforeAfter(input: BeforeAfterInput): Promise<Befor
     };
   }
 
-  const browserPath = input.executablePath ?? (await findBrowser({ explicitPath: input.browserPath }).then((r) => (r.ok ? r.executablePath : undefined)));
-  if (!browserPath) return { status: 'no-browser', error: 'No Chrome, Edge or Chromium browser was found, so the design can’t be captured. Install one or set OPEN_DESIGN_BROWSER_PATH.' };
+  const found = await findBrowser({ explicitPath: input.browserPath });
+  if (!found.ok) return { status: 'no-browser', error: found.message };
+  // In CDP mode executablePath is empty on purpose; openArtifactPage connects via OPEN_DESIGN_BROWSER_URL.
+  const browserPath = input.executablePath ?? found.executablePath;
 
   const pages: BeforeAfterPage[] = [];
   const images: Array<{ before: string; beforePhone?: string; after: string; afterPhone: string; beforeFull?: string; beforePhoneFull?: string; afterFull: string; afterPhoneFull: string; afterAt: string }> = [];

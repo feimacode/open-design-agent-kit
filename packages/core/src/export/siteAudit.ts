@@ -550,8 +550,10 @@ export async function reflowPass(page: Page): Promise<Finding[]> {
 export async function auditSite(input: AuditSiteInput): Promise<AuditSiteResult> {
   const valid = await validateLiveUrls(input.url, input.extraUrls ?? [], input.resolveHost, input.allowHostsForTesting);
   if (!valid.ok) return { status: 'invalid-args', error: valid.error };
-  const browserPath = input.executablePath ?? (await findBrowser({ explicitPath: input.browserPath }).then((r) => (r.ok ? r.executablePath : undefined)));
-  if (!browserPath) return { status: 'no-browser', error: 'No Chrome, Edge or Chromium browser was found, so the site can’t be audited. Install one or set OPEN_DESIGN_BROWSER_PATH.' };
+  const found = await findBrowser({ explicitPath: input.browserPath });
+  if (!found.ok) return { status: 'no-browser', error: found.message };
+  // In CDP mode executablePath is empty on purpose; the browser is reached via OPEN_DESIGN_BROWSER_URL.
+  const browserPath = input.executablePath ?? found.executablePath;
 
   const [main] = valid.urls;
   const slug = liveSlug(main);
@@ -574,7 +576,7 @@ export async function auditSite(input: AuditSiteInput): Promise<AuditSiteResult>
   let live: LiveBrowser | undefined;
 
   try {
-    live = await launchLiveBrowser(browserPath, input.allowHostsForTesting ?? [], 'od-audit-profile-');
+    live = await launchLiveBrowser(browserPath, input.allowHostsForTesting ?? []);
     const { page } = live;
     const { tally } = await watchNetwork(page, main.hostname);
 

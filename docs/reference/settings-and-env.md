@@ -95,6 +95,10 @@ All hosts. The Chrome, Edge or Chromium executable used for export. When unset, 
 
 Nothing is ever downloaded. See [Troubleshooting](../troubleshooting.md#no-chrome-edge-or-chromium-browser-was-found). The [browser preview](../guides/browser-preview.md) uses the same browser for its window and comment screenshots.
 
+### OPEN_DESIGN_BROWSER_URL
+
+All hosts. A running browser's DevTools HTTP endpoint (e.g. `http://browser:9222`) to connect to over Chrome DevTools Protocol instead of launching a local browser. When set, it wins over [`OPEN_DESIGN_BROWSER_PATH`](#open_design_browser_path) and auto-detect, and no local executable is needed at all — the intended setup for containers and CI, where the browser runs as a sidecar. The shared browser is never closed, only disconnected from; launch-only options (such as software-WebGL flags for 3D artifacts) don't apply, so enable those on the browser itself.
+
 ### OPEN_DESIGN_EVALS
 
 Eval runner only. Set to `1` by `npm run evals` for the server it starts, so `audit_open_design_site` can load the fixture sites the runner serves on `127.0.0.1` (see `OPEN_DESIGN_ALLOW_HOSTS`). Never set it for real use.

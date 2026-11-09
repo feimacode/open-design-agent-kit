@@ -3,9 +3,9 @@
 // entry), and a page ready for loadPage(). Shared by exportArtifact() and
 // checkArtifact() so both render an artifact the same way.
 import { promises as fs } from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Browser, Page } from 'puppeteer-core';
+import { openHeadlessBrowser } from './browserDiscovery';
 import { injectDeckStageFallback } from './deck/deckStageFallback';
 import { startStaticServer, urlForPath } from './staticServer';
 import { webglLaunchArgs } from './webgl';
@@ -23,34 +23,32 @@ export interface ArtifactPageSession {
  * is safe to call after a failed launch: a launch error closes what was
  * started before rethrowing.
  */
-export async function openArtifactPage(options: { workspaceRoot: string; relEntry: string; executablePath: string; extraArgs?: string[] }): Promise<ArtifactPageSession> {
+export async function openArtifactPage(options: {
+  workspaceRoot: string;
+  relEntry: string;
+  executablePath: string;
+  extraArgs?: string[];
+}): Promise<ArtifactPageSession> {
   // Software WebGL only for artifacts that need it (a [data-od-webgl] canvas or a three.js import).
   const entry = await fs.readFile(path.join(options.workspaceRoot, options.relEntry), 'utf8').catch(() => '');
   const extraArgs = [...new Set([...webglLaunchArgs(entry), ...(options.extraArgs ?? [])])];
-  const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'od-export-profile-'));
   // The <deck-stage> fallback is injected into the served entry only (never the file on disk).
   const server = await startStaticServer(options.workspaceRoot, { entryPath: options.relEntry, transformEntry: injectDeckStageFallback });
-  let browser: Browser | undefined;
+  let target: { browser: Browser; close(): Promise<void> } | undefined;
   const close = async (): Promise<void> => {
-    await browser?.close().catch(() => undefined);
+    await target?.close();
     await server.close();
-    await fs.rm(profileDir, { recursive: true, force: true }).catch(() => undefined);
   };
   try {
-    const { default: puppeteer } = await import('puppeteer-core');
-    browser = await puppeteer.launch({
-      executablePath: options.executablePath,
-      headless: true,
-      userDataDir: profileDir,
-      // A hung page (endless script, stalled frame) fails the export in a minute instead of blocking it.
-      protocolTimeout: 60_000,
-      args: ['--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb', ...extraArgs],
-    });
-    const page = await browser.newPage();
+    // extraArgs only apply to local launches; a shared remote browser already
+    // runs with its own flags (enable software WebGL there for 3D artifacts).
+    // Open pages are tracked and closed by the shared-browser close().
+    target = await openHeadlessBrowser({ executablePath: options.executablePath, extraArgs });
+    const page = await target.browser.newPage();
     // Under tsx (dev runs, the MCP server's tests) esbuild's keepNames wraps nested functions in
     // `__name(...)`, which doesn't exist in the page that page.evaluate() serializes them into.
     await page.evaluateOnNewDocument('globalThis.__name = globalThis.__name || ((fn) => fn)');
-    return { browser, page, url: urlForPath(server.baseUrl, options.relEntry), close };
+    return { browser: target.browser, page, url: urlForPath(server.baseUrl, options.relEntry), close };
   } catch (err) {
     await close();
     throw err;

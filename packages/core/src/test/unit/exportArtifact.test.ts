@@ -143,6 +143,31 @@ describe('browser discovery', () => {
     assert.ok(result.searched.includes('/usr/bin/google-chrome'));
     assert.match(result.message, /OPEN_DESIGN_BROWSER_PATH/);
   });
+
+  it('prefers OPEN_DESIGN_BROWSER_URL over a local install (shared remote browser)', async () => {
+    const result = await findBrowser({
+      env: { OPEN_DESIGN_BROWSER_URL: 'http://browser:9222', OPEN_DESIGN_BROWSER_PATH: '/env/chrome' },
+      isExecutable: async () => true,
+      listDir: noDirs,
+    });
+    assert.deepStrictEqual(result, { ok: true, executablePath: '', browserURL: 'http://browser:9222' });
+  });
+
+  it('ignores a blank OPEN_DESIGN_BROWSER_URL and falls back to auto-detect', async () => {
+    const result = await findBrowser({
+      env: { OPEN_DESIGN_BROWSER_URL: '   ' },
+      platform: 'linux',
+      homedir: '/home/u',
+      isExecutable: async (p) => p === '/usr/bin/google-chrome',
+      listDir: noDirs,
+    });
+    assert.deepStrictEqual(result, { ok: true, executablePath: '/usr/bin/google-chrome' });
+  });
+
+  it('mentions OPEN_DESIGN_BROWSER_URL in the not-found message', async () => {
+    const result = await findBrowser({ env: {}, platform: 'linux', homedir: '/home/u', isExecutable: async () => false, listDir: noDirs });
+    assert.ok(!result.ok && /OPEN_DESIGN_BROWSER_URL/.test(result.message));
+  });
 });
 
 describe('exportArtifact', () => {

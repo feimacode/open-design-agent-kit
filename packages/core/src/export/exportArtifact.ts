@@ -1078,7 +1078,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       sizeSource,
       sizeDetail,
       warnings,
-      browserPath: browser.executablePath,
+      browserPath: browser.browserURL ?? browser.executablePath,
       findings: pageMode ? findings : undefined,
       checkOnly: options.checkOnly || undefined,
       rows: table ? table.rows.length : undefined,
@@ -1091,7 +1091,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       editable: editableResult,
     };
   } catch (err) {
-    return fail('capture-failed', `Export failed using ${browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
+    return fail('capture-failed', `Export failed using ${browser.browserURL ?? browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     await session?.close();
   }
