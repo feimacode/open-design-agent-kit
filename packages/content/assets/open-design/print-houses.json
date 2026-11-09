@@ -7,9 +7,35 @@
       "url": "https://www.boardgamesmaker.com/",
       "source": "https://www.boardgamesmaker.com/pops/faq-photo.html",
       "checkedAt": "2026-10-24",
-      "formats": [{ "format": "trading-card", "width": 822, "height": 1122, "type": "png", "dpi": 300 }],
+      "formats": [
+        {
+          "format": "trading-card",
+          "width": 822,
+          "height": 1122,
+          "type": "png",
+          "dpi": 300
+        }
+      ],
       "backs": "per-card",
       "notes": "Upload one image per card face. Keep text and key art 36 px (0.12 in) inside the cut."
+    },
+    {
+      "id": "sticker-mule",
+      "label": "Sticker Mule",
+      "url": "https://www.stickermule.com",
+      "source": "https://www.stickermule.com/faqs/stickermule/what-are-your-artwork-requirements-for-stickers-and-labels",
+      "checkedAt": "2026-11-08",
+      "formats": [
+        {
+          "format": "sticker",
+          "width": 900,
+          "height": 900,
+          "type": "png",
+          "dpi": 300
+        }
+      ],
+      "backs": "none",
+      "notes": "Die cut sticker uploaded as one image per sticker at 300 PPI (3 x 3 in = 900 x 900 px); Sticker Mule adds the 1/16 in bleed border around the cutline—keep key text inside the 0.1 in border."
     }
   ]
 }
