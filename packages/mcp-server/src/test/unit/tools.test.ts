@@ -449,6 +449,30 @@ describe('mcp-server tools', () => {
     assert.ok(result.draft, 'expected a draft from the css source');
   });
 
+  it('extractDesignSystemFromSite returns Canva export steps for a Canva link, and refuses an export link from another host', async () => {
+    const ctx = await makeContext();
+    const link = 'https://www.canva.com/design/DAHXIhXhUfw/AbCd/edit';
+    const result = JSON.parse((await tools.extractDesignSystemFromSite(ctx, { url: link })).text);
+    assert.strictEqual(result.status, 'needs-canva-export');
+    assert.strictEqual(result.designId, 'DAHXIhXhUfw');
+    assert.match(result.instructions, /`export-design`[\s\S]*"fileUrl"/);
+    await assert.rejects(
+      tools.extractDesignSystemFromSite(ctx, { url: link, sources: [{ kind: 'template', fileUrl: 'https://example.com/x.pptx' }] }),
+      /example\.com is not one, and nothing was fetched/,
+    );
+  });
+
+  it('extractDesignSystemFromSite drafts from sources given with a Canva link instead of asking for the export again', async () => {
+    const ctx = await makeContext();
+    const out = await tools.extractDesignSystemFromSite(ctx, {
+      url: 'https://www.canva.com/design/DAHXIhXhUfw/AbCd/edit',
+      sources: [{ kind: 'css', text: ':root { --color-background: #ffffff; --color-primary: #5b3df5; }' }],
+    });
+    const result = JSON.parse(out.text);
+    assert.notStrictEqual(result.status, 'needs-canva-export');
+    assert.ok(result.draft);
+  });
+
   it('pullFigmaFrame reports clearly for a non-Figma URL', async () => {
     const ctx = { ...(await makeContext()), figmaToken: 'fake-token' };
     const raw = await tools.pullFigmaFrame(ctx, { figmaUrl: 'https://example.com/nope' });

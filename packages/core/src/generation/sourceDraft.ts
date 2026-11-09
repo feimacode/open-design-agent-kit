@@ -9,6 +9,7 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { extractDocument, sourceKindFor } from '../vendored/documentExtract';
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
+import { DEFAULT_CANVA_EXPORT_HOSTS, fetchExportFile, isAllowedExportUrl, CANVA_EXPORT_MAX_BYTES, type CanvaSourceRecord } from './canvaLink';
 import { draftTokensCss, type DraftTokens } from './evidenceToTokens';
 import { fetchFigmaStyles, figmaFileKey, figmaSourceLabel, figmaSourceRecord, parseFigmaSource, parseFigmaStyles, validateFigmaSource, FIGMA_LOGO_MAX_BYTES, type FigmaLogoInput, type FigmaLogoRecord, type FigmaSourceInput, type FigmaSourceRecord } from './figmaSource';
 import { cropPng, screenshotDraft, screenshotPalette, SCREENSHOT_MAX_BYTES } from './screenshotPalette';
@@ -33,10 +34,20 @@ export interface ExtractionSource {
   name?: string;
   /** A Figma file the host agent read through Figma's own server (openspec add-design-system-from-figma). */
   figma?: FigmaSourceInput;
+  /** An export download link (template, screenshot), fetched only from an allowed export host (openspec add-design-system-from-canva). */
+  fileUrl?: string;
+  /** Which Canva design (and pages) this export came from; turns on the template reader's Canva mode. */
+  canva?: { design?: string; pages?: number[] };
+}
+
+export interface ValidateSourcesOptions {
+  /** Hosts a `fileUrl` may come from; Canva's export host by default. */
+  exportHosts?: readonly string[];
 }
 
 /** Validates the `sources` input; returns an error message or the list. */
-export function validateSources(raw: unknown): { ok: true; sources: ExtractionSource[] } | { ok: false; error: string } {
+export function validateSources(raw: unknown, options: ValidateSourcesOptions = {}): { ok: true; sources: ExtractionSource[] } | { ok: false; error: string } {
+  const exportHosts = options.exportHosts ?? DEFAULT_CANVA_EXPORT_HOSTS;
   if (!Array.isArray(raw)) return { ok: false, error: '"sources" must be a list of { kind, path | text | data }.' };
   if (raw.length === 0) return { ok: false, error: '"sources" is empty.' };
   if (raw.length > MAX_SOURCES) return { ok: false, error: `"sources" takes at most ${MAX_SOURCES} entries (got ${raw.length}).` };
@@ -52,8 +63,29 @@ export function validateSources(raw: unknown): { ok: true; sources: ExtractionSo
       out.push({ kind, name: typeof o.name === 'string' ? o.name : checked.source.name, figma: checked.source });
       continue;
     }
-    const given = ['path', 'text', 'data'].filter((k) => typeof o[k] === 'string' && (o[k] as string).length > 0);
-    if (given.length !== 1) return { ok: false, error: `sources[${i}] needs exactly one of path, text or data.` };
+    const given = ['path', 'text', 'data', 'fileUrl'].filter((k) => typeof o[k] === 'string' && (o[k] as string).length > 0);
+    if (given.length !== 1) return { ok: false, error: `sources[${i}] needs exactly one of path, text, data or fileUrl.` };
+    if (o.fileUrl !== undefined) {
+      if (kind !== 'screenshot' && kind !== 'template') return { ok: false, error: `sources[${i}]: fileUrl is for a screenshot or template exported from Canva.` };
+      if (!isAllowedExportUrl(String(o.fileUrl), exportHosts)) {
+        let host = String(o.fileUrl);
+        try {
+          host = new URL(host).hostname || host;
+        } catch {
+          // keep the raw text
+        }
+        return { ok: false, error: `sources[${i}]: fileUrl must be an https export link from ${exportHosts.join(', ')}; ${host} is not one, and nothing was fetched.` };
+      }
+    }
+    let canva: ExtractionSource['canva'];
+    if (o.canva !== undefined) {
+      if (kind !== 'screenshot' && kind !== 'template') return { ok: false, error: `sources[${i}]: canva is for a screenshot or template exported from Canva.` };
+      if (!o.canva || typeof o.canva !== 'object' || Array.isArray(o.canva)) return { ok: false, error: `sources[${i}].canva must be { design, pages }.` };
+      const c = o.canva as Record<string, unknown>;
+      if (c.design !== undefined && typeof c.design !== 'string') return { ok: false, error: `sources[${i}].canva.design must be the design link.` };
+      if (c.pages !== undefined && (!Array.isArray(c.pages) || !c.pages.every((n) => Number.isInteger(n) && (n as number) >= 1))) return { ok: false, error: `sources[${i}].canva.pages must be page numbers from 1.` };
+      canva = { design: c.design as string | undefined, pages: c.pages as number[] | undefined };
+    }
     if (o.text !== undefined && kind !== 'css' && kind !== 'html') return { ok: false, error: `sources[${i}]: text is for css and html; give a ${kind} as path or data.` };
     if (o.data !== undefined && kind !== 'screenshot' && kind !== 'template') return { ok: false, error: `sources[${i}]: data is for a screenshot or template; give a ${kind} as path or text.` };
     if (kind === 'brandGuide' && o.path === undefined) return { ok: false, error: `sources[${i}]: a brandGuide is a workspace document (PDF, DOCX, PPTX, Markdown) given as path.` };
@@ -63,7 +95,15 @@ export function validateSources(raw: unknown): { ok: true; sources: ExtractionSo
       const max = kind === 'screenshot' ? SCREENSHOT_MAX_BYTES : TEMPLATE_MAX_BYTES;
       if (bytes > max) return { ok: false, error: `sources[${i}]: data is over ${max / 1024 / 1024} MB.` };
     }
-    out.push({ kind, path: o.path as string | undefined, text: o.text as string | undefined, data: o.data as string | undefined, name: typeof o.name === 'string' ? o.name : undefined });
+    out.push({
+      kind,
+      path: o.path as string | undefined,
+      text: o.text as string | undefined,
+      data: o.data as string | undefined,
+      fileUrl: o.fileUrl as string | undefined,
+      canva,
+      name: typeof o.name === 'string' ? o.name : undefined,
+    });
   }
   return { ok: true, sources: out };
 }
@@ -117,8 +157,10 @@ export interface ExtractFromSourcesInput {
   toPng?: (data: Buffer) => Promise<Buffer | undefined>;
   /** A Figma access token for the published-styles fallback (the local server only; never the hosted one). */
   figmaToken?: string;
-  /** Fetches Figma's REST replies (tests inject one). */
+  /** Fetches Figma's REST replies and Canva export links (tests inject one). */
   fetchImpl?: typeof fetch;
+  /** Hosts a `fileUrl` may be downloaded from; Canva's export host by default. */
+  exportHosts?: readonly string[];
 }
 
 /** Reads every source, merges them with any URL measurement, and writes the evidence bundle. */
@@ -158,7 +200,11 @@ export async function extractFromSources(input: ExtractFromSourcesInput): Promis
   for (const [i, src] of input.sources.entries()) {
     const name = label(src, i);
     try {
-      const file = src.path ? await fs.readFile(insideWorkspace(input.workspaceRoot, src.path)) : undefined;
+      const file = src.path
+        ? await fs.readFile(insideWorkspace(input.workspaceRoot, src.path))
+        : src.fileUrl
+          ? await fetchExportFile(src.fileUrl, { hosts: input.exportHosts ?? DEFAULT_CANVA_EXPORT_HOSTS, maxBytes: CANVA_EXPORT_MAX_BYTES, fetchImpl: input.fetchImpl })
+          : undefined;
       const data = src.data ? Buffer.from(src.data, 'base64') : file;
       const text = src.text ?? (src.kind === 'css' || src.kind === 'html' ? file?.toString('utf8') : undefined);
       if (src.kind === 'css') {
@@ -176,7 +222,8 @@ export async function extractFromSources(input: ExtractFromSourcesInput): Promis
         if (doc.pdfNote) notes.push(`${name}: ${doc.pdfNote}`);
         drafts.push(parseBrandGuideText(doc.markdown, name));
       } else if (src.kind === 'template') {
-        const t = await readPowerPointTemplate(src.path ?? src.name ?? 'template.pptx', data!);
+        const fromCanva = Boolean(src.canva || src.fileUrl);
+        const t = await readPowerPointTemplate(src.path ?? (src.name && /\.(pptx|potx)$/i.test(src.name) ? src.name : `${src.name ?? 'template'}.pptx`), data!, { canva: fromCanva });
         drafts.push(t.draft);
         chartPalette = chartPalette ?? (t.chartPalette.length ? t.chartPalette : undefined);
         for (const img of t.images) {
@@ -264,6 +311,13 @@ export async function extractFromSources(input: ExtractFromSourcesInput): Promis
   if (savedLogos.length) notes.push(`Logo files (${savedLogos.map((l) => l.name).join(', ')}) were saved into the bundle; saving the design system copies them into its assets/.`);
   if (neededLogos.length) notes.push(`Logos listed as needed, to attach once the design system is saved: ${neededLogos.map((l) => l.name ?? l.role).join(', ')}.`);
   if (figmaFonts.length) notes.push(`Font files are listed as needed: ${figmaFonts.map((f) => f.family).join(', ')}.`);
+  const canvaSources = input.sources.filter((s) => s.canva || s.fileUrl);
+  let canvaRecord: CanvaSourceRecord | undefined;
+  if (canvaSources.length) {
+    const pages = [...new Set(canvaSources.filter((s) => s.kind === 'screenshot').flatMap((s) => s.canva?.pages ?? []))].sort((a, b) => a - b);
+    canvaRecord = { source: 'canva', design: canvaSources.find((s) => s.canva?.design)?.canva?.design, pages: pages.length ? pages : undefined, exportedAt: new Date().toISOString() };
+    notes.push(`Draft from Canva exports${canvaRecord.design ? ` of ${canvaRecord.design}` : ''}${pages.length ? ` (pages ${pages.join(', ')})` : ''}: recorded as source "canva" in evidence.json. Canva doesn't export font files or hover and focus states.`);
+  }
   let figmaRecord: FigmaSourceRecord | undefined;
   if (figma.length) {
     figmaRecord = figmaSourceRecord(figma[0]);
@@ -274,8 +328,9 @@ export async function extractFromSources(input: ExtractFromSourcesInput): Promis
   // evidence.json: the URL's, with the sources added, or a new one.
   const evidencePath = path.join(bundleDir, 'evidence.json');
   const existing = input.urlResult ? (JSON.parse(await fs.readFile(evidencePath, 'utf8').catch(() => '{}')) as Record<string, unknown>) : { version: 2, measuredAt: new Date().toISOString() };
-  const summary = input.sources.map((s, i) => ({ kind: s.kind, name: label(s, i), path: s.path }));
-  await fs.writeFile(evidencePath, JSON.stringify({ ...existing, status, sources: summary, figma: figmaRecord, sourceDrafts: drafts, chartPalette, marks, draft, notes: [...((existing.notes as string[]) ?? []), ...notes] }, null, 2) + '\n');
+  // Export links are signed and short-lived: keep only their host in the record.
+  const summary = input.sources.map((s, i) => ({ kind: s.kind, name: label(s, i), path: s.path, ...(s.fileUrl ? { from: new URL(s.fileUrl).hostname } : {}), ...(s.canva ? { canva: s.canva } : {}) }));
+  await fs.writeFile(evidencePath, JSON.stringify({ ...existing, status, sources: summary, figma: figmaRecord, canva: canvaRecord, sourceDrafts: drafts, chartPalette, marks, draft, notes: [...((existing.notes as string[]) ?? []), ...notes] }, null, 2) + '\n');
   return {
     status,
     slug: input.urlResult?.slug ?? `sources-${slugBase}`,

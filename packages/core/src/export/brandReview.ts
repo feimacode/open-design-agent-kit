@@ -23,7 +23,7 @@ const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', 
  * review.html for a design system folder. `evidence` and `reference` are
  * relative to that folder; `tokens.css` is read from beside it.
  */
-export function renderBrandReviewPage(input: { name: string; evidence: string; reference?: string; components?: BrandComponents }): string {
+export function renderBrandReviewPage(input: { name: string; evidence: string; reference?: string; components?: BrandComponents; sourceLine?: string }): string {
   const name = esc(input.name);
   // Crops are relative to the evidence bundle, which holds evidence.json.
   const band = renderComponentBand(input.components, path.posix.dirname(input.evidence));
@@ -66,6 +66,7 @@ export function renderBrandReviewPage(input: { name: string; evidence: string; r
 <main class="review">
   <section class="site">
     <h2 class="label">The site</h2>
+    ${input.sourceLine ? `<p class="none">${esc(input.sourceLine)}</p>` : ''}
     ${shot}
   </section>
   <section>

@@ -53,7 +53,7 @@ Hidden, because they need the user's own computer or accounts, or would make the
 
 Refused arguments: `sourceUrl` on `create_open_design_design_system`, `embedAssets` on `export_open_design_artifact`, and `url`, `extraUrls`, `compareTo` and `content` on `extract_open_design_design_system`.
 
-`extract_open_design_design_system` works from [`sources`](tools.md#sources) only: a screenshot, a PowerPoint template, a brand guide written to the project, or CSS and page source the agent fetched itself and passed as text. The refusal for `url` tells the agent to do that.
+`extract_open_design_design_system` works from [`sources`](tools.md#sources) only: a screenshot, a PowerPoint template, a brand guide written to the project, or CSS and page source the agent fetched itself and passed as text. The refusal for `url` tells the agent to do that. Two kinds of `url` are accepted because they are never opened: a Figma link (the agent reads the file with its Figma connector) and a Canva design link (the agent exports the design with its Canva connector). The one download the hosted server makes is a Canva export link passed as a source's `fileUrl`, and only from Canva's export host (`export-download.canva.com`): https, no credentials, at most 20 MB and 30 seconds, with redirects to any other host refused.
 
 Exports return download links. They run through a queue of [`OPEN_DESIGN_EXPORT_CONCURRENCY`](settings-and-env.md#open_design_export_concurrency) slots. An export that takes longer than [`OPEN_DESIGN_EXPORT_WAIT_SECONDS`](settings-and-env.md#open_design_export_wait_seconds) returns a job id for [`get_open_design_export_status`](tools.md#get_open_design_export_status). PowerPoint, video, GIF, data and multi-preset exports always do.
 

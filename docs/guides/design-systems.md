@@ -211,6 +211,19 @@ The same skill does it. Open Design never contacts Figma: the agent reads the fi
 
 Without the connector, the local server can read the file's published fill and text styles with a [Figma access token](../reference/settings-and-env.md#open_design_figma_token). The hosted connector has no token, so it can't. Variable modes and aliases aren't followed beyond what Figma returns, components aren't rebuilt, and nothing syncs later: ask again to refresh.
 
+### Take one from Canva
+
+> Make a design system from my Canva design: https://www.canva.com/design/…
+
+The same skill does it. Canva's connector can't read a Brand Kit's colours, fonts or logos (it lists only each kit's name and thumbnail), so the design is read from its exports instead.
+
+1. **The tool asks for the exports.** Called with the link, [`extract_open_design_design_system`](../reference/tools.md#extract_open_design_design_system) returns `status: "needs-canva-export"` and the steps. The agent exports the design through the [Canva connector](integrations.md) as PowerPoint, plus PNG for up to 4 pages, and calls the tool again with the download links.
+2. **Open Design downloads only from Canva.** A link is fetched only when it is an `https` link on Canva's export host (`export-download.canva.com`), with no credentials, at most 20 MB and 30 seconds. Any other host is refused. This works on the hosted connector too.
+3. **Fonts come from the slides, colours from the pages.** Canva sets the font on each piece of text and often leaves a stock Office theme in the file, so fonts are counted from the text itself (most-used is the body font, the most-used large font is the display font) and a stock theme's colours are only candidates. Colour roles are sampled from the page images. An image that sits on most pages, usually the logo, is kept as a mark.
+4. **Review and save** work as for a site, with page 1 as the reference image and `source: "canva"` in `brand.json` (the design link, the pages and the date).
+
+If you only have a Brand Kit, give one design or brand template made with it, your brand guide, or the colour codes and font names. Without the connector, download the PowerPoint and PNG pages from Canva yourself and attach them. Canva exports no font files and no hover or focus states, and nothing syncs later: ask again to refresh.
+
 ### Take one from a template, brand guide, CSS or screenshot
 
 > Make a design system from our PowerPoint template, brand/Acme.potx.
@@ -220,6 +233,7 @@ Not every brand has a website you can open. The same tool takes up to six other 
 | Source | What it gives | How sure |
 |---|---|---|
 | Figma file (link) | Variables with their scopes and modes, published styles, exported logos, font families | declared |
+| Canva design (link) | Fonts from the text on the slides, a branded theme's colours, a logo repeated across pages; colours sampled from the page images | declared (fonts), sampled (colours) |
 | PowerPoint template (`.pptx`, `.potx`) | Theme colours, heading and body fonts, text sizes, the logo on the master, the chart colours | declared |
 | CSS, a Tailwind theme, `tokens.json` | Colours and fonts the file names (`--color-primary`, `background`) | declared |
 | Brand guide (PDF, DOCX, PPTX, Markdown) | Labelled colour codes (CMYK converted and marked), typefaces | stated |

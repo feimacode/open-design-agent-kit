@@ -8,6 +8,7 @@
 
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import type { CanvaSourceRecord } from './canvaLink';
 import type { FigmaSourceRecord } from './figmaSource';
 
 export const BRAND_FILE = 'brand.json';
@@ -130,8 +131,10 @@ export interface BrandRecord {
     extractedAt?: string;
     bundleDir?: string;
     /** A draft built from a Figma file (openspec add-design-system-from-figma). */
-    source?: 'figma';
+    source?: 'figma' | 'canva';
     figma?: FigmaSourceRecord;
+    /** A draft built from Canva exports (openspec add-design-system-from-canva): the design link, pages and date. */
+    canva?: CanvaSourceRecord;
   };
   /** Recommender descriptor, as for bundled systems (design-system-descriptors.json). */
   descriptor?: { moods?: string[]; industries?: string[]; surfaces?: string[] };

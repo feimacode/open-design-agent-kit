@@ -53,13 +53,15 @@
         "design.write": "create-design",
         "brand.kits": "list-brand-kits"
       },
+      "exportHosts": ["export-download.canva.com"],
       "server": { "transport": "http", "url": "https://mcp.canva.com/mcp", "suggestedName": "canva" },
       "auth": { "kind": "oauth-dcr" },
       "claudeAiConnector": "Canva",
       "installable": true,
       "caveats": [
         "Brand templates and brand kits need a Canva plan that includes them.",
-        "import-design-from-url needs a public HTTPS URL (a PDF, PPTX or webpage) and returns an editable design; create-upload-url plus a raw POST puts a private file in the user's Uploads (a fileId, not a design). Both tested 2026-10-10."
+        "import-design-from-url needs a public HTTPS URL (a PDF, PPTX or webpage) and returns an editable design; create-upload-url plus a raw POST puts a private file in the user's Uploads (a fileId, not a design). Both tested 2026-10-10.",
+        "list-brand-kits returns only each kit's id, name and thumbnail: no tool reads a Brand Kit's colours, fonts or logos. To draft a design system from Canva, export a design made with the kit (PPTX plus PNG pages) and pass the export links to extract_open_design_design_system. export-design links come from export-download.canva.com (checked 2026-11-09)."
       ],
       "docsUrl": "https://canva.dev/docs/mcp/",
       "docs": { "summary": "Import a design, upload assets, export, read brand kits", "signIn": "Canva account", "notes": "Also a claude.ai connector" },

@@ -4,6 +4,7 @@
 // master as marks. Theme XML names each colour's job, so its values are
 // `declared`. No browser, no network: the file is unzipped in memory.
 
+import { createHash } from 'node:crypto';
 import JSZip from 'jszip';
 import * as path from 'node:path';
 import { mapTypeScale } from './evidenceToTokens';
@@ -79,6 +80,100 @@ const relTargets = (relsXml: string, type: RegExp): string[] =>
 /** Resolves a relationship target against the part it belongs to (`ppt/slideMasters/…`). */
 const resolvePart = (partDir: string, target: string): string => path.posix.normalize(path.posix.join(partDir, target)).replace(/^\/+/, '');
 
+/** Characters set per font on the slides, the largest size each was set at, and its char-weighted sizes. */
+interface SlideFontUse {
+  chars: number;
+  maxSize: number;
+  sizes: Array<{ size: number; chars: number }>;
+}
+
+/** What the slides themselves set: fonts by characters, text colours by characters, per run. */
+export interface SlideTextUse {
+  fonts: Map<string, SlideFontUse>;
+  colors: Map<string, number>;
+  chars: number;
+}
+
+const decodeXml = (t: string) => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+
+/** Reads every text run on the slides: font (`a:latin`), size (`sz`, hundredths of a point) and solid colour. */
+export function readSlideText(slideXmls: string[]): SlideTextUse {
+  const fonts = new Map<string, SlideFontUse>();
+  const colors = new Map<string, number>();
+  let total = 0;
+  for (const xml of slideXmls) {
+    for (const run of xml.matchAll(/<a:r>([\s\S]*?)<\/a:r>/g)) {
+      const body = run[1];
+      const text = decodeXml([...body.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g)].map((m) => m[1]).join('')).trim();
+      if (!text) continue;
+      const chars = text.length;
+      total += chars;
+      const rPr = /<a:rPr\b[^>]*\/>|<a:rPr\b[^>]*>[\s\S]*?<\/a:rPr>/.exec(body)?.[0] ?? '';
+      const face = attr(/<a:latin\b[^>]*>/.exec(rPr)?.[0] ?? '', 'typeface');
+      const sz = Number(attr(/<a:rPr\b[^>]*>/.exec(rPr)?.[0] ?? '', 'sz') ?? '');
+      const size = Number.isFinite(sz) && sz > 0 ? sz / 100 : undefined;
+      if (face && !face.startsWith('+')) {
+        const use = fonts.get(face) ?? { chars: 0, maxSize: 0, sizes: [] };
+        use.chars += chars;
+        if (size) {
+          use.maxSize = Math.max(use.maxSize, size);
+          use.sizes.push({ size, chars });
+        }
+        fonts.set(face, use);
+      }
+      const color = /<a:solidFill>\s*<a:srgbClr\b[^>]*val="([0-9A-Fa-f]{6})"/.exec(rPr)?.[1];
+      if (color) colors.set(`#${color.toLowerCase()}`, (colors.get(`#${color.toLowerCase()}`) ?? 0) + chars);
+    }
+  }
+  return { fonts, colors, chars: total };
+}
+
+/** The char-weighted median size of a font's runs. */
+function medianSize(use: SlideFontUse): number | undefined {
+  const sorted = [...use.sizes].sort((a, b) => a.size - b.size);
+  const half = sorted.reduce((n, s) => n + s.chars, 0) / 2;
+  let seen = 0;
+  for (const s of sorted) {
+    seen += s.chars;
+    if (seen >= half) return s.size;
+  }
+  return undefined;
+}
+
+/**
+ * Body = the font with the most characters; display = the font with the most
+ * characters set at 1.5× the body's median size or larger (the body font when
+ * no other is).
+ */
+export function slideFonts(use: SlideTextUse): { body?: string; display?: string; bodyChars?: number; displayChars?: number } {
+  const ranked = [...use.fonts.entries()].sort((a, b) => b[1].chars - a[1].chars);
+  if (ranked.length === 0) return {};
+  const [body, bodyUse] = ranked[0];
+  const bodySize = medianSize(bodyUse);
+  let display = body;
+  let displayChars = 0;
+  if (bodySize) {
+    for (const [face, u] of use.fonts) {
+      const big = u.sizes.filter((s) => s.size >= bodySize * 1.5).reduce((n, s) => n + s.chars, 0);
+      if (big > displayChars) {
+        display = face;
+        displayChars = big;
+      }
+    }
+  }
+  return { body, display, bodyChars: bodyUse.chars, displayChars };
+}
+
+export interface ReadTemplateOptions {
+  /**
+   * The file is a Canva export (openspec add-design-system-from-canva): Canva
+   * writes fonts and colours on each text run and often keeps a stock Office
+   * theme, so fonts come from the slides, a stock theme's colours become
+   * candidates, and an image on most pages is kept as a mark.
+   */
+  canva?: boolean;
+}
+
 export interface TemplateReadResult {
   draft: SourceDraft;
   /** Accents 1–6, for charts. */
@@ -90,7 +185,7 @@ export interface TemplateReadResult {
 }
 
 /** Reads a .pptx or .potx. Throws for a legacy .ppt or a file that isn't a presentation. */
-export async function readPowerPointTemplate(fileName: string, data: Buffer): Promise<TemplateReadResult> {
+export async function readPowerPointTemplate(fileName: string, data: Buffer, options: ReadTemplateOptions = {}): Promise<TemplateReadResult> {
   if (/\.(ppt|pot|pps)$/i.test(fileName)) throw new Error(`${fileName} is a legacy binary PowerPoint file. Open it in PowerPoint (or Keynote, LibreOffice) and save it as .pptx or .potx, then try again.`);
   if (data.length > TEMPLATE_MAX_BYTES) throw new Error(`${fileName} is larger than 20 MB.`);
   let zip: JSZip;
@@ -133,7 +228,12 @@ export async function readPowerPointTemplate(fileName: string, data: Buffer): Pr
     if (first) {
       first = false;
       if (isStockOfficeTheme(theme)) {
-        draft.notes.push(`${draft.source} uses the stock Office theme ("${theme.name || 'Office'}", ${theme.majorFont ?? 'default'} fonts): it has no brand theme, so no colour or font tokens were drafted from it.`);
+        if (options.canva) {
+          for (const slot of ['lt1', 'dk1', 'accent1', 'accent2']) if (theme.colors[slot]) draft.candidates.push({ value: `#${theme.colors[slot].toLowerCase()}`, label: `stock theme ${slot}` });
+          draft.notes.push(`${draft.source} carries the stock Office theme ("${theme.name || 'Office'}"), as Canva exports often do: its colours are candidates only, so the page images decide the colour roles, and fonts come from the text on the slides.`);
+        } else {
+          draft.notes.push(`${draft.source} uses the stock Office theme ("${theme.name || 'Office'}", ${theme.majorFont ?? 'default'} fonts): it has no brand theme, so no colour or font tokens were drafted from it.`);
+        }
         break;
       }
       const where = (slot: string) => `theme "${theme.name}" ${slot}`;
@@ -169,5 +269,57 @@ export async function readPowerPointTemplate(fileName: string, data: Buffer): Pr
     }
   }
   if (masters.length > 1 && conflicts.length > 0) draft.notes.push(`The template has ${masters.length} masters; the first is drafted and the others' differing values are listed under conflicts.`);
+  if (options.canva) await readCanvaSlides(zip, presRels, draft, images);
   return { draft, chartPalette, images, conflicts };
+}
+
+/** Canva mode: fonts and text colours from the slides' runs, and images repeated on most pages as marks. */
+async function readCanvaSlides(zip: JSZip, presRels: string, draft: SourceDraft, images: TemplateReadResult['images']): Promise<void> {
+  const slidePaths = relTargets(presRels, /\/slide$/).map((t) => resolvePart('ppt', t));
+  const slides: Array<{ path: string; xml: string }> = [];
+  for (const p of slidePaths) {
+    const xml = await zip.file(p)?.async('string');
+    if (xml) slides.push({ path: p, xml });
+  }
+  if (slides.length === 0) return;
+
+  const use = readSlideText(slides.map((s) => s.xml));
+  const fonts = slideFonts(use);
+  if (fonts.body) {
+    const theme = draft.tokens['--font-body']?.value;
+    draft.tokens['--font-body'] = { value: fontStackFrom(fonts.body), where: `text on the slides (${fonts.bodyChars} characters)` };
+    if (theme && theme !== draft.tokens['--font-body'].value) draft.notes.push(`The theme's body font (${theme}) differs from the font the slides use, which was taken.`);
+  }
+  if (fonts.display) {
+    const theme = draft.tokens['--font-display']?.value;
+    draft.tokens['--font-display'] = { value: fontStackFrom(fonts.display), where: fonts.displayChars ? `large text on the slides (${fonts.displayChars} characters)` : 'text on the slides (no larger font set)' };
+    if (theme && theme !== draft.tokens['--font-display'].value) draft.notes.push(`The theme's heading font (${theme}) differs from the font the slides' large text uses, which was taken.`);
+  }
+  if (!fonts.body && use.chars > 0) draft.notes.push('The slides set no font on their text runs, so no font was drafted from them.');
+  if (use.chars === 0) draft.notes.push('The slides have no editable text (Canva may have exported it as images), so fonts need confirming.');
+  const colours = [...use.colors.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+  for (const [value, chars] of colours) draft.candidates.push({ value, label: `text colour on the slides (${chars} characters)` });
+
+  // Images placed on most pages (logo, footer mark), by content, not by part name.
+  if (slides.length < 2) return;
+  const known = new Set(images.map((i) => createHash('sha1').update(i.data).digest('hex')));
+  const seen = new Map<string, { name: string; data: Buffer; slides: Set<number> }>();
+  for (const [index, slide] of slides.entries()) {
+    const dir = path.posix.dirname(slide.path);
+    const rels = (await zip.file(path.posix.join(dir, '_rels', `${path.posix.basename(slide.path)}.rels`))?.async('string')) ?? '';
+    for (const target of relTargets(rels, /image$/)) {
+      const part = resolvePart(dir, target);
+      const buf = await zip.file(part)?.async('nodebuffer');
+      if (!buf || buf.length > 5_000_000) continue;
+      const hash = createHash('sha1').update(buf).digest('hex');
+      if (known.has(hash)) continue;
+      const entry = seen.get(hash) ?? { name: `template-repeated-${path.posix.basename(part)}`, data: buf, slides: new Set<number>() };
+      entry.slides.add(index);
+      seen.set(hash, entry);
+    }
+  }
+  const threshold = Math.max(2, Math.ceil(slides.length * 0.6));
+  const repeated = [...seen.values()].filter((e) => e.slides.size >= threshold).slice(0, 4);
+  for (const e of repeated) images.push({ name: e.name, data: e.data });
+  if (repeated.length) draft.notes.push(`${repeated.length} image(s) appear on ${threshold} or more of the ${slides.length} pages (likely a logo or footer mark) and were kept as marks.`);
 }

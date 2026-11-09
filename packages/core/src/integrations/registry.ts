@@ -47,6 +47,11 @@ export interface IntegrationEntry {
   docs?: { summary?: string; signIn?: string; notes?: string };
   verifiedAt: string;
   toolsVerified: boolean;
+  /**
+   * Hosts this integration's export download links come from. The extraction tool
+   * downloads a `fileUrl` source only from these (openspec add-design-system-from-canva).
+   */
+  exportHosts?: string[];
 }
 
 export interface IntegrationRegistry {
@@ -133,6 +138,7 @@ export function parseIntegrationRegistry(raw: unknown): { registry: IntegrationR
         : undefined,
       verifiedAt: String(item.verifiedAt),
       toolsVerified: item.toolsVerified === true,
+      exportHosts: Array.isArray(item.exportHosts) ? strings(item.exportHosts).map((h) => h.toLowerCase()) : undefined,
     });
   }
   return { registry: { capabilities, integrations }, errors };

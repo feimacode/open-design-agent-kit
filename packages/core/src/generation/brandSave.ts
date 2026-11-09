@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import { BRAND_REVIEW_FILE, renderBrandReviewPage } from '../export/brandReview';
 import { writeArtifactManifest } from '../vendored/artifactCreate';
 import { BRAND_REFERENCE_FILE, writeBrandRecord, type BrandKind, type BrandMark, type BrandRecord } from './brandKit';
+import type { CanvaSourceRecord } from './canvaLink';
 import type { FigmaSourceRecord } from './figmaSource';
 import type { CapturedBrandKit } from './siteExtraction';
 
@@ -48,20 +49,31 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
     let measuredAt: string | undefined;
     let kit: CapturedBrandKit | undefined;
     let figma: FigmaSourceRecord | undefined;
+    let canva: CanvaSourceRecord | undefined;
     try {
-      const ev = JSON.parse(await fs.readFile(path.join(bundle, 'evidence.json'), 'utf8')) as { url?: string; measuredAt?: string; pages?: Array<{ url?: string }>; brandKit?: CapturedBrandKit; figma?: FigmaSourceRecord };
+      const ev = JSON.parse(await fs.readFile(path.join(bundle, 'evidence.json'), 'utf8')) as { url?: string; measuredAt?: string; pages?: Array<{ url?: string }>; brandKit?: CapturedBrandKit; figma?: FigmaSourceRecord; canva?: CanvaSourceRecord };
       urls = ev.pages?.map((p) => p.url).filter((u): u is string => typeof u === 'string') ?? (ev.url ? [ev.url] : undefined);
       measuredAt = ev.measuredAt;
       kit = ev.brandKit;
       figma = ev.figma;
+      canva = ev.canva;
       components = kit?.components;
     } catch {
       throw new Error(`No evidence.json in ${rel}. Pass the bundleDir that extract_open_design_design_system returned.`);
     }
-    update.sources = { urls, extractedAt: measuredAt, bundleDir: rel, ...(figma ? { source: 'figma' as const, figma } : {}) };
+    update.sources = { urls, extractedAt: measuredAt, bundleDir: rel, ...(figma ? { source: 'figma' as const, figma } : canva ? { source: 'canva' as const, canva } : {}) };
     if (kit) Object.assign(update, await brandKitRecord(kit, bundle, dir, input.kind, input.fontLicence === 'confirmed'));
     if (figma) Object.assign(update, await figmaRecordParts(figma, input.workspaceRoot, dir, update, input.kind));
-    const shot = await fs.readFile(path.join(bundle, 'desktop.png')).catch(() => fs.readFile(path.join(bundle, 'page-1-desktop.png')).catch(() => undefined));
+    const shot = await fs
+      .readFile(path.join(bundle, 'desktop.png'))
+      .catch(() => fs.readFile(path.join(bundle, 'page-1-desktop.png')))
+      // A Canva draft has no site: its first exported page stands in.
+      .catch(async () => {
+        if (!canva) return undefined;
+        const first = (await fs.readdir(bundle)).filter((f) => /^source-\d+\.png$/.test(f)).sort((x, y) => Number(x.match(/\d+/)![0]) - Number(y.match(/\d+/)![0]))[0];
+        return first ? fs.readFile(path.join(bundle, first)) : undefined;
+      })
+      .catch(() => undefined);
     if (shot) {
       await fs.mkdir(dir, { recursive: true });
       await fs.writeFile(path.join(dir, BRAND_REFERENCE_FILE), shot);
@@ -72,7 +84,11 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
   if (!brand.sources?.bundleDir) return { brand };
   const review = path.posix.join(input.dirRel, BRAND_REVIEW_FILE);
   const evidence = path.posix.relative(input.dirRel, path.posix.join(brand.sources.bundleDir, 'evidence.json'));
-  await fs.writeFile(path.join(input.workspaceRoot, review), renderBrandReviewPage({ name: input.name, evidence, reference: brand.reference, components }));
+  const canvaSource = brand.sources.canva;
+  const sourceLine = canvaSource
+    ? `From the Canva design ${canvaSource.design ?? '(link not given)'}${canvaSource.pages?.length ? `, pages ${canvaSource.pages.join(', ')}` : ''}, exported ${canvaSource.exportedAt.slice(0, 10)}.`
+    : undefined;
+  await fs.writeFile(path.join(input.workspaceRoot, review), renderBrandReviewPage({ name: input.name, evidence, reference: brand.reference, components, sourceLine }));
   await writeArtifactManifest({ workspaceRoot: input.workspaceRoot, entryPath: review, artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: `${input.name}: review` } });
   return { brand, review };
 }

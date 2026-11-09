@@ -127,6 +127,9 @@ import {
   preparePullFigmaFrame,
   composeFigmaReadInstructions,
   parseFigmaUrl,
+  composeCanvaExportInstructions,
+  parseCanvaUrl,
+  DEFAULT_CANVA_EXPORT_HOSTS,
   prepareFigmaPush,
   formatIntegrations,
   type ListIntegrationsInput,
@@ -1019,8 +1022,12 @@ export async function extractDesignSystemFromSite(
 ): Promise<ToolOutput> {
   // sources: screenshots, CSS, page source, brand guides and PowerPoint templates (openspec add-brand-from-screenshot-or-css).
   let sources: ExtractionSource[] | undefined;
+  // Export links are downloaded only from the hosts the integrations registry lists (openspec add-design-system-from-canva).
+  const registry = await ctx.contentIndex.getIntegrationRegistry();
+  const exportHosts = registry.integrations.flatMap((i) => i.exportHosts ?? []);
+  const allowedExportHosts = exportHosts.length ? exportHosts : DEFAULT_CANVA_EXPORT_HOSTS;
   if (input.sources !== undefined) {
-    const checked = validateSources(input.sources);
+    const checked = validateSources(input.sources, { exportHosts: allowedExportHosts });
     if (!checked.ok) throw new Error(checked.error);
     sources = checked.sources.length ? checked.sources : undefined;
   }
@@ -1029,12 +1036,12 @@ export async function extractDesignSystemFromSite(
   if (figmaSource && link && !parseFigmaUrl(link)) {
     throw new Error('"url" with a figma source must be the same Figma link or left out: the tool does not open a website when drafting from a Figma file.');
   }
-  // Sources only: no url, or a Figma link (never fetched) with any sources, such as a figma
-  // source or the screenshot the Figma read steps fall back to. Without this, a Figma link
-  // plus a screenshot would return needs-figma-read again and the agent would loop.
-  if (sources && (figmaSource || !link || parseFigmaUrl(link)) && !input.compareTo) {
+  // Sources only: no url, or a Figma or Canva link (never fetched) with any sources, such as a
+  // figma source, Canva export links or the screenshot the read steps fall back to. Without
+  // this, a design-tool link plus sources would ask for the read again and the agent would loop.
+  if (sources && (figmaSource || !link || parseFigmaUrl(link) || parseCanvaUrl(link)) && !input.compareTo) {
     if (input.content) throw new Error('"content" needs a url: it copies the words from live pages.');
-    const result = await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, figmaToken: ctx.figmaToken });
+    const result = await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, figmaToken: ctx.figmaToken, exportHosts: allowedExportHosts });
     const near = await withNearestDesignSystems(result, ctx.contentIndex);
     return await extractOutput(ctx, near, formatExtractSiteResult(near));
   }
@@ -1049,6 +1056,18 @@ export async function extractDesignSystemFromSite(
         link,
         instructions: composeFigmaReadInstructions({ link, ref, tokenConfigured: Boolean(ctx.figmaToken), hosted: ctx.hosted }),
         notes: ctx.figmaToken || ctx.hosted ? [] : ['No Figma access token is configured on this machine, so the styles fallback needs one set first.'],
+      };
+      return { text: formatExtractSiteResult(result), images: [] };
+    }
+    // A Canva link: the agent exports the design with Canva's connector and calls back with the export links (openspec add-design-system-from-canva). Nothing contacts Canva here.
+    const canva = parseCanvaUrl(link);
+    if (canva) {
+      const result: ExtractSiteResult = {
+        status: 'needs-canva-export',
+        link,
+        designId: canva.designId,
+        instructions: composeCanvaExportInstructions({ link, ref: canva, hosted: ctx.hosted }),
+        notes: canva.kind === 'template' ? ['This is a public template, not a design: ask for a design made from it.'] : [],
       };
       return { text: formatExtractSiteResult(result), images: [] };
     }
@@ -1082,7 +1101,7 @@ export async function extractDesignSystemFromSite(
   });
   if (result.status === 'invalid-args') throw new Error(result.error);
   const merged = await withNearestDesignSystems(
-    sources && 'bundleDir' in result ? await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, urlResult: result }) : result,
+    sources && 'bundleDir' in result ? await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, urlResult: result, exportHosts: allowedExportHosts }) : result,
     ctx.contentIndex,
   );
   const text = compareTo && previous ? formatRefreshResult(formatExtractSiteResult(merged), await brandRefreshDiff(ctx.workspaceRoot, previous, merged)) : formatExtractSiteResult(merged);
@@ -1091,7 +1110,7 @@ export async function extractDesignSystemFromSite(
 
 async function extractOutput(ctx: ToolContext, result: ExtractSiteResult, text: string): Promise<ToolOutput> {
   if (result.status === 'invalid-args') throw new Error(result.error);
-  if (result.status === 'needs-figma-read') return { text, images: [] };
+  if (result.status === 'needs-figma-read' || result.status === 'needs-canva-export') return { text, images: [] };
   const shot = result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.screenshots.find((s) => /source-\d+\.png$/.test(s)) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
   const image = shot ? await fs.readFile(path.join(ctx.workspaceRoot, shot)).catch(() => undefined) : undefined;
   return { text, images: image ? [{ data: image, mime: 'image/png' }] : [] };

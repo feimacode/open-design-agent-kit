@@ -27,7 +27,7 @@ A custom design system can keep a `brand.json` beside its `DESIGN.md` and `token
 | `version` | `1` | The format version. |
 | `kind` | `own` \| `reference` | `own`: your brand. It is headed `# <Name> Design System`, recommended first, and the check and critic hold designs to it. `reference`: a look taken from someone else's site, headed `# Design System Inspired by <Name>`, with no marks, font files or copied lines of its text. |
 | `name` | string | The display name. |
-| `sources` | `{ urls, extractedAt, bundleDir }` | The pages it was measured from, when, and the evidence bundle. `extract_open_design_design_system` with `compareTo` measures these pages again. |
+| `sources` | `{ urls, extractedAt, bundleDir }` | The pages it was measured from, when, and the evidence bundle. `extract_open_design_design_system` with `compareTo` measures these pages again. A draft from a design tool adds `source` (`figma` or `canva`) and its record: `figma` (file link, frames read, date) or `canva` (`design` link, `pages`, `exportedAt`). |
 | `descriptor` | `{ moods, industries, surfaces }` | What the recommender matches on, as for bundled systems. |
 | `reference` | string | `reference.png`, when the site's screenshot was kept. |
 | `marks` | array | Own brands only. Each: `role` (`logo`, `logo-dark` from the dark theme, `logo-on-dark` shown on a dark surface, `icon`, `touch-icon`, `manifest-icon`, `social` from `og:image`), `path` (under `assets/`), `width`, `height`, `format`, `seenOn` (the background it was shown on, `#rrggbb`). |
