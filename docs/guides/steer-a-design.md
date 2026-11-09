@@ -44,7 +44,7 @@ The agent fixes what the check reports, at most twice, then shows you the before
 
 ## Undo
 
-Say "undo that". The agent calls `prepare_open_design_edit` with `undo` and the edit's id, and the design goes back to the snapshot. Edits are undone newest first: an older edit can't be undone while a later one stands. The design keeps a log of its last 20 edits, and the design critic sees them, so its suggestions don't reverse what you asked for.
+Say "undo that". The agent calls `prepare_open_design_edit` with `undo` and the edit's id, and the design goes back to the snapshot. Edits are undone newest first: an older edit can't be undone while a later one stands. An edit that was prepared and then left without any change, because the agent picked a better part instead, is marked dropped. The design keeps a log of its last 20 edits, and the design critic sees them, so its suggestions don't reverse what you asked for.
 
 ## From the preview
 
@@ -61,6 +61,7 @@ In the comment panel of the preview (VS Code, the browser preview, and the inlin
 | Path | What |
 |---|---|
 | `.open-design/.edits/<design>/<editId>/before.html` | The snapshot taken before the edit |
+| `.open-design/.edits/<design>/<editId>/before.data.json` | The screen's own sample data at that time, when it has a data file |
 | `.open-design/.edits/<design>/<editId>/edit.json` | The verb, the part and when |
 | `.open-design/.edits/<design>/<editId>/compare.png` | The part before and after, at desktop and phone width |
 | `.open-design/.edits/<design>/<editId>/leak-*.png` | A change outside the part, outlined |

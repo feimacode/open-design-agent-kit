@@ -36,7 +36,7 @@ The tool writes `data-od-id="<slug>"` onto the scope element when it has none, b
 
 ### Snapshot, then compare markup and pixels
 
-On prepare, the tool copies the entry to `<outputDir>/.edits/<design>/<editId>/before.html` (beside the check runs, outside the design's folder, so a published site never carries it) with an `edit.json` (verb, scope, notes, time and the snapshot's hash). The check computes the snapshot's findings and measurements on first use, from a temporary copy beside the design so its relative files resolve, and caches the findings in `before-findings.json`.
+On prepare, the tool copies the entry to `<outputDir>/.edits/<design>/<editId>/before.html` (beside the check runs, outside the design's folder, so a published site never carries it) with an `edit.json` (verb, scope, notes, time and the snapshot's hash), plus `before.data.json` when the screen has its own sample data file (`orders.html` → `orders.data.json`). The check computes the snapshot's findings and measurements on first use, from a temporary copy beside the design so its relative files resolve (with the data snapshot beside it, so bound rows render the same), and caches the findings in `before-findings.json`.
 
 The guard checks the outside of the scope in two ways, because each misses things the other catches:
 
@@ -53,7 +53,7 @@ The guard checks the outside of the scope in two ways, because each misses thing
 
 ### Undo restores the snapshot
 
-`undo: <editId>` copies `before.html` back over the entry when no later edit stands (later edits that were undone don't count). Otherwise it refuses and names the latest edit in the way, so edits are undone newest first. Undo is recorded in the log. Snapshots are kept for the last 20 edits per entry.
+`undo: <editId>` copies `before.html` back over the entry (and `before.data.json` over the data file, if any) when no later edit stands (later edits that were undone don't count). Otherwise it refuses and names the latest edit in the way, so edits are undone newest first. Undo is recorded in the log. An edit still `prepared` when another is prepared on an unchanged file is marked `dropped`, so a re-scoped attempt doesn't stay pending. Snapshots are kept for the last 20 edits per entry.
 
 ### Preview verb buttons send through the comment path
 

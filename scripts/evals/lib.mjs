@@ -322,7 +322,7 @@ export function summary(scores) {
   const steered = scores.flatMap((s) => s.designs.flatMap((d) => d.edits ?? []));
   if (steered.length > 0) {
     const clean = steered.filter((e) => e.checked && e.outOfScope === 0 && e.regressions === 0).length;
-    lines.push(`- Steering edits: ${steered.length}; checked and in scope with no new findings ${clean}; unchecked ${steered.filter((e) => !e.checked).length}; no measurable effect ${steered.filter((e) => e.noEffect).length}.`);
+    lines.push(`- Steering edits: ${steered.length}; checked and in scope with no new findings ${clean}; unchecked ${steered.filter((e) => e.status === 'prepared').length}; undone or dropped ${steered.filter((e) => e.status === 'undone' || e.status === 'dropped').length}; no measurable effect ${steered.filter((e) => e.noEffect).length}.`);
   }
   const comparisons = scores.flatMap((s) => s.beforeAfter ?? []);
   if (comparisons.length > 0) {

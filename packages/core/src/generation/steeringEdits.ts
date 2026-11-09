@@ -72,7 +72,8 @@ export interface EditLogEntry {
   scope: string;
   scopeId?: string;
   at: string;
-  status: 'prepared' | 'checked' | 'undone';
+  /** `dropped`: prepared, then left without any change when the next edit was prepared. */
+  status: 'prepared' | 'checked' | 'undone' | 'dropped';
   result?: EditGuardResult;
 }
 
@@ -129,7 +130,8 @@ function regionElement($: CheerioAPI, region: NamedRegion): Element | undefined 
 }
 
 function sectionForHeading($: CheerioAPI, heading: Element): Element {
-  const holder = $(heading).closest('section, article, aside, header, footer, [data-od-id]').get(0) as Element | undefined;
+  // From the parent up: a heading that carries its own data-od-id is still only the section's title.
+  const holder = $(heading).parent().closest('section, article, aside, header, footer, [data-od-id]').get(0) as Element | undefined;
   return holder && holder.tagName !== 'body' ? holder : ((heading.parent as Element) ?? heading);
 }
 
@@ -269,6 +271,14 @@ export async function updateEditLog(workspaceRoot: string, outputDir: string, en
   await writeLog(workspaceRoot, outputDir, entryPath, artifact.manifest, log);
 }
 
+/** The edit folder's copy of the screen's own data file, taken when the edit was prepared. */
+export const BEFORE_DATA_FILE = 'before.data.json';
+
+/** The screen's own sample data file (`orders.html` → `orders.data.json`), absolute. Shared `_shared/data.json` is found by any page in the folder. */
+export function screenDataFile(workspaceRoot: string, entryPath: string): string {
+  return assertWorkspaceRelative(workspaceRoot, entryPath).replace(/\.html?$/i, '') + '.data.json';
+}
+
 export async function readEditRecord(workspaceRoot: string, outputDir: string, entryPath: string, editId: string): Promise<{ record: EditRecord; before: string; dir: string } | undefined> {
   if (!/^[a-z]+-[a-z0-9]+$/.test(editId)) return undefined;
   const dir = editDir(outputDir, entryPath, editId);
@@ -376,10 +386,18 @@ export async function prepareEdit(input: PrepareEditInput): Promise<PrepareEditR
   const scopeRecord: EditScopeRecord = { ...(scopeId ? { id: scopeId } : {}), label: resolved.label.replace(/^The /, 'the '), ...(resolved.page ? { page: true } : {}) };
   const record: EditRecord = { id: editId, entryPath, verb, scope: scopeRecord, ...(notes ? { notes } : {}), createdAt: new Date().toISOString(), beforeHash: hashHtml(stampedHtml) };
   await fs.writeFile(path.join(absDir, 'before.html'), stampedHtml);
+  // A screen's own sample data (`orders.html` → `orders.data.json`) belongs to its before state too.
+  await fs.copyFile(screenDataFile(workspaceRoot, entryPath), path.join(absDir, BEFORE_DATA_FILE)).catch(() => undefined);
   await fs.writeFile(path.join(absDir, 'edit.json'), `${JSON.stringify(record, null, 2)}\n`);
 
   const fresh = (await readArtifact({ workspaceRoot, entryPath }))?.manifest ?? artifact.manifest;
   const log = readLog(fresh);
+  // An edit prepared and then left untouched (the agent re-scoped instead) isn't pending any more.
+  for (const [i, entry] of log.entries()) {
+    if (entry.status !== 'prepared') continue;
+    const earlier = await readEditRecord(workspaceRoot, outputDir, entryPath, entry.id);
+    if (earlier && earlier.record.beforeHash === hashHtml(html)) log[i] = { ...entry, status: 'dropped' };
+  }
   log.push({ id: editId, verb, scope: scopeRecord.label, ...(scopeId ? { scopeId } : {}), at: record.createdAt, status: 'prepared' });
   await writeLog(workspaceRoot, outputDir, entryPath, fresh, log);
 
@@ -393,13 +411,14 @@ async function undoEdit(workspaceRoot: string, outputDir: string, entryPath: str
   const index = log.findIndex((e) => e.id === editId);
   if (index < 0) return { status: 'error', error: `No edit "${editId}" in this design's log.` };
   if (log[index].status === 'undone') return { status: 'error', error: `Edit ${editId} was already undone.` };
-  const later = log.slice(index + 1).filter((e) => e.status !== 'undone');
+  const later = log.slice(index + 1).filter((e) => e.status !== 'undone' && e.status !== 'dropped');
   if (later.length > 0) {
     return { status: 'error', error: `Edit ${later.at(-1)!.id} (${later.at(-1)!.verb} on ${later.at(-1)!.scope}) was made after ${editId}. Undo it first, newest first.` };
   }
   const saved = await readEditRecord(workspaceRoot, outputDir, entryPath, editId);
   if (!saved) return { status: 'error', error: `The snapshot for ${editId} is gone, so it can't be undone.` };
   await fs.writeFile(assertWorkspaceRelative(workspaceRoot, entryPath), saved.before);
+  await fs.copyFile(path.join(workspaceRoot, saved.dir, BEFORE_DATA_FILE), screenDataFile(workspaceRoot, entryPath)).catch(() => undefined);
   log[index] = { ...log[index], status: 'undone' };
   await writeLog(workspaceRoot, outputDir, entryPath, manifest, log);
   return {

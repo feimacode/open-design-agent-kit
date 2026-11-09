@@ -207,15 +207,23 @@ export function comparePixelsOutsideScope(before: Capture, after: Capture): Pixe
   const a = PNG.sync.read(after.png);
   const width = Math.min(a.width, b.width);
   const leaks: PixelLeak[] = [];
-  const scan = (where: 'above' | 'below', bStart: number, aStart: number, rows: number): void => {
-    if (rows <= 0) return;
+  // `slack` lets each row match its neighbour above or below: what follows a scope that grew by a fraction
+  // of a pixel lands on rows rounded one way or the other, and not all of it the same way.
+  const scan = (where: 'above' | 'below', bStart: number, aStart: number, rows: number, slack: number): PixelLeak | undefined => {
+    if (rows <= 0) return undefined;
     let pixels = 0;
     let minX = Infinity;
     let maxX = -1;
     let minY = Infinity;
     let maxY = -1;
     for (let r = 0; r < rows; r++) {
-      const changed = rowsDiffer(a, aStart + r, b, bStart + r, width);
+      let changed = rowsDiffer(a, aStart + r, b, bStart + r, width);
+      for (let d = -slack; d <= slack && changed.length > 0; d++) {
+        const by = bStart + r + d;
+        if (d === 0 || by < bStart || by >= b.height) continue;
+        const other = rowsDiffer(a, aStart + r, b, by, width);
+        if (other.length < changed.length) changed = other;
+      }
       if (changed.length === 0) continue;
       pixels += changed.length;
       minX = Math.min(minX, changed[0]);
@@ -223,14 +231,17 @@ export function comparePixelsOutsideScope(before: Capture, after: Capture): Pixe
       minY = Math.min(minY, aStart + r);
       maxY = Math.max(maxY, aStart + r);
     }
-    if (pixels >= Math.max(MIN_CHANGED_PIXELS, MIN_CHANGED_SHARE * width * rows)) leaks.push({ where, pixels, box: { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 } });
+    return pixels >= Math.max(MIN_CHANGED_PIXELS, MIN_CHANGED_SHARE * width * rows) ? { where, pixels, box: { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 } } : undefined;
   };
   const topB = Math.max(0, Math.floor(before.scope.y));
   const topA = Math.max(0, Math.floor(after.scope.y));
-  scan('above', 0, 0, Math.min(topB, topA, a.height, b.height));
+  const above = scan('above', 0, 0, Math.min(topB, topA, a.height, b.height), 0);
+  if (above) leaks.push(above);
   const endB = Math.ceil(before.scope.y + before.scope.height);
   const endA = Math.ceil(after.scope.y + after.scope.height);
-  scan('below', endB, endA, Math.min(b.height - endB, a.height - endA));
+  const moved = endB - Math.ceil(before.scope.y) !== endA - Math.ceil(after.scope.y);
+  const below = scan('below', endB, endA, Math.min(b.height - endB, a.height - endA), moved ? 1 : 0);
+  if (below) leaks.push(below);
   return leaks;
 }
 

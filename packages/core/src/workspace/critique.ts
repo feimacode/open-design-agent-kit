@@ -174,7 +174,7 @@ export async function buildCritiqueInput(options: {
 
 function steeringEditsOf(manifest: JsonRecord | null): CritiqueInput['edits'] {
   const log = editLogOf(manifest)
-    .filter((e) => e.status !== 'undone')
+    .filter((e) => e.status !== 'undone' && e.status !== 'dropped')
     .slice(-5)
     .map((e) => ({ verb: e.verb, scope: e.scope, at: e.at, status: e.status }));
   return log.length > 0 ? log : undefined;

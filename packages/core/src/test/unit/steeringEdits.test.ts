@@ -46,6 +46,8 @@ describe('steering edits: scope', () => {
   it('finds a section by its heading, a named region and a selector, and lists candidates when it is ambiguous', () => {
     const byHeading = resolveEditScope(PAGE, { heading: 'pricing' }, 'bolder');
     assert.ok(byHeading.ok && byHeading.element?.tagName === 'section');
+    const titled = resolveEditScope(PAGE.replace('<h2>Pricing</h2>', '<h2 data-od-id="pricing-title">Pricing</h2>'), { heading: 'pricing' }, 'bolder');
+    assert.ok(titled.ok && titled.element?.tagName === 'section', 'a heading with its own id still picks its section');
     const hero = resolveEditScope(PAGE, { region: 'hero' }, 'bolder');
     assert.ok(hero.ok && hero.element?.attribs.class === 'hero');
     const footer = resolveEditScope(PAGE, { region: 'footer' }, 'quieter');
@@ -120,6 +122,16 @@ describe('steering edits: prepare, log and undo', () => {
     assert.strictEqual(await fs.readFile(path.join(root, entry), 'utf8'), stamped);
   });
 
+  it('marks an edit dropped when another is prepared before anything changed', async () => {
+    const { root, entry } = await workspace();
+    const first = await prepareEdit({ workspaceRoot: root, outputDir: '.open-design', entryPath: entry, verb: 'bolder', scope: { heading: 'Pricing' } });
+    const second = await prepareEdit({ workspaceRoot: root, outputDir: '.open-design', entryPath: entry, verb: 'bolder', scope: { selector: '.hero' } });
+    assert.ok(first.status === 'prepared' && second.status === 'prepared');
+    const log = editLogOf((await readArtifact({ workspaceRoot: root, entryPath: entry }))!.manifest);
+    assert.deepStrictEqual(log.map((e) => e.status), ['dropped', 'prepared']);
+    assert.strictEqual((await prepareEdit({ workspaceRoot: root, outputDir: '.open-design', entryPath: entry, undo: second.editId })).status, 'undone');
+  });
+
   it('takes a preview comment as the scope, and a verb comment asks for exactly that', async () => {
     const { root, entry } = await workspace();
     const now = new Date().toISOString();
@@ -180,6 +192,9 @@ describe('edit guard: comparisons', () => {
     assert.strictEqual(leaks.length, 1);
     assert.strictEqual(leaks[0].where, 'below');
     assert.strictEqual(leaks[0].box.y, 350);
+    // Grown by 99.75 px: the browser rounds what follows to 100 px lower, not 99.
+    const fractional: Capture = { ...taller, scope: { x: 0, y: 100, width: 100, height: 149.75 } };
+    assert.deepStrictEqual(comparePixelsOutsideScope(before, fractional), []);
   });
 
   it('measures the verb direction and new findings', () => {
@@ -242,6 +257,33 @@ describe('edit guard in the check (browser)', function () {
     await prepareEdit({ workspaceRoot: root, outputDir: '.open-design', entryPath: entry, verb: 'quieter', scope: 'footer' });
     const pending = await checkArtifact({ workspaceRoot: root, entryPath: entry, browserPath: executablePath, states: false, saveRun: false, maxImages: 0 });
     assert.ok(pending.ok && pending.findings.some((f) => f.check === 'edit-unchecked'));
+  });
+
+  it('gives the before snapshot the screen\'s own sample data, so rows bound to it are compared like for like', async () => {
+    const page = PAGE.replace(
+      '<section><h2>Questions</h2>',
+      '<section><h2>Orders</h2><table><tbody><tr data-od-repeat="orders"><td data-od-bind=".customer">Name</td><td data-od-bind=".total">0</td></tr></tbody></table></section>\n<section><h2>Questions</h2>',
+    );
+    const { root, entry } = await workspace(page);
+    const dataFile = path.join(root, '.open-design/acme/index.data.json');
+    const rows = Array.from({ length: 12 }, (_, i) => ({ customer: `Customer ${i + 1}`, total: 10 + i }));
+    await fs.writeFile(dataFile, JSON.stringify({ orders: rows }));
+    const prepared = await prepareEdit({ workspaceRoot: root, outputDir: '.open-design', entryPath: entry, verb: 'roomier', scope: { heading: 'Orders' } });
+    assert.ok(prepared.status === 'prepared');
+    const stamped = await fs.readFile(path.join(root, entry), 'utf8');
+
+    // Desktop-only CSS: at phone width nothing may change at all.
+    await fs.writeFile(path.join(root, entry), stamped.replace('</style>', '@media (min-width:48rem){[data-od-id="edit-orders"] td{padding:12px 20px}}\n</style>'));
+    const result = await checkArtifact({ workspaceRoot: root, entryPath: entry, editId: prepared.editId, browserPath: executablePath, states: false, saveRun: false, maxImages: 0 });
+    assert.ok(result.ok, JSON.stringify(result));
+    const outOfScope = result.findings.filter((f) => f.check === 'edit-out-of-scope');
+    assert.deepStrictEqual(outOfScope, [], JSON.stringify(outOfScope));
+    assert.deepStrictEqual(await fs.readdir(path.join(root, '.open-design/acme')).then((names) => names.filter((n) => n.startsWith('.od-edit-before'))), []);
+
+    // Undo puts back the data file as it was when the edit was prepared.
+    await fs.writeFile(dataFile, JSON.stringify({ orders: rows.slice(0, 2) }));
+    assert.strictEqual((await prepareEdit({ workspaceRoot: root, outputDir: '.open-design', entryPath: entry, undo: prepared.editId })).status, 'undone');
+    assert.strictEqual(JSON.parse(await fs.readFile(dataFile, 'utf8')).orders.length, 12);
   });
 
   it('reports an edit that changed nothing measurable', async () => {

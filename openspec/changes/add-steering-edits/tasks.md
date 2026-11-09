@@ -26,5 +26,5 @@
 ## 5. Evals and docs
 
 - [x] 5.1 Eval briefs take `followUps` (sent with `--resume` after the first registration); scorer reads the last edit's guard result
-- [ ] 5.2 Two briefs: a landing page then "make the pricing section bolder"; an orders table then "it feels cramped"; one live run each
+- [x] 5.2 Two briefs: a landing page then "make the pricing section bolder"; an orders table then "it feels cramped"; one live run each
 - [x] 5.3 `docs/guides/steer-a-design.md`, `reference/tools.md`, CHANGELOG

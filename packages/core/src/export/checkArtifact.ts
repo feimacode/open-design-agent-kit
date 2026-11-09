@@ -38,7 +38,7 @@ import { redesignFindings } from './redesignChecks';
 import { applyBrandChecks, loadOwnBrandContext } from './brandChecks';
 import { BRAND_REVIEW_ATTR, brandReviewFindings } from './brandReview';
 import { appDesignSystemStaleness, parseAppComponentsFile, tokenFindings } from '../generation/appDesignSystem';
-import { editLogOf, hashHtml, readEditRecord, updateEditLog, type EditGuardResult } from '../generation/steeringEdits';
+import { BEFORE_DATA_FILE, editLogOf, hashHtml, readEditRecord, screenDataFile, updateEditLog, type EditGuardResult } from '../generation/steeringEdits';
 import { writeArtifactManifest } from '../vendored/artifactCreate';
 import {
   captureForGuard,
@@ -554,6 +554,7 @@ async function guardEdit(options: CheckArtifactOptions, result: Extract<CheckArt
   }
   const tempRel = path.posix.join(path.posix.dirname(entryPath), `.od-edit-before-${editId}.html`);
   const absTemp = path.join(options.workspaceRoot, tempRel);
+  const tempData = absTemp.replace(/\.html$/, '.data.json');
   const ready = options.readyTimeoutMs ?? 15000;
   const loader = async (page: Page, url: string): Promise<void> => loadPage(page, url, ready, 300, []);
   let before: GuardCaptures | string | undefined;
@@ -563,6 +564,10 @@ async function guardEdit(options: CheckArtifactOptions, result: Extract<CheckArt
   let sheetImage: CheckImage | undefined;
   try {
     await fs.writeFile(absTemp, saved.before);
+    // The snapshot binds to the same sample data the screen had: the copy taken at prepare time, else today's file.
+    const beforeData = path.join(options.workspaceRoot, saved.dir, BEFORE_DATA_FILE);
+    const screenData = screenDataFile(options.workspaceRoot, entryPath);
+    await fs.copyFile(beforeData, tempData).catch(() => fs.copyFile(screenData, tempData).catch(() => undefined));
     await writeArtifactManifest({ workspaceRoot: options.workspaceRoot, entryPath: tempRel, artifactManifest: artifact.manifest });
     // The snapshot's own findings, checked once per edit.
     const cache = path.join(options.workspaceRoot, saved.dir, 'before-findings.json');
@@ -591,6 +596,7 @@ async function guardEdit(options: CheckArtifactOptions, result: Extract<CheckArt
   } finally {
     await fs.rm(absTemp, { force: true });
     await fs.rm(`${absTemp}.artifact.json`, { force: true });
+    await fs.rm(tempData, { force: true });
   }
 
   if (typeof after === 'string') findings.push({ check: 'edit-out-of-scope', severity: 'error', message: after });
@@ -599,6 +605,11 @@ async function guardEdit(options: CheckArtifactOptions, result: Extract<CheckArt
       const b = before.get(v.name);
       const a = after.get(v.name);
       if (!b || !a) continue;
+      // Shown on one side only: the rows don't line up, so a pixel diff would blame the whole page.
+      if ((b.scope.height > 0) !== (a.scope.height > 0)) {
+        result.warnings.push(`At ${v.name} width the edited part is ${a.scope.height > 0 ? 'hidden before the edit and shown after it' : 'shown before the edit and hidden after it'}, so the rest of the page wasn't compared pixel by pixel there.`);
+        continue;
+      }
       for (const leak of comparePixelsOutsideScope(b, a)) {
         const crop = `${saved.dir}/leak-${v.name}-${leak.where}.png`;
         await writeWorkspaceFile(options.workspaceRoot, crop, leakCrop(a.png, leak));
