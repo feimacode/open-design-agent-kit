@@ -11,6 +11,7 @@ interface CheckArtifactInput {
   at?: number[];
   views?: ReviewView[] | false;
   states?: boolean;
+  editId?: string;
 }
 
 export class CheckArtifactTool implements vscode.LanguageModelTool<CheckArtifactInput> {

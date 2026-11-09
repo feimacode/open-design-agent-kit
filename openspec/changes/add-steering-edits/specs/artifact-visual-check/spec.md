@@ -5,7 +5,7 @@
 `check_open_design_artifact` SHALL accept an optional `editId`. With it, the check SHALL compare the design with that edit's snapshot and report:
 - `edit-out-of-scope` (error) for any difference outside the scope, found either in the markup (with the scope replaced by a placeholder in both versions, and style rules allowed to change only where all their selectors match inside the scope) or on screen at desktop and phone widths (with the scope's box masked, and content below the scope compared after shifting it by the scope's change in height);
 - `edit-no-effect` (warning) when none of the verb's measured signals moved in its expected direction inside the scope;
-- `edit-regression` (error) for each finding inside the scope that the snapshot didn't have, matched by check, viewport and element.
+- `edit-regression` (error) for each warning or error finding that the snapshot didn't have, matched by check, viewport, state frame and element; the snapshot is checked once per edit, from a temporary copy beside the design so its relative files resolve.
 
 It SHALL also write an image of the scope before and after, side by side at desktop and phone widths, under the edit's folder, return it with the check images, and record the result in the edit log. Without `editId`, a design with a prepared but unchecked edit SHALL get a one-line note naming that edit.
 

@@ -30,13 +30,13 @@ The definitions are a craft doc (`steering-verbs.md`) in the content overlay, lo
 
 A scope resolves to exactly one element. Accepted forms, in order of precedence: `data-od-id`, a preview comment id (its anchor), a CSS selector that matches one element, a named region (`header`, `hero`, `main`, `footer`: landmark elements first, then the first section of `main` for `hero`), or `{ heading: "Pricing" }` for the section whose heading has that text. If it matches none or several, the tool fails and lists candidates.
 
-The tool writes `data-od-id="<slug>"` onto the scope element when it has none. That is the only write to the design, and it's idempotent. A stable id is what lets the guard find the scope after the agent rewrites it, even if its tag or class changes.
+The tool writes `data-od-id="<slug>"` onto the scope element when it has none, by inserting the attribute into the element's start tag at its source offset, so no other byte of the file changes. That is the only write to the design. A part inside the shared navigation (`data-od-include`) is refused, since it belongs to every screen of a flow. A stable id is what lets the guard find the scope after the agent rewrites it, even if its tag or class changes.
 
 `page` is accepted only for `polish` and `harden`. A bolder page is a new direction, and the instructions say to use `explore` for that.
 
 ### Snapshot, then compare markup and pixels
 
-On prepare, the tool copies the entry to `<entry dir>/.edits/<editId>/before.html` with an `edit.json` (verb, scope id, time, the scope's measurements, and the snapshot's check findings if a check run exists for this revision; otherwise the check computes them from the snapshot on first use).
+On prepare, the tool copies the entry to `<outputDir>/.edits/<design>/<editId>/before.html` (beside the check runs, outside the design's folder, so a published site never carries it) with an `edit.json` (verb, scope, notes, time and the snapshot's hash). The check computes the snapshot's findings and measurements on first use, from a temporary copy beside the design so its relative files resolve, and caches the findings in `before-findings.json`.
 
 The guard checks the outside of the scope in two ways, because each misses things the other catches:
 
@@ -49,11 +49,11 @@ The guard checks the outside of the scope in two ways, because each misses thing
 
 ### Regression is relative to the snapshot
 
-`edit-regression` uses the same pairing as before/after: findings inside the scope are keyed by check, viewport and element, and any key that is in the edited version but not in the snapshot is reported. Findings outside the scope are already covered by `edit-out-of-scope`.
+`edit-regression` keys findings by check, viewport, state frame and element (the selector, or the message with numbers masked), and reports every warning or error key in the edited version that the snapshot doesn't have. Findings don't carry reliable positions, so they aren't filtered to the scope: a new finding outside it comes with an `edit-out-of-scope` finding anyway, and reporting it twice is better than missing it.
 
 ### Undo restores the snapshot
 
-`undo: <editId>` copies `before.html` back over the entry if the entry is the one this edit produced (its hash matches the hash recorded at the edit's check) or no later edit exists. Otherwise it refuses and says which later edit is in the way. Undo is recorded in the log. Snapshots are kept for the last 20 edits per entry.
+`undo: <editId>` copies `before.html` back over the entry when no later edit stands (later edits that were undone don't count). Otherwise it refuses and names the latest edit in the way, so edits are undone newest first. Undo is recorded in the log. Snapshots are kept for the last 20 edits per entry.
 
 ### Preview verb buttons send through the comment path
 

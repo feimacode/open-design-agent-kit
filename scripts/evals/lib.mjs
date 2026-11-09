@@ -59,6 +59,7 @@ export function briefProblem(brief, fileName) {
   if (brief.fixture !== undefined && (typeof brief.fixture !== 'string' || !/^[a-z0-9-]+$/.test(brief.fixture) || !existsSync(path.join(EVALS_DIR, 'fixtures', brief.fixture)))) return `fixture must name a folder in evals/fixtures/ (got ${JSON.stringify(brief.fixture)})`;
   if (brief.site !== undefined && (typeof brief.site !== 'string' || !/^[a-z0-9-]+$/.test(brief.site) || !existsSync(path.join(EVALS_DIR, 'fixtures', brief.site)))) return `site must name a folder in evals/fixtures/ (got ${JSON.stringify(brief.site)})`;
   if (brief.site !== undefined && !brief.request.includes('{{site}}')) return 'a brief with site must put {{site}} in its request, where the address goes';
+  if (brief.followUps !== undefined && (!Array.isArray(brief.followUps) || brief.followUps.length === 0 || brief.followUps.some((f) => typeof f !== 'string' || !f.trim()))) return 'followUps must be a list of messages';
   return undefined;
 }
 
@@ -318,6 +319,11 @@ export function summary(scores) {
     `- Distinct look signatures: ${signatures.size} of ${designs.length}${designs.some((d) => d.signature.source === 'html') ? ' (read from the HTML; variety memory not recorded)' : ''}.`,
     `- Critic: ${critic ? 'verdicts from metadata.critique' : 'n/a (no critique recorded)'}.`,
   ];
+  const steered = scores.flatMap((s) => s.designs.flatMap((d) => d.edits ?? []));
+  if (steered.length > 0) {
+    const clean = steered.filter((e) => e.checked && e.outOfScope === 0 && e.regressions === 0).length;
+    lines.push(`- Steering edits: ${steered.length}; checked and in scope with no new findings ${clean}; unchecked ${steered.filter((e) => !e.checked).length}; no measurable effect ${steered.filter((e) => e.noEffect).length}.`);
+  }
   const comparisons = scores.flatMap((s) => s.beforeAfter ?? []);
   if (comparisons.length > 0) {
     const sum = (k) => comparisons.reduce((a, c) => a + c[k], 0);

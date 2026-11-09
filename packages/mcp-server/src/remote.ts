@@ -46,6 +46,7 @@ export const REMOTE_AVAILABLE_TOOLS = new Set([
   'add_open_design_diagram_runtime',
   'check_open_design_artifact',
   'adapt_open_design_artifact',
+  'prepare_open_design_edit',
   'create_open_design_qr_code',
   'use_open_design_managed_workspace',
   'write_open_design_file',

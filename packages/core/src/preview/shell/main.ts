@@ -8,6 +8,7 @@ import type { ArtifactComment } from '../../workspace/artifactCommentTypes';
 import type { CheckRun } from '../../export/checkHistory';
 import { critiqueSummary, type CritiqueRecord } from '../../workspace/critiqueTypes';
 import { createCommentController } from '../commentController';
+import { steerCommentMessage } from '../../generation/steeringVerbs';
 import { icon } from '../dom/icons';
 import { escapeHtml, highlightBox, hostRectOf, selectionGuides } from '../overlays';
 import { mountDeviceShell } from '../deviceShell';
@@ -167,6 +168,11 @@ async function startPreview(entryPath: string): Promise<void> {
       renderOverlays();
     },
     onAdded: (comment, target) => void captureCrop(comment, target),
+    // A verb button copies the steering-edit request for the agent (openspec add-steering-edits).
+    sendVerb: (comment) => {
+      comments.patch(comment.id, { status: 'sent' });
+      void copyForAgent(steerCommentMessage(entryPath, comment));
+    },
   });
 
   function renderOverlays(): void {
@@ -370,6 +376,10 @@ async function startPreview(entryPath: string): Promise<void> {
     if (open.length === 0) return;
     const instruction = `Apply my ${open.length === 1 ? 'comment' : `${open.length} comments`} on the Open Design artifact "${entryPath}": call get_open_design_artifact for it, address each open comment, then pass their ids as resolvedCommentIds when you re-register it.`;
     comments.markOpenSent();
+    await copyForAgent(instruction);
+  });
+
+  async function copyForAgent(instruction: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(instruction);
       toast('Copied. Paste it into your agent.');
@@ -384,7 +394,7 @@ async function startPreview(entryPath: string): Promise<void> {
         panel.hidden = true;
       });
     }
-  });
+  }
 
   // ── Checks panel ──
   let runs: CheckRun[] = [];

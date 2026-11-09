@@ -1,0 +1,17 @@
+id: steer-table
+request: "Design the orders list for our UK online shop's admin: every order with customer, date, items, total and status"
+expect:
+  surface: app-screens
+  skills: [app-table]
+  questions: { max: 1 }
+designSystem: null
+answers:
+  platform: "Web app"
+  density: "Compact"
+  locale: "UK shop, prices in GBP"
+followUps:
+  - "The orders table feels cramped. Give it a bit more room, but don't touch the rest of the screen."
+must:
+  - "The table has more space between rows and cells, with every order still there"
+  - "Nothing outside the table changed (edit log: checked, 0 out of scope, no new findings)"
+  - "Buttons and links in the table still big enough to tap"

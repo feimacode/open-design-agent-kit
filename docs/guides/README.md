@@ -14,6 +14,7 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [Audit a website](site-audit.md)
 - [Redesign a website](redesign-a-website.md)
 - [Explore design directions](explore-directions.md)
+- [Steer one part of a design](steer-a-design.md)
 - [Turn a document into a deck](deck-from-a-document.md)
 - [Diagrams of your code](diagrams.md)
 - [3D objects and product shots](3d-objects.md)

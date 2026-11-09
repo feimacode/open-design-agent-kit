@@ -1348,6 +1348,83 @@
         }
       },
       {
+        "name": "prepare_open_design_edit",
+        "displayName": "Steer Part of a Design",
+        "modelDescription": "Steers one part of a registered design in one direction and changes nothing else: bolder (\"make it pop\"), quieter (\"tone it down\"), denser (\"tighten it up\"), roomier (\"it feels cramped\"), distill (\"simplify\", \"too busy\"), polish (\"clean it up\") or harden (\"what if the name is really long?\"). The scope is one part: { heading: \"Pricing\" }, { region: \"header\" | \"hero\" | \"main\" | \"footer\" }, { selector }, { id } (a data-od-id) or { commentId }; { region: \"page\" } only for polish and harden. Marks the part with a data-od-id if it has none, snapshots the design and returns an editId and instructions (what the verb means, the part's HTML, the design's tokens, the scope rules). Make the edit, then run #od-check with the editId: it proves only that part changed, that it moved in the verb's direction and that nothing got worse. undo with an editId restores the design to before that edit (newest first).",
+        "userDescription": "Make one part of a design bolder, quieter, denser, roomier, simpler, more polished or sturdier, and nothing else",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-edit",
+        "icon": "$(wand)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryPath": {
+              "type": "string",
+              "description": "Workspace-relative path to the registered design's entry file."
+            },
+            "verb": {
+              "type": "string",
+              "enum": [
+                "bolder",
+                "quieter",
+                "denser",
+                "roomier",
+                "distill",
+                "polish",
+                "harden"
+              ],
+              "description": "The direction. Not needed with undo."
+            },
+            "scope": {
+              "description": "The part: an object with one of heading, region, selector, id or commentId; or a string read as a region name or a heading.",
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "heading": {
+                      "type": "string"
+                    },
+                    "region": {
+                      "type": "string",
+                      "enum": [
+                        "header",
+                        "hero",
+                        "main",
+                        "footer",
+                        "page"
+                      ]
+                    },
+                    "selector": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "commentId": {
+                      "type": "string"
+                    }
+                  }
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "notes": {
+              "type": "string",
+              "description": "Optional: the user's own words."
+            },
+            "undo": {
+              "type": "string",
+              "description": "An editId to undo instead (newest first)."
+            }
+          },
+          "required": [
+            "entryPath"
+          ]
+        }
+      },
+      {
         "name": "audit_open_design_site",
         "displayName": "Audit Website",
         "modelDescription": "Audits a live website with Open Design's own checks, for a redesign pitch or an owner's own site. Renders each page in an installed Chrome, Edge or Chromium at desktop (1440×900) and phone (390×844) sizes and reports what a visitor runs into: text contrast, tap targets, sideways scrolling, 320 px reflow, layout with larger text, overflowing or covered text, the first phone screen with nothing to tap, broken images, styles or scripts, images without alt text, a missing viewport tag, download size and request count, and default-template looks. Checks that need Open Design markup (states, flows, sample data, tokens) don't run. Writes <output folder>/.audits/<site>/: audit.json with every finding, screenshots, crops of the top problems and index.html, a short plain-language report with the 5 biggest problems ranked by what they cost a visitor and a statement of what wasn't measured. Gives no score and makes no speed or SEO claims. Only public http(s) pages; at most 4 pages on one site, 20 seconds each; no logins, cookies or form submissions. A bot check, login wall or empty page comes back as blocked with its screenshot.",
@@ -2019,6 +2096,10 @@
               },
               "maxItems": 6,
               "description": "Animations: up to 6 times in seconds. Also captures the artifact at those moments on a virtual clock (labelled t=<seconds>s), so you can see the start, middle and end of an animation. They share maxImages with the regular screenshots."
+            },
+            "editId": {
+              "type": "string",
+              "description": "After a steering edit: the editId #od-edit returned. Also compares the design with its snapshot: edit-out-of-scope, edit-no-effect and edit-regression, with the edited part before and after attached first."
             }
           },
           "required": []
@@ -2373,6 +2454,9 @@
       },
       {
         "path": "./prompts/local/open-design-docs.prompt.md"
+      },
+      {
+        "path": "./prompts/local/open-design-edit.prompt.md"
       },
       {
         "path": "./prompts/local/open-design-explore.prompt.md"

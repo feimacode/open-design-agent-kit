@@ -14,6 +14,7 @@
 import { localLinkTarget } from '../localLink';
 import { App } from '@modelcontextprotocol/ext-apps';
 import { createCommentController } from '../commentController';
+import { steerCommentMessage } from '../../generation/steeringVerbs';
 import { icon } from '../dom/icons';
 import { escapeHtml, highlightBox, hostRectOf, selectionGuides } from '../overlays';
 import { mountDeviceShell } from '../deviceShell';
@@ -225,6 +226,12 @@ function renderArtifact(state: PreviewAppArtifactState, reload: () => void): voi
     pinDetails: true,
     persist: (changed, deletedIds) => {
       transport.persist(entryPath, changed, deletedIds).catch((err) => toast(`Couldn't save the comment: ${errorText(err)}`));
+    },
+    // A verb button asks Claude for a steering edit on that part right away (openspec add-steering-edits).
+    sendVerb: (comment) => {
+      void send(steerCommentMessage(entryPath, comment), 'Sent to Claude.').then((sent) => {
+        if (sent) comments.patch(comment.id, { status: 'sent' });
+      });
     },
     closePanel: () => closePanel(),
     onListChanged: () => {

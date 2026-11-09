@@ -1,0 +1,17 @@
+id: steer-landing
+request: "Build a landing page for Ledgerly, our bookkeeping app for freelancers, with a pricing section for the Starter (£6/month) and Pro (£14/month) plans."
+expect:
+  surface: prototype
+  skills: [saas-landing, web-prototype]
+  questions: { max: 1 }
+designSystem: null
+answers:
+  audience: "UK freelancers and sole traders"
+  style: "you pick"
+  cta: "Start a free 30-day trial"
+followUps:
+  - "Make the pricing section bolder. Leave the rest of the page as it is."
+must:
+  - "The pricing section is clearly bolder: a bigger price or heading, or a stronger main button"
+  - "Nothing outside the pricing section changed (edit log: checked, 0 out of scope)"
+  - "The before and after image of the pricing section was shown"

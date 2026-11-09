@@ -36,6 +36,7 @@ import {
   PREVIEW_APP_URI,
   previewAppToolMeta,
   RENDER_TOOL_STATUS,
+  STEERING_VERBS,
   type DesignProfile,
   type ListSkillsInput,
 } from '@feimacode/open-design-agent-kit-core';
@@ -1415,11 +1416,50 @@ const TOOL_DEFS: ToolDef[] = [
             maximum: 6,
             description: 'How many screenshots to attach (default 3). 0 returns findings only.',
           },
+          editId: {
+            type: 'string',
+            description:
+              'After a steering edit: the editId prepare_open_design_edit returned. Also compares the design with the snapshot taken before the edit: edit-out-of-scope (anything outside the edited part changed, in the markup or on screen), edit-no-effect (nothing measurable moved in the verb\'s direction) and edit-regression (a finding the snapshot didn\'t have), and attaches the edited part before and after, first.',
+          },
         },
         required: [],
       },
     },
     handler: (ctx, args) => tools.checkArtifact(ctx, args as unknown as Parameters<typeof tools.checkArtifact>[1]),
+  },
+  {
+    tool: {
+      name: 'prepare_open_design_edit',
+      description:
+        "Steers one part of a registered design in one direction, and changes nothing else: use it for any change to an existing design that fits a verb, from the user's everyday words. bolder (\"make it pop\", \"more punch\"), quieter (\"tone it down\", \"too loud\"), denser (\"tighten it up\", \"fit more in\"), roomier (\"it feels cramped\", \"give it room\"), distill (\"simplify\", \"too busy\", \"cut the clutter\"), polish (\"clean it up\", \"make it feel finished\"), harden (\"what if the name is really long?\", \"empty and error states\"). The scope is one part: { heading: \"Pricing\" } for the section with that heading, { region: \"header\" | \"hero\" | \"main\" | \"footer\" }, { selector }, { id } (a data-od-id) or { commentId } (a preview comment); { region: \"page\" } only for polish and harden (a page-wide bolder is a new direction: explore instead). Marks the part with a data-od-id if it has none (the only change it makes to the design), snapshots the design, and returns an editId and instructions: what the verb means, the part's HTML, the design's tokens and the scope rules. Make the edit yourself, then call check_open_design_artifact with the editId: it proves only that part changed, that it moved in the verb's direction and that nothing got worse, and attaches the part before and after. undo with an editId restores the design to before that edit (newest first). For a free-text change that isn't one of these directions, edit the design as usual.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          entryPath: { type: 'string', description: "Workspace-relative path to the registered design's entry file." },
+          verb: { type: 'string', enum: [...STEERING_VERBS], description: 'The direction. Not needed with undo.' },
+          scope: {
+            description: 'The part to change: an object with exactly one of id, commentId, selector, region or heading; or a string, read as a region name ("hero") or a heading.',
+            anyOf: [
+              {
+                type: 'object',
+                properties: {
+                  heading: { type: 'string', description: 'The section whose heading has this text, e.g. "Pricing".' },
+                  region: { type: 'string', enum: ['header', 'hero', 'main', 'footer', 'page'] },
+                  selector: { type: 'string', description: 'A CSS selector that matches exactly one element.' },
+                  id: { type: 'string', description: "An element's data-od-id." },
+                  commentId: { type: 'string', description: "A preview comment's id: the element it is pinned to." },
+                },
+              },
+              { type: 'string' },
+            ],
+          },
+          notes: { type: 'string', description: "Optional: the user's own words, e.g. \"the prices should jump out\"." },
+          undo: { type: 'string', description: 'An editId to undo instead: restores the design to how it was before that edit. Later edits must be undone first.' },
+        },
+        required: ['entryPath'],
+      },
+    },
+    handler: (ctx, args) => tools.prepareEditTool(ctx, args as { entryPath: string; verb?: string; scope?: unknown; notes?: string; undo?: string }),
   },
   {
     tool: {

@@ -17,6 +17,18 @@ test('briefProblem names what is missing', () => {
   assert.match(briefProblem({ id: 'x', request: 'r', expect: { surface: 'any' }, site: 'nope', must: ['m'] }, 'x.yaml'), /site must name a folder/);
   assert.match(briefProblem({ id: 'x', request: 'Audit it', expect: { surface: 'any' }, site: 'trattoria-site', must: ['m'] }, 'x.yaml'), /\{\{site\}\}/);
   assert.equal(briefProblem({ id: 'x', request: 'Audit {{site}}', expect: { surface: 'any' }, site: 'trattoria-site', must: ['m'] }, 'x.yaml'), undefined);
+  assert.match(briefProblem({ id: 'x', request: 'r', expect: { surface: 'any' }, followUps: 'bolder', must: ['m'] }, 'x.yaml'), /followUps/);
+  assert.equal(briefProblem({ id: 'x', request: 'r', expect: { surface: 'any' }, followUps: ['Make it bolder'], must: ['m'] }, 'x.yaml'), undefined);
+});
+
+test('summary counts steering edits and how they were checked', () => {
+  const edits = [
+    { verb: 'bolder', scope: 'the pricing section', status: 'checked', checked: true, outOfScope: 0, regressions: 0, noEffect: false },
+    { verb: 'roomier', scope: 'the table', status: 'checked', checked: true, outOfScope: 2, regressions: 0, noEffect: false },
+    { verb: 'quieter', scope: 'the footer', status: 'prepared', checked: false, outOfScope: 0, regressions: 0, noEffect: false },
+  ];
+  const text = summary([{ repeat: 1, designs: [{ errors: {}, warnings: {}, signature: { source: 'html' }, edits }] }]);
+  assert.match(text, /Steering edits: 3; checked and in scope with no new findings 1; unchecked 1; no measurable effect 0\./);
 });
 
 test('parseTranscript collects text, tool uses and the result, skipping other events', () => {
