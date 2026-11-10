@@ -135,6 +135,7 @@ Everything lives in [`docs/`](docs/README.md):
 - **Gallery:** browse every bundled example and design system in the [online gallery](https://feimacode.github.io/open-design-agent-kit/), with prompts to remix one or add a design system to Claude Design. Remixable designs from the community live in [awesome-open-design](https://github.com/feimacode/awesome-open-design). Made something good? Add it there.
 - **Questions and show-and-tell:** [GitHub Discussions](https://github.com/feimacode/open-design-agent-kit/discussions).
 - **Bugs and requests:** [open an issue](https://github.com/feimacode/open-design-agent-kit/issues/new/choose).
+- **Roadmap:** what's shipped, in progress and next, grouped by northstar area, in [docs/ROADMAP.md](docs/ROADMAP.md).
 - **Contributing:** start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [`good first issue`](https://github.com/feimacode/open-design-agent-kit/labels/good%20first%20issue) label.
 
 ## Provenance
