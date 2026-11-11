@@ -80,5 +80,6 @@ Task-by-task, for every host ([how the guides are laid out](guides/README.md)):
 
 ## Contributing
 
+- [Roadmap](ROADMAP.md): northstar areas, and what's shipped, in progress, next, later and parked in each
 - [Contributing](contributing/README.md): architecture, content sync, adding skills and prompts, upstream ports, releasing
 - [3D test cases](test-cases/3d/README.md): manual quality benchmarks for 3D designs, adapted from the Gemini 4 Argon showcase
