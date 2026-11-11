@@ -61,6 +61,25 @@ Every project, and any image inside it, has a level:
 
 An image can be stricter than its project, never looser. To hide part of a screen (a customer's name, a price), ask the agent to blur it: the box is baked into every copy of the image, so no output can show what it covers.
 
+## Tailored versions
+
+One library, a version per situation. Paste the job ad, the client's brief, the school's rules or your promotion criteria and say who it's for: "Make a version of my portfolio for this Acme job: <ad>". The agent saves it as a **target** and suggests an order of your projects from the words in the notes, showing which words each project matched, so you can change it.
+
+| Kind | What it makes | Defaults |
+|---|---|---|
+| Job | A site (unlisted, at its own address) and a PDF with a cover note | PDF up to 10 MB, 16:9 |
+| Client | A site and a PDF, with an optional "For you" section linking a [redesign concept](redesign-a-website.md) of their site and its before/after page | PDF up to 10 MB |
+| School | An image set (one titled file per piece) and a PDF | each image up to 5 MB, PDF up to 10 MB, A4; the piece count you enter (SlideRoom's documented limits; enter each school's own) |
+| Promotion | A PDF with a criteria map: every criterion from your framework, the projects and outcomes that show it, and the ones with no evidence yet left visible | internal, no size limit |
+
+When a PDF is over its limit, the export lowers image quality step by step and keeps every page; if it still doesn't fit, it says which pages are heaviest.
+
+### Privacy ceilings
+
+Every version has a privacy ceiling: the strictest work it may hold. A public version can't show anything unlisted or internal; an unlisted one can't show anything internal. Export and publish both check every page and refuse a version that holds more than its ceiling allows, naming each picture or project and its page. An internal version (a promotion packet, work under NDA) is exported as a file only, never published. An unlisted version is published as a Claude artifact, or on a host where you add a password; the kit never says a password was set when it didn't set one.
+
+The check finds library work by the ids the portfolio skills write on every picture and project. A picture pasted in some other way has no id, so the check warns about it; keep library pictures to the markup the brief gives.
+
 ## Your own style
 
 A portfolio should look like you, not like a template. The library can name a design system as its style. The agent offers to build one from your current site, your Figma or Canva files, or screenshots of your work, using the same extraction as [design systems](design-systems.md).

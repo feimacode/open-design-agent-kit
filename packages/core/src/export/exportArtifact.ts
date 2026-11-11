@@ -14,6 +14,8 @@ import { checkArtifact } from './checkArtifact';
 import { findCollectionArtifacts } from '../workspace/collectionScan';
 import { findBrowser } from './browserDiscovery';
 import { assemblePdf, assemblePptx } from './deck/assemble';
+import { portfolioGuard } from '../portfolio/privacy';
+import { PRESENTER_CLONE_SELECTOR, SLIDE_SELECTOR } from './deck/selectors';
 import { assembleEditablePptx, editableReport, formatEditableReport, type EditableReport } from './deck/assembleEditable';
 import { captureDeckSlides, captureEditableDeck, capturePagePdf, countSlides, resolveExportMode, validateSlideNumbers, type ExportMode } from './deck/captureDeck';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize, type SizeSource } from './exportSize';
@@ -226,6 +228,8 @@ export type ExportErrorCode =
   | 'selector-no-match'
   | 'no-slides'
   | 'not-a-deck'
+  | 'over-budget'
+  | 'privacy-ceiling'
   | 'capture-failed';
 
 const FIT_QUALITIES = [90, 80, 70, 60, 50, 40];
@@ -459,6 +463,11 @@ export function exportArtifact(options: ExportArtifactOptions): Promise<AnyExpor
 export async function exportArtifact(options: ExportArtifactOptions): Promise<AnyExportResult> {
   const invalid = validateOptions(options);
   if (invalid) return fail('invalid-args', invalid);
+  // Portfolio work under a privacy ceiling never leaves in a file it isn't allowed in (openspec add-tailored-portfolios).
+  if (!options.checkOnly) {
+    const guard = await portfolioGuard({ workspaceRoot: options.workspaceRoot, outputDir: options.outputDir ?? '.open-design', entryPath: options.entryPath, action: 'export' });
+    if (!guard.ok) return fail('privacy-ceiling', guard.text);
+  }
   if (isMotionFormat(options.format)) {
     return exportMotion({ ...options, format: options.format });
   }
@@ -1010,6 +1019,9 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       const document = mode === 'deck-pptx' || mode === 'deck-pdf';
       scale = options.scale ?? (document ? 2 : 1);
       const slideImageFormat: ImageFormat = document ? 'png' : (format as ImageFormat);
+      // A PDF with a byte limit (openspec add-tailored-portfolios): each slide is also shot as JPEG at every
+      // quality step, so the PDF can be assembled lower and lower until it fits, keeping every page.
+      const pdfLadder: Buffer[][] | undefined = mode === 'deck-pdf' && maxBytes !== undefined ? [] : undefined;
       const captured = await captureDeckSlides(page, {
         slideCount,
         slides: options.slides,
@@ -1018,7 +1030,16 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         scale,
         format: slideImageFormat,
         quality,
-        encode: document ? undefined : (shoot) => captureWithinBudget(shoot, slideImageFormat, quality, maxBytes),
+        encode: pdfLadder
+          ? async (shoot) => {
+              const steps: Buffer[] = [];
+              for (const q of FIT_QUALITIES) steps.push(await shoot('jpeg', q));
+              pdfLadder.push(steps);
+              return { buffer: await shoot('png'), format: 'png' };
+            }
+          : document
+            ? undefined
+            : (shoot) => captureWithinBudget(shoot, slideImageFormat, quality, maxBytes),
       });
       warnings.push(...captured.warnings);
       viewport = { width: captured.stage.w, height: captured.stage.h };
@@ -1028,10 +1049,34 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       const pxH = Math.round(captured.stage.h * scale);
 
       if (document) {
-        const assembled =
+        let assembled =
           mode === 'deck-pptx'
             ? await assemblePptx(captured.slides, { title, aspect: captured.stage.w / captured.stage.h })
             : await assemblePdf(captured.slides, { title });
+        if (pdfLadder && maxBytes !== undefined && assembled.length > maxBytes) {
+          let fitted: Buffer | undefined;
+          for (const [step, q] of FIT_QUALITIES.entries()) {
+            const pdf = await assemblePdf(captured.slides.map((sl, i) => ({ ...sl, buffer: pdfLadder[i][step], jpeg: true })), { title });
+            if (pdf.length <= maxBytes) {
+              fitted = pdf;
+              warnings.push(`The PDF was ${(assembled.length / 1024 / 1024).toFixed(1)} MB at full quality, so its slides were saved as JPEG at quality ${q} to fit ${(maxBytes / 1024 / 1024).toFixed(1)} MB; every page is kept.`);
+              break;
+            }
+          }
+          if (!fitted) {
+            const lowest = FIT_QUALITIES.length - 1;
+            const heaviest = captured.slides
+              .map((sl, i) => ({ number: sl.number, bytes: pdfLadder[i][lowest].length }))
+              .sort((a, b) => b.bytes - a.bytes)
+              .slice(0, 3)
+              .map((h) => `slide ${h.number} (${Math.round(h.bytes / 1024)} KB)`);
+            return fail(
+              'over-budget',
+              `The PDF is still over ${(maxBytes / 1024 / 1024).toFixed(1)} MB at the lowest image quality (${FIT_QUALITIES[lowest]}). The heaviest pages are ${heaviest.join(', ')}. Use smaller pictures on them, split a page, or export with scale: 1. Nothing was written.`,
+            );
+          }
+          assembled = fitted;
+        }
         const docFormat: ExportFormat = mode === 'deck-pptx' ? 'pptx' : 'pdf';
         const relOut = await writeOut(exportFilePath(relEntry, undefined, docFormat, exportLayout), assembled);
         files.push({ path: relOut, width: pxW, height: pxH, bytes: assembled.length, format: docFormat });
@@ -1040,10 +1085,27 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         }
         if (assembled.length > 50 * 1024 * 1024) warnings.push(`${relOut} is over 50 MB — scale: 1 roughly quarters it.`);
       } else {
+        // A school image set (openspec add-tailored-portfolios): each piece's file is named from its data-od-piece title.
+        const pieceTitles = (await page.evaluate(
+          (sel: string, clones: string) =>
+            Array.from(window.document.querySelectorAll(sel))
+              .filter((el) => !el.closest(clones) && !el.parentElement?.closest(sel))
+              .map((el) => el.getAttribute('data-od-piece') ?? ''),
+          SLIDE_SELECTOR,
+          PRESENTER_CLONE_SELECTOR,
+        )) as string[];
+        const pieceSlug = (t: string) =>
+          t
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 60);
         for (const slide of captured.slides) {
           const got = { format: (slide.jpeg ? 'jpeg' : 'png') as ImageFormat, quality: slide.quality, overBudget: slide.overBudget, bytes: slide.buffer.length };
+          const piece = pieceSlug(pieceTitles[slide.number - 1] ?? '');
           // Always numbered by the slide's own number, even for a single slide.
-          const relOut = await writeOut(exportFilePath(relEntry, slide.number, got.format, exportLayout), slide.buffer);
+          const relOut = await writeOut(piece ? exportFilePathWithSuffix(relEntry, piece, slide.number, got.format, exportLayout) : exportFilePath(relEntry, slide.number, got.format, exportLayout), slide.buffer);
           budgetWarnings(relOut, format, maxBytes, got);
           files.push({ path: relOut, width: pxW, height: pxH, bytes: got.bytes, format: got.format, quality: got.quality });
         }

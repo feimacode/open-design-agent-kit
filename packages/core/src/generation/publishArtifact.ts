@@ -9,6 +9,7 @@
 //    deploy and stores it in the manifest's `metadata.shares`.
 // Never runs a provider command, never makes a network request.
 // openspec: add-artifact-sharing.
+import { portfolioGuard } from '../portfolio/privacy';
 import { hasConceptRibbon } from '../export/redesignChecks';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
@@ -127,12 +128,16 @@ async function publishArtifactInner(options: PublishArtifactOptions): Promise<Pu
     return { ok: true, text: lines.join('\n') };
   }
 
+  // Portfolio versions: refuse anything stricter than the version's ceiling, and internal versions entirely (openspec add-tailored-portfolios).
+  const guard = await portfolioGuard({ workspaceRoot: options.workspaceRoot, outputDir: options.outputDir ?? '.open-design', entryPath: options.entryPath, action: 'publish', provider: options.provider });
+  if (!guard.ok) return { ok: false, text: `${guard.text}\n\nNothing was published.` };
+  const withGuardNotes = (r: PublishArtifactResult): PublishArtifactResult => (guard.notes.length && r.ok ? { ...r, text: `${r.text}\n\n${guard.notes.join('\n')}` } : r);
   const records = readShareRecords(manifest);
   if (options.provider === CLAUDE_ARTIFACT_PROVIDER) {
     if (options.includeFiles?.length) {
       return { ok: false, text: 'includeFiles needs a hosted site: a Claude artifact is one page. Give the user the exported files\' paths instead, or pick a hosting provider.\n\nNothing was published.' };
     }
-    return prepareArtifact(options, manifest, title, records, declaredRemoteAssets(artifact.entryContent).length > 0);
+    return withGuardNotes(await prepareArtifact(options, manifest, title, records, declaredRemoteAssets(artifact.entryContent).length > 0));
   }
 
   const included = await resolveIncludedFiles(options.workspaceRoot, options.entryPath, options.includeFiles ?? []);
@@ -180,7 +185,7 @@ async function publishArtifactInner(options: PublishArtifactOptions): Promise<Pu
     slug,
     today: now.toISOString().slice(0, 10),
   });
-  return { ok: true, text };
+  return withGuardNotes({ ok: true, text });
 }
 
 /** claude-artifact: the standalone file, the artifact preflight, then publish-by-path instructions. */

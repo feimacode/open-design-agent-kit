@@ -40,7 +40,7 @@ The deck a designer presents to a hiring panel, built from their work library. I
 
 1. **Read the library** with `get_open_design_library`. Use the open-design-portfolio skill first if the projects lack problem, decisions (with rejected options) or outcomes.
 2. **Ask once, together:** the slot length (30, 45 or 60 minutes; default 45), which one or two projects (suggest the ones closest to the role), and the role and company if known. Accept "you pick".
-3. **Brief** with `prepare_open_design_brief`, `portfolio: { projects: [...], length: <minutes> }`. The library's style is used unless the designer names another. Register with the same `portfolio`.
+3. **Brief** with `prepare_open_design_brief`, `portfolio: { projects: [...], length: <minutes> }` (or `target: "<slug>"` for a saved job target, whose first two projects are used). The library's style is used unless the designer names another. Register with the same `portfolio`.
 4. **Check** with `check_open_design_artifact`: it adds up the minute budgets and reports a talk more than 10% off the length, slides without notes or minutes, and no backup slides. Export as editable PowerPoint (`pptx`) and PDF when asked; the notes go with the PowerPoint.
 
 ## Structure

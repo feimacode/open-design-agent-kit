@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { ContentIndex } from '@feimacode/open-design-agent-kit-core';
-import { formatImportWorkResult, formatLibrary, importWork, saveProject } from '@feimacode/open-design-agent-kit-core';
+import { formatImportWorkResult, formatLibrary, importWork, saveProject, saveTarget } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot } from '../workspace/artifactWriter';
 import { getFigmaToken } from '../workspace/figmaTokenStore';
 
@@ -69,5 +69,16 @@ export class ImportWorkTool implements vscode.LanguageModelTool<{ project: strin
     if (token.isCancellationRequested) return text('Import cancelled.');
     const images = result.imported.flatMap((i) => (i.preview ? [vscode.LanguageModelDataPart.image(i.preview.data, i.preview.mime)] : [])).slice(0, 6);
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(formatImportWorkResult(result)), ...images]);
+  }
+}
+
+export class SaveTargetTool implements vscode.LanguageModelTool<{ target: unknown }> {
+  async prepareInvocation(options: vscode.LanguageModelToolInvocationPrepareOptions<{ target: unknown }>): Promise<vscode.PreparedToolInvocation> {
+    const t = options.input.target as { name?: string; slug?: string } | undefined;
+    return { invocationMessage: `Saving the portfolio version ${t?.name ?? t?.slug ?? ''}`.trim() };
+  }
+
+  async invoke(options: vscode.LanguageModelToolInvocationOptions<{ target: unknown }>): Promise<vscode.LanguageModelToolResult> {
+    return text((await saveTarget({ workspaceRoot: getWorkspaceRoot(), outputDir: getOutputDirectory(), target: options.input.target })).text);
   }
 }

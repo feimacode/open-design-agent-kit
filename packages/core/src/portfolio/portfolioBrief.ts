@@ -9,10 +9,15 @@ import { readArtifact } from '../vendored/artifactCreate';
 import { editLogOf } from '../generation/steeringEdits';
 import { readArtifactComments } from '../workspace/artifactComments';
 import { readExplorationPlan, explorationPaths } from '../workspace/explorationStore';
-import { BEFORE_AFTER_FILE } from '../export/beforeAfter';
+import { readTarget } from './targets';
+// The before/after page's file name (export/beforeAfter.ts), kept here so this module doesn't import the export code.
+const BEFORE_AFTER_FILE = 'before-after.html';
+import { criteriaMap, type Target } from './targets';
 import {
   assetForOutput,
   assetPrivacy,
+  privacyRank,
+  type PrivacyLevel,
   libraryPaths,
   outcomeLine,
   projectGaps,
@@ -23,12 +28,13 @@ import {
   type ProjectAsset,
 } from './library';
 
-export const PORTFOLIO_KINDS = ['site', 'deck'] as const;
+export const PORTFOLIO_KINDS = ['site', 'deck', 'pdf'] as const;
 export type PortfolioKind = (typeof PORTFOLIO_KINDS)[number];
 export const INTERVIEW_LENGTHS = [30, 45, 60] as const;
 export const DEFAULT_INTERVIEW_LENGTH = 45;
 export const MAX_SITE_PROJECTS = 6;
 export const MAX_DECK_PROJECTS = 2;
+export const MAX_PDF_PROJECTS = 12;
 /** Words in a case study's body (outside navigation and footer). */
 export const CASE_STUDY_WORDS = { min: 500, max: 1800 } as const;
 /** Bytes a page and the files it loads by default may weigh. */
@@ -42,9 +48,12 @@ export interface PortfolioRecord {
   projects: string[];
   /** Interview decks: the talk's length in minutes. */
   length?: number;
+  /** The tailored version this design is for (openspec add-tailored-portfolios). */
+  target?: string;
 }
 
 export function portfolioKindForSkill(skillId: string | undefined): PortfolioKind {
+  if (skillId && /portfolio-pdf/.test(skillId)) return 'pdf';
   return skillId && /interview-deck|deck/.test(skillId) ? 'deck' : 'site';
 }
 
@@ -54,11 +63,17 @@ type Ok<T> = { ok: true; value: T } | { ok: false; error: string };
 export function validatePortfolioInput(v: unknown, kind: PortfolioKind): Ok<PortfolioRecord> {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return { ok: false, error: 'portfolio must be an object: { projects: ["<project slug>", …], length? }.' };
   const o = v as Record<string, unknown>;
+  const target = typeof o.target === 'string' && o.target.trim() ? o.target.trim() : undefined;
+  if (o.target !== undefined && !target) return { ok: false, error: 'portfolio.target is a target slug from save_open_design_portfolio_target.' };
+  if (target && o.projects === undefined) {
+    // The target's projects are filled in when the brief reads it.
+    return { ok: true, value: { kind, projects: [], target, ...(kind === 'deck' ? { length: o.length === undefined ? DEFAULT_INTERVIEW_LENGTH : Number(o.length) } : {}) } };
+  }
   if (!Array.isArray(o.projects) || o.projects.length === 0 || !o.projects.every((p) => typeof p === 'string' && p.trim())) {
-    return { ok: false, error: 'portfolio.projects must list at least one library project slug (get_open_design_library lists them).' };
+    return { ok: false, error: 'portfolio.projects must list at least one library project slug (get_open_design_library lists them), or give a target.' };
   }
   const projects = [...new Set((o.projects as string[]).map((p) => p.trim()))];
-  const max = kind === 'deck' ? MAX_DECK_PROJECTS : MAX_SITE_PROJECTS;
+  const max = kind === 'deck' ? MAX_DECK_PROJECTS : kind === 'pdf' ? MAX_PDF_PROJECTS : MAX_SITE_PROJECTS;
   if (projects.length > max) {
     return { ok: false, error: kind === 'deck' ? `An interview deck covers one or two projects; got ${projects.length}. Pick the two that best show the role.` : `A portfolio site shows at most ${MAX_SITE_PROJECTS} case studies; got ${projects.length}. Three to five is the usual range.` };
   }
@@ -67,9 +82,9 @@ export function validatePortfolioInput(v: unknown, kind: PortfolioKind): Ok<Port
     length = o.length === undefined ? DEFAULT_INTERVIEW_LENGTH : Number(o.length);
     if (!(INTERVIEW_LENGTHS as readonly number[]).includes(length)) return { ok: false, error: `portfolio.length is the talk's length in minutes: 30, 45 or 60; got ${JSON.stringify(o.length)}.` };
   } else if (o.length !== undefined) {
-    return { ok: false, error: 'portfolio.length is for interview decks (30, 45 or 60 minutes); a site has no length.' };
+    return { ok: false, error: `portfolio.length is for interview decks (30, 45 or 60 minutes); a ${kind === 'pdf' ? 'PDF' : 'site'} has no length.` };
   }
-  return { ok: true, value: { kind, projects, ...(length !== undefined ? { length } : {}) } };
+  return { ok: true, value: { kind, projects, ...(length !== undefined ? { length } : {}), ...(target ? { target } : {}) } };
 }
 
 /** metadata.portfolio when it is a valid record. */
@@ -77,10 +92,10 @@ export function portfolioRecordOf(metadata: unknown): PortfolioRecord | undefine
   const p = metadata && typeof metadata === 'object' ? (metadata as Record<string, unknown>).portfolio : undefined;
   if (!p || typeof p !== 'object') return undefined;
   const r = p as Record<string, unknown>;
-  const kind = r.kind === 'deck' ? 'deck' : r.kind === 'site' ? 'site' : undefined;
+  const kind = r.kind === 'deck' || r.kind === 'site' || r.kind === 'pdf' ? (r.kind as PortfolioKind) : undefined;
   if (!kind || !Array.isArray(r.projects)) return undefined;
   const projects = r.projects.filter((x): x is string => typeof x === 'string');
-  return { kind, projects, ...(typeof r.length === 'number' ? { length: r.length } : {}) };
+  return { kind, projects, ...(typeof r.length === 'number' ? { length: r.length } : {}), ...(typeof r.target === 'string' ? { target: r.target } : {}) };
 }
 
 export function withPortfolioMetadata(metadata: Record<string, unknown> | undefined, record: PortfolioRecord | undefined): Record<string, unknown> | undefined {
@@ -272,14 +287,32 @@ function projectSection(p: Project, pictures: PortfolioPicture[], skipped: strin
 export async function loadPortfolioBrief(input: { workspaceRoot: string; outputDir: string; entryPath: string; portfolio: unknown; kind: PortfolioKind }): Promise<Ok<PortfolioBrief>> {
   const checked = validatePortfolioInput(input.portfolio, input.kind);
   if (!checked.ok) return checked;
-  const record = checked.value;
+  let record = checked.value;
   const library = await readLibrary(input.workspaceRoot, input.outputDir);
   if (!library) return { ok: false, error: 'There is no work library yet. Save the designer\'s projects with save_open_design_project (and import their work with import_open_design_work) first.' };
+  let target: Target | undefined;
+  if (record.target) {
+    target = await readTarget(input.workspaceRoot, input.outputDir, record.target);
+    if (!target) return { ok: false, error: `No target "${record.target}". Save it with save_open_design_portfolio_target first.` };
+    if (record.projects.length === 0) {
+      if (target.projects.length === 0) return { ok: false, error: `The target "${target.name}" has no projects yet. Save its projects (in order) with save_open_design_portfolio_target.` };
+      const max = input.kind === 'deck' ? MAX_DECK_PROJECTS : input.kind === 'pdf' ? MAX_PDF_PROJECTS : MAX_SITE_PROJECTS;
+      record = { ...record, projects: target.projects.slice(0, max) };
+    }
+  }
+  const ceiling: PrivacyLevel = target?.ceiling ?? 'unlisted';
   const projects: Project[] = [];
   for (const slug of record.projects) {
     const p = await readProject(input.workspaceRoot, input.outputDir, slug);
     if (!p) return { ok: false, error: `No project "${slug}" in the work library. Projects: ${library.projects.join(', ') || '(none)'}.` };
-    if (p.privacy === 'internal') return { ok: false, error: `"${p.title}" is internal, so it can't go in a portfolio. Pick another project, or change its privacy with save_open_design_project if the designer may show it.` };
+    if (privacyRank(p.privacy) > privacyRank(ceiling)) {
+      return {
+        ok: false,
+        error: target
+          ? `"${p.title}" is ${p.privacy}, stricter than the target's ceiling (${ceiling}), so it can't go in this version. Drop it from the target, or raise the ceiling.`
+          : `"${p.title}" is internal, so it can't go in a portfolio. Pick another project, change its privacy with save_open_design_project, or make an internal target for it (a promotion packet, exported as a file).`,
+      };
+    }
     projects.push(p);
   }
   const designDir = path.posix.dirname(input.entryPath.replace(/\\/g, '/'));
@@ -290,8 +323,9 @@ export async function loadPortfolioBrief(input: { workspaceRoot: string; outputD
     const mine: PortfolioPicture[] = [];
     const skipped: string[] = [];
     for (const asset of p.assets) {
-      if (assetPrivacy(p, asset) === 'internal') {
-        skipped.push(`${asset.id} (internal)`);
+      const level = assetPrivacy(p, asset);
+      if (privacyRank(level) > privacyRank(ceiling)) {
+        skipped.push(`${asset.id} (${level})`);
         continue;
       }
       if (asset.kind === 'video' || asset.mime === 'video/mp4') {
@@ -319,6 +353,7 @@ export async function loadPortfolioBrief(input: { workspaceRoot: string; outputD
     o.bio ? `- **Bio:** ${o.bio}` : '',
     ...(o.links ?? []).map((l) => `- **${l.label}:** ${l.url}`),
   ].filter(Boolean);
+  const targetSection = target ? composeTargetSection(target, projects, input.kind) : '';
   const section = [
     '## Portfolio content',
     '',
@@ -328,7 +363,37 @@ export async function loadPortfolioBrief(input: { workspaceRoot: string; outputD
     '',
     ...ownerLines,
     '',
+    ...(targetSection ? [targetSection, ''] : []),
     ...sections,
   ].join('\n');
   return { ok: true, value: { record, library, projects, pictures, section, notes } };
+}
+
+const PAGE_SIZE_CSS: Record<string, string> = { a4: '297mm × 210mm landscape or 210mm × 297mm portrait (A4)', letter: '11in × 8.5in landscape or 8.5in × 11in portrait (US Letter)', '16:9': '1920 × 1080 px (16:9)' };
+
+/** The "This version" part of the brief: who it is for, its cover note, limits and kind-specific sections. */
+export function composeTargetSection(t: Target, projects: Project[], kind: PortfolioKind): string {
+  const lines = [`### This version: ${t.name} (${t.kind})`, ''];
+  lines.push(`Built for one situation, from the target \`${t.slug}\`: these projects in this order (${projects.map((p) => p.slug).join(', ')}), nothing stricter than **${t.ceiling}**. Put \`data-od-project="<slug>"\` on each project's block and keep \`data-od-asset\` on every picture: export and publish check them against the ceiling.`);
+  if (t.coverNote) lines.push('', `Cover note, in the designer's words (open with it, unchanged): "${t.coverNote}"`);
+  if (t.notes && t.kind !== 'promotion') lines.push('', `What they asked for (from the designer's notes; echo its words where the library supports them, never claim more):\n\n> ${t.notes.slice(0, 1500).replace(/\n+/g, '\n> ')}`);
+  if (t.ceiling === 'unlisted' && kind === 'site') {
+    lines.push('', 'Unlisted: build it as its own collection (its own collectionId, e.g. the target slug), put `<meta name="robots" content="noindex">` in every page\'s <head>, and don\'t link to it from the public portfolio.');
+  }
+  if (t.limits.pdfBytes !== undefined || t.limits.pdfPageSize) {
+    lines.push('', `PDF: ${t.limits.pdfPageSize ? `pages at ${PAGE_SIZE_CSS[t.limits.pdfPageSize]}, one \`.slide\` per page` : 'one `.slide` per page'}${t.limits.pdfBytes !== undefined ? `; export with maxBytes ${t.limits.pdfBytes} (the export lowers image quality until it fits, and fails naming the heaviest pages if it can't)` : ''}.`);
+  }
+  if (t.kind === 'school') {
+    lines.push('', `School image set: one piece per \`.slide\`, each with \`data-od-piece="<title, year, medium>"\`${t.limits.pieces ? `; exactly ${t.limits.pieces} pieces` : ''}${t.limits.imageBytes !== undefined ? `; export each as JPEG with maxBytes ${t.limits.imageBytes}` : ''}. Titles follow the school's naming rules from the notes.`);
+  }
+  if (t.kind === 'client' && t.client && (t.client.concept || t.client.beforeAfter)) {
+    lines.push('', `"For you" section, after the work and before the contact: a short section for this client${t.client.site ? ` (${t.client.site})` : ''}, marked \`data-od-for-you\`, linking ${[t.client.concept ? `the redesign concept (\`${t.client.concept}\`)` : '', t.client.beforeAfter ? `the before/after page (\`${t.client.beforeAfter}\`)` : ''].filter(Boolean).join(' and ')}. Say it is a concept, not their site.`);
+  }
+  if (t.kind === 'promotion' && t.criteria?.length) {
+    lines.push('', 'Criteria map: a table with every criterion below, in this order, each row marked `data-od-criterion`, with the projects and outcomes that show it. A criterion with no evidence stays in the table, with its cell left empty ("No evidence yet"), so the gap is visible before the committee sees it.', '');
+    for (const c of criteriaMap(t.criteria, projects)) {
+      lines.push(`- ${c.criterion}: ${c.evidence.length ? c.evidence.map((e) => `${e.title}${e.outcomes.length ? ` (${e.outcomes.join('; ')})` : ''}`).join('; ') : 'no evidence yet'}`);
+    }
+  }
+  return lines.join('\n');
 }
