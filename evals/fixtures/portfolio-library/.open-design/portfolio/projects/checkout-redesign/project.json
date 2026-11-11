@@ -1,0 +1,102 @@
+{
+  "slug": "checkout-redesign",
+  "title": "One-page checkout for a grocery app",
+  "role": "Lead product designer",
+  "privacy": "public",
+  "company": "Harvest Box",
+  "team": [
+    "1 PM",
+    "3 engineers",
+    "1 researcher"
+  ],
+  "dates": {
+    "start": "2025-02",
+    "end": "2025-08"
+  },
+  "platforms": [
+    "iOS",
+    "Android",
+    "Web"
+  ],
+  "problem": "Shoppers dropped out between delivery and payment; the checkout had four steps and asked for the address twice.",
+  "constraints": [
+    "Payment provider's hosted card field could not be restyled",
+    "Launch before the holiday peak"
+  ],
+  "decisions": [
+    {
+      "choice": "Collapse delivery, payment and review into one page with editable summaries",
+      "rejected": [
+        "A shorter four-step wizard",
+        "Express checkout only"
+      ],
+      "why": "Usability sessions showed people wanted to see the total and delivery slot together",
+      "tradeOff": "A longer page on small phones, solved with collapsed sections"
+    },
+    {
+      "choice": "Save the delivery slot before payment",
+      "rejected": [
+        "Hold the slot only after payment"
+      ],
+      "why": "Slots sold out while people typed card details"
+    }
+  ],
+  "outcomes": [
+    {
+      "text": "Checkout conversion",
+      "value": "+18%",
+      "source": "measured"
+    },
+    {
+      "text": "Support tickets about double charges",
+      "value": "-30%",
+      "source": "estimated"
+    }
+  ],
+  "links": [
+    {
+      "kind": "live",
+      "url": "https://example.com/checkout"
+    }
+  ],
+  "tags": [
+    "checkout",
+    "e-commerce",
+    "mobile",
+    "conversion"
+  ],
+  "assets": [
+    {
+      "id": "checkout-desktop",
+      "file": "assets/checkout-desktop.png",
+      "mime": "image/png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 20145,
+      "kind": "screen",
+      "alt": "The one-page checkout on desktop: delivery, payment and review stacked, with the total and the Pay button below",
+      "origin": {
+        "kind": "file",
+        "from": "shots/checkout-desktop.png",
+        "capturedAt": "2026-11-11T00:00:00.000Z"
+      },
+      "device": "browser"
+    },
+    {
+      "id": "checkout-phone",
+      "file": "assets/checkout-phone.png",
+      "mime": "image/png",
+      "width": 390,
+      "height": 844,
+      "bytes": 13255,
+      "kind": "screen",
+      "alt": "The same checkout on a phone, with delivery and payment as collapsible sections",
+      "origin": {
+        "kind": "file",
+        "from": "shots/checkout-phone.png",
+        "capturedAt": "2026-11-11T00:00:00.000Z"
+      },
+      "device": "iphone"
+    }
+  ]
+}
