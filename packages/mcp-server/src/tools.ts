@@ -6,6 +6,12 @@ import {
   importWork as importWorkCore,
   formatImportWorkResult,
   isInsideLibrary,
+  loadPortfolioBrief,
+  portfolioKindForSkill,
+  readLibrary,
+  validatePortfolioInput,
+  withPortfolioMetadata,
+  type PortfolioBrief,
   mergeClaudeLaunchConfig,
   previewRevision,
   galleryDesignSystemUrl,
@@ -350,6 +356,7 @@ export async function prepareBrief(
     answers?: Record<string, string>;
     assumptions?: string[];
     redesign?: unknown;
+    portfolio?: unknown;
   },
 ): Promise<string> {
   const decisions = validateBriefDecisions(input.answers, input.assumptions);
@@ -363,7 +370,9 @@ export async function prepareBrief(
     return `Unknown skillId "${input.skillId}". Call list_open_design_skills to see available ids. A few available ids: ${available.join(', ')}`;
   }
 
-  const resolution = await resolveActiveDesignSystem(input.designSystemId, ctx.store, (id) => ctx.contentIndex.getDesignSystem(id));
+  // A portfolio uses the library's own style unless the call names another (openspec add-portfolio-site-and-deck).
+  const libraryStyle = input.portfolio !== undefined && !input.designSystemId ? (await readLibrary(ctx.workspaceRoot, ctx.outputDir).catch(() => undefined))?.style : undefined;
+  const resolution = await resolveActiveDesignSystem(input.designSystemId ?? libraryStyle, ctx.store, (id) => ctx.contentIndex.getDesignSystem(id));
   if (resolution.unknownExplicitId) {
     const available = (await ctx.contentIndex.listDesignSystems()).map((d) => d.id).slice(0, 20);
     return `Unknown designSystemId "${resolution.unknownExplicitId}". Call list_open_design_design_systems to see available ids. A few available ids: ${available.join(', ')}`;
@@ -400,6 +409,7 @@ export async function prepareBrief(
     suggestedEntryPath = await suggestEntryPath(ctx, input.brief, skill.name);
   }
 
+  if (isInsideLibrary(ctx.outputDir, suggestedEntryPath)) return `${suggestedEntryPath} would be inside the work library folder (${ctx.outputDir}/portfolio/), which only the portfolio tools write. Use another collectionId, such as "portfolio-site".`;
   const sources = await resolveBriefSources({
     workspaceRoot: ctx.workspaceRoot,
     outputDir: ctx.outputDir,
@@ -422,8 +432,14 @@ export async function prepareBrief(
     if (!loaded.ok) return loaded.error;
     redesign = loaded.context;
   }
+  let portfolio: PortfolioBrief | undefined;
+  if (input.portfolio !== undefined) {
+    const loaded = await loadPortfolioBrief({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: suggestedEntryPath, portfolio: input.portfolio, kind: portfolioKindForSkill(skill.id) });
+    if (!loaded.ok) return loaded.error;
+    portfolio = loaded.value;
+  }
   const recentDesigns = await loadRecentDesigns(ctx.workspaceRoot, { collectionId: input.collectionId, entryPath: suggestedEntryPath });
-  const instructions = composeInstructions({
+  const composed = composeInstructions({
     skillName: skill.name,
     skillBody: skill.body,
     designSystemTitle: designSystem?.name,
@@ -446,6 +462,9 @@ export async function prepareBrief(
     productContext: ctx.managedWorkspace ? undefined : await readProductContext(ctx.workspaceRoot),
     projectDesignMdPath: ctx.managedWorkspace || designSystem ? undefined : await findProjectDesignMd(ctx.workspaceRoot),
   });
+  const instructions = portfolio
+    ? `${composed}\n\n${portfolio.section}\n\nWhen you register, pass \`portfolio\` (${JSON.stringify(portfolio.record)}) so the portfolio checks run.`
+    : composed;
 
   const ownBrands = await ctx.contentIndex.ownBrandDesignSystems();
   const brandHint = ownBrandHint(ownBrands, designSystem);
@@ -464,6 +483,7 @@ export async function prepareBrief(
     flowScreenId: flowContext?.screenId,
     flowNote,
     baseScreenPath: baseScreen?.path,
+    portfolio: portfolio ? { ...portfolio.record, pictures: portfolio.pictures.length, notes: portfolio.notes.length ? portfolio.notes : undefined } : undefined,
     redesign: redesign ? { contentPath: redesign.contentPath, auditPath: redesign.auditPath, findings: redesign.findings.map((f) => f.id), concept: !redesign.owned } : undefined,
   };
   return JSON.stringify(payload, null, 2);
@@ -490,6 +510,7 @@ export async function registerArtifact(
     resolvedCommentIds?: string[];
     brief?: unknown;
     critique?: unknown;
+    portfolio?: unknown;
   },
 ): Promise<string> {
   if (isInsideLibrary(ctx.outputDir, input.entryPath)) return `Failed to register artifact: ${input.entryPath} is inside the work library folder (${ctx.outputDir}/portfolio/), which only the portfolio tools write. Put the design in its own folder under ${ctx.outputDir}/.`;
@@ -498,6 +519,8 @@ export async function registerArtifact(
   if (!flow.ok) return flow.error;
   const brief = validateRegisteredBrief(input.brief);
   if (!brief.ok) return brief.error;
+  const portfolioRecord = input.portfolio === undefined ? undefined : validatePortfolioInput(input.portfolio, portfolioKindForSkill(input.sourceSkillId ?? (input.kind === 'deck' ? 'deck' : undefined)));
+  if (portfolioRecord && !portfolioRecord.ok) return `Failed to register artifact: ${portfolioRecord.error}`;
   const renderer = KIND_TO_RENDERER[input.kind];
   const exportsList = exportsForKind(input.kind);
   if (!renderer || !exportsList) {
@@ -511,7 +534,10 @@ export async function registerArtifact(
     const sourceRegistration = input.sources?.length
       ? await prepareSourceRegistration({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: input.entryPath, sourcePaths: input.sources })
       : undefined;
-    const metadata = withFlowMetadata(withBriefMetadata(await posterRegistrationMetadata(ctx.workspaceRoot, input.entryPath, input.format), brief.brief), flow.record);
+    const metadata = withPortfolioMetadata(
+      withFlowMetadata(withBriefMetadata(await posterRegistrationMetadata(ctx.workspaceRoot, input.entryPath, input.format), brief.brief), flow.record),
+      portfolioRecord?.ok ? portfolioRecord.value : undefined,
+    );
     const manifest = await writeArtifactManifest({
       workspaceRoot: ctx.workspaceRoot,
       entryPath: input.entryPath,
@@ -1380,7 +1406,7 @@ export async function checkArtifact(
   if (input.collectionId) {
     const rest = { ...input };
     delete rest.entryPath;
-    const result = await checkCollection({ ...rest, collectionId: input.collectionId, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, lookupAspectHint });
+    const result = await checkCollection({ ...rest, collectionId: input.collectionId, workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, lookupAspectHint, portfolioLinks: !ctx.hosted });
     return { text: formatCollectionCheckResult(result), images: result.ok ? result.images : [] };
   }
   if (!input.entryPath) return { text: 'Pass entryPath, or collectionId to check every screen of a collection and the links between them.' };
@@ -1391,6 +1417,7 @@ export async function checkArtifact(
     workspaceRoot: ctx.workspaceRoot,
     outputDir: ctx.outputDir,
     lookupAspectHint,
+    portfolioLinks: !ctx.hosted,
   });
   return { text: formatCheckResult(result), images: result.ok ? result.images : [] };
 }

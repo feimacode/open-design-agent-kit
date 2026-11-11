@@ -1,0 +1,15 @@
+id: portfolio-site
+request: "Make my portfolio website from my work library. I'm applying for senior product designer roles"
+expect:
+  surface: portfolio
+  skills: [portfolio-site]
+  questions: { max: 1 }
+designSystem: null
+fixture: portfolio-library
+answers:
+  projects: "The checkout redesign, the bank onboarding and the design system"
+  audience: "Hiring managers for senior product designer roles"
+must:
+  - "On a phone, the home page's first screen shows Sam Rivera, Senior product designer, a contact link and the top of the first project card"
+  - "Each case study opens with a summary and gives the decisions and rejected options the most room; outcomes read exactly as the library has them (+18%, about -30%, the qualitative bank outcome without a number)"
+  - "The internal onboarding step 2 screen appears nowhere, and no number, client or quote is invented"

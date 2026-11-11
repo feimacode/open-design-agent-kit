@@ -65,4 +65,24 @@ An image can be stricter than its project, never looser. To hide part of a scree
 
 A portfolio should look like you, not like a template. The library can name a design system as its style. The agent offers to build one from your current site, your Figma or Canva files, or screenshots of your work, using the same extraction as [design systems](design-systems.md).
 
+## A portfolio site
+
+"Make my portfolio site from my library, with the checkout, bank and design system projects" builds a small website with the `portfolio-site` skill:
+
+- **Home**: your name, role, a contact link and the first project, all on the first screen of a phone, then one card per case study.
+- **One case study per project**: a summary (role, team, dates, the main outcome), the problem, constraints, your decisions with the options you rejected and why, the outcome exactly as the library has it, and next steps. Decisions get the most room, because reviewers weigh them most.
+- **About and contact**: your bio and links from the library.
+
+The pages are one collection planned as a website, so publishing any page publishes the whole site with home as its `index.html`. Pictures come from the library at 800, 1400 and 2800 px with `srcset`, with blur boxes baked in and internal pictures left out.
+
+**How I worked.** A case study can show your process only from what the kit recorded for the project's designs: the directions you explored and compared, the edits you checked, the review comments you addressed and before/after pages. Link designs to a project with `designs` in `save_open_design_project`. With no records, the block is left out rather than written from imagination.
+
+The check adds a portfolio group for these pages: the first screen on a phone and a desktop, each case study's summary and length (500 to 1,800 words), alt text you haven't confirmed, pages over 3 MB, live product links that don't resolve, and anything internal. See [check_open_design_artifact](../reference/tools.md#check_open_design_artifact).
+
+## A portfolio interview deck
+
+"I have a 45-minute portfolio presentation on Thursday; use the checkout and bank projects" builds the deck with the `portfolio-interview-deck` skill: an intro, your current role, each project's context, problem, artifacts (with the rejected options), collaboration and impact, a close, and backup slides for the questions that usually come.
+
+Every slide has presenter notes and a minute budget. Press P in the preview for presenter mode: the notes, the slide's minutes, the running total against your slot and a timer. The check adds up the minutes and tells you when the talk runs more than 10% over or under, so you can cut before you rehearse. Export it as editable PowerPoint (notes included) or PDF.
+
 > **On the hosted server** (Claude and ChatGPT on the web): live pages can't be captured and Figma frames come only through the Figma connector. Attach screenshots instead.

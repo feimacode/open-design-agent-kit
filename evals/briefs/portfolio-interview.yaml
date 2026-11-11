@@ -1,0 +1,15 @@
+id: portfolio-interview
+request: "I have a 45-minute portfolio presentation for a senior product designer panel next week. Make the deck from my work library"
+expect:
+  surface: portfolio
+  skills: [portfolio-interview-deck]
+  questions: { max: 1 }
+designSystem: null
+fixture: portfolio-library
+answers:
+  projects: "The checkout redesign and the bank onboarding"
+  length: "45 minutes"
+must:
+  - "Intro, current role, both projects (context, problem, artifacts with rejected options, collaboration, impact), a close, then backup slides marked data-od-backup"
+  - "Every non-backup slide has presenter notes and data-od-minutes, and the check reports no deck-timing finding"
+  - "No internal screen and no invented numbers; outcomes match the library"

@@ -1,0 +1,59 @@
+{
+  "slug": "festival-identity",
+  "title": "Identity for a city jazz festival",
+  "role": "Lead designer",
+  "privacy": "public",
+  "client": "Northside Jazz",
+  "team": [
+    "2 designers",
+    "a motion designer"
+  ],
+  "dates": {
+    "start": "2025-01",
+    "end": "2025-05"
+  },
+  "platforms": [
+    "Posters",
+    "Social",
+    "Wayfinding"
+  ],
+  "problem": "The festival changed its look every year, so last year's audience missed the announcement.",
+  "decisions": [
+    {
+      "choice": "A typographic system that changes colour each year but keeps its grid",
+      "rejected": [
+        "A new illustrator each year"
+      ],
+      "why": "The grid stays recognisable while each year still feels new"
+    }
+  ],
+  "outcomes": [
+    {
+      "text": "Early-bird tickets sold in the first week",
+      "value": "about 1,200",
+      "source": "estimated"
+    }
+  ],
+  "tags": [
+    "identity",
+    "posters",
+    "motion"
+  ],
+  "assets": [
+    {
+      "id": "festival-posters",
+      "file": "assets/festival-posters.png",
+      "mime": "image/png",
+      "width": 1600,
+      "height": 1200,
+      "bytes": 9583,
+      "kind": "design",
+      "alt": "Three posters in the festival grid, in blue, orange and green",
+      "origin": {
+        "kind": "file",
+        "from": "work/festival-posters.png",
+        "capturedAt": "2026-11-11T00:00:00.000Z"
+      }
+    }
+  ]
+}

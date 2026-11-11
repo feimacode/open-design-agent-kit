@@ -1,0 +1,83 @@
+{
+  "slug": "bakery-rebrand",
+  "title": "Rebranding a family bakery chain",
+  "role": "Brand designer",
+  "privacy": "public",
+  "client": "Crumb & Co.",
+  "team": [
+    "1 copywriter",
+    "the owners"
+  ],
+  "dates": {
+    "start": "2024-02",
+    "end": "2024-08"
+  },
+  "platforms": [
+    "Print",
+    "Packaging",
+    "Signage"
+  ],
+  "problem": "Six bakeries looked like six different shops, and new customers did not know they were one chain.",
+  "constraints": [
+    "Signage budget for two shops a year",
+    "Keep the founder's hand-drawn wheat mark"
+  ],
+  "decisions": [
+    {
+      "choice": "Redraw the wheat mark and keep it",
+      "rejected": [
+        "A new wordmark only",
+        "A mascot"
+      ],
+      "why": "Regulars recognised the mark; it just did not reproduce small",
+      "tradeOff": "Less of a fresh start"
+    }
+  ],
+  "outcomes": [
+    {
+      "text": "Shops repainted in the new system",
+      "value": "4 of 6",
+      "source": "measured"
+    },
+    {
+      "text": "The owners said customers now ask about the other shops",
+      "source": "qualitative"
+    }
+  ],
+  "tags": [
+    "branding",
+    "packaging"
+  ],
+  "assets": [
+    {
+      "id": "bakery-boxes",
+      "file": "assets/bakery-boxes.png",
+      "mime": "image/png",
+      "width": 1600,
+      "height": 1200,
+      "bytes": 9577,
+      "kind": "photo",
+      "alt": "Stack of cake boxes in cream and rust with the redrawn wheat mark",
+      "origin": {
+        "kind": "file",
+        "from": "work/bakery-boxes.png",
+        "capturedAt": "2026-11-11T00:00:00.000Z"
+      }
+    },
+    {
+      "id": "bakery-shopfront",
+      "file": "assets/bakery-shopfront.png",
+      "mime": "image/png",
+      "width": 1600,
+      "height": 1200,
+      "bytes": 9583,
+      "kind": "photo",
+      "alt": "Shopfront with the new rust awning and wheat mark sign",
+      "origin": {
+        "kind": "file",
+        "from": "work/bakery-shopfront.png",
+        "capturedAt": "2026-11-11T00:00:00.000Z"
+      }
+    }
+  ]
+}

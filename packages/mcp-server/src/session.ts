@@ -109,11 +109,23 @@ const FLOW_INPUT_SCHEMA = {
       items: { type: 'object', properties: { label: { type: 'string' }, to: { type: 'string' } }, required: ['label', 'to'] },
       description: 'The navigation every screen shares (tab bar or sidebar), if any. Written once to _shared/nav.html and included by each screen.',
     },
+    kind: { type: 'string', enum: ['site'], description: 'Set "site" for a website (a portfolio): it needs a screen with id "index", the home page, which the site export publishes as index.html, and the flow map stays in the preview.' },
     tasks: {"type": "array", "maxItems": 5, "items": {"type": "object", "properties": {"name": {"type": "string", "description": "What the user is doing, e.g. \"Change plan to Team\"."}, "start": {"type": "string", "description": "The screen id the task starts on."}, "end": {"type": "string", "description": "The screen id that shows it is done."}, "maxSteps": {"type": "number", "description": "Optional: at most this many screen changes from start to end."}}, "required": ["name", "start", "end"]}, "description": "The main tasks the flow is for (at most 5). The check follows the screens' real links from start to end (task-unreachable, task-too-long), the flow map draws each path, and the critic walks it."},
   },
   required: ['screens'],
   description:
     'The flow plan of a multi-screen collection: its screens (at most 20), the links between them (at most 80), the shared navigation and the tasks it is for. Plan it once before the first screen and pass the same plan on every screen\'s brief and registration; the latest registered plan wins. Needs collectionId; screenRole names this screen\'s id in the plan.',
+};
+
+const PORTFOLIO_INPUT_SCHEMA = {
+  type: 'object',
+  description:
+    'For a portfolio site or interview deck built from the work library (the portfolio-site and portfolio-interview-deck skills): which library projects to show and, for a deck, the talk\'s length. The brief adds each project\'s facts, the pictures it may show (copied next to the design as media/<project>/ with srcset markup; internal ones never), drafted alt text to confirm, and the process records that exist. The library\'s style is used when no designSystemId is given. Pass the same object to register_open_design_artifact so the portfolio checks run.',
+  properties: {
+    projects: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 6, description: 'Library project slugs, in the order to show them: up to 6 for a site, 1 or 2 for an interview deck.' },
+    length: { type: 'number', enum: [30, 45, 60], description: 'Interview decks only: the talk in minutes (default 45).' },
+  },
+  required: ['projects'],
 };
 
 const CRITIQUE_INPUT_SCHEMA = {
@@ -288,6 +300,7 @@ const TOOL_DEFS: ToolDef[] = [
             description: 'Required together with collectionId — this screen\'s short role label, e.g. "splash", "value-prop", "checkout".',
           },
           flow: FLOW_INPUT_SCHEMA,
+          portfolio: PORTFOLIO_INPUT_SCHEMA,
           redesign: {
             type: 'object',
             description:
@@ -360,6 +373,7 @@ const TOOL_DEFS: ToolDef[] = [
           answers?: Record<string, string>;
           assumptions?: string[];
           redesign?: unknown;
+          portfolio?: unknown;
         },
       ),
   },
@@ -506,6 +520,7 @@ const TOOL_DEFS: ToolDef[] = [
             description: "What was asked and assumed for this design, stored as the manifest's metadata.brief (the latest replaces the earlier one) so later edits and checks can see it. Leave it out on an edit that changed none of it.",
           },
           critique: CRITIQUE_INPUT_SCHEMA,
+          portfolio: { ...PORTFOLIO_INPUT_SCHEMA, description: "The same portfolio object passed to prepare_open_design_brief. Stored as the manifest's metadata.portfolio, which turns on the portfolio checks (first screen, case-study length and summary, alt text, page weight, live links, internal pictures, deck timing)." },
         },
         required: ['entryPath', 'kind', 'title'],
       },
@@ -532,6 +547,7 @@ const TOOL_DEFS: ToolDef[] = [
           resolvedCommentIds?: string[];
           brief?: unknown;
           critique?: unknown;
+          portfolio?: unknown;
         },
       ),
   },

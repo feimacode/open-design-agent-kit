@@ -354,6 +354,55 @@
       ]
     },
     {
+      "id": "portfolio",
+      "label": "Portfolio",
+      "description": "Your design portfolio from your own work: a site with case studies, or the deck for a portfolio interview.",
+      "icon": "briefcase",
+      "status": "ready",
+      "prompt": "open-design-portfolio",
+      "entries": [
+        "portfolio-site",
+        "portfolio-interview-deck"
+      ],
+      "questions": [
+        {
+          "id": "discipline",
+          "text": "What kind of design do you do?",
+          "options": [
+            "Product or UX",
+            "Visual or brand",
+            "Motion or 3D",
+            "Several"
+          ],
+          "default": "Product or UX",
+          "changes": "which work leads and how case studies are told"
+        },
+        {
+          "id": "audience",
+          "text": "Who is it for?",
+          "options": [
+            "Hiring managers for a role",
+            "Clients",
+            "A school or programme",
+            "A portfolio interview panel"
+          ],
+          "default": "Hiring managers for a role",
+          "changes": "site or interview deck, and what each project stresses"
+        },
+        {
+          "id": "projects",
+          "text": "How many projects should it show?",
+          "options": [
+            "One or two",
+            "Three",
+            "Four or five"
+          ],
+          "default": "Three",
+          "changes": "the number of case studies or the talk's length"
+        }
+      ]
+    },
+    {
       "id": "resume",
       "label": "Résumé",
       "description": "A one-page résumé, ready to print or export as PDF.",
@@ -909,9 +958,10 @@
     {
       "id": "get-hired",
       "label": "Get hired",
-      "description": "A résumé, a one-page portfolio and posts about your work.",
+      "description": "A portfolio site or interview deck from your own work, a résumé, and posts about your work.",
       "icon": "briefcase",
       "surfaces": [
+        "portfolio",
         "resume",
         "document",
         "social"

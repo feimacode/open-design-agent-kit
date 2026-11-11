@@ -52,7 +52,10 @@ function bundleSummary(input: ComposePublishInstructionsInput): string {
       ? `Footer badge: **included** — a small "Made with Open Design · Remix this" note in the bottom corner, which viewers can close. To leave it out, call \`${PUBLISH_TOOL_NAME}\` again with \`badge: false\`.`
       : 'Footer badge: not included.',
   ];
-  if (bundle.collection) {
+  if (bundle.collection?.website) {
+    const c = bundle.collection;
+    lines.push('', `This design is one page of the website "${c.name}", so the site is all ${c.screens.length} pages (${c.screens.join(', ')}), opening on the home page. When you give the user the link, say it opens on their home page.`);
+  } else if (bundle.collection) {
     const c = bundle.collection;
     lines.push(
       '',

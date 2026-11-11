@@ -48,7 +48,7 @@ export type PackageExportResult =
       totalBytes: number;
       badge: boolean;
       /** site of a flow: the collection's screens and where its map is (openspec add-linked-flows). */
-      collection?: { name: string; screens: string[]; mapPath: string };
+      collection?: { name: string; screens: string[]; mapPath: string; website?: boolean };
       /** Whether the bundle carries og.png, and whether og:image was emitted (site only). */
       ogImage?: { file: boolean; tag: boolean };
       preflight: PreflightWarning[];
@@ -302,7 +302,7 @@ async function packageCollectionSite(input: PackageArtifactInput, badge: boolean
     files: files.map((f) => ({ path: f.bundlePath, bytes: f.bytes })),
     totalBytes,
     badge,
-    collection: { name: plan.collectionName, screens: screens.map((p) => p.bundlePath), mapPath: plan.mapPath },
+    collection: { name: plan.collectionName, screens: screens.map((p) => p.bundlePath), mapPath: plan.mapPath, ...(plan.website ? { website: true } : {}) },
     ogImage: { file: ogFile, tag: ogFile && baseUrl !== undefined },
     preflight,
     externalDependencies: [],
@@ -325,7 +325,9 @@ export function formatPackageResult(result: PackageExportResult): string {
       : [
           `Exported a deploy-ready site folder: ${result.output}/ — ${result.files.length} file(s), ${kb(result.totalBytes)} total:`,
           ...result.files.map((f) => `- ${f.path} — ${kb(f.bytes)}`),
-          ...(result.collection
+            ...(result.collection?.website
+            ? [`This design is one page of the website "${result.collection.name}", so the folder holds all ${result.collection.screens.length} pages (${result.collection.screens.join(', ')}) with the shared navigation filled in; index.html is the home page.`]
+            : result.collection
             ? [
                 `This design is one screen of the flow "${result.collection.name}", so the site holds all ${result.collection.screens.length} screens (${result.collection.screens.join(', ')}) with the shared navigation filled in, and the flow map at ${result.collection.mapPath}. Links between screens work wherever the folder is hosted.`,
               ]

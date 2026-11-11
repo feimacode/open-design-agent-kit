@@ -1,0 +1,15 @@
+id: portfolio-site-brand
+request: "Build my portfolio site from my library. I'm a brand designer and want more clients like these"
+expect:
+  surface: portfolio
+  skills: [portfolio-site]
+  questions: { max: 1 }
+designSystem: null
+fixture: portfolio-library-brand
+answers:
+  projects: "Both"
+  audience: "Clients"
+must:
+  - "The home page leads with the work (the bakery and festival pictures), not a wall of text, and shows Noor Haddad, the role and a contact link on the first phone screen"
+  - "Beside the portfolio-site contact sheet, the layout is recognisably different (structure and picture rhythm, not only colours)"
+  - "The festival outcome reads \"about 1,200\" and nothing else is invented"
