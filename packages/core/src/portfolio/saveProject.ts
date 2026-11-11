@@ -2,6 +2,7 @@
 // add-work-library): the only way the library's facts change, so every
 // project is checked against the schema, the asset-not-looser privacy rule and
 // the outcome-source rule before it is written.
+import { readAllTargets } from './targets';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { rebuildAssetCopies } from './importWork';
@@ -248,5 +249,10 @@ export async function formatLibrary(workspaceRoot: string, outputDir: string, sl
   lines.push('', 'Projects, in order:');
   for (const p of s.projects) lines.push(`- ${p.slug}: ${p.title}. ${p.role}. ${p.privacy}, ${p.assets} asset${p.assets === 1 ? '' : 's'}.${p.gaps.length ? ` Missing: ${p.gaps.join('; ')}.` : ' Complete.'}`);
   if (!s.projects.length) lines.push('- none yet');
+  const targets = await readAllTargets(workspaceRoot, outputDir);
+  if (targets.length) {
+    lines.push('', 'Tailored versions (targets):');
+    for (const t of targets) lines.push(`- ${t.slug}: ${t.name}. ${t.kind}, ceiling ${t.ceiling}, ${t.projects.length} project${t.projects.length === 1 ? '' : 's'}, outputs ${t.outputs.join(', ')}.`);
+  }
   return lines.join('\n');
 }

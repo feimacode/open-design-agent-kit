@@ -1,0 +1,15 @@
+id: portfolio-job-target
+request: "Make a version of my portfolio for this job and a PDF I can attach: 'Senior Product Designer, Acme Pay. You will own our design system and improve checkout conversion for B2B merchants. Experience with tokens and Figma libraries required.'"
+expect:
+  surface: portfolio
+  skills: [portfolio-pdf, portfolio-site]
+  questions: { max: 1 }
+designSystem: null
+fixture: portfolio-library
+answers:
+  coverNote: "I'd love to bring my checkout and design system work to Acme Pay."
+  outputs: "Just the PDF"
+must:
+  - "A job target is saved from the ad, and the suggested order (design system and checkout first) is shown with the words each project matched"
+  - "The PDF opens with the cover note unchanged, covers the target's projects in order, and the export stays within 10 MB"
+  - "No unlisted or internal bank onboarding work appears, since the version is public"

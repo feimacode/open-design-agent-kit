@@ -7,6 +7,7 @@ import {
   formatImportWorkResult,
   isInsideLibrary,
   loadPortfolioBrief,
+  saveTarget as saveTargetCore,
   portfolioKindForSkill,
   readLibrary,
   validatePortfolioInput,
@@ -1176,6 +1177,10 @@ export async function getLibrary(ctx: ToolContext, input: { project?: string }):
 }
 
 /** import_open_design_work: assets into a library project, with a small copy of each image for alt text drafts. */
+export async function savePortfolioTarget(ctx: ToolContext, input: { target: unknown }): Promise<string> {
+  return (await saveTargetCore({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, target: input.target })).text;
+}
+
 export async function importLibraryWork(ctx: ToolContext, input: { project: string; sources: unknown[] }): Promise<ToolOutput> {
   const result = await importWorkCore({
     workspaceRoot: ctx.workspaceRoot,

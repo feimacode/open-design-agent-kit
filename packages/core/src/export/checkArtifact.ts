@@ -36,7 +36,7 @@ import { hasDataBinds, resolveSampleData, sampleDataFindings, thinStaticTables }
 import { findBaseScreen } from '../generation/baseScreen';
 import { redesignFindings } from './redesignChecks';
 import { portfolioRecordOf } from '../portfolio/portfolioBrief';
-import { collectFirstScreen, deckTimingFindings, firstScreenFinding, liveLinkFindings, liveLinksOf, portfolioPageFindings } from '../portfolio/portfolioChecks';
+import { collectFirstScreen, deckTimingFindings, targetFindings, firstScreenFinding, liveLinkFindings, liveLinksOf, portfolioPageFindings } from '../portfolio/portfolioChecks';
 import { readLibrary, readProject, type Project } from '../portfolio/library';
 import { applyBrandChecks, loadOwnBrandContext } from './brandChecks';
 import { BRAND_REVIEW_ATTR, brandReviewFindings } from './brandReview';
@@ -340,6 +340,7 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
   if (portfolio) {
     dataFindings.push(...(await portfolioPageFindings({ workspaceRoot: options.workspaceRoot, outputDir: outputDirForChecks, entryPath: options.entryPath, html: artifact.entryContent, record: portfolio })));
     if (portfolio.kind === 'deck') dataFindings.push(...deckTimingFindings(artifact.entryContent, portfolio.length));
+    dataFindings.push(...(await targetFindings({ workspaceRoot: options.workspaceRoot, outputDir: outputDirForChecks, html: artifact.entryContent, record: portfolio })));
     if (options.portfolioLinks !== false) {
       const projects = (await Promise.all(portfolio.projects.map((slug) => readProject(options.workspaceRoot, outputDirForChecks, slug).catch(() => undefined)))).filter((p): p is Project => !!p);
       const links = liveLinksOf(artifact.entryContent, projects);
