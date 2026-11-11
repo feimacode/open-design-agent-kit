@@ -13,6 +13,7 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [Design from your app](design-from-your-app.md)
 - [Audit a website](site-audit.md)
 - [Redesign a website](redesign-a-website.md)
+- [Portfolios](portfolio.md)
 - [Explore design directions](explore-directions.md)
 - [Steer one part of a design](steer-a-design.md)
 - [Turn a document into a deck](deck-from-a-document.md)

@@ -25,6 +25,9 @@ Two rules apply to every tool (and over MCP every tool declares `readOnlyHint`, 
 | [`extract_open_design_design_system`](#extract_open_design_design_system) | `#od-extract-design-system` | yes | Measure a website's colours, fonts and spacing as a draft design system, or map a Figma file or Canva export the agent read |
 | [`audit_open_design_site`](#audit_open_design_site) | `#od-audit-site` | yes | Check a live website for design and accessibility problems, with a plain-language report |
 | [`compare_open_design_before_after`](#compare_open_design_before_after) | `#od-before-after` | yes | Put a redesign beside the site as it is, with the audit's problems re-checked |
+| [`get_open_design_library`](#get_open_design_library) | `#od-library` | yes | Read the designer's work library: projects, privacy and what each still lacks |
+| [`save_open_design_project`](#save_open_design_project) | `#od-save-project` | yes | Save the designer's details, the portfolio style, project order and one project's facts |
+| [`import_open_design_work`](#import_open_design_work) | `#od-import-work` | yes | Bring screenshots, Figma frames, live pages and designs into a portfolio project |
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
 | [`publish_open_design_artifact_to_canva`](#publish_open_design_artifact_to_canva) | `#od-publish-to-canva` | yes | Get a design into Canva: through your Canva connector when it's connected, otherwise a file to import |
@@ -707,6 +710,54 @@ When the site was [audited](#audit_open_design_site), each problem the audit fou
 The base screen is traced to its old page through the origin recorded beside it in `.open-design/.bases/` (base screens stored before this was recorded can't be paired, and the page says so). A base screen older than 30 days gets a note.
 
 **Result:** `status` (`ok`, `no-base` with how to store one, `no-browser` or `invalid-args`), `page`, per page the findings with `status`, `before` and `after`, the copy edit count and notes, `summary`, `rejectedSummary` and `next`. The page is one self-contained HTML file, registered as its own design (`metadata.beforeAfter`), so [`export_open_design_artifact`](#export_open_design_artifact) makes a PDF with one page per screen and [`publish_open_design_artifact`](#publish_open_design_artifact) publishes it. A flow's [site export](../guides/share-and-publish.md) includes `before-after.html` and links to it from the map. A redesign with the concept band carries it on this page too.
+
+### get_open_design_library
+
+Reads the [work library](../guides/portfolio.md#the-work-library): the owner, the portfolio style and every project in order with its privacy level, number of assets and what it still lacks for a case study. **It changes nothing.**
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `project` | string | no | A project slug: returns that project's facts and every asset (id, file, size, privacy, alt text and whether it is still a draft, redaction boxes). |
+
+### save_open_design_project
+
+Saves to the work library in `<designs folder>/portfolio/`. It is the only way the library's facts change; [`write_open_design_file`](#write_open_design_file) refuses that folder, and no design can be registered inside it. Fields you pass replace the stored ones; fields you leave out stay. The reply lists what the project still lacks, for the agent to ask the designer about.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `owner` | object | no | The designer: `name`, `role`, `location`, `bio`, `email`, `links` (`[{ label, url }]`). |
+| `style` | string | no | A design system id to use as the portfolio's look, or `""` to clear it. Refused when no such design system exists. |
+| `order` | string[] | no | Project slugs in the order the designer wants them. Projects left out keep their place after these. |
+| `project` | object | no | One project. `slug` picks an existing one; a new one is named from its `title` and needs `title`, `role` and `privacy` (`public`, `unlisted` or `internal`). Other fields: `company`, `client`, `team`, `dates` (`{ start, end }`, YYYY, YYYY-MM or YYYY-MM-DD, `end` may be `now`), `platforms`, `problem`, `constraints`, `decisions` (`[{ choice, rejected, why, tradeOff }]`), `outcomes` (`[{ text, value, source }]`), `links` (`[{ kind, url, label }]`, kind `live`, `prototype`, `write-up` or `other`), `tags`, `designs` (entry paths of kit designs made for it). |
+| `assets` | object[] | no | Edits to the project's imported assets (with `project: { slug }`): `{ id, alt, confirmAlt, caption, privacy, redactions, device, assetKind, remove }`. |
+
+Rules it enforces:
+
+- **Every outcome has a source.** `measured` (shown as written), `estimated` (shown with "about") or `qualitative` (no number allowed). An outcome without one is refused, so the agent asks instead of guessing.
+- **An asset can't be looser than its project.** `privacy: null` gives an asset back the project's level. Making a project stricter drops its assets' looser levels.
+- **Alt text is a draft until confirmed.** Alt text the agent writes is stored with `altDraft: true`; `confirmAlt: true` (with or without new `alt`) records the designer's confirmation.
+- **Redaction boxes** (`[{ x, y, width, height, note }]`, from 0 to 1 in the image's own coordinates; `[]` clears) are baked into a redacted PNG and every WebP width in a browser, so no output can show what a box covers. Without a browser the asset is marked and no output will use it until its copies are made. GIFs and videos can't be redacted.
+
+### import_open_design_work
+
+Brings the designer's own work into a library project. Save the project first. Every image loses its camera, location and editing metadata (JPEG EXIF, XMP and IPTC, PNG text and time chunks, WebP EXIF and XMP), keeps one original, and gets WebP copies 800, 1400 and 2800 px wide (no wider than the original) when a browser is available. GIFs are kept as they are so their animation survives. Videos keep their own metadata, and the reply says so.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `project` | string | yes | The project slug. |
+| `sources` | object[] (≤ 20) | yes | What to import, each with a `kind` and the fields below. |
+
+Each source also takes `name` (for the asset id), `alt` (the agent's draft), `caption`, `assetKind` (`screen`, `photo`, `video`, `design`, `other`), `device` (`iphone`, `android`, `ipad`, `browser`, `macbook`) and `privacy` (stricter than the project's).
+
+| `kind` | Fields | What it imports |
+|---|---|---|
+| `file` | `path` | A PNG, JPEG, WebP, GIF or MP4 in the workspace (25 MB per image, 100 MB per video). |
+| `data` | `data`, `name` | An image as base64, for files the person attached in a chat. |
+| `url` | `url`, `fullPage` | A live page captured at desktop (1440 wide, 2x) and phone (390 wide, 3x), first screen unless `fullPage`. Public addresses only. Hidden on the hosted server. |
+| `design` | `entryPath`, `fullPage` | A kit design captured the same way; its entry path is added to the project's `designs`. |
+| `figma` | `url`, `data` | A Figma frame (a link with `node-id`) as a picture: downloaded with the Figma token when one is set, or pass the Figma connector's `get_screenshot` image as `data`. Without either, the reply gives those steps. |
+
+Images under 1600 px wide are flagged (Dribbble's minimum). The reply includes a small copy of each image so the agent can draft alt text, then save it with `save_open_design_project`.
 
 ### port_open_design_artifact_to_app
 

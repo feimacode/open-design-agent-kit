@@ -52,6 +52,9 @@ export const REMOTE_AVAILABLE_TOOLS = new Set([
   'use_open_design_managed_workspace',
   'write_open_design_file',
   'publish_open_design_artifact',
+  'save_open_design_project',
+  'get_open_design_library',
+  'import_open_design_work',
 ]);
 
 /** Tools a remote session hides, with why. */
@@ -98,6 +101,15 @@ export function remoteArgRefusal(tool: string, args: Record<string, unknown>): s
     const logoFiles = figma.some((f) => Array.isArray(f.logos) && (f.logos as unknown[]).some((l) => l !== null && typeof l === 'object' && ((typeof (l as { data?: unknown }).data === 'string' && (l as { data: string }).data.length > 0) || (typeof (l as { path?: unknown }).path === 'string' && (l as { path: string }).path.length > 0))));
     if (logoFiles) {
       return 'The hosted Open Design server cannot store Figma logo exports: it has no copy of the user\'s files and no Figma token. List each logo as needed instead (logos: [{ role, name }], with no data or path), and ask the person to export and attach them once the design system is saved.';
+    }
+  }
+  if (tool === 'import_open_design_work') {
+    const sources = Array.isArray(args.sources) ? (args.sources as Array<Record<string, unknown> | null>) : [];
+    if (sources.some((s) => s?.kind === 'url')) {
+      return 'The hosted Open Design server does not fetch websites, so it can\'t capture a live page. Ask the person for screenshots of the page at desktop and phone sizes and import them as { kind: "data", data, name } sources.';
+    }
+    if (sources.some((s) => s?.kind === 'figma' && !(typeof s.data === 'string' && s.data))) {
+      return 'The hosted Open Design server does not call Figma with a token. Read the frame with the Figma connector\'s get_screenshot, then pass { kind: "figma", url, data: <the image as base64> }.';
     }
   }
   if (tool === 'export_open_design_artifact' && args.embedAssets === true) {

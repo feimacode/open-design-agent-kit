@@ -1,0 +1,73 @@
+{
+  "slug": "design-system",
+  "title": "A design system for three product teams",
+  "role": "Design system lead",
+  "privacy": "public",
+  "company": "Harvest Box",
+  "team": [
+    "2 designers",
+    "4 front-end engineers"
+  ],
+  "dates": {
+    "start": "2023-06",
+    "end": "now"
+  },
+  "platforms": [
+    "Web",
+    "Figma"
+  ],
+  "problem": "Three teams built the same buttons and forms differently, and every release had visual bugs.",
+  "decisions": [
+    {
+      "choice": "Start from tokens and five components, not a full library",
+      "rejected": [
+        "Adopt an open-source system as is"
+      ],
+      "why": "Teams needed their brand quickly and trusted a small set they helped choose"
+    }
+  ],
+  "outcomes": [
+    {
+      "text": "Teams using the system",
+      "value": "3 of 3",
+      "source": "measured"
+    }
+  ],
+  "tags": [
+    "design-systems",
+    "tokens",
+    "figma"
+  ],
+  "assets": [
+    {
+      "id": "components",
+      "file": "assets/components.png",
+      "mime": "image/png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 21474,
+      "kind": "screen",
+      "alt": "Component overview page listing buttons, inputs, cards and tables",
+      "origin": {
+        "kind": "file",
+        "from": "shots/components.png",
+        "capturedAt": "2026-11-11T00:00:00.000Z"
+      }
+    },
+    {
+      "id": "tokens",
+      "file": "assets/tokens.png",
+      "mime": "image/png",
+      "width": 1440,
+      "height": 900,
+      "bytes": 18333,
+      "kind": "screen",
+      "alt": "Token page with colour, type and spacing groups",
+      "origin": {
+        "kind": "file",
+        "from": "shots/tokens.png",
+        "capturedAt": "2026-11-11T00:00:00.000Z"
+      }
+    }
+  ]
+}

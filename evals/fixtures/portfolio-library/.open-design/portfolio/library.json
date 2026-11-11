@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "owner": {
+    "name": "Sam Rivera",
+    "role": "Senior product designer",
+    "location": "Melbourne",
+    "bio": "I design checkout and onboarding flows for fintech and retail teams.",
+    "email": "sam@example.com",
+    "links": [
+      {
+        "label": "LinkedIn",
+        "url": "https://www.linkedin.com/in/example"
+      }
+    ]
+  },
+  "projects": [
+    "checkout-redesign",
+    "bank-onboarding",
+    "design-system"
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "slug": "bank-onboarding",
+  "title": "Account opening for a digital bank",
+  "role": "Product designer",
+  "privacy": "unlisted",
+  "company": "a digital bank (under NDA)",
+  "team": [
+    "1 PM",
+    "2 engineers",
+    "compliance"
+  ],
+  "dates": {
+    "start": "2024-03",
+    "end": "2024-11"
+  },
+  "platforms": [
+    "iOS",
+    "Android"
+  ],
+  "problem": "Identity checks failed often and people gave up before their account was open.",
+  "constraints": [
+    "Regulatory wording for consent could not change",
+    "ID vendor SDK fixed the camera screen"
+  ],
+  "decisions": [
+    {
+      "choice": "Ask for ID before personal details",
+      "rejected": [
+        "Details first, ID last"
+      ],
+      "why": "Most failures came from ID; failing early wasted less of people's time"
+    }
+  ],
+  "outcomes": [
+    {
+      "text": "Compliance found the new consent flow clearer to audit",
+      "source": "qualitative"
+    }
+  ],
+  "tags": [
+    "fintech",
+    "onboarding",
+    "mobile",
+    "compliance"
+  ],
+  "assets": [
+    {
+      "id": "onboarding-step1",
+      "file": "assets/onboarding-step1.png",
+      "mime": "image/png",
+      "width": 390,
+      "height": 844,
+      "bytes": 14774,
+      "kind": "screen",
+      "alt": "First onboarding step: open an account, with your details and ID verification listed",
+      "origin": {
+        "kind": "file",
+        "from": "shots/onboarding-step1.png",
+        "capturedAt": "2026-11-11T00:00:00.000Z"
+      },
+      "device": "iphone"
+    },
+    {
+      "id": "onboarding-step2",
+      "file": "assets/onboarding-step2.png",
+      "mime": "image/png",
+      "width": 390,
+      "height": 844,
+      "bytes": 14392,
+      "kind": "screen",
+      "alt": "ID step: choose passport or driving licence before taking a photo",
+      "origin": {
+        "kind": "file",
+        "from": "shots/onboarding-step2.png",
+        "capturedAt": "2026-11-11T00:00:00.000Z"
+      },
+      "device": "iphone",
+      "privacy": "internal"
+    }
+  ]
+}

@@ -1,6 +1,11 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import {
+  saveProject as saveLibraryProjectCore,
+  formatLibrary,
+  importWork as importWorkCore,
+  formatImportWorkResult,
+  isInsideLibrary,
   mergeClaudeLaunchConfig,
   previewRevision,
   galleryDesignSystemUrl,
@@ -487,6 +492,7 @@ export async function registerArtifact(
     critique?: unknown;
   },
 ): Promise<string> {
+  if (isInsideLibrary(ctx.outputDir, input.entryPath)) return `Failed to register artifact: ${input.entryPath} is inside the work library folder (${ctx.outputDir}/portfolio/), which only the portfolio tools write. Put the design in its own folder under ${ctx.outputDir}/.`;
   if (input.format !== undefined && !getFormat(input.format)) return unknownFormatError(input.format);
   const flow = registeredFlow(input.flow, input.collectionId, input.screenRole);
   if (!flow.ok) return flow.error;
@@ -1127,6 +1133,34 @@ export async function auditSite(ctx: ToolContext, input: { url?: string; extraUr
   const shot = crop ?? result.screenshots.find((s) => s.endsWith('desktop.png')) ?? result.blocked.find((b) => b.screenshot)?.screenshot;
   const image = shot ? await fs.readFile(path.join(ctx.workspaceRoot, shot)).catch(() => undefined) : undefined;
   return { text: formatAuditSiteResult(result), images: image ? [{ data: image, mime: 'image/png' }] : [] };
+}
+
+/** save_open_design_project (openspec add-work-library): the owner, style, order, one project's facts and asset edits. */
+export async function saveLibraryProject(ctx: ToolContext, input: Record<string, unknown>): Promise<string> {
+  if (typeof input.style === 'string' && input.style.trim()) {
+    const style = input.style.trim();
+    if (!(await ctx.contentIndex.getDesignSystem(style))) return `Nothing was saved: there is no design system "${style}". Pick one from list_open_design_design_systems, or build one first.`;
+  }
+  return (await saveLibraryProjectCore({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, owner: input.owner, style: typeof input.style === 'string' ? input.style : undefined, order: input.order, project: input.project, assets: input.assets })).text;
+}
+
+/** get_open_design_library: the library summary, or one project in full. */
+export async function getLibrary(ctx: ToolContext, input: { project?: string }): Promise<string> {
+  return formatLibrary(ctx.workspaceRoot, ctx.outputDir, typeof input.project === 'string' && input.project.trim() ? input.project.trim() : undefined);
+}
+
+/** import_open_design_work: assets into a library project, with a small copy of each image for alt text drafts. */
+export async function importLibraryWork(ctx: ToolContext, input: { project: string; sources: unknown[] }): Promise<ToolOutput> {
+  const result = await importWorkCore({
+    workspaceRoot: ctx.workspaceRoot,
+    outputDir: ctx.outputDir,
+    project: typeof input.project === 'string' ? input.project.trim() : '',
+    sources: input.sources,
+    figmaToken: ctx.hosted ? undefined : ctx.figmaToken,
+    allowHostsForTesting: evalAllowedHosts(),
+  });
+  const images = result.imported.flatMap((i) => (i.preview ? [i.preview] : [])).slice(0, 6);
+  return { text: formatImportWorkResult(result), images };
 }
 
 export async function compareBeforeAfter(ctx: ToolContext, input: { entryPath?: string; collectionId?: string; summary?: unknown }): Promise<ToolOutput> {
