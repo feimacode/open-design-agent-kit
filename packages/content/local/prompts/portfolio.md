@@ -1,6 +1,6 @@
 ---
 name: open-design-portfolio
-description: Build a designer's portfolio from their real work — a work library of projects, facts and images (screenshots, Figma frames, live pages, kit designs) entered once, with privacy levels, redaction and alt text, for every portfolio output
+description: Build a designer's portfolio from their real work — a work library of projects, facts and images (screenshots, Figma frames, live pages, kit designs) entered once, with privacy levels, redaction and alt text, then a portfolio site or interview deck from it
 argument_hint: what you design and the work to include (e.g. "product designer, my checkout redesign and the bank app, screenshots in ./shots")
 placeholder: What do you design, and which projects should go in?
 model_trigger: use whenever the user wants to build, update or tidy a design portfolio, case studies or a body of work to show (job hunting, client pitches, Dribbble or Behance, a portfolio review, a promotion packet), or wants to add a project, screenshots, Figma frames or a live product to their portfolio, even if they don't mention Open Design
@@ -43,3 +43,10 @@ If the library has no `style`, offer once to build one from the designer's curre
 ## 5. Report
 
 Tell the designer, in plain words, which projects are in, what each still lacks (from the reply), and which images are private or blurred. Offer one next step that fits what they're doing: a portfolio site, an interview deck, or a version for one job or client.
+
+## 6. Build from the library
+
+- **A portfolio site** (home, one case study per project, about): the `portfolio-site` skill. Plan the pages as one collection with `flow.kind: "site"` (home is the `index` screen), and pass `portfolio: { projects }` to every page's `prepare_open_design_brief` and registration.
+- **An interview deck** for a 30, 45 or 60 minute slot: the `portfolio-interview-deck` skill, with `portfolio: { projects, length }`.
+
+The brief lists each project's facts, the pictures it may show with their markup, and the process records the kit has; build only from those. The check then reports what a reviewer would notice first: the first screen on a phone, case-study length and summary, unconfirmed alt text, page weight, broken live links, anything internal, and a talk that runs long.

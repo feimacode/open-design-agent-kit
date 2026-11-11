@@ -54,6 +54,12 @@ export interface FlowPlan {
   nav?: FlowNavItem[];
   /** The tasks the flow is for, checked as paths over its real links. */
   tasks?: FlowTask[];
+  /**
+   * `site`: a website, not an app flow (openspec add-portfolio-site-and-deck).
+   * Its `index` screen is the published site's home page and the flow map
+   * stays a preview-only page.
+   */
+  kind?: 'site';
 }
 
 export const MAX_FLOW_TASKS = 5;
@@ -143,7 +149,13 @@ export function validateFlowPlan(value: unknown): FlowPlanResult {
     }
     if (tasks.length === 0) tasks = undefined;
   }
-  return { ok: true, plan: { screens, links, ...(nav ? { nav } : {}), ...(tasks ? { tasks } : {}) } };
+  let kind: 'site' | undefined;
+  if (v.kind !== undefined) {
+    if (v.kind !== 'site') return { ok: false, error: `flow.kind is "site" (a website whose index screen is the home page) or left out; got ${JSON.stringify(v.kind)}.` };
+    if (!ids.has('index')) return { ok: false, error: 'flow.kind "site" needs a screen with id "index": the home page, published as index.html.' };
+    kind = 'site';
+  }
+  return { ok: true, plan: { screens, links, ...(nav ? { nav } : {}), ...(tasks ? { tasks } : {}), ...(kind ? { kind } : {}) } };
 }
 
 /** The flow record on a manifest's metadata, when it has a valid one. */
@@ -196,6 +208,11 @@ export function composeFlowSection(plan: FlowPlan, screenId: string, collectionD
     const mine = plan.tasks.filter((t) => t.start === screenId || t.end === screenId);
     parts.push(
       `### Tasks this flow is for\n\n${plan.tasks.map((t) => `- **${t.name}**: from \`${t.start}\` to \`${t.end}\`${t.maxSteps ? ` in at most ${t.maxSteps} step(s)` : ''}`).join('\n')}\n\nThe check follows the screens' real links from each task's start to its end and reports a task with no path (\`task-unreachable\`) or with more steps than allowed (\`task-too-long\`); the critic walks each task on the screenshots. On every screen along a task, make the next step the most prominent action, label it with where it leads, and keep a way back.${mine.length > 0 ? ` This screen ${mine.map((t) => (t.start === screenId ? `starts "${t.name}"` : `ends "${t.name}": show clearly that it is done`)).join(' and ')}.` : ''}`,
+    );
+  }
+  if (plan.kind === 'site') {
+    parts.push(
+      `### A website\n\nThis collection is a website: \`index\` is its home page, published as the site's index.html, and the flow map is only for the preview. Link to the home page as \`index.html\`.`,
     );
   }
   parts.push(

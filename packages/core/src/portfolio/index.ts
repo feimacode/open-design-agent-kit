@@ -2,3 +2,5 @@ export * from './library';
 export * from './images';
 export * from './importWork';
 export * from './saveProject';
+export * from './portfolioBrief';
+export * from './portfolioChecks';

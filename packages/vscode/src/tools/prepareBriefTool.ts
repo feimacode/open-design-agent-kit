@@ -19,6 +19,11 @@ import {
   suggestCollectionScreenEntryPath,
   validateBriefDecisions,
   loadRecentDesigns,
+  loadPortfolioBrief,
+  portfolioKindForSkill,
+  readLibrary,
+  isInsideLibrary,
+  type PortfolioBrief,
 } from '@feimacode/open-design-agent-kit-core';
 import { getOutputDirectory, getWorkspaceRoot, slugify, suggestEntryPath } from '../workspace/artifactWriter';
 import { vscodeActiveDesignSystemStore } from '../workspace/activeDesignSystem';
@@ -40,6 +45,7 @@ interface PrepareBriefInput {
   answers?: Record<string, string>;
   assumptions?: string[];
   redesign?: unknown;
+  portfolio?: unknown;
 }
 
 export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefInput> {
@@ -48,7 +54,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<PrepareBriefInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, flow, baseScreen: baseScreenInput, sources: sourcePaths, format, fluid, answers, assumptions, redesign: redesignInput } = options.input;
+    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, flow, baseScreen: baseScreenInput, sources: sourcePaths, format, fluid, answers, assumptions, redesign: redesignInput, portfolio: portfolioInput } = options.input;
 
     const decisions = validateBriefDecisions(answers, assumptions);
     if (!decisions.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(decisions.error)]);
@@ -73,8 +79,13 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
     // omitted, fall back to whatever is currently active. A stale/invalid
     // active setting (e.g. hand-edited to a typo) is treated as "none" —
     // silently, so it doesn't block every future generation until fixed.
+    // A portfolio uses the library's own style unless the call names another (openspec add-portfolio-site-and-deck).
+    const libraryStyle =
+      portfolioInput !== undefined && !explicitDesignSystemId && vscode.workspace.workspaceFolders?.[0]
+        ? (await readLibrary(getWorkspaceRoot(), getOutputDirectory()).catch(() => undefined))?.style
+        : undefined;
     const resolution = await resolveActiveDesignSystem(
-      explicitDesignSystemId,
+      explicitDesignSystemId ?? libraryStyle,
       vscodeActiveDesignSystemStore,
       (id) => this.contentIndex.getDesignSystem(id),
     );
@@ -134,6 +145,9 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       suggestedEntryPath = suggestEntryPath(brief, skill.name);
     }
 
+    if (isInsideLibrary(getOutputDirectory(), suggestedEntryPath)) {
+      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(`${suggestedEntryPath} would be inside the work library folder, which only the portfolio tools write. Use another collectionId, such as "portfolio-site".`)]);
+    }
     const sources = await resolveBriefSources({
       workspaceRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
       outputDir: getOutputDirectory(),
@@ -159,8 +173,15 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       if (!loaded.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(loaded.error)]);
       redesign = loaded.context;
     }
+    let portfolio: PortfolioBrief | undefined;
+    if (portfolioInput !== undefined) {
+      if (!vscode.workspace.workspaceFolders?.[0]) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart('portfolio needs an open workspace folder.')]);
+      const loaded = await loadPortfolioBrief({ workspaceRoot: getWorkspaceRoot(), outputDir: getOutputDirectory(), entryPath: suggestedEntryPath, portfolio: portfolioInput, kind: portfolioKindForSkill(skill.id) });
+      if (!loaded.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(loaded.error)]);
+      portfolio = loaded.value;
+    }
     const recentDesigns = await loadRecentDesigns(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath, { collectionId, entryPath: suggestedEntryPath });
-    const instructions = composeInstructions({
+    const composed = composeInstructions({
       skillName: skill.name,
       skillBody: skill.body,
       designSystemTitle: designSystem?.name,
@@ -181,6 +202,9 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       decisions: decisions.decisions,
       recentDesigns,
     });
+    const instructions = portfolio
+      ? `${composed}\n\n${portfolio.section}\n\nWhen you register, pass \`portfolio\` (${JSON.stringify(portfolio.record)}) so the portfolio checks run.`
+      : composed;
 
     const payload = {
       instructions,
@@ -199,6 +223,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       flowScreenId: flowContext?.screenId,
       flowNote,
       baseScreenPath: baseScreen?.path,
+      portfolio: portfolio ? { ...portfolio.record, pictures: portfolio.pictures.length, notes: portfolio.notes.length ? portfolio.notes : undefined } : undefined,
       redesign: redesign ? { contentPath: redesign.contentPath, auditPath: redesign.auditPath, findings: redesign.findings.map((f) => f.id), concept: !redesign.owned } : undefined,
     };
 

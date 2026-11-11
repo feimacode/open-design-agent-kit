@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "owner": {
+    "name": "Noor Haddad",
+    "role": "Brand and visual designer",
+    "location": "Leeds",
+    "bio": "I make identities for small food and music businesses.",
+    "email": "noor@example.com",
+    "links": [
+      {
+        "label": "Instagram",
+        "url": "https://www.instagram.com/example"
+      }
+    ]
+  },
+  "projects": [
+    "bakery-rebrand",
+    "festival-identity"
+  ]
+}

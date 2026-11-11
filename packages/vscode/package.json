@@ -439,6 +439,13 @@
                     ]
                   },
                   "description": "The main tasks the flow is for (at most 5). The check follows the screens' real links from start to end (task-unreachable, task-too-long), the flow map draws each path, and the critic walks it."
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "site"
+                  ],
+                  "description": "\"site\" for a website: its \"index\" screen is the home page and the flow map stays in the preview."
                 }
               },
               "required": [
@@ -540,6 +547,29 @@
               },
               "maxItems": 6,
               "description": "Optional: what you decided without asking, up to six short lines, e.g. [\"dark theme\", \"one sign-up button\"]. Written into the instructions; list them to the user in one sentence when the design is ready."
+            },
+            "portfolio": {
+              "type": "object",
+              "description": "For a portfolio site or interview deck from the work library: { projects: [slug, …], length? } (length 30, 45 or 60 minutes, decks only). The brief adds the projects' facts, the pictures it may show (copied as media/<project>/ with srcset), drafted alt text and the process records that exist; the library's style is used when no designSystemId is given. Pass the same object when registering.",
+              "properties": {
+                "projects": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "length": {
+                  "type": "number",
+                  "enum": [
+                    30,
+                    45,
+                    60
+                  ]
+                }
+              },
+              "required": [
+                "projects"
+              ]
             }
           },
           "required": [
@@ -875,6 +905,13 @@
                     ]
                   },
                   "description": "The main tasks the flow is for (at most 5). The check follows the screens' real links from start to end (task-unreachable, task-too-long), the flow map draws each path, and the critic walks it."
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "site"
+                  ],
+                  "description": "\"site\" for a website: its \"index\" screen is the home page and the flow map stays in the preview."
                 }
               },
               "required": [
@@ -1038,6 +1075,29 @@
               "required": [
                 "verdict",
                 "findings"
+              ]
+            },
+            "portfolio": {
+              "type": "object",
+              "description": "The same portfolio object passed to prepare_open_design_brief; stored as metadata.portfolio, which turns on the portfolio checks.",
+              "properties": {
+                "projects": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "length": {
+                  "type": "number",
+                  "enum": [
+                    30,
+                    45,
+                    60
+                  ]
+                }
+              },
+              "required": [
+                "projects"
               ]
             }
           },

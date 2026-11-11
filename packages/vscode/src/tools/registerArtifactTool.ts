@@ -17,6 +17,9 @@ import {
   withBriefMetadata,
   registeredFlow,
   withFlowMetadata,
+  validatePortfolioInput,
+  portfolioKindForSkill,
+  withPortfolioMetadata,
   withCritique,
 } from '@feimacode/open-design-agent-kit-core';
 import { COMPARE_PAGE_NOTE } from './explorationTools';
@@ -40,6 +43,7 @@ interface RegisterArtifactInput {
   resolvedCommentIds?: string[];
   brief?: unknown;
   critique?: unknown;
+  portfolio?: unknown;
 }
 
 const KIND_TO_RENDERER: Record<string, string> = {
@@ -66,7 +70,7 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<RegisterArtifactInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, flow, explorationId, directionId, sources, format, resolvedCommentIds, brief, critique } =
+    const { entryPath, kind, title, supportingFiles, sourceSkillId, designSystemId, collectionId, collectionName, screenIndex, screenRole, flow, explorationId, directionId, sources, format, resolvedCommentIds, brief, critique, portfolio } =
       options.input;
 
     if (format !== undefined && !getFormat(format)) {
@@ -77,6 +81,8 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
     if (!registered.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(registered.error)]);
     const registeredBrief = validateRegisteredBrief(brief);
     if (!registeredBrief.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(registeredBrief.error)]);
+    const portfolioRecord = portfolio === undefined ? undefined : validatePortfolioInput(portfolio, portfolioKindForSkill(sourceSkillId ?? (kind === 'deck' ? 'deck' : undefined)));
+    if (portfolioRecord && !portfolioRecord.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(`Failed to register artifact: ${portfolioRecord.error}`)]);
 
     const renderer = KIND_TO_RENDERER[kind];
     const exportsList = exportsForKind(kind);
@@ -95,7 +101,10 @@ export class RegisterArtifactTool implements vscode.LanguageModelTool<RegisterAr
       const sourceRegistration = sources?.length
         ? await prepareSourceRegistration({ workspaceRoot: getWorkspaceRoot(), outputDir: getOutputDirectory(), entryPath, sourcePaths: sources })
         : undefined;
-      const metadata = withFlowMetadata(withBriefMetadata(await posterRegistrationMetadata(getWorkspaceRoot(), entryPath, format), registeredBrief.brief), registered.record);
+      const metadata = withPortfolioMetadata(
+        withFlowMetadata(withBriefMetadata(await posterRegistrationMetadata(getWorkspaceRoot(), entryPath, format), registeredBrief.brief), registered.record),
+        portfolioRecord?.ok ? portfolioRecord.value : undefined,
+      );
       const manifest = await registerArtifact({
         entryPath,
         artifactManifest: {

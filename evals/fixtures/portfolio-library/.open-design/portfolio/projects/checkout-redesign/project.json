@@ -96,7 +96,8 @@
         "from": "shots/checkout-phone.png",
         "capturedAt": "2026-11-11T00:00:00.000Z"
       },
-      "device": "iphone"
+      "device": "iphone",
+      "altDraft": true
     }
   ]
 }

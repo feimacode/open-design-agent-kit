@@ -35,6 +35,9 @@ import { deviceViewports, drawsOwnFrame, parseDevice } from '../preview/deviceSh
 import { hasDataBinds, resolveSampleData, sampleDataFindings, thinStaticTables } from './sampleData';
 import { findBaseScreen } from '../generation/baseScreen';
 import { redesignFindings } from './redesignChecks';
+import { portfolioRecordOf } from '../portfolio/portfolioBrief';
+import { collectFirstScreen, deckTimingFindings, firstScreenFinding, liveLinkFindings, liveLinksOf, portfolioPageFindings } from '../portfolio/portfolioChecks';
+import { readLibrary, readProject, type Project } from '../portfolio/library';
 import { applyBrandChecks, loadOwnBrandContext } from './brandChecks';
 import { BRAND_REVIEW_ATTR, brandReviewFindings } from './brandReview';
 import { appDesignSystemStaleness, parseAppComponentsFile, tokenFindings } from '../generation/appDesignSystem';
@@ -107,6 +110,8 @@ export interface CheckArtifactOptions {
   stress?: boolean;
   /** A steering edit to prove: compare with its snapshot outside the scope, its effect and new findings (openspec add-steering-edits). */
   editId?: string;
+  /** Portfolio designs: fetch live product links to see they resolve (default true; the hosted server turns it off). */
+  portfolioLinks?: boolean;
 }
 
 export interface CheckImage {
@@ -329,6 +334,20 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
   }
   if (appForData && !isDiagram) dataFindings.push(...thinStaticTables(artifact.entryContent));
   dataFindings.push(...redesignFindings(artifact.entryContent));
+  // The portfolio group, only on designs registered with portfolio inputs (openspec add-portfolio-site-and-deck).
+  const portfolio = portfolioRecordOf(manifest.metadata);
+  const outputDirForChecks = options.outputDir ?? '.open-design';
+  if (portfolio) {
+    dataFindings.push(...(await portfolioPageFindings({ workspaceRoot: options.workspaceRoot, outputDir: outputDirForChecks, entryPath: options.entryPath, html: artifact.entryContent, record: portfolio })));
+    if (portfolio.kind === 'deck') dataFindings.push(...deckTimingFindings(artifact.entryContent, portfolio.length));
+    if (options.portfolioLinks !== false) {
+      const projects = (await Promise.all(portfolio.projects.map((slug) => readProject(options.workspaceRoot, outputDirForChecks, slug).catch(() => undefined)))).filter((p): p is Project => !!p);
+      const links = liveLinksOf(artifact.entryContent, projects);
+      if (links.length > 0) dataFindings.push(...(await liveLinkFindings(links)));
+    }
+  }
+  const portfolioHome =
+    portfolio?.kind === 'site' && (manifest.screenRole === 'index' || path.posix.basename(options.entryPath) === 'index.html' || /\bdata-od-home\b/.test(artifact.entryContent));
   const recorded = recordedSources(manifest);
   const stale = recorded.length > 0 ? await findStaleSources(options.workspaceRoot, options.outputDir ?? '.open-design', recorded) : [];
   // Style tiles must declare the design-token contract, so a chosen tile saves as a design system with no loss.
@@ -489,6 +508,18 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
       // Email artifacts (a [data-od-email] column root): the email rules too, measured at a wide client width (local images are a note here; export enforces baseUrl).
       await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 1 });
       result.findings.push(...((await page.evaluate(collectEmailFindings, { maxWidth: EMAIL_MAX_WIDTH, hasBaseUrl: false, checkOnly: true })) as Finding[]));
+    }
+    if (portfolioHome) {
+      // A portfolio's home page: name, role, contact and the first project on the first screen, on a phone and a desktop.
+      const owner = (await readLibrary(options.workspaceRoot, outputDirForChecks).catch(() => undefined))?.owner;
+      for (const vp of [{ name: 'phone', width: 390, height: 844 }, { name: 'desktop', width: 1440, height: 900 }]) {
+        await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: 1 });
+        await page.evaluate('window.scrollTo(0, 0)');
+        await settle(page);
+        const missing = (await page.evaluate(collectFirstScreen, { name: owner?.name, role: owner?.role })) as string[];
+        const finding = firstScreenFinding(vp, missing);
+        if (finding) result.findings.push(finding);
+      }
     }
     if (artifact.entryContent.includes(BRAND_REVIEW_ATTR)) {
       // A design system review: the sample against the site's measurements (openspec connect-brand-design-systems).

@@ -27,8 +27,10 @@ export interface CollectionSitePlan {
   collectionDir: string;
   /** Screens in plan order, then the map. */
   pages: CollectionSitePage[];
-  /** Bundle path of the map: index.html, or flow.html when a screen is index.html. */
+  /** Bundle path of the map: index.html, or flow.html when a screen is index.html. For a website (flow kind "site"), the home page's path, with no map published. */
   mapPath: string;
+  /** True for a website (flow kind "site"): no map page; mapPath is the home page. */
+  website?: boolean;
   /** Files the screens reference, deduplicated. */
   files: SiteFile[];
   warnings: string[];
@@ -86,6 +88,10 @@ export async function planCollectionSite(input: { workspaceRoot: string; entryPa
   }
   const screenPaths = new Set(pages.map((p) => p.bundlePath));
   for (const p of screenPaths) files.delete(p);
+  // A website (flow kind "site", openspec add-portfolio-site-and-deck): its index screen is the home page and the map isn't published.
+  if (flow.plan?.kind === 'site' && screenPaths.has('index.html')) {
+    return { kind: 'collection', ok: true, plan: { collectionId, collectionName: flow.collectionName, collectionDir, pages, mapPath: 'index.html', website: true, files: [...files.values()], warnings } };
+  }
   const mapPath = screenPaths.has('index.html') ? FLOW_MAP_FILE : 'index.html';
   if (screenPaths.has(mapPath)) return { kind: 'collection', ok: false, error: `A screen is named ${mapPath}, which the flow map needs; rename that screen.` };
   files.delete(mapPath);
