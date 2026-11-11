@@ -7,6 +7,8 @@ import {
   formatImportWorkResult,
   isInsideLibrary,
   loadPortfolioBrief,
+  saveTarget as saveTargetCore,
+  importComments as importCommentsCore,
   portfolioKindForSkill,
   readLibrary,
   validatePortfolioInput,
@@ -1176,6 +1178,16 @@ export async function getLibrary(ctx: ToolContext, input: { project?: string }):
 }
 
 /** import_open_design_work: assets into a library project, with a small copy of each image for alt text drafts. */
+export async function savePortfolioTarget(ctx: ToolContext, input: { target: unknown }): Promise<string> {
+  return (await saveTargetCore({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, target: input.target })).text;
+}
+
+/** import_open_design_comments: community feedback or artifact threads into the comment file (openspec add-portfolio-share-and-review, add-artifact-comment-review). */
+export async function importDesignComments(ctx: ToolContext, input: { entryPath: string; source: unknown; artifactUrl?: unknown; comments: unknown }): Promise<string> {
+  if (typeof input.entryPath !== 'string' || !input.entryPath.trim()) return 'entryPath is the design the comments are on.';
+  return (await importCommentsCore({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: input.entryPath.trim(), source: input.source, artifactUrl: input.artifactUrl, comments: input.comments })).text;
+}
+
 export async function importLibraryWork(ctx: ToolContext, input: { project: string; sources: unknown[] }): Promise<ToolOutput> {
   const result = await importWorkCore({
     workspaceRoot: ctx.workspaceRoot,

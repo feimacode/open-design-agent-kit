@@ -27,7 +27,7 @@ import {
   type ProjectAsset,
   type Redaction,
 } from './library';
-import { DRIBBBLE_MIN_WIDTH, extensionFor, imageSize, isMp4, processImage, sniffImage, stripImageMetadata } from './images';
+import { DRIBBBLE_MIN_WIDTH, extensionFor, frameScreen, frameSpecFor, imageSize, isMp4, processImage, sniffImage, stripImageMetadata } from './images';
 
 export const MAX_IMPORT_BYTES = 25 * 1024 * 1024;
 export const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
@@ -291,6 +291,7 @@ async function storeAsset(
         await fs.writeFile(path.join(projectDir, rf), processed.redacted);
         asset.redactedFile = rf;
       }
+      await writeFramed(browser, projectDir, asset, processed.redacted ?? stripped.data, processed.redacted ? 'image/png' : mime, warnings);
       preview = { data: processed.variants[0].data, mime: 'image/webp' };
     } else {
       warnings.push('No browser was found, so the WebP widths weren\'t made; outputs use the original until the asset is imported again with a browser.');
@@ -430,6 +431,24 @@ export async function importWork(input: ImportWorkInput): Promise<ImportWorkResu
   return result;
 }
 
+/** A screen with a device gets a copy inside the kit's device frame (redactions already baked in). */
+async function writeFramed(browser: Browser, projectDir: string, asset: ProjectAsset, data: Buffer, mime: string, warnings: string[]): Promise<void> {
+  const spec = asset.kind === 'screen' ? frameSpecFor(asset.device, asset.width && asset.height ? { width: asset.width, height: asset.height } : undefined) : undefined;
+  const ff = `${ASSETS_DIR}/${asset.id}-framed.png`;
+  if (!spec) {
+    if (asset.framedFile) await fs.rm(path.join(projectDir, ff), { force: true });
+    delete asset.framedFile;
+    return;
+  }
+  try {
+    await fs.writeFile(path.join(projectDir, ff), await frameScreen(browser, data, mime, spec));
+    asset.framedFile = ff;
+  } catch (err) {
+    delete asset.framedFile;
+    warnings.push(`Couldn't draw the ${asset.device} frame around it (${err instanceof Error ? err.message : String(err)}); shots will show it unframed.`);
+  }
+}
+
 /** Re-renders an asset's WebP widths and redacted copy after its redaction boxes changed. */
 export async function rebuildAssetCopies(input: { workspaceRoot: string; outputDir: string; project: Project; asset: ProjectAsset; browserPath?: string }): Promise<{ ok: true } | { ok: false; error: string }> {
   const { project, asset } = input;
@@ -457,6 +476,7 @@ export async function rebuildAssetCopies(input: { workspaceRoot: string; outputD
       await fs.rm(path.join(projectDir, rf), { force: true });
       delete asset.redactedFile;
     }
+    await writeFramed(browser, projectDir, asset, processed.redacted ?? data, processed.redacted ? 'image/png' : asset.mime, []);
     delete asset.copiesStale;
     return { ok: true };
   } finally {

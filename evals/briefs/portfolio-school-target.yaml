@@ -1,0 +1,15 @@
+id: portfolio-school-target
+request: "I'm applying to a design MA. Their portal takes 6 pieces, each image under 5 MB, and a PDF under 10 MB. Prepare both from my library"
+expect:
+  surface: portfolio
+  skills: [portfolio-pdf]
+  questions: { max: 1 }
+designSystem: null
+fixture: portfolio-library-brand
+answers:
+  school: "Leeds School of Design, MA Graphic Design"
+  naming: "Title, year, medium"
+must:
+  - "A school target is saved with 6 pieces, 5 MB images and a 10 MB PDF"
+  - "The image set has one file per piece, named from its title (data-od-piece), each under 5 MB; the PDF is under 10 MB"
+  - "If there are fewer than 6 pieces in the library, the agent says so instead of padding the set"

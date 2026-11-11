@@ -139,7 +139,7 @@ function serverOwned(relativeToOutput: string): string | undefined {
   if (base === 'config.json') return 'it is Open Design\'s settings file; set_active_design_system writes it';
   if (segments.includes('exports')) return 'it is in an exports/ folder; export_open_design_artifact writes those';
   if (segments.includes('.checks')) return 'it is a check screenshot; check_open_design_artifact writes those';
-  if (segments[0] === 'portfolio') return 'it is in the work library; save_open_design_project and import_open_design_work write it';
+  if (segments[0] === 'portfolio') return 'it is in the work library; save_open_design_project, save_open_design_portfolio_target and import_open_design_work write it';
   return undefined;
 }
 

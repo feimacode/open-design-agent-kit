@@ -53,8 +53,10 @@ export const REMOTE_AVAILABLE_TOOLS = new Set([
   'write_open_design_file',
   'publish_open_design_artifact',
   'save_open_design_project',
+  'save_open_design_portfolio_target',
   'get_open_design_library',
   'import_open_design_work',
+  'import_open_design_comments',
 ]);
 
 /** Tools a remote session hides, with why. */

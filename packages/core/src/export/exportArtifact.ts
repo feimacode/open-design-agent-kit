@@ -14,6 +14,8 @@ import { checkArtifact } from './checkArtifact';
 import { findCollectionArtifacts } from '../workspace/collectionScan';
 import { findBrowser } from './browserDiscovery';
 import { assemblePdf, assemblePptx } from './deck/assemble';
+import { portfolioGuard } from '../portfolio/privacy';
+import { PRESENTER_CLONE_SELECTOR, SLIDE_SELECTOR } from './deck/selectors';
 import { assembleEditablePptx, editableReport, formatEditableReport, type EditableReport } from './deck/assembleEditable';
 import { captureDeckSlides, captureEditableDeck, capturePagePdf, countSlides, resolveExportMode, validateSlideNumbers, type ExportMode } from './deck/captureDeck';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize, type SizeSource } from './exportSize';
@@ -23,6 +25,7 @@ import { exportMotion, formatMotionExportResult, isMotionFormat, type MotionExpo
 import { ASSET_RESOLUTIONS, type AssetResolution, type BinaryFetch } from './embedAssets';
 import { formatPackageResult, isPackageFormat, packageArtifact, type PackageExportResult, type PackageFormat } from './packageArtifact';
 import { checkDataAgainstFields, loadDataTable, rowFileSuffixes, scanBoundFields, type DataTable } from '../poster/data';
+import { platformLimitFindings } from '../poster/sharePlatforms';
 import { bleedBox, DEFAULT_SHEET_FORMAT_IDS, getFormat, isFluidHtml, unknownFormatError, type CanvasFormat } from '../poster/formats';
 import { applyShape, bindRow, fitBoundText, showCardForPrint, type ShapeCss } from '../poster/pageScripts';
 import { bleedBoxPx, captureDpiFor, type PrintHouse, type PrintHouseFormat } from '../poster/printHouses';
@@ -226,6 +229,8 @@ export type ExportErrorCode =
   | 'selector-no-match'
   | 'no-slides'
   | 'not-a-deck'
+  | 'over-budget'
+  | 'privacy-ceiling'
   | 'capture-failed';
 
 const FIT_QUALITIES = [90, 80, 70, 60, 50, 40];
@@ -459,6 +464,11 @@ export function exportArtifact(options: ExportArtifactOptions): Promise<AnyExpor
 export async function exportArtifact(options: ExportArtifactOptions): Promise<AnyExportResult> {
   const invalid = validateOptions(options);
   if (invalid) return fail('invalid-args', invalid);
+  // Portfolio work under a privacy ceiling never leaves in a file it isn't allowed in (openspec add-tailored-portfolios).
+  if (!options.checkOnly) {
+    const guard = await portfolioGuard({ workspaceRoot: options.workspaceRoot, outputDir: options.outputDir ?? '.open-design', entryPath: options.entryPath, action: 'export' });
+    if (!guard.ok) return fail('privacy-ceiling', guard.text);
+  }
   if (isMotionFormat(options.format)) {
     return exportMotion({ ...options, format: options.format });
   }
@@ -546,7 +556,8 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
   const requestedFormat = (options.format as CaptureFormat | undefined) ?? houseEntry?.type;
   const plan = (canvas: CanvasFormat | undefined, source: 'preset' | 'recorded-format'): ShapePlan => {
     // A print shape (preset or the recorded default) exports its print PDF unless a format is asked for.
-    const format: CaptureFormat = requestedFormat ?? (canvas?.medium === 'print' && !explicitSize ? 'pdf' : 'png');
+    // A document post (LinkedIn) is a PDF by default: one page per card.
+    const format: CaptureFormat = requestedFormat ?? ((canvas?.medium === 'print' || canvas?.documentPdf) && !explicitSize ? 'pdf' : 'png');
     const printPath = canvas?.medium === 'print' && format === 'pdf' && !explicitSize;
     const bleed = canvas?.medium === 'print' && !explicitSize ? (options.bleed ?? canvas.bleed ?? 0) : undefined;
     const imageFormat = format === 'png' || format === 'jpeg';
@@ -555,7 +566,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     // Print images are always captured by the card, so each face comes out at its bleed box.
     const printImage = canvas?.medium === 'print' && imageFormat && !explicitSize;
     const selector = options.selector ?? ((preset || fluid || printImage) && imageFormat ? CARD_SELECTOR : undefined);
-    const maxBytes = options.maxBytes ?? (preset && imageFormat ? preset.maxBytes : undefined);
+    const maxBytes = options.maxBytes ?? (preset && (imageFormat || (format === 'pdf' && preset.documentPdf)) ? preset.maxBytes : undefined);
     // A fluid card is resized to the shape: explicit px, else the format (mm for print, with bleed).
     let shape: ShapeCss | undefined;
     if (fluid && explicitSize) shape = { widthCss: `${options.width}px`, heightCss: `${options.height}px`, bleedCss: '0mm' };
@@ -700,6 +711,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     let sizeDetail = fluid && first.shape ? `${size.detail}, reflowed (fluid design)` : size.detail;
     if (multiShape) sizeDetail = `presets ${options.presets!.join(', ')}, each reflowed (fluid design)`;
 
+    let documentPages: number | undefined;
     const exportLayout: ExportLayout = options.layout ?? 'classic';
     const recordedExports = new Set(
       (Array.isArray((manifest.metadata as JsonRecord | undefined)?.exports) ? ((manifest.metadata as JsonRecord).exports as JsonRecord[]) : [])
@@ -920,6 +932,13 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
               await page.evaluate(showCardForPrint, CARD_SELECTOR, firstFront);
               pdfs.push(await mergePdfs([front, backPdf], title));
             }
+          } else if (p.canvas?.documentPdf && !explicitSize) {
+            // A document post (openspec add-portfolio-share-and-review): each card is one page at the card's size.
+            const doc = await documentPostPdf(page, CARD_SELECTOR, passScale, title, p.maxBytes);
+            if (!doc.ok) return fail('selector-no-match', `No ${CARD_SELECTOR} element in ${options.entryPath}; a ${p.canvas.label} is one card per page.`);
+            if (doc.note) warnings.push(doc.note);
+            pdfs.push(doc.pdf);
+            documentPages = doc.pages;
           } else {
             pdfs.push(await capturePagePdf(page, { width: options.width, height: options.height }));
           }
@@ -989,6 +1008,10 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         await writeOut(campaignSheetPath, await composeShapeSheet(instance, tiles, title, `${title ?? 'Campaign'} — every piece`));
         await writeCampaignSheetSidecar({ workspaceRoot: options.workspaceRoot, master, title, tiles: sheetTiles, images: tiles.map((t) => ({ data: t.png, mime: t.mime })), createdAt: exportedAt });
       }
+      // Share formats: each written file against its platforms' upload limits (share-platforms.json).
+      if (!multiShape && first.canvas?.platform && !options.checkOnly) {
+        for (const f of files) findings.push(...platformLimitFindings(first.canvas.id, { path: f.path, kind: f.format === 'pdf' ? 'document' : 'image', bytes: f.bytes, width: f.width, height: f.height, pages: f.format === 'pdf' ? documentPages : undefined }));
+      }
       // Failed loads are reported as findings too, so the agent sees them with everything else to fix.
       for (const w of warnings) if (w.startsWith('Failed to load: ')) findings.push({ check: 'broken-asset', severity: 'warning', message: w.slice('Failed to load: '.length) });
     } else if (mode === 'deck-pptx-editable') {
@@ -1010,6 +1033,9 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       const document = mode === 'deck-pptx' || mode === 'deck-pdf';
       scale = options.scale ?? (document ? 2 : 1);
       const slideImageFormat: ImageFormat = document ? 'png' : (format as ImageFormat);
+      // A PDF with a byte limit (openspec add-tailored-portfolios): each slide is also shot as JPEG at every
+      // quality step, so the PDF can be assembled lower and lower until it fits, keeping every page.
+      const pdfLadder: Buffer[][] | undefined = mode === 'deck-pdf' && maxBytes !== undefined ? [] : undefined;
       const captured = await captureDeckSlides(page, {
         slideCount,
         slides: options.slides,
@@ -1018,7 +1044,16 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         scale,
         format: slideImageFormat,
         quality,
-        encode: document ? undefined : (shoot) => captureWithinBudget(shoot, slideImageFormat, quality, maxBytes),
+        encode: pdfLadder
+          ? async (shoot) => {
+              const steps: Buffer[] = [];
+              for (const q of FIT_QUALITIES) steps.push(await shoot('jpeg', q));
+              pdfLadder.push(steps);
+              return { buffer: await shoot('png'), format: 'png' };
+            }
+          : document
+            ? undefined
+            : (shoot) => captureWithinBudget(shoot, slideImageFormat, quality, maxBytes),
       });
       warnings.push(...captured.warnings);
       viewport = { width: captured.stage.w, height: captured.stage.h };
@@ -1028,10 +1063,34 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
       const pxH = Math.round(captured.stage.h * scale);
 
       if (document) {
-        const assembled =
+        let assembled =
           mode === 'deck-pptx'
             ? await assemblePptx(captured.slides, { title, aspect: captured.stage.w / captured.stage.h })
             : await assemblePdf(captured.slides, { title });
+        if (pdfLadder && maxBytes !== undefined && assembled.length > maxBytes) {
+          let fitted: Buffer | undefined;
+          for (const [step, q] of FIT_QUALITIES.entries()) {
+            const pdf = await assemblePdf(captured.slides.map((sl, i) => ({ ...sl, buffer: pdfLadder[i][step], jpeg: true })), { title });
+            if (pdf.length <= maxBytes) {
+              fitted = pdf;
+              warnings.push(`The PDF was ${(assembled.length / 1024 / 1024).toFixed(1)} MB at full quality, so its slides were saved as JPEG at quality ${q} to fit ${(maxBytes / 1024 / 1024).toFixed(1)} MB; every page is kept.`);
+              break;
+            }
+          }
+          if (!fitted) {
+            const lowest = FIT_QUALITIES.length - 1;
+            const heaviest = captured.slides
+              .map((sl, i) => ({ number: sl.number, bytes: pdfLadder[i][lowest].length }))
+              .sort((a, b) => b.bytes - a.bytes)
+              .slice(0, 3)
+              .map((h) => `slide ${h.number} (${Math.round(h.bytes / 1024)} KB)`);
+            return fail(
+              'over-budget',
+              `The PDF is still over ${(maxBytes / 1024 / 1024).toFixed(1)} MB at the lowest image quality (${FIT_QUALITIES[lowest]}). The heaviest pages are ${heaviest.join(', ')}. Use smaller pictures on them, split a page, or export with scale: 1. Nothing was written.`,
+            );
+          }
+          assembled = fitted;
+        }
         const docFormat: ExportFormat = mode === 'deck-pptx' ? 'pptx' : 'pdf';
         const relOut = await writeOut(exportFilePath(relEntry, undefined, docFormat, exportLayout), assembled);
         files.push({ path: relOut, width: pxW, height: pxH, bytes: assembled.length, format: docFormat });
@@ -1040,10 +1099,27 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         }
         if (assembled.length > 50 * 1024 * 1024) warnings.push(`${relOut} is over 50 MB — scale: 1 roughly quarters it.`);
       } else {
+        // A school image set (openspec add-tailored-portfolios): each piece's file is named from its data-od-piece title.
+        const pieceTitles = (await page.evaluate(
+          (sel: string, clones: string) =>
+            Array.from(window.document.querySelectorAll(sel))
+              .filter((el) => !el.closest(clones) && !el.parentElement?.closest(sel))
+              .map((el) => el.getAttribute('data-od-piece') ?? ''),
+          SLIDE_SELECTOR,
+          PRESENTER_CLONE_SELECTOR,
+        )) as string[];
+        const pieceSlug = (t: string) =>
+          t
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 60);
         for (const slide of captured.slides) {
           const got = { format: (slide.jpeg ? 'jpeg' : 'png') as ImageFormat, quality: slide.quality, overBudget: slide.overBudget, bytes: slide.buffer.length };
+          const piece = pieceSlug(pieceTitles[slide.number - 1] ?? '');
           // Always numbered by the slide's own number, even for a single slide.
-          const relOut = await writeOut(exportFilePath(relEntry, slide.number, got.format, exportLayout), slide.buffer);
+          const relOut = await writeOut(piece ? exportFilePathWithSuffix(relEntry, piece, slide.number, got.format, exportLayout) : exportFilePath(relEntry, slide.number, got.format, exportLayout), slide.buffer);
           budgetWarnings(relOut, format, maxBytes, got);
           files.push({ path: relOut, width: pxW, height: pxH, bytes: got.bytes, format: got.format, quality: got.quality });
         }
@@ -1164,4 +1240,29 @@ export function formatExportResult(result: AnyExportResult): string {
   const warnings = result.findings ? result.warnings.filter((w) => !w.startsWith('Failed to load: ')) : result.warnings;
   if (warnings.length > 0) lines.push('Warnings:', ...warnings.map((w) => `- ${w}`));
   return lines.join('\n');
+}
+
+/**
+ * One PDF page per card, each the card's own size (a LinkedIn document post:
+ * 1080 x 1350). Over a byte budget, the pages are re-shot as JPEG at falling
+ * quality until it fits.
+ */
+async function documentPostPdf(page: Page, selector: string, scale: number, title: string | undefined, maxBytes: number | undefined): Promise<{ ok: true; pdf: Buffer; pages: number; note?: string } | { ok: false }> {
+  const handles = await page.$$(selector);
+  const shots: Array<{ png: Buffer; handle: (typeof handles)[number] }> = [];
+  for (const handle of handles) {
+    const box = await handle.boundingBox();
+    if (!box || box.width < 1 || box.height < 1) continue;
+    shots.push({ png: Buffer.from(await handle.screenshot({ type: 'png' })), handle });
+  }
+  if (shots.length === 0) return { ok: false };
+  let pdf = await assemblePdf(shots.map((x) => ({ buffer: x.png, jpeg: false })), { title, pixelScale: scale });
+  if (maxBytes === undefined || pdf.length <= maxBytes) return { ok: true, pdf, pages: shots.length };
+  for (const q of FIT_QUALITIES) {
+    const jpegs = [];
+    for (const x of shots) jpegs.push({ buffer: Buffer.from(await x.handle.screenshot({ type: 'jpeg', quality: q })), jpeg: true });
+    pdf = await assemblePdf(jpegs, { title, pixelScale: scale });
+    if (pdf.length <= maxBytes) return { ok: true, pdf, pages: shots.length, note: `The document was over ${(maxBytes / 1_000_000).toFixed(1)} MB, so its pages were saved as JPEG at quality ${q}.` };
+  }
+  return { ok: true, pdf, pages: shots.length, note: `The document is still over ${(maxBytes / 1_000_000).toFixed(1)} MB at the lowest image quality; use fewer or smaller photos.` };
 }

@@ -35,6 +35,12 @@ export interface ArtifactComment {
   host?: 'vscode' | 'browser' | 'mcp-app';
   /** Set by a preview verb button: the comment asks for a steering edit with this verb (openspec add-steering-edits). */
   verb?: SteeringVerb;
+  /** Imported from outside the kit (import_open_design_comments): a Claude artifact thread or pasted community feedback. */
+  source?: 'claude-artifact' | 'community';
+  /** The id it has where it came from; imports merge by it. */
+  externalId?: string;
+  author?: string;
+  threadUrl?: string;
 }
 
 /** Unaddressed comments: not yet resolved by the agent. */

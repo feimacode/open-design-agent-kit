@@ -10,6 +10,9 @@ import type { Finding } from '../poster/preflight';
 import { NOTES_SELECTOR, PRESENTER_CLONE_SELECTOR, SLIDE_SELECTOR } from '../export/deck/selectors';
 import { assetPrivacy, readLibrary, readProject, type Library, type Project } from './library';
 import { CASE_STUDY_WORDS, PAGE_WEIGHT_BUDGET, type PortfolioRecord } from './portfolioBrief';
+import { ceilingViolations } from './privacy';
+import { readTarget } from './targets';
+import { anonymityFindings, identifyingTerms } from './anonymise';
 
 export const LINK_TIMEOUT_MS = 5000;
 export const MAX_LINKS_CHECKED = 12;
@@ -262,4 +265,65 @@ export function firstScreenFinding(viewport: { name: string; width: number; heig
     severity: 'warning',
     message: `At ${viewport.name} size (${viewport.width}×${viewport.height}) the first screen doesn't show ${missing.join(', ')}. A reviewer decides in the first few seconds: put the name, role, a contact link and the start of the first project above the fold.`,
   };
+}
+
+/**
+ * Findings for a design made for a target (openspec add-tailored-portfolios):
+ * work above the ceiling (an error), images without a library id, an
+ * unlisted site without noindex, a school set's piece count and a promotion
+ * packet's criteria.
+ */
+export async function targetFindings(input: { workspaceRoot: string; outputDir: string; html: string; record: PortfolioRecord; page?: string }): Promise<Finding[]> {
+  const findings: Finding[] = [];
+  const $ = load(input.html);
+  $('img').each((_, el) => {
+    const alt = $(el).attr('alt');
+    if ($(el).attr('data-od-asset') || $(el).is('[data-od-decorative]') || alt === '' || /^data:image\/svg/.test($(el).attr('src') ?? '')) return;
+    findings.push({
+      check: 'portfolio-untagged-image',
+      severity: 'warning',
+      message: `An image (${($(el).attr('src') ?? '').slice(0, 80) || 'no src'}) has no data-od-asset, so the privacy check can't see which library picture it is. Use the brief's markup for library pictures, or mark a purely decorative one data-od-decorative.`,
+      selector: $(el).attr('src') ? `img[src="${$(el).attr('src')}"]` : 'img',
+    });
+  });
+  if (!input.record.target) return findings;
+  const target = await readTarget(input.workspaceRoot, input.outputDir, input.record.target);
+  if (!target) {
+    findings.push({ check: 'portfolio-target-missing', severity: 'warning', message: `The target "${input.record.target}" this design was made for no longer exists, so its ceiling and limits can't be checked.` });
+    return findings;
+  }
+  for (const v of await ceilingViolations(input.workspaceRoot, input.outputDir, [{ label: 'this page', html: input.html }], target.ceiling)) {
+    findings.push({
+      check: 'portfolio-ceiling',
+      severity: 'error',
+      message: `${v.asset ? `The picture ${v.project}/${v.asset}` : `The project ${v.project}`} is ${v.level}, stricter than "${target.name}" allows (${target.ceiling}). Export and publish will refuse this version until it is removed.`,
+      selector: v.asset ? `[data-od-asset="${v.project}/${v.asset}"]` : `[data-od-project="${v.project}"]`,
+    });
+  }
+  if (target.ceiling === 'unlisted' && input.record.kind === 'site' && !/noindex/i.test($('meta[name="robots"]').attr('content') ?? '')) {
+    findings.push({ check: 'portfolio-noindex', severity: 'warning', message: `"${target.name}" is unlisted: add <meta name="robots" content="noindex"> to the page's <head>, so search engines leave it out.` });
+  }
+  if (target.kind === 'review') {
+    const library = await readLibrary(input.workspaceRoot, input.outputDir);
+    if (library) {
+      const projects = [...(await loadProjects(input.workspaceRoot, input.outputDir, input.record.projects.length ? input.record.projects : target.projects)).values()];
+      findings.push(...anonymityFindings(input.html, input.page ?? 'this page', identifyingTerms(library, projects)));
+    }
+  }
+  if (target.kind === 'school') {
+    const pieces = $('[data-od-piece]');
+    const untitled = pieces.filter((_, el) => !($(el).attr('data-od-piece') ?? '').trim()).length;
+    if (target.limits.pieces && pieces.length !== target.limits.pieces) {
+      findings.push({ check: 'portfolio-piece-count', severity: 'warning', message: `The school takes ${target.limits.pieces} pieces; this set has ${pieces.length}. ${pieces.length > target.limits.pieces ? 'Cut the weakest' : 'Add pieces from the library'} so it matches.` });
+    }
+    if (untitled) findings.push({ check: 'portfolio-piece-title', severity: 'warning', message: `${untitled} piece(s) have no title in data-od-piece. Each exported file is named from it (title, year, medium).` });
+  }
+  if (target.kind === 'promotion' && target.criteria?.length) {
+    const shown = $('[data-od-criterion]').map((_, el) => $(el).text().replace(/\s+/g, ' ').toLowerCase()).get().join(' | ');
+    const missing = target.criteria.filter((c) => !shown.includes(c.toLowerCase().slice(0, 40)));
+    if (missing.length) {
+      findings.push({ check: 'portfolio-criteria', severity: 'warning', message: `The criteria map leaves out ${missing.length} criterion(s): ${missing.slice(0, 5).map((c) => `"${c}"`).join(', ')}. Keep every criterion, marked data-od-criterion, with its cell empty when there is no evidence.` });
+    }
+  }
+  return findings;
 }

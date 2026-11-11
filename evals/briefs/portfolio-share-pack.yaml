@@ -1,0 +1,15 @@
+id: portfolio-share-pack
+request: "Post my checkout redesign from my work library on Dribbble and LinkedIn: a few shots, a LinkedIn document post and the text to go with them."
+expect:
+  surface: portfolio
+  skills: [portfolio-share-pack]
+  questions: { max: 1 }
+designSystem: null
+fixture: portfolio-library
+answers:
+  platforms: "Dribbble and LinkedIn"
+  remembered: "One page instead of four steps"
+must:
+  - "Three to five Dribbble shots at 1600 x 1200 and a LinkedIn document post of 1080 x 1350 cards exported as one PDF"
+  - "posts.md has a Dribbble and a LinkedIn section, using only the project's facts (the +18% conversion as measured, the support tickets as about 30% fewer)"
+  - "Only the public checkout project is used; no bank onboarding work appears"

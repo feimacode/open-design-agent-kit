@@ -356,13 +356,16 @@
     {
       "id": "portfolio",
       "label": "Portfolio",
-      "description": "Your design portfolio from your own work: a site with case studies, or the deck for a portfolio interview.",
+      "description": "Your design portfolio from your own work: a site with case studies, the deck for a portfolio interview, a PDF for one job, client, school or promotion, posts for Dribbble, Behance and LinkedIn, or an anonymous version for a community critique.",
       "icon": "briefcase",
       "status": "ready",
       "prompt": "open-design-portfolio",
       "entries": [
         "portfolio-site",
-        "portfolio-interview-deck"
+        "portfolio-interview-deck",
+        "portfolio-pdf",
+        "portfolio-share-pack",
+        "portfolio-review-round"
       ],
       "questions": [
         {

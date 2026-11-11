@@ -2,6 +2,7 @@
 // add-work-library): the only way the library's facts change, so every
 // project is checked against the schema, the asset-not-looser privacy rule and
 // the outcome-source rule before it is written.
+import { readAllTargets } from './targets';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { rebuildAssetCopies } from './importWork';
@@ -117,6 +118,7 @@ export async function saveProject(input: SaveProjectInput): Promise<SaveProjectR
       if (!project) return fail(`there is no project "${[...slugs][0]}".`);
     }
     const rebuild: string[] = [];
+    const reframe: string[] = [];
     for (const raw of input.assets as AssetEdit[]) {
       const asset = project.assets.find((a) => a.id === raw?.id);
       if (!asset) return fail(`"${project.slug}" has no asset "${raw?.id}". Its assets: ${project.assets.map((a) => a.id).join(', ') || 'none yet'}.`);
@@ -153,6 +155,8 @@ export async function saveProject(input: SaveProjectInput): Promise<SaveProjectR
         if (!(ASSET_KINDS as readonly unknown[]).includes(raw.assetKind)) return fail(`assetKind must be one of ${ASSET_KINDS.join(', ')}.`);
         asset.kind = raw.assetKind;
       }
+      // A screen's device frame copy follows its device and kind (openspec add-portfolio-share-and-review).
+      if ((raw.device !== undefined || raw.assetKind !== undefined) && raw.redactions === undefined) reframe.push(asset.id);
       if (raw.redactions !== undefined) {
         const boxes = validateRedactions(raw.redactions, `${asset.id}.redactions`);
         if (!boxes.ok) return fail(boxes.error);
@@ -160,13 +164,16 @@ export async function saveProject(input: SaveProjectInput): Promise<SaveProjectR
         rebuild.push(asset.id);
       }
     }
+    const redactionsChanged = new Set(rebuild);
+    for (const id of reframe) if (!rebuild.includes(id)) rebuild.push(id);
     for (const id of rebuild) {
       const asset = project.assets.find((a) => a.id === id)!;
       const rebuilt = await rebuildAssetCopies({ workspaceRoot: input.workspaceRoot, outputDir: input.outputDir, project, asset, browserPath: input.browserPath });
       if (!rebuilt.ok) {
         if (asset.redactions?.length) asset.copiesStale = true;
         notes.push(`${id}: ${rebuilt.error} Until then no output will show it.`);
-      } else notes.push(`${id}: ${asset.redactions?.length ? `redacted copies made (${asset.redactions.length} box${asset.redactions.length === 1 ? '' : 'es'})` : 'redactions cleared, copies remade'}.`);
+      } else if (reframe.includes(id) && !redactionsChanged.has(id)) notes.push(`${id}: copies remade${asset.framedFile ? `, with its ${asset.device} frame` : ''}.`);
+      else notes.push(`${id}: ${asset.redactions?.length ? `redacted copies made (${asset.redactions.length} box${asset.redactions.length === 1 ? '' : 'es'})` : 'redactions cleared, copies remade'}${asset.framedFile ? `, with its ${asset.device} frame` : ''}.`);
     }
   }
 
@@ -248,5 +255,10 @@ export async function formatLibrary(workspaceRoot: string, outputDir: string, sl
   lines.push('', 'Projects, in order:');
   for (const p of s.projects) lines.push(`- ${p.slug}: ${p.title}. ${p.role}. ${p.privacy}, ${p.assets} asset${p.assets === 1 ? '' : 's'}.${p.gaps.length ? ` Missing: ${p.gaps.join('; ')}.` : ' Complete.'}`);
   if (!s.projects.length) lines.push('- none yet');
+  const targets = await readAllTargets(workspaceRoot, outputDir);
+  if (targets.length) {
+    lines.push('', 'Tailored versions (targets):');
+    for (const t of targets) lines.push(`- ${t.slug}: ${t.name}. ${t.kind}, ceiling ${t.ceiling}, ${t.projects.length} project${t.projects.length === 1 ? '' : 's'}, outputs ${t.outputs.join(', ')}.`);
+  }
   return lines.join('\n');
 }

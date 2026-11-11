@@ -1,0 +1,81 @@
+{
+  "about": "Upload rules of the platforms designers share work on (openspec add-portfolio-share-and-review). Each value names the page it came from and the day it was checked. A value marked unverified wasn't confirmed on the platform's own page: checks only warn about it.",
+  "platforms": [
+    {
+      "id": "dribbble",
+      "label": "Dribbble",
+      "formats": ["dribbble-shot"],
+      "image": { "minWidth": 1600, "ratio": "4:3", "maxBytes": 10000000, "types": ["png", "jpeg", "gif"] },
+      "video": { "maxBytes": 20000000, "types": ["mp4", "mov"] },
+      "source": "https://help.dribbble.com/en/articles/11062601-creating-dribbble-shots",
+      "checked": "2026-11-11",
+      "notes": "Any ratio is accepted now; 4:3 at 1600 × 1200 is the grid's thumbnail shape."
+    },
+    {
+      "id": "behance",
+      "label": "Behance project module",
+      "formats": ["behance-module"],
+      "image": { "width": 1400, "maxBytes": 10000000, "hardMaxBytes": 50000000, "types": ["png", "jpeg", "gif"] },
+      "source": "https://help.behance.net/hc/en-us/articles/204484614",
+      "checked": "2026-11-11",
+      "notes": "Modules show 1400 px wide (2800 in the lightbox); 10 MB is recommended, 50 MB is refused."
+    },
+    {
+      "id": "behance-cover",
+      "label": "Behance project cover",
+      "formats": ["behance-cover"],
+      "image": { "minWidth": 808, "minHeight": 632, "types": ["png", "jpeg"] },
+      "source": "https://help.behance.net/hc/en-us/articles/204483484-Guide-Project-Cover-Image",
+      "checked": "2026-11-11",
+      "notes": "At least 808 × 632 for retina; shown at 202 × 158. Covers can't be GIFs."
+    },
+    {
+      "id": "linkedin-document",
+      "label": "LinkedIn document post",
+      "formats": ["linkedin-document"],
+      "document": { "maxBytes": 100000000, "maxPages": 300, "types": ["pdf"] },
+      "source": "https://www.linkedin.com/help/linkedin/answer/97459",
+      "checked": "2026-11-11",
+      "unverified": true,
+      "notes": "The help page blocks automated reading; 100 MB and 300 pages are the limits LinkedIn's scheduling partners document."
+    },
+    {
+      "id": "instagram",
+      "label": "Instagram carousel",
+      "formats": ["ig-portrait", "ig-square"],
+      "image": { "width": 1080, "maxBytes": 8000000, "maxCards": 20, "types": ["jpeg", "png"] },
+      "source": "https://help.instagram.com/1631821640426723",
+      "checked": "2026-11-11",
+      "unverified": true,
+      "notes": "Same limits as the kit's existing Instagram formats."
+    },
+    {
+      "id": "upwork",
+      "label": "Upwork portfolio project",
+      "formats": ["marketplace-cover"],
+      "image": { "width": 1000, "height": 750, "minWidth": 400, "minHeight": 300, "maxWidth": 4000, "maxHeight": 4000, "ratio": "4:3", "types": ["png", "jpeg"] },
+      "source": "https://support.upwork.com/hc/en-us/articles/360016144974",
+      "checked": "2026-11-11",
+      "notes": "Recommended 1000 × 750 (4:3). The file size limit is shown only as a picture on the page."
+    },
+    {
+      "id": "contra",
+      "label": "Contra project cover",
+      "formats": ["marketplace-cover"],
+      "image": { "ratio": "4:3", "types": ["png", "jpeg"] },
+      "source": "https://contra.com",
+      "checked": "2026-11-11",
+      "unverified": true,
+      "notes": "Contra publishes no size; its project cards crop close to 4:3, so the marketplace cover is used."
+    },
+    {
+      "id": "fiverr",
+      "label": "Fiverr gig image",
+      "formats": ["marketplace-cover"],
+      "image": { "width": 1280, "height": 769, "minWidth": 712, "minHeight": 430, "maxWidth": 4000, "maxHeight": 2416, "types": ["png", "jpeg"] },
+      "source": "https://help.fiverr.com/hc/en-us/articles/15863342952977-Gig-Images-General-Gig-image-guidelines",
+      "checked": "2026-11-11",
+      "notes": "Recommended 1280 × 769; the 4:3 marketplace cover crops a little at the top and bottom, so keep text in the middle band, or export at width 1280 and height 769."
+    }
+  ]
+}

@@ -70,7 +70,8 @@ export async function assemblePptx(images: SlideImage[], opts: { title?: string;
 // ratio — the image still embeds at full pixel resolution.
 const PDF_PAGE_LONGEST_PT = 960;
 
-export async function assemblePdf(images: SlideImage[], opts: { title?: string } = {}): Promise<Buffer> {
+/** pixelScale: pages are the image's own size in CSS px (1 px = 1 pt) at that capture scale, instead of 960 pt on the long side. */
+export async function assemblePdf(images: SlideImage[], opts: { title?: string; pixelScale?: number } = {}): Promise<Buffer> {
   if (images.length === 0) throw new Error('no slides to export');
   const pdf = await PDFDocument.create();
   if (opts.title) pdf.setTitle(opts.title);
@@ -78,7 +79,11 @@ export async function assemblePdf(images: SlideImage[], opts: { title?: string }
   for (const img of images) {
     const image = img.jpeg ? await pdf.embedJpg(img.buffer) : await pdf.embedPng(img.buffer);
     const aspect = image.height > 0 ? image.width / image.height : 1;
-    const [width, height] = aspect >= 1 ? [PDF_PAGE_LONGEST_PT, PDF_PAGE_LONGEST_PT / aspect] : [PDF_PAGE_LONGEST_PT * aspect, PDF_PAGE_LONGEST_PT];
+    const [width, height] = opts.pixelScale
+      ? [image.width / opts.pixelScale, image.height / opts.pixelScale]
+      : aspect >= 1
+        ? [PDF_PAGE_LONGEST_PT, PDF_PAGE_LONGEST_PT / aspect]
+        : [PDF_PAGE_LONGEST_PT * aspect, PDF_PAGE_LONGEST_PT];
     const page = pdf.addPage([width, height]);
     page.drawImage(image, { x: 0, y: 0, width, height });
   }

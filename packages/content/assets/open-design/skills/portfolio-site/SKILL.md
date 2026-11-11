@@ -84,6 +84,10 @@ The outline is an order, not a layout: build the layout from the design system a
 
 The designer's own bio from the library, where they are, how to reach them (the same contact link), and their links. No invented testimonials, client logos or years of experience.
 
+## A version for one job or client
+
+With a target (`portfolio: { target }`), the brief gives its projects in order, its ceiling and its cover note. Build it as its own collection (the target slug as `collectionId`), open the home page with the cover note, mark each project's block `data-od-project="<slug>"`, and for an unlisted target put `<meta name="robots" content="noindex">` in every page's head and don't link it from the public site. A client target can add a "For you" section (`data-od-for-you`) linking the redesign concept of their site and its before/after page.
+
 ## Rules
 
 - Only library facts. When a fact the outline needs is missing, ask, or leave that part out.

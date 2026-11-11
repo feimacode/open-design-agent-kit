@@ -27,6 +27,7 @@ import { usesWebgl, webglFindings } from './webgl';
 import { captureReviewViews, composeReviewSheet, formatSceneEvidence, measureHero, probeScene, REVIEW_VIEWS, reviewUnavailableNote, sceneSpecFindings, type ReviewView, type SceneEvidence } from './sceneReview';
 import { ELEMENT_LAYOUT_VIEWPORT, isValidDimension, resolveExportSize } from './exportSize';
 import { getFormat, isFluidHtml } from '../poster/formats';
+import { platformLimitFindings } from '../poster/sharePlatforms';
 import { applyShape, collectHorizontalScroll, collectRunningMotion, collectStateTargets, collectTapTargets, compareStateStyles, fitBoundText, type ShapeCss, type StateLook } from '../poster/pageScripts';
 import { formatPreflight, runPreflight, type Finding } from '../poster/preflight';
 import { renderShapeSheetHtml, type ShapeThumbnail } from '../poster/shapeSheet';
@@ -36,7 +37,7 @@ import { hasDataBinds, resolveSampleData, sampleDataFindings, thinStaticTables }
 import { findBaseScreen } from '../generation/baseScreen';
 import { redesignFindings } from './redesignChecks';
 import { portfolioRecordOf } from '../portfolio/portfolioBrief';
-import { collectFirstScreen, deckTimingFindings, firstScreenFinding, liveLinkFindings, liveLinksOf, portfolioPageFindings } from '../portfolio/portfolioChecks';
+import { collectFirstScreen, deckTimingFindings, targetFindings, firstScreenFinding, liveLinkFindings, liveLinksOf, portfolioPageFindings } from '../portfolio/portfolioChecks';
 import { readLibrary, readProject, type Project } from '../portfolio/library';
 import { applyBrandChecks, loadOwnBrandContext } from './brandChecks';
 import { BRAND_REVIEW_ATTR, brandReviewFindings } from './brandReview';
@@ -340,12 +341,15 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
   if (portfolio) {
     dataFindings.push(...(await portfolioPageFindings({ workspaceRoot: options.workspaceRoot, outputDir: outputDirForChecks, entryPath: options.entryPath, html: artifact.entryContent, record: portfolio })));
     if (portfolio.kind === 'deck') dataFindings.push(...deckTimingFindings(artifact.entryContent, portfolio.length));
+    dataFindings.push(...(await targetFindings({ workspaceRoot: options.workspaceRoot, outputDir: outputDirForChecks, html: artifact.entryContent, record: portfolio })));
     if (options.portfolioLinks !== false) {
       const projects = (await Promise.all(portfolio.projects.map((slug) => readProject(options.workspaceRoot, outputDirForChecks, slug).catch(() => undefined)))).filter((p): p is Project => !!p);
       const links = liveLinksOf(artifact.entryContent, projects);
       if (links.length > 0) dataFindings.push(...(await liveLinkFindings(links)));
     }
   }
+  // Exports of a share format against their platforms' limits (openspec add-portfolio-share-and-review).
+  dataFindings.push(...(await recordedExportLimitFindings(options.workspaceRoot, manifest.metadata)));
   const portfolioHome =
     portfolio?.kind === 'site' && (manifest.screenRole === 'index' || path.posix.basename(options.entryPath) === 'index.html' || /\bdata-od-home\b/.test(artifact.entryContent));
   const recorded = recordedSources(manifest);
@@ -1091,6 +1095,23 @@ function promisedTexts(manifest: JsonRecord): string[] {
   if (Array.isArray(plan?.screens)) {
     const screen = (plan.screens as JsonRecord[]).find((x) => x && x.id === flow?.screenId);
     if (typeof screen?.role === 'string') out.push(screen.role);
+  }
+  return out;
+}
+
+/** The design's recorded exports, when its format is a share format, checked against the platform limits. */
+async function recordedExportLimitFindings(workspaceRoot: string, metadata: unknown): Promise<Finding[]> {
+  const m = metadata && typeof metadata === 'object' ? (metadata as Record<string, unknown>) : undefined;
+  const format = typeof m?.format === 'string' ? getFormat(m.format) : undefined;
+  if (!format?.platform || !Array.isArray(m?.exports)) return [];
+  const out: Finding[] = [];
+  for (const r of m.exports as Array<Record<string, unknown>>) {
+    if (typeof r?.path !== 'string') continue;
+    const stat = await fs.stat(path.join(workspaceRoot, r.path)).catch(() => undefined);
+    if (!stat?.isFile()) continue;
+    const ext = path.extname(r.path).slice(1).toLowerCase();
+    const kind = ext === 'pdf' ? 'document' : ext === 'mp4' || ext === 'webm' || ext === 'mov' ? 'video' : 'image';
+    out.push(...platformLimitFindings(format.id, { path: r.path, kind, bytes: stat.size, width: typeof r.width === 'number' ? r.width : undefined }));
   }
   return out;
 }

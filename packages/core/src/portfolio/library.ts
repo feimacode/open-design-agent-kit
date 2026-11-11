@@ -117,6 +117,8 @@ export interface ProjectAsset {
   variants?: AssetVariant[];
   /** Project-relative PNG with the redactions baked in; outputs use it instead of the original. */
   redactedFile?: string;
+  /** Project-relative PNG of a screen inside the kit's device frame (redactions baked in), for shots and covers. */
+  framedFile?: string;
   /** True when the redactions changed but the copies couldn't be rebuilt (no browser): outputs must not use the asset. */
   copiesStale?: boolean;
   origin: AssetOrigin;
@@ -439,6 +441,8 @@ export interface AssetForOutput {
   file: string;
   /** Project-relative WebP widths, narrowest first. */
   variants: AssetVariant[];
+  /** Project-relative PNG in its device frame, when the asset has one. */
+  framedFile?: string;
 }
 
 /**
@@ -451,5 +455,5 @@ export function assetForOutput(asset: ProjectAsset): { ok: true; value: AssetFor
     return { ok: false, error: `${asset.id} has redaction boxes but its redacted copies weren't made (no browser). Run save_open_design_project again where a browser is available, or leave the asset out.` };
   }
   const variants = [...(asset.variants ?? [])].sort((a, b) => a.width - b.width);
-  return { ok: true, value: { file: redacted ? asset.redactedFile! : asset.file, variants } };
+  return { ok: true, value: { file: redacted ? asset.redactedFile! : asset.file, variants, ...(asset.framedFile ? { framedFile: asset.framedFile } : {}) } };
 }

@@ -11,6 +11,7 @@ import * as path from 'node:path';
 import { readArtifact, writeArtifactManifest } from '../../vendored/artifactCreate';
 import type { JsonRecord } from '../../vendored/artifactManifest';
 import { getFormat, isFluidHtml, unknownFormatError } from '../../poster/formats';
+import { platformLimitFindings, platformsForFormat } from '../../poster/sharePlatforms';
 import { applyShape } from '../../poster/pageScripts';
 import { openArtifactPage, type ArtifactPageSession } from '../artifactPage';
 import { findBrowser } from '../browserDiscovery';
@@ -289,14 +290,18 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
     const relOut = path.posix.join(entryDir, 'exports', `${base}.${options.format}`);
     const absOut = path.join(options.workspaceRoot, relOut);
     await fs.mkdir(path.dirname(absOut), { recursive: true });
+    // A share format's platform video limit is the byte budget when none is given (Dribbble: 20 MB).
+    const platformBudgets = platformsForFormat(canvas?.id).map((p) => p.video?.maxBytes).filter((n): n is number => n !== undefined);
+    const budget = options.maxBytes ?? (platformBudgets.length ? Math.min(...platformBudgets) : undefined);
     const encoded = await encodeWithinBudget(
       { ffmpegPath: ff.path, format: options.format, webmCodec: ff.webmCodec, framesDir, frameExt, fps, width, loop: options.loop ?? true, out: absOut },
-      options.maxBytes,
+      budget,
       durationMs,
       warnings,
     );
     if (!encoded.ok) return fail('encode-failed', `ffmpeg (${ff.path}) failed: ${encoded.error}`);
     const bytes = await size(absOut);
+    for (const f of platformLimitFindings(canvas?.id, { path: relOut, kind: 'video', bytes, width })) warnings.push(`${f.severity === 'error' ? 'Over a platform limit' : 'Platform note'}: ${f.message}`);
     try {
       await writeArtifactManifest({
         workspaceRoot: options.workspaceRoot,
