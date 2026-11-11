@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import { libraryPaths, outcomeLine, PRIVACY_LEVELS, privacyRank, projectSlug, readAllProjects, readLibrary, type PrivacyLevel, type Project } from './library';
 
 export const TARGETS_DIR = 'targets';
-export const TARGET_KINDS = ['job', 'client', 'school', 'promotion', 'general'] as const;
+export const TARGET_KINDS = ['job', 'client', 'school', 'promotion', 'general', 'review'] as const;
 export type TargetKind = (typeof TARGET_KINDS)[number];
 export const TARGET_OUTPUTS = ['site', 'pdf', 'deck', 'images'] as const;
 export type TargetOutput = (typeof TARGET_OUTPUTS)[number];
@@ -16,6 +16,8 @@ export const PDF_PAGE_SIZES = ['a4', 'letter', '16:9'] as const;
 export type PdfPageSize = (typeof PDF_PAGE_SIZES)[number];
 export const MAX_TARGET_PROJECTS = 12;
 export const MAX_CRITERIA = 20;
+/** A review post asks at most this many questions (openspec add-portfolio-share-and-review). */
+export const MAX_REVIEW_QUESTIONS = 3;
 const MB = 1024 * 1024;
 
 export interface TargetLimits {
@@ -45,6 +47,8 @@ export interface Target {
   criteria?: string[];
   /** Client: their site and the kit's redesign concept and before/after page for it. */
   client?: { site?: string; concept?: string; beforeAfter?: string };
+  /** Review: the community it is posted to, up to three questions, and the feedback not wanted. */
+  review?: { community?: string; questions?: string[]; notWanted?: string; labels?: Record<string, string> };
   updatedAt: string;
 }
 
@@ -57,13 +61,16 @@ export function defaultLimits(kind: TargetKind): TargetLimits {
 }
 
 export function defaultCeiling(kind: TargetKind): PrivacyLevel {
-  return kind === 'promotion' ? 'internal' : 'public';
+  if (kind === 'promotion') return 'internal';
+  // A review version is anonymised and shared by link with strangers: unlisted, never on the public portfolio.
+  return kind === 'review' ? 'unlisted' : 'public';
 }
 
 export function defaultOutputs(kind: TargetKind): TargetOutput[] {
   if (kind === 'school') return ['images', 'pdf'];
   if (kind === 'promotion') return ['pdf'];
   if (kind === 'client') return ['site', 'pdf'];
+  if (kind === 'review') return ['site'];
   return ['site', 'pdf'];
 }
 
@@ -236,7 +243,7 @@ export interface SaveTargetInput {
 /** Validates and saves a target, filling its kind's defaults; returns the text for the agent. */
 export async function saveTarget(input: SaveTargetInput): Promise<{ ok: boolean; text: string; target?: Target }> {
   const v = input.target;
-  if (!v || typeof v !== 'object' || Array.isArray(v)) return { ok: false, text: 'target must be an object: { name, kind, notes?, projects?, ceiling?, outputs?, coverNote?, limits?, criteria?, client? }.' };
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return { ok: false, text: 'target must be an object: { name, kind, notes?, projects?, ceiling?, outputs?, coverNote?, limits?, criteria?, client?, review? }.' };
   const o = v as Record<string, unknown>;
   const library = await readLibrary(input.workspaceRoot, input.outputDir);
   if (!library) return { ok: false, text: 'There is no work library yet. Save the designer\'s projects with save_open_design_project first.' };
@@ -290,6 +297,36 @@ export async function saveTarget(input: SaveTargetInput): Promise<{ ok: boolean;
     if (kind !== 'client') return { ok: false, text: 'client applies to client targets.' };
   }
 
+  let review = existing?.review;
+  if (o.review !== undefined) {
+    if (kind !== 'review') return { ok: false, text: 'review applies to review targets.' };
+    if (!o.review || typeof o.review !== 'object' || Array.isArray(o.review)) return { ok: false, text: 'review is { community?, questions?, notWanted?, labels? }: where it is posted, up to three questions, the feedback the designer doesn\'t want, and neutral labels per project slug ("Grocery company, 2025").' };
+    const r = o.review as Record<string, unknown>;
+    let questions: string[] | undefined;
+    if (r.questions !== undefined) {
+      if (!Array.isArray(r.questions) || !r.questions.every((q) => typeof q === 'string')) return { ok: false, text: 'review.questions lists the questions as strings.' };
+      questions = (r.questions as string[]).map((q) => q.trim()).filter(Boolean);
+      if (questions.length > MAX_REVIEW_QUESTIONS) {
+        return { ok: false, text: `A review post asks at most ${MAX_REVIEW_QUESTIONS} questions (reviewers answer fewer, sharper questions); got ${questions.length}. Ask the designer which three to keep:\n${questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}` };
+      }
+    }
+    let labels: Record<string, string> | undefined;
+    if (r.labels !== undefined) {
+      if (!r.labels || typeof r.labels !== 'object' || Array.isArray(r.labels) || !Object.values(r.labels).every((x) => typeof x === 'string')) return { ok: false, text: 'review.labels maps project slugs to neutral labels, e.g. { "checkout-redesign": "Grocery company, 2025" }.' };
+      labels = Object.fromEntries(Object.entries(r.labels as Record<string, string>).map(([k, x]) => [k.trim(), x.trim()]).filter(([k, x]) => k && x));
+      const unknown = Object.keys(labels ?? {}).filter((k) => !bySlug.has(k));
+      if (unknown.length) return { ok: false, text: `review.labels: not in the library: ${unknown.join(', ')}.` };
+    }
+    const prev = existing?.review;
+    review = {
+      ...(str(r.community) ?? prev?.community ? { community: str(r.community) ?? prev?.community } : {}),
+      ...((questions ?? prev?.questions)?.length ? { questions: questions ?? prev?.questions } : {}),
+      ...(str(r.notWanted) ?? prev?.notWanted ? { notWanted: str(r.notWanted) ?? prev?.notWanted } : {}),
+      ...(labels ?? prev?.labels ? { labels: labels ?? prev?.labels } : {}),
+    };
+  }
+  if (kind === 'review' && ceiling !== 'unlisted' && ceiling !== 'public') return { ok: false, text: 'A review version is shared with strangers by link, so its ceiling is unlisted (or public); internal work can\'t go in it.' };
+
   const target: Target = {
     version: 1,
     slug,
@@ -303,6 +340,7 @@ export async function saveTarget(input: SaveTargetInput): Promise<{ ok: boolean;
     limits: limits.value,
     ...(criteria?.length ? { criteria } : {}),
     ...(client && Object.keys(client).length ? { client } : {}),
+    ...(review && Object.keys(review).length ? { review } : {}),
     updatedAt: (input.now ?? new Date()).toISOString(),
   };
   const file = path.join(input.workspaceRoot, targetFile(input.outputDir, slug));
@@ -341,6 +379,10 @@ export function formatTarget(t: Target, libraryProjects: Project[]): string {
     for (const c of criteriaMap(t.criteria, libraryProjects.filter((p) => t.projects.length === 0 || t.projects.includes(p.slug)))) {
       lines.push(`- ${c.criterion}: ${c.evidence.length ? c.evidence.map((e) => e.title).join('; ') : 'no evidence yet'}`);
     }
+  }
+  if (t.kind === 'review') {
+    const q = t.review?.questions ?? [];
+    lines.push('', `Review round${t.review?.community ? ` for ${t.review.community}` : ''}: ${q.length ? `questions: ${q.map((x, i) => `${i + 1}. ${x}`).join(' ')}` : 'no questions yet: ask the designer for up to three'}${t.review?.notWanted ? `; not wanted: ${t.review.notWanted}` : ''}. The version is anonymised (the check reports any name, employer, client, school or link left in it) and published unlisted.`);
   }
   if (t.ceiling === 'internal') lines.push('', 'Internal: export it as a file (PDF, deck or images) only; it can\'t be published.');
   else if (t.ceiling === 'unlisted') lines.push('', 'Unlisted: publish only as a Claude artifact, or on a host where the designer adds a password; the site gets noindex and no link from the public portfolio.');

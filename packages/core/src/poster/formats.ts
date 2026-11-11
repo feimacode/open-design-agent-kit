@@ -37,6 +37,10 @@ export interface CanvasFormat {
   scale?: number;
   /** False keeps it out of a shape sheet that names no presets (tiny ad sizes would fail on any poster). Default true. */
   inDefaultSheet?: boolean;
+  /** Screen only: a PDF export is one page per card (LinkedIn document posts), and PDF is its default format. */
+  documentPdf?: boolean;
+  /** The platform in share-platforms.json whose upload limits apply (openspec add-portfolio-share-and-review). */
+  platform?: string;
 }
 
 /** 3 mm is the ISO convention; US printers ask for 0.125 in. */
@@ -60,6 +64,12 @@ const LIST: CanvasFormat[] = [
   { id: 'banner-leaderboard', label: 'Display ad 728×90 (leaderboard)', fileLabel: 'ad-728x90', medium: 'screen', width: 728, height: 90, unit: 'px', safeInset: 8, maxBytes: 150_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
   { id: 'banner-skyscraper', label: 'Display ad 160×600 (wide skyscraper)', fileLabel: 'ad-160x600', medium: 'screen', width: 160, height: 600, unit: 'px', safeInset: 10, maxBytes: 150_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
   { id: 'banner-mobile', label: 'Display ad 320×50 (mobile banner)', fileLabel: 'ad-320x50', medium: 'screen', width: 320, height: 50, unit: 'px', safeInset: 4, maxBytes: 150_000, skillHint: 'od:prototype:poster-hero', inDefaultSheet: false },
+  // Portfolio sharing (openspec add-portfolio-share-and-review): sizes and limits from share-platforms.json, with sources and dates.
+  { id: 'dribbble-shot', label: 'Dribbble shot', fileLabel: 'dribbble-shot', medium: 'screen', width: 1600, height: 1200, unit: 'px', safeInset: 80, maxBytes: 10_000_000, platform: 'dribbble', skillHint: 'od:prototype:portfolio-share-pack', inDefaultSheet: false },
+  { id: 'behance-module', label: 'Behance project module', fileLabel: 'behance-module', medium: 'screen', width: 1400, height: 1050, unit: 'px', safeInset: 70, maxBytes: 10_000_000, multiCard: true, platform: 'behance', skillHint: 'od:prototype:portfolio-share-pack', inDefaultSheet: false },
+  { id: 'behance-cover', label: 'Behance project cover', fileLabel: 'behance-cover', medium: 'screen', width: 808, height: 632, unit: 'px', safeInset: 40, scale: 2, platform: 'behance-cover', skillHint: 'od:prototype:portfolio-share-pack', inDefaultSheet: false },
+  { id: 'linkedin-document', label: 'LinkedIn document post (PDF)', fileLabel: 'linkedin-document', medium: 'screen', width: 1080, height: 1350, unit: 'px', safeInset: 64, maxBytes: 100_000_000, multiCard: true, documentPdf: true, platform: 'linkedin-document', skillHint: 'od:prototype:portfolio-share-pack', inDefaultSheet: false },
+  { id: 'marketplace-cover', label: 'Marketplace cover (Upwork, Contra, Fiverr)', fileLabel: 'marketplace-cover', medium: 'screen', width: 1000, height: 750, unit: 'px', safeInset: 60, scale: 2, platform: 'upwork', skillHint: 'od:prototype:portfolio-share-pack', inDefaultSheet: false },
   // Shop images: one generic set that fits Shopify, Big Cartel and Etsy (square product images of at least 2000 px are accepted by all three).
   { id: 'shop-product', label: 'Shop product image (square)', fileLabel: 'product', medium: 'screen', width: 2048, height: 2048, unit: 'px', safeInset: 96, maxBytes: 20_000_000, skillHint: 'od:prototype:shop-pack', inDefaultSheet: false },
   { id: 'shop-banner', label: 'Shop banner (wide)', fileLabel: 'shop-banner', medium: 'screen', width: 1920, height: 800, unit: 'px', safeInset: 120, maxBytes: 20_000_000, skillHint: 'od:prototype:shop-pack', inDefaultSheet: false },

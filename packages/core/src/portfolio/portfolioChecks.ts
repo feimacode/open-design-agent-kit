@@ -12,6 +12,7 @@ import { assetPrivacy, readLibrary, readProject, type Library, type Project } fr
 import { CASE_STUDY_WORDS, PAGE_WEIGHT_BUDGET, type PortfolioRecord } from './portfolioBrief';
 import { ceilingViolations } from './privacy';
 import { readTarget } from './targets';
+import { anonymityFindings, identifyingTerms } from './anonymise';
 
 export const LINK_TIMEOUT_MS = 5000;
 export const MAX_LINKS_CHECKED = 12;
@@ -272,7 +273,7 @@ export function firstScreenFinding(viewport: { name: string; width: number; heig
  * unlisted site without noindex, a school set's piece count and a promotion
  * packet's criteria.
  */
-export async function targetFindings(input: { workspaceRoot: string; outputDir: string; html: string; record: PortfolioRecord }): Promise<Finding[]> {
+export async function targetFindings(input: { workspaceRoot: string; outputDir: string; html: string; record: PortfolioRecord; page?: string }): Promise<Finding[]> {
   const findings: Finding[] = [];
   const $ = load(input.html);
   $('img').each((_, el) => {
@@ -301,6 +302,13 @@ export async function targetFindings(input: { workspaceRoot: string; outputDir: 
   }
   if (target.ceiling === 'unlisted' && input.record.kind === 'site' && !/noindex/i.test($('meta[name="robots"]').attr('content') ?? '')) {
     findings.push({ check: 'portfolio-noindex', severity: 'warning', message: `"${target.name}" is unlisted: add <meta name="robots" content="noindex"> to the page's <head>, so search engines leave it out.` });
+  }
+  if (target.kind === 'review') {
+    const library = await readLibrary(input.workspaceRoot, input.outputDir);
+    if (library) {
+      const projects = [...(await loadProjects(input.workspaceRoot, input.outputDir, input.record.projects.length ? input.record.projects : target.projects)).values()];
+      findings.push(...anonymityFindings(input.html, input.page ?? 'this page', identifyingTerms(library, projects)));
+    }
   }
   if (target.kind === 'school') {
     const pieces = $('[data-od-piece]');

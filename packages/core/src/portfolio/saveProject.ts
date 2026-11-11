@@ -118,6 +118,7 @@ export async function saveProject(input: SaveProjectInput): Promise<SaveProjectR
       if (!project) return fail(`there is no project "${[...slugs][0]}".`);
     }
     const rebuild: string[] = [];
+    const reframe: string[] = [];
     for (const raw of input.assets as AssetEdit[]) {
       const asset = project.assets.find((a) => a.id === raw?.id);
       if (!asset) return fail(`"${project.slug}" has no asset "${raw?.id}". Its assets: ${project.assets.map((a) => a.id).join(', ') || 'none yet'}.`);
@@ -154,6 +155,8 @@ export async function saveProject(input: SaveProjectInput): Promise<SaveProjectR
         if (!(ASSET_KINDS as readonly unknown[]).includes(raw.assetKind)) return fail(`assetKind must be one of ${ASSET_KINDS.join(', ')}.`);
         asset.kind = raw.assetKind;
       }
+      // A screen's device frame copy follows its device and kind (openspec add-portfolio-share-and-review).
+      if ((raw.device !== undefined || raw.assetKind !== undefined) && raw.redactions === undefined) reframe.push(asset.id);
       if (raw.redactions !== undefined) {
         const boxes = validateRedactions(raw.redactions, `${asset.id}.redactions`);
         if (!boxes.ok) return fail(boxes.error);
@@ -161,13 +164,16 @@ export async function saveProject(input: SaveProjectInput): Promise<SaveProjectR
         rebuild.push(asset.id);
       }
     }
+    const redactionsChanged = new Set(rebuild);
+    for (const id of reframe) if (!rebuild.includes(id)) rebuild.push(id);
     for (const id of rebuild) {
       const asset = project.assets.find((a) => a.id === id)!;
       const rebuilt = await rebuildAssetCopies({ workspaceRoot: input.workspaceRoot, outputDir: input.outputDir, project, asset, browserPath: input.browserPath });
       if (!rebuilt.ok) {
         if (asset.redactions?.length) asset.copiesStale = true;
         notes.push(`${id}: ${rebuilt.error} Until then no output will show it.`);
-      } else notes.push(`${id}: ${asset.redactions?.length ? `redacted copies made (${asset.redactions.length} box${asset.redactions.length === 1 ? '' : 'es'})` : 'redactions cleared, copies remade'}.`);
+      } else if (reframe.includes(id) && !redactionsChanged.has(id)) notes.push(`${id}: copies remade${asset.framedFile ? `, with its ${asset.device} frame` : ''}.`);
+      else notes.push(`${id}: ${asset.redactions?.length ? `redacted copies made (${asset.redactions.length} box${asset.redactions.length === 1 ? '' : 'es'})` : 'redactions cleared, copies remade'}${asset.framedFile ? `, with its ${asset.device} frame` : ''}.`);
     }
   }
 

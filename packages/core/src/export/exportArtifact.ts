@@ -25,6 +25,7 @@ import { exportMotion, formatMotionExportResult, isMotionFormat, type MotionExpo
 import { ASSET_RESOLUTIONS, type AssetResolution, type BinaryFetch } from './embedAssets';
 import { formatPackageResult, isPackageFormat, packageArtifact, type PackageExportResult, type PackageFormat } from './packageArtifact';
 import { checkDataAgainstFields, loadDataTable, rowFileSuffixes, scanBoundFields, type DataTable } from '../poster/data';
+import { platformLimitFindings } from '../poster/sharePlatforms';
 import { bleedBox, DEFAULT_SHEET_FORMAT_IDS, getFormat, isFluidHtml, unknownFormatError, type CanvasFormat } from '../poster/formats';
 import { applyShape, bindRow, fitBoundText, showCardForPrint, type ShapeCss } from '../poster/pageScripts';
 import { bleedBoxPx, captureDpiFor, type PrintHouse, type PrintHouseFormat } from '../poster/printHouses';
@@ -555,7 +556,8 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
   const requestedFormat = (options.format as CaptureFormat | undefined) ?? houseEntry?.type;
   const plan = (canvas: CanvasFormat | undefined, source: 'preset' | 'recorded-format'): ShapePlan => {
     // A print shape (preset or the recorded default) exports its print PDF unless a format is asked for.
-    const format: CaptureFormat = requestedFormat ?? (canvas?.medium === 'print' && !explicitSize ? 'pdf' : 'png');
+    // A document post (LinkedIn) is a PDF by default: one page per card.
+    const format: CaptureFormat = requestedFormat ?? ((canvas?.medium === 'print' || canvas?.documentPdf) && !explicitSize ? 'pdf' : 'png');
     const printPath = canvas?.medium === 'print' && format === 'pdf' && !explicitSize;
     const bleed = canvas?.medium === 'print' && !explicitSize ? (options.bleed ?? canvas.bleed ?? 0) : undefined;
     const imageFormat = format === 'png' || format === 'jpeg';
@@ -564,7 +566,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     // Print images are always captured by the card, so each face comes out at its bleed box.
     const printImage = canvas?.medium === 'print' && imageFormat && !explicitSize;
     const selector = options.selector ?? ((preset || fluid || printImage) && imageFormat ? CARD_SELECTOR : undefined);
-    const maxBytes = options.maxBytes ?? (preset && imageFormat ? preset.maxBytes : undefined);
+    const maxBytes = options.maxBytes ?? (preset && (imageFormat || (format === 'pdf' && preset.documentPdf)) ? preset.maxBytes : undefined);
     // A fluid card is resized to the shape: explicit px, else the format (mm for print, with bleed).
     let shape: ShapeCss | undefined;
     if (fluid && explicitSize) shape = { widthCss: `${options.width}px`, heightCss: `${options.height}px`, bleedCss: '0mm' };
@@ -709,6 +711,7 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
     let sizeDetail = fluid && first.shape ? `${size.detail}, reflowed (fluid design)` : size.detail;
     if (multiShape) sizeDetail = `presets ${options.presets!.join(', ')}, each reflowed (fluid design)`;
 
+    let documentPages: number | undefined;
     const exportLayout: ExportLayout = options.layout ?? 'classic';
     const recordedExports = new Set(
       (Array.isArray((manifest.metadata as JsonRecord | undefined)?.exports) ? ((manifest.metadata as JsonRecord).exports as JsonRecord[]) : [])
@@ -929,6 +932,13 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
               await page.evaluate(showCardForPrint, CARD_SELECTOR, firstFront);
               pdfs.push(await mergePdfs([front, backPdf], title));
             }
+          } else if (p.canvas?.documentPdf && !explicitSize) {
+            // A document post (openspec add-portfolio-share-and-review): each card is one page at the card's size.
+            const doc = await documentPostPdf(page, CARD_SELECTOR, passScale, title, p.maxBytes);
+            if (!doc.ok) return fail('selector-no-match', `No ${CARD_SELECTOR} element in ${options.entryPath}; a ${p.canvas.label} is one card per page.`);
+            if (doc.note) warnings.push(doc.note);
+            pdfs.push(doc.pdf);
+            documentPages = doc.pages;
           } else {
             pdfs.push(await capturePagePdf(page, { width: options.width, height: options.height }));
           }
@@ -997,6 +1007,10 @@ export async function exportArtifact(options: ExportArtifactOptions): Promise<An
         campaignSheetPath = campaignSheetPaths(master).sheet;
         await writeOut(campaignSheetPath, await composeShapeSheet(instance, tiles, title, `${title ?? 'Campaign'} — every piece`));
         await writeCampaignSheetSidecar({ workspaceRoot: options.workspaceRoot, master, title, tiles: sheetTiles, images: tiles.map((t) => ({ data: t.png, mime: t.mime })), createdAt: exportedAt });
+      }
+      // Share formats: each written file against its platforms' upload limits (share-platforms.json).
+      if (!multiShape && first.canvas?.platform && !options.checkOnly) {
+        for (const f of files) findings.push(...platformLimitFindings(first.canvas.id, { path: f.path, kind: f.format === 'pdf' ? 'document' : 'image', bytes: f.bytes, width: f.width, height: f.height, pages: f.format === 'pdf' ? documentPages : undefined }));
       }
       // Failed loads are reported as findings too, so the agent sees them with everything else to fix.
       for (const w of warnings) if (w.startsWith('Failed to load: ')) findings.push({ check: 'broken-asset', severity: 'warning', message: w.slice('Failed to load: '.length) });
@@ -1226,4 +1240,29 @@ export function formatExportResult(result: AnyExportResult): string {
   const warnings = result.findings ? result.warnings.filter((w) => !w.startsWith('Failed to load: ')) : result.warnings;
   if (warnings.length > 0) lines.push('Warnings:', ...warnings.map((w) => `- ${w}`));
   return lines.join('\n');
+}
+
+/**
+ * One PDF page per card, each the card's own size (a LinkedIn document post:
+ * 1080 x 1350). Over a byte budget, the pages are re-shot as JPEG at falling
+ * quality until it fits.
+ */
+async function documentPostPdf(page: Page, selector: string, scale: number, title: string | undefined, maxBytes: number | undefined): Promise<{ ok: true; pdf: Buffer; pages: number; note?: string } | { ok: false }> {
+  const handles = await page.$$(selector);
+  const shots: Array<{ png: Buffer; handle: (typeof handles)[number] }> = [];
+  for (const handle of handles) {
+    const box = await handle.boundingBox();
+    if (!box || box.width < 1 || box.height < 1) continue;
+    shots.push({ png: Buffer.from(await handle.screenshot({ type: 'png' })), handle });
+  }
+  if (shots.length === 0) return { ok: false };
+  let pdf = await assemblePdf(shots.map((x) => ({ buffer: x.png, jpeg: false })), { title, pixelScale: scale });
+  if (maxBytes === undefined || pdf.length <= maxBytes) return { ok: true, pdf, pages: shots.length };
+  for (const q of FIT_QUALITIES) {
+    const jpegs = [];
+    for (const x of shots) jpegs.push({ buffer: Buffer.from(await x.handle.screenshot({ type: 'jpeg', quality: q })), jpeg: true });
+    pdf = await assemblePdf(jpegs, { title, pixelScale: scale });
+    if (pdf.length <= maxBytes) return { ok: true, pdf, pages: shots.length, note: `The document was over ${(maxBytes / 1_000_000).toFixed(1)} MB, so its pages were saved as JPEG at quality ${q}.` };
+  }
+  return { ok: true, pdf, pages: shots.length, note: `The document is still over ${(maxBytes / 1_000_000).toFixed(1)} MB at the lowest image quality; use fewer or smaller photos.` };
 }

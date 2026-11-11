@@ -6,3 +6,4 @@ export * from './portfolioBrief';
 export * from './portfolioChecks';
 export * from './targets';
 export * from './privacy';
+export * from './anonymise';

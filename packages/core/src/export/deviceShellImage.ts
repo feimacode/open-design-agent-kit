@@ -10,13 +10,15 @@ export async function wrapInDeviceShell(
   browser: Browser,
   png: Buffer,
   spec: DeviceSpec,
-  options: { title?: string; scale: number; format: 'png' | 'jpeg'; quality?: number },
+  options: { title?: string; scale: number; format: 'png' | 'jpeg'; quality?: number; mime?: string; cover?: boolean },
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
   const page = await browser.newPage();
   try {
     await page.setViewport({ width: 1600, height: 1200, deviceScaleFactor: options.scale });
-    const src = `data:image/png;base64,${png.toString('base64')}`;
-    const inner = `<!doctype html><html><head><style>html,body{margin:0;background:transparent}img{display:block;width:100%;height:auto}</style></head><body><img src="${src}"></body></html>`;
+    const src = `data:${options.mime ?? 'image/png'};base64,${png.toString('base64')}`;
+    // cover: an imported screenshot of any size fills the screen, top-aligned (openspec add-portfolio-share-and-review).
+    const fit = options.cover ? 'img{display:block;width:100%;height:100vh;object-fit:cover;object-position:top}' : 'img{display:block;width:100%;height:auto}';
+    const inner = `<!doctype html><html><head><style>html,body{margin:0;background:transparent;overflow:hidden}${fit}</style></head><body><img src="${src}"></body></html>`;
     await page.setContent('<!doctype html><html><head><style>html,body{margin:0;background:transparent}</style></head><body><div id="stage"><iframe></iframe></div></body></html>');
     // String form: this package compiles without DOM lib types.
     await page.evaluate(

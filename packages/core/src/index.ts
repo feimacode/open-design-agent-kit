@@ -78,6 +78,7 @@ export * from './workspace/activeDesignSystemStore';
 export * from './workspace/appDetection';
 export * from './workspace/appScan';
 export * from './workspace/artifactComments';
+export * from './workspace/importComments';
 export * from './workspace/artifactSync';
 export * from './workspace/collectionScan';
 export * from './workspace/critique';
@@ -129,6 +130,7 @@ export * from './export/shareDecorations';
 export * from './export/siteBundle';
 
 export * from './poster/formats';
+export * from './poster/sharePlatforms';
 export * from './poster/data';
 export * from './poster/preflight';
 export * from './poster/printPdf';

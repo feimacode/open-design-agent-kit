@@ -10,7 +10,8 @@ import { load } from 'cheerio';
 import { readArtifact } from '../vendored/artifactCreate';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { findCollectionArtifacts } from '../workspace/collectionScan';
-import { assetPrivacy, privacyRank, readProject, type PrivacyLevel, type Project } from './library';
+import { assetPrivacy, privacyRank, readLibrary, readProject, type PrivacyLevel, type Project } from './library';
+import { anonymityFindings, identifyingTerms } from './anonymise';
 import { portfolioRecordOf } from './portfolioBrief';
 import { readTarget, type Target } from './targets';
 
@@ -124,6 +125,13 @@ export async function portfolioGuard(input: { workspaceRoot: string; outputDir: 
   const pages = await pagesFor(input.workspaceRoot, input.outputDir, input.entryPath, manifest, artifact.entryContent);
   const violations = await ceilingViolations(input.workspaceRoot, input.outputDir, pages, ceiling);
   if (violations.length) return { ok: false, text: formatViolations(violations, ceiling, input.action) };
+  // A review version names no one (openspec add-portfolio-share-and-review): publish refuses one that still does.
+  if (input.action === 'publish' && target?.kind === 'review') {
+    const library = await readLibrary(input.workspaceRoot, input.outputDir);
+    const projects = (await Promise.all((record.projects.length ? record.projects : target.projects).map((s) => readProject(input.workspaceRoot, input.outputDir, s).catch(() => undefined)))).filter((p): p is Project => !!p);
+    const leaks = library ? pages.flatMap((pg) => anonymityFindings(pg.html, pg.label, identifyingTerms(library, projects))) : [];
+    if (leaks.length) return { ok: false, text: `Not published: this review version still identifies the designer:\n${leaks.slice(0, 12).map((f) => `- ${f.message}`).join('\n')}\nReplace each with its neutral label, check again, then publish.` };
+  }
   const notes: string[] = [];
   if (input.action === 'publish' && ceiling === 'unlisted') {
     if (input.provider && input.provider !== 'claude-artifact') {

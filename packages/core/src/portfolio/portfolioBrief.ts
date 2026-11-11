@@ -13,6 +13,7 @@ import { readTarget } from './targets';
 // The before/after page's file name (export/beforeAfter.ts), kept here so this module doesn't import the export code.
 const BEFORE_AFTER_FILE = 'before-after.html';
 import { criteriaMap, type Target } from './targets';
+import { composeAnonymiseSection, composeReviewPostSection } from './anonymise';
 import {
   assetForOutput,
   assetPrivacy,
@@ -28,13 +29,15 @@ import {
   type ProjectAsset,
 } from './library';
 
-export const PORTFOLIO_KINDS = ['site', 'deck', 'pdf'] as const;
+export const PORTFOLIO_KINDS = ['site', 'deck', 'pdf', 'share'] as const;
 export type PortfolioKind = (typeof PORTFOLIO_KINDS)[number];
 export const INTERVIEW_LENGTHS = [30, 45, 60] as const;
 export const DEFAULT_INTERVIEW_LENGTH = 45;
 export const MAX_SITE_PROJECTS = 6;
 export const MAX_DECK_PROJECTS = 2;
 export const MAX_PDF_PROJECTS = 12;
+/** A share pack is made from one project (openspec add-portfolio-share-and-review). */
+export const MAX_SHARE_PROJECTS = 1;
 /** Words in a case study's body (outside navigation and footer). */
 export const CASE_STUDY_WORDS = { min: 500, max: 1800 } as const;
 /** Bytes a page and the files it loads by default may weigh. */
@@ -54,6 +57,7 @@ export interface PortfolioRecord {
 
 export function portfolioKindForSkill(skillId: string | undefined): PortfolioKind {
   if (skillId && /portfolio-pdf/.test(skillId)) return 'pdf';
+  if (skillId && /share-pack/.test(skillId)) return 'share';
   return skillId && /interview-deck|deck/.test(skillId) ? 'deck' : 'site';
 }
 
@@ -73,18 +77,30 @@ export function validatePortfolioInput(v: unknown, kind: PortfolioKind): Ok<Port
     return { ok: false, error: 'portfolio.projects must list at least one library project slug (get_open_design_library lists them), or give a target.' };
   }
   const projects = [...new Set((o.projects as string[]).map((p) => p.trim()))];
-  const max = kind === 'deck' ? MAX_DECK_PROJECTS : kind === 'pdf' ? MAX_PDF_PROJECTS : MAX_SITE_PROJECTS;
+  const max = maxProjects(kind);
   if (projects.length > max) {
-    return { ok: false, error: kind === 'deck' ? `An interview deck covers one or two projects; got ${projects.length}. Pick the two that best show the role.` : `A portfolio site shows at most ${MAX_SITE_PROJECTS} case studies; got ${projects.length}. Three to five is the usual range.` };
+    return {
+      ok: false,
+      error:
+        kind === 'deck'
+          ? `An interview deck covers one or two projects; got ${projects.length}. Pick the two that best show the role.`
+          : kind === 'share'
+            ? `A share pack is made from one project; got ${projects.length}. Make one pack per project.`
+            : `A portfolio site shows at most ${MAX_SITE_PROJECTS} case studies; got ${projects.length}. Three to five is the usual range.`,
+    };
   }
   let length: number | undefined;
   if (kind === 'deck') {
     length = o.length === undefined ? DEFAULT_INTERVIEW_LENGTH : Number(o.length);
     if (!(INTERVIEW_LENGTHS as readonly number[]).includes(length)) return { ok: false, error: `portfolio.length is the talk's length in minutes: 30, 45 or 60; got ${JSON.stringify(o.length)}.` };
   } else if (o.length !== undefined) {
-    return { ok: false, error: `portfolio.length is for interview decks (30, 45 or 60 minutes); a ${kind === 'pdf' ? 'PDF' : 'site'} has no length.` };
+    return { ok: false, error: `portfolio.length is for interview decks (30, 45 or 60 minutes); a ${kind === 'pdf' ? 'PDF' : kind === 'share' ? 'share pack' : 'site'} has no length.` };
   }
   return { ok: true, value: { kind, projects, ...(length !== undefined ? { length } : {}), ...(target ? { target } : {}) } };
+}
+
+function maxProjects(kind: PortfolioKind): number {
+  return kind === 'deck' ? MAX_DECK_PROJECTS : kind === 'pdf' ? MAX_PDF_PROJECTS : kind === 'share' ? MAX_SHARE_PROJECTS : MAX_SITE_PROJECTS;
 }
 
 /** metadata.portfolio when it is a valid record. */
@@ -92,7 +108,7 @@ export function portfolioRecordOf(metadata: unknown): PortfolioRecord | undefine
   const p = metadata && typeof metadata === 'object' ? (metadata as Record<string, unknown>).portfolio : undefined;
   if (!p || typeof p !== 'object') return undefined;
   const r = p as Record<string, unknown>;
-  const kind = r.kind === 'deck' || r.kind === 'site' || r.kind === 'pdf' ? (r.kind as PortfolioKind) : undefined;
+  const kind = (PORTFOLIO_KINDS as readonly unknown[]).includes(r.kind) ? (r.kind as PortfolioKind) : undefined;
   if (!kind || !Array.isArray(r.projects)) return undefined;
   const projects = r.projects.filter((x): x is string => typeof x === 'string');
   return { kind, projects, ...(typeof r.length === 'number' ? { length: r.length } : {}), ...(typeof r.target === 'string' ? { target: r.target } : {}) };
@@ -164,6 +180,8 @@ export interface PortfolioPicture {
   /** Paths relative to the design's folder. */
   src: string;
   srcset?: string;
+  /** The screen inside the kit's device frame, made at import for assets with a device. */
+  framedSrc?: string;
   width?: number;
   height?: number;
   alt?: string;
@@ -190,14 +208,15 @@ function dateRange(p: Project): string {
   return start || end ? `${start || '?'} to ${end || 'now'}` : '';
 }
 
-function pictureMarkup(pic: PortfolioPicture): string {
+function pictureMarkup(pic: PortfolioPicture, framed = false): string {
   const attrs = [
-    `src="${pic.src}"`,
-    pic.srcset ? `srcset="${pic.srcset}"` : '',
-    pic.srcset ? 'sizes="(max-width: 800px) 100vw, 1200px"' : '',
-    pic.width && pic.height ? `width="${pic.width}" height="${pic.height}"` : '',
+    `src="${framed ? pic.framedSrc : pic.src}"`,
+    !framed && pic.srcset ? `srcset="${pic.srcset}"` : '',
+    !framed && pic.srcset ? 'sizes="(max-width: 800px) 100vw, 1200px"' : '',
+    !framed && pic.width && pic.height ? `width="${pic.width}" height="${pic.height}"` : '',
     `alt="${(pic.alt ?? '').replace(/"/g, '&quot;')}"`,
     `data-od-asset="${pic.project}/${pic.asset}"`,
+    framed ? 'data-od-framed' : '',
     'loading="lazy"',
   ].filter(Boolean);
   return `<img ${attrs.join(' ')}>`;
@@ -217,6 +236,7 @@ async function copyPicture(workspaceRoot: string, outputDir: string, project: Pr
   const variants = files.value.variants;
   const src = variants.length > 0 ? await copy((variants.find((v) => v.width >= 1400) ?? variants[variants.length - 1]).file) : await copy(files.value.file);
   const srcset = variants.length > 1 ? (await Promise.all(variants.map(async (v) => `${await copy(v.file)} ${v.width}w`))).join(', ') : undefined;
+  const framedSrc = files.value.framedFile ? await copy(files.value.framedFile) : undefined;
   return {
     ok: true,
     value: {
@@ -224,6 +244,7 @@ async function copyPicture(workspaceRoot: string, outputDir: string, project: Pr
       asset: asset.id,
       src,
       ...(srcset ? { srcset } : {}),
+      ...(framedSrc ? { framedSrc } : {}),
       ...(asset.width && asset.height ? { width: asset.width, height: asset.height } : {}),
       ...(asset.alt ? { alt: asset.alt } : {}),
       altConfirmed: !!asset.alt && !asset.altDraft,
@@ -266,6 +287,7 @@ function projectSection(p: Project, pictures: PortfolioPicture[], skipped: strin
     for (const pic of pictures) {
       lines.push(`- \`${pic.asset}\`${pic.altConfirmed ? '' : ' — alt text is a draft: ask the designer to confirm it (save_open_design_project with confirmAlt) before publishing'}`);
       lines.push(`  \`${pictureMarkup(pic)}\``);
+      if (pic.framedSrc) lines.push(`  In its device frame (use this in shots and covers): \`${pictureMarkup(pic, true)}\``);
     }
   } else {
     lines.push('', `No pictures can be shown for this project yet. ${kind === 'site' ? 'Ask the designer to import some (import_open_design_work), or' : 'Ask for screenshots, or'} build its pages from the facts alone.`);
@@ -296,16 +318,20 @@ export async function loadPortfolioBrief(input: { workspaceRoot: string; outputD
     if (!target) return { ok: false, error: `No target "${record.target}". Save it with save_open_design_portfolio_target first.` };
     if (record.projects.length === 0) {
       if (target.projects.length === 0) return { ok: false, error: `The target "${target.name}" has no projects yet. Save its projects (in order) with save_open_design_portfolio_target.` };
-      const max = input.kind === 'deck' ? MAX_DECK_PROJECTS : input.kind === 'pdf' ? MAX_PDF_PROJECTS : MAX_SITE_PROJECTS;
+      const max = maxProjects(input.kind);
       record = { ...record, projects: target.projects.slice(0, max) };
     }
   }
-  const ceiling: PrivacyLevel = target?.ceiling ?? 'unlisted';
+  // A share pack goes on public platforms: public work only, whatever the target says.
+  const ceiling: PrivacyLevel = input.kind === 'share' ? 'public' : (target?.ceiling ?? 'unlisted');
   const projects: Project[] = [];
   for (const slug of record.projects) {
     const p = await readProject(input.workspaceRoot, input.outputDir, slug);
     if (!p) return { ok: false, error: `No project "${slug}" in the work library. Projects: ${library.projects.join(', ') || '(none)'}.` };
     if (privacyRank(p.privacy) > privacyRank(ceiling)) {
+      if (input.kind === 'share') {
+        return { ok: false, error: `"${p.title}" is ${p.privacy}, not public, so it can't go on Dribbble, Behance, LinkedIn or Instagram. Ask the designer whether to make it public (save_open_design_project with privacy "public"), or pick a public project.` };
+      }
       return {
         ok: false,
         error: target
@@ -353,7 +379,7 @@ export async function loadPortfolioBrief(input: { workspaceRoot: string; outputD
     o.bio ? `- **Bio:** ${o.bio}` : '',
     ...(o.links ?? []).map((l) => `- **${l.label}:** ${l.url}`),
   ].filter(Boolean);
-  const targetSection = target ? composeTargetSection(target, projects, input.kind) : '';
+  const targetSection = target ? composeTargetSection(target, projects, input.kind, library) : '';
   const section = [
     '## Portfolio content',
     '',
@@ -372,12 +398,15 @@ export async function loadPortfolioBrief(input: { workspaceRoot: string; outputD
 const PAGE_SIZE_CSS: Record<string, string> = { a4: '297mm × 210mm landscape or 210mm × 297mm portrait (A4)', letter: '11in × 8.5in landscape or 8.5in × 11in portrait (US Letter)', '16:9': '1920 × 1080 px (16:9)' };
 
 /** The "This version" part of the brief: who it is for, its cover note, limits and kind-specific sections. */
-export function composeTargetSection(t: Target, projects: Project[], kind: PortfolioKind): string {
+export function composeTargetSection(t: Target, projects: Project[], kind: PortfolioKind, library?: Library): string {
   const lines = [`### This version: ${t.name} (${t.kind})`, ''];
   lines.push(`Built for one situation, from the target \`${t.slug}\`: these projects in this order (${projects.map((p) => p.slug).join(', ')}), nothing stricter than **${t.ceiling}**. Put \`data-od-project="<slug>"\` on each project's block and keep \`data-od-asset\` on every picture: export and publish check them against the ceiling.`);
   if (t.coverNote) lines.push('', `Cover note, in the designer's words (open with it, unchanged): "${t.coverNote}"`);
-  if (t.notes && t.kind !== 'promotion') lines.push('', `What they asked for (from the designer's notes; echo its words where the library supports them, never claim more):\n\n> ${t.notes.slice(0, 1500).replace(/\n+/g, '\n> ')}`);
-  if (t.ceiling === 'unlisted' && kind === 'site') {
+  if (t.notes && t.kind !== 'promotion' && t.kind !== 'review') lines.push('', `What they asked for (from the designer's notes; echo its words where the library supports them, never claim more):\n\n> ${t.notes.slice(0, 1500).replace(/\n+/g, '\n> ')}`);
+  if (t.kind === 'review' && library) {
+    if (t.notes) lines.push('', `The community's posting rules (from the designer's notes; follow them in the post):\n\n> ${t.notes.slice(0, 1500).replace(/\n+/g, '\n> ')}`);
+    lines.push('', composeAnonymiseSection(library, projects, t), '', composeReviewPostSection(t));
+  } else if (t.ceiling === 'unlisted' && kind === 'site') {
     lines.push('', 'Unlisted: build it as its own collection (its own collectionId, e.g. the target slug), put `<meta name="robots" content="noindex">` in every page\'s <head>, and don\'t link to it from the public portfolio.');
   }
   if (t.limits.pdfBytes !== undefined || t.limits.pdfPageSize) {

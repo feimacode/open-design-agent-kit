@@ -28,7 +28,8 @@ Two rules apply to every tool (and over MCP every tool declares `readOnlyHint`, 
 | [`get_open_design_library`](#get_open_design_library) | `#od-library` | yes | Read the designer's work library: projects, privacy and what each still lacks |
 | [`save_open_design_project`](#save_open_design_project) | `#od-save-project` | yes | Save the designer's details, the portfolio style, project order and one project's facts |
 | [`import_open_design_work`](#import_open_design_work) | `#od-import-work` | yes | Bring screenshots, Figma frames, live pages and designs into a portfolio project |
-| [`save_open_design_portfolio_target`](#save_open_design_portfolio_target) | `#od-portfolio-target` | yes | Save a portfolio version for one job, client, school or promotion |
+| [`save_open_design_portfolio_target`](#save_open_design_portfolio_target) | `#od-portfolio-target` | yes | Save a portfolio version for one job, client, school, promotion or community review |
+| [`import_open_design_comments`](#import_open_design_comments) | none | yes (MCP only) | Record pasted community feedback or Claude artifact threads as open comments on a design |
 | [`port_open_design_artifact_to_app`](#port_open_design_artifact_to_app) | `#od-port-to-app` | yes | Instructions to turn a prototype into app code |
 | [`share_open_design_artifact_to_community`](#share_open_design_artifact_to_community) | `#od-share-to-community` | **no** (VS Code only) | Instructions to contribute a design to the community catalog |
 | [`publish_open_design_artifact_to_canva`](#publish_open_design_artifact_to_canva) | `#od-publish-to-canva` | yes | Get a design into Canva: through your Canva connector when it's connected, otherwise a file to import |
@@ -333,6 +334,11 @@ When `.open-design/history.json` lists earlier designs, the instructions also ge
 | `shop-product` | screen | 2048×2048 px | 96 px | | | 20 MB |
 | `shop-banner` | screen | 1920×800 px | 120 px | | | 20 MB |
 | `shop-collection` | screen | 1920×600 px | 120 px | | | 20 MB |
+| `dribbble-shot` | screen | 1600×1200 px (4:3) | 80 px | | | 10 MB (video 20 MB) |
+| `behance-module` | screen | 1400×1050 px per card | 70 px | | | 10 MB (50 MB refused) |
+| `behance-cover` | screen | 808×632 px, captured at 2× | 40 px | | | |
+| `linkedin-document` | screen | 1080×1350 px per card, one PDF | 64 px | | | 100 MB (unverified) |
+| `marketplace-cover` | screen | 1000×750 px (4:3), captured at 2× | 60 px | | | |
 | `a4` | print | 210×297 mm | 5 mm | 3 mm | 9 pt | |
 | `a3` | print | 297×420 mm | 5 mm | 3 mm | 10 pt | |
 | `a2` | print | 420×594 mm | 10 mm | 3 mm | 14 pt | |
@@ -768,15 +774,32 @@ Saves a [tailored version](../guides/portfolio.md#tailored-versions) of the port
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
-| `target` | object | yes | `slug` picks an existing target; a new one needs `name` and `kind` (`job`, `client`, `school`, `promotion`, `general`). `notes` (the pasted ad, brief, school rules or criteria, up to 20,000 characters), `projects` (library slugs in order), `ceiling` (`public`, `unlisted`, `internal`; default `public`, promotion `internal`), `outputs` (`site`, `pdf`, `deck`, `images`), `coverNote`, `limits` `{ pdfMB, imageMB, pieces, pdfPageSize: a4 · letter · 16:9 }` (defaults: job, client and general PDF 10 MB; school image 5 MB and PDF 10 MB; promotion none; `null` clears one), `criteria` (promotion: a list, or lines; taken from `notes` when left out) and `client` `{ site, concept, beforeAfter }` (entry paths of the redesign concept and before/after page for a "For you" section). Fields you pass replace the stored ones. |
+| `target` | object | yes | `slug` picks an existing target; a new one needs `name` and `kind` (`job`, `client`, `school`, `promotion`, `general`, `review`). `notes` (the pasted ad, brief, school rules or criteria, up to 20,000 characters), `projects` (library slugs in order), `ceiling` (`public`, `unlisted`, `internal`; default `public`, promotion `internal`), `outputs` (`site`, `pdf`, `deck`, `images`), `coverNote`, `limits` `{ pdfMB, imageMB, pieces, pdfPageSize: a4 · letter · 16:9 }` (defaults: job, client and general PDF 10 MB; school image 5 MB and PDF 10 MB; promotion none; `null` clears one), `criteria` (promotion: a list, or lines; taken from `notes` when left out) and `client` `{ site, concept, beforeAfter }` (entry paths of the redesign concept and before/after page for a "For you" section) and `review` `{ community, questions (at most 3), notWanted, labels }` (a [review round](../guides/portfolio.md#a-community-review-round): where it is posted, what the designer wants answered and doesn't, and a neutral label per project slug such as "Grocery company, 2025"; default ceiling `unlisted`, output `site`). Fields you pass replace the stored ones. |
 
 **Result:** text: the saved target with its limits; the projects in order, each one stricter than the ceiling marked; a **suggested order** of the library's projects from the notes, with the words and two-word phrases each matched (phrases count double; library order breaks ties), to show the designer, not to apply silently; the projects the ceiling leaves out; for a promotion, each criterion with the projects that show it, or "no evidence yet"; and what the ceiling allows (internal: files only; unlisted: a Claude artifact, or a host where the designer adds a password).
 
-**Errors:** no library, a new target without `name` or `kind`, an unknown project slug, more than 12 projects, a limit out of range, `client` on a non-client target or naming a missing file, and an `internal` target with a `site` output.
+**Errors:** no library, a new target without `name` or `kind`, an unknown project slug, more than 12 projects, a limit out of range, `client` on a non-client target or naming a missing file, an `internal` target with a `site` output, `review` on a non-review target, and more than three review questions (the message lists them, so the agent asks which three to keep).
+
+**Review versions.** A `review` target's brief adds an **Anonymise this version** part (each name, email, profile link, employer, client and live link from the library, with its neutral label: the designer's from `review.labels`, else "Company A, 2025") and a **review-post.md** part (context, the questions, the feedback not wanted, the link). The check reports `review-anonymity` errors for any of those left in the page's text, alt text, file names, `<title>`, meta and Open Graph tags or link targets, and publish refuses the version until they are gone. Faces and logos inside pictures aren't detected: redaction boxes are the fix.
 
 **Privacy ceiling.** A design built for a target records it in `metadata.portfolio.target`. [Export](#export_open_design_artifact) (every file format) and [publish](#publish_open_design_artifact) (every provider) read the library ids on the design, and on every page of its collection (`data-od-project`, `data-od-case-study`, `data-od-asset`), and refuse an output holding a project or picture stricter than the ceiling, naming each one and its page (`privacy-ceiling`). An internal target is never published. A portfolio design with no target uses the ceiling `unlisted`, so internal work never leaves. A copied picture without its id isn't seen, so the check reports `portfolio-untagged-image` for it.
 
 **PDF size.** A deck exported as PDF with `maxBytes` is first assembled at full quality; if it is over, its slides are saved as JPEG at qualities 90 down to 40 until it fits, keeping every page. If it is still over at 40, nothing is written and the export fails (`over-budget`) naming the three heaviest slides. Slides with `data-od-piece` exported as images are named from the piece's title.
+
+### import_open_design_comments
+
+Records comments from outside the kit as open comments in a design's comment file (`<entry>.comments.json`), so [`get_open_design_artifact`](#get_open_design_artifact) lists them in `openComments` and `resolvedCommentIds` on registration resolves them like any other. Nothing is fetched: the agent passes what the designer pasted or what it read.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `entryPath` | string | yes | The design; for community feedback on a site, its home page. |
+| `source` | `"community"` \| `"claude-artifact"` | yes | `community`: feedback pasted from a portfolio review (Reddit, a Discord, Dribbble). `claude-artifact`: threads on the design's Claude artifact. |
+| `artifactUrl` | string | for `claude-artifact` | The artifact the threads are on; stored as each comment's `threadUrl`. |
+| `comments` | object[] (≤ 100) | yes | `{ text, externalId?, author?, page?, anchor? { selector, text, odId }, createdAt?, threadUrl? }`. `externalId` is required for artifact threads; community points get one from their page and text. `page` (community) is the entry path of the page the point is about, in the design's collection. |
+
+**Result:** text: per page, the comments added (open) and those already imported (their status kept); the points whose `page` isn't in the collection, attached to the home page (the collection's `index` screen); and, for community feedback, the follow-up step (a before/after page and a "what changed" post).
+
+**Errors:** an unknown `source`, no artifact at `entryPath`, `claude-artifact` without `artifactUrl` or an `externalId`, an empty point, a point over 4,000 characters, and more than 100 comments.
 
 ### port_open_design_artifact_to_app
 
@@ -838,6 +861,8 @@ Composes instructions to get a finished artifact into Canva. **It writes nothing
   - **Editable design.** The export is hosted briefly on a public link through [`publish_open_design_artifact`](#publish_open_design_artifact) with `includeFiles`, after that tool's own confirmation (`cloudflare-temporary` or your own host, never `netlify-temporary`, whose links are password-protected). Canva's `import-design-from-url` then converts it into a design, and the agent checks it with `read-design` and gives you the edit link. It publishes a Brand Template with `publish-brand-template` only if you say yes.
   - **Private upload.** The file goes straight into your Canva **Uploads**, and you open it there to edit. Nothing goes public. The agent gets a single-use URL from Canva's `create-upload-url` and calls this tool again with `filePath` and `uploadUrl`. The Open Design server then sends the file from the machine it's on, so the agent doesn't need a terminal (Claude Desktop Chat may not have one ready). The server only uploads a file from the artifact's `exports/` folder, and only to an https `canva.com` URL.
 - **Canva not connected:** the agent offers to connect it once. If you decline, it hands you the file with Canva's own **Import a file** steps.
+
+The share formats (`dribbble-shot`, `behance-module`, `behance-cover`, `linkedin-document`, `marketplace-cover`) take their sizes and limits from `packages/core/src/poster/share-platforms.json`, where each platform's rule records the help page it came from and the date it was checked. Export uses the limit as the byte budget (a Dribbble MP4's is 20 MB) and reports any file still over it as `platform-limit`: an error over a confirmed limit, a warning over one marked unverified or over a size the platform only recommends. `check_open_design_artifact` reports the same for a share design's recorded exports. A `linkedin-document` exports as **one PDF**, a page per card at the card's size. `marketplace-cover` is 4:3 for Upwork and Contra; Fiverr crops it to 1280×769, so keep text in the middle band.
 
 The import passes a Canva design type when one fits the artifact: a deck becomes `presentation`, an `ig-square`/`ig-portrait` card `instagram_post`, `story` `your_story`, `x-image` `twitter_post`, `yt-thumbnail` `youtube_thumbnail`, `a4` `a4`, `letter` `us_letter`, and larger print sizes `poster`. Public Creator templates on Canva's marketplace stay a manual step in Canva.
 
@@ -984,6 +1009,8 @@ For a deliberate exception (a brand that really is purple, three equal pricing t
 | `portfolio-untagged-image` | A picture with no `data-od-asset` (and not `alt=""` or `data-od-decorative`), which the privacy ceiling can't see |
 | `portfolio-ceiling` | An error, for designs made for a target: a project or picture stricter than the target's ceiling |
 | `portfolio-noindex` | An unlisted target's site page without `<meta name="robots" content="noindex">` |
+| `review-anonymity` | An error, for a review version: a name, email, profile link, employer, client or live link from the library still in the page (text, alt text, file names, title, meta and Open Graph tags, link targets) |
+| `platform-limit` | A share design's export over its platform's upload limit (an error when the limit is confirmed, a warning when it is unverified or only recommended) |
 | `portfolio-piece-count`, `portfolio-piece-title` | School targets: a number of `data-od-piece` slides other than the school's, or a piece without a title |
 | `portfolio-criteria` | Promotion targets: a criterion missing from the criteria map (`data-od-criterion`) |
 

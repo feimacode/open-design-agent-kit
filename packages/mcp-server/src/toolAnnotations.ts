@@ -61,6 +61,7 @@ export const TOOL_ANNOTATIONS: Record<string, ToolAnnotations> = {
   save_open_design_portfolio_target: WRITES,
   get_open_design_library: READS,
   import_open_design_work: WRITES_ONLINE,
+  import_open_design_comments: WRITES,
 
   write_open_design_file: OVERWRITES,
 
@@ -122,6 +123,7 @@ export const TOOL_TITLES: Record<string, string> = {
   compare_open_design_before_after: 'Compare a redesign before and after',
   save_open_design_project: 'Save to the work library',
   save_open_design_portfolio_target: 'Save a tailored portfolio version',
+  import_open_design_comments: 'Import comments on a design',
   get_open_design_library: 'Read the work library',
   import_open_design_work: 'Import work into the library',
   publish_open_design_artifact: 'Publish a design',

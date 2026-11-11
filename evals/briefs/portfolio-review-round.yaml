@@ -1,0 +1,16 @@
+id: portfolio-review-round
+request: "I want to post my portfolio on r/UXDesign for a critique without my name or where I work on it. Then here's what people said: 'The checkout case study is hard to read on my phone.' 'Lead with the outcome, I had to scroll to find the +18%.' 'Who was on the team? The role isn't clear.'"
+expect:
+  surface: portfolio
+  skills: [portfolio-review-round]
+  questions: { max: 2 }
+designSystem: null
+fixture: portfolio-library
+answers:
+  questions: "Is it readable on a phone? Are the case studies too long?"
+  notWanted: "The colours, they follow my brand"
+  labels: "Harvest Box is a grocery company"
+must:
+  - "A review target is saved (unlisted) and the review version shows no 'Sam Rivera', email, LinkedIn link or 'Harvest Box' in its text, alt text, file names, title or Open Graph tags; the check reports no review-anonymity errors"
+  - "review-post.md has the context, at most three questions, the feedback not wanted and the link"
+  - "The three pasted points are imported as community comments, the phone and outcome points on the checkout case study, and the follow-up post lists what changed for each resolved one"

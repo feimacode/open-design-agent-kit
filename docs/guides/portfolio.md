@@ -105,3 +105,34 @@ The check adds a portfolio group for these pages: the first screen on a phone an
 Every slide has presenter notes and a minute budget. Press P in the preview for presenter mode: the notes, the slide's minutes, the running total against your slot and a timer. The check adds up the minutes and tells you when the talk runs more than 10% over or under, so you can cut before you rehearse. Export it as editable PowerPoint (notes included) or PDF.
 
 > **On the hosted server** (Claude and ChatGPT on the web): live pages can't be captured and Figma frames come only through the Figma connector. Attach screenshots instead.
+
+## Sharing a project
+
+The `portfolio-share-pack` recipe turns one **public** project into everything to post it: a cover, three to five Dribbble shots, Behance modules and cover, a LinkedIn document post, an Instagram carousel and a marketplace cover for Upwork, Contra or Fiverr. Each piece is a design in a share format, so it gets the normal checks, steering edits and exports, and they share one collection so they export together.
+
+| Platform | Format | Size and limit | Source, checked |
+|---|---|---|---|
+| Dribbble | `dribbble-shot` | 1600×1200 (any ratio accepted); images 10 MB, video 20 MB | [Dribbble help](https://help.dribbble.com/en/articles/11062601-creating-dribbble-shots), 2026-11-11 |
+| Behance | `behance-module`, `behance-cover` | modules 1400 wide, 10 MB recommended, 50 MB refused; cover at least 808×632 | [modules](https://help.behance.net/hc/en-us/articles/204484614), [cover](https://help.behance.net/hc/en-us/articles/204483484-Guide-Project-Cover-Image), 2026-11-11 |
+| LinkedIn | `linkedin-document` | 1080×1350 cards, one PDF; 100 MB, 300 pages (unverified) | LinkedIn help blocks automated reading, 2026-11-11 |
+| Upwork | `marketplace-cover` | 1000×750 (4:3), 400×300 to 4000×4000 | [Upwork help](https://support.upwork.com/hc/en-us/articles/360016144974), 2026-11-11 |
+| Fiverr | `marketplace-cover` | 1280×769 recommended (crops the 4:3 cover) | [Fiverr help](https://help.fiverr.com/hc/en-us/articles/15863342952977-Gig-Images-General-Gig-image-guidelines), 2026-11-11 |
+| Contra | `marketplace-cover` | no published size (unverified) | 2026-11-11 |
+
+Export uses each limit as the byte budget and reports a file still over it; a value marked unverified only warns. The rules live in one data file with their sources, so a platform change is one edit.
+
+Screens imported with a device (`iphone`, `android`, `ipad`, `browser`, `macbook`) get a copy inside the kit's device frame at import (with any redaction boxes baked in), and the brief offers it as `data-od-framed` markup for shots and covers. A phone screenshot that has its own status bar shows two; crop it before importing.
+
+The recipe also writes `posts.md`: the post text per platform, from the project's facts only. An unlisted or internal project is refused with a question: make it public, or pick another.
+
+## A community review round
+
+The `portfolio-review-round` recipe gets feedback from strangers without telling them who you are:
+
+1. A **review target** (`kind: "review"`, the community's rules as `notes`, `review: { community, questions, notWanted, labels }`) is unlisted and builds as a site. At most three questions: with more, the agent asks which three to keep.
+2. Its brief lists every identifying fact to replace (your name, email and profile links, employers and clients, live links) with a neutral label ("Grocery company, 2025"). The check reports any left in the text, alt text, file names, `<title>`, Open Graph tags or link targets as `review-anonymity` errors, and publish refuses the version until they are gone. Pictures aren't searched: add redaction boxes for faces, logos and names in screenshots.
+3. `review-post.md` holds the context, the questions, the feedback not wanted and the unlisted link, ready to paste.
+4. Paste the replies back: `import_open_design_comments` with `source: "community"` records each point as an open comment on the page it is about (or the home page). Resolve them as you revise.
+5. The follow-up compares the posted version with the revised one on a before/after page, and drafts `follow-up-post.md` with what changed for each resolved point.
+
+The kit never posts or reads the community for you: you paste the post and the replies.

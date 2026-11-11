@@ -2079,7 +2079,8 @@
                     "client",
                     "school",
                     "promotion",
-                    "general"
+                    "general",
+                    "review"
                   ]
                 },
                 "notes": {
@@ -2174,6 +2175,31 @@
                     }
                   },
                   "description": "Client targets: their site and the redesign concept for a \"For you\" section."
+                },
+                "review": {
+                  "type": "object",
+                  "description": "Review targets: an anonymised, unlisted version for a community critique. community, up to three questions, notWanted, and labels (neutral labels per project slug).",
+                  "properties": {
+                    "community": {
+                      "type": "string"
+                    },
+                    "questions": {
+                      "type": "array",
+                      "maxItems": 3,
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "notWanted": {
+                      "type": "string"
+                    },
+                    "labels": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  }
                 }
               }
             }

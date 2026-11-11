@@ -5,7 +5,9 @@
 // into every copy an output can use. Redaction shrinks the box to a few
 // pixels and blurs it back up, so text under a box can't be read back.
 import type { Browser } from 'puppeteer-core';
-import type { Redaction } from './library';
+import type { AssetDevice, Redaction } from './library';
+import { wrapInDeviceShell } from '../export/deviceShellImage';
+import { DEVICE_CONTENT_SIZES, type DeviceSpec } from '../preview/deviceShell';
 
 export const VARIANT_WIDTHS = [800, 1400, 2800] as const;
 export const DRIBBBLE_MIN_WIDTH = 1600;
@@ -240,4 +242,26 @@ export async function processImage(browser: Browser, data: Buffer, mime: string,
   } finally {
     await page.close().catch(() => undefined);
   }
+}
+
+/** The kit device frame for an imported screen's device, or undefined for none. */
+export function frameSpecFor(device: AssetDevice | undefined, size?: { width: number; height: number }): DeviceSpec | undefined {
+  if (device === 'iphone' || device === 'android') return { device };
+  if (device === 'ipad') return { device: 'tablet', orientation: size && size.height > size.width ? 'portrait' : 'landscape' };
+  if (device === 'macbook' || device === 'browser') return { device: 'desktop-app', window: 'mac' };
+  return undefined;
+}
+
+/**
+ * An imported screen shown inside the kit's device frame (openspec
+ * add-portfolio-share-and-review, Frames On Imported Screens): the same frame
+ * kit-made device screens get, at about the screenshot's own resolution.
+ */
+export async function frameScreen(browser: Browser, data: Buffer, mime: string, spec: DeviceSpec, title?: string): Promise<Buffer> {
+  const size = imageSize(data);
+  const key = spec.device === 'tablet' ? `tablet-${spec.orientation ?? 'landscape'}` : spec.device;
+  const content = DEVICE_CONTENT_SIZES[key];
+  const scale = size && content ? Math.min(3, Math.max(1, Math.round((size.width / content.width) * 4) / 4)) : 2;
+  const framed = await wrapInDeviceShell(browser, data, spec, { title, scale, format: 'png', mime, cover: true });
+  return framed.buffer;
 }
