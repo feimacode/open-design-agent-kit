@@ -5,8 +5,8 @@
 
 ## 1. Comment import (core + MCP)
 
-- [ ] 1.1 Add `source`, `externalId`, `threadUrl` to the comment record; merge by `externalId`
-- [ ] 1.2 `import_open_design_comments` tool: validate entry, map anchors (selector, text excerpt, `data-od-id`) to the record, write open comments, return counts
+- [x] 1.1 Add `source`, `externalId`, `threadUrl` to the comment record; merge by `externalId`
+- [x] 1.2 `import_open_design_comments` tool: validate entry, map anchors (selector, text excerpt, `data-od-id`) to the record, write open comments, return counts (built with add-portfolio-share-and-review, PR #138)
 - [ ] 1.3 Keep `data-od-id` in the `claude-artifact` standalone export
 - [ ] 1.4 Unit tests: re-import is idempotent, resolved comments stay resolved, unknown anchor kept as text only
 

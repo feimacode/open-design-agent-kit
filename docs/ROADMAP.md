@@ -86,23 +86,19 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 
 ### Shipped
 
-- Building blocks only, not yet routed as a portfolio: linked flows with a whole-flow site export ([#91]), publish providers, social and LinkedIn sizes, video export, and the upstream "design-forward portfolio" resume.
-
-### In progress
-
-- **Four proposals in [#133]**, to apply in this order:
-  1. `add-work-library`: projects, facts and assets entered once, with a privacy level per item. Its import tool is shared with [add-artifact-comment-review](../openspec/changes/add-artifact-comment-review/).
-  2. `add-portfolio-site-and-deck`: a home page with 3 to 5 case studies, and a portfolio interview deck of about 45 minutes.
-  3. `add-tailored-portfolios`: versions for a specific job or client.
-  4. `add-portfolio-share-and-review`: share packs and a peer review round. The Behance cover and marketplace image sizes still need checking (its task 1.1).
+- **Work library** ([#135]): projects, facts, outcomes with their source, and imported work (files, live pages, kit designs, Figma frames) entered once, with a privacy level per project and picture, redaction boxes and alt text kept as a draft until confirmed.
+- **Portfolio site and interview deck** ([#136]): a home page, case studies and about page as one site, and a 30, 45 or 60 minute interview deck with presenter notes, minute budgets and backup slides; portfolio checks and a "How I worked" block built only from the kit's own records.
+- **Tailored versions and privacy ceilings** ([#137]): targets for a job, client, school or promotion, a PDF recipe with size limits, and export and publish that refuse work stricter than the version allows.
+- **Share packs and review rounds** ([#138]): Dribbble, Behance, LinkedIn document and marketplace formats with platform limits from their help pages, device frames on imported screens, an anonymised unlisted version for community critiques, and pasted feedback recorded as comments (`import_open_design_comments`).
 
 ### Next
 
-- Apply `add-work-library`, then `add-portfolio-site-and-deck`, once [#133] merges.
+- Re-check the limits marked unverified in `share-platforms.json` (LinkedIn document size and pages, Contra cover) before each release.
+- Redeploy the hosted gateway so it offers the portfolio tools.
 
 ### Later
 
-- A process story built from explorations and earlier versions.
+- A fuller process story: earlier versions and decisions over time, beyond the records the "How I worked" block lists now.
 - Learning a designer's own style from their past work.
 - Checks for each situation (job application, school application, client pitch).
 
@@ -382,3 +378,7 @@ Work that keeps the roadmap honest but belongs to no single area:
 [#131]: https://github.com/feimacode/open-design-agent-kit/pull/131
 [#132]: https://github.com/feimacode/open-design-agent-kit/pull/132
 [#133]: https://github.com/feimacode/open-design-agent-kit/pull/133
+[#135]: https://github.com/feimacode/open-design-agent-kit/pull/135
+[#136]: https://github.com/feimacode/open-design-agent-kit/pull/136
+[#137]: https://github.com/feimacode/open-design-agent-kit/pull/137
+[#138]: https://github.com/feimacode/open-design-agent-kit/pull/138
