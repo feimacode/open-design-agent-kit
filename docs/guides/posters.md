@@ -24,6 +24,7 @@ If you don't say whether it's for print or screens, the agent asks first. You do
 | Conference or research poster | `a0` | 841×1189 mm |
 | Instagram, Stories, X, square | `ig-portrait`, `story`, `x-image`, `ig-square` | 1080×1350, 1080×1920, 1600×900, 1080×1080 px |
 | Pinterest Pin | `pinterest-pin` | 1000×1500 px (2:3), up to 20 MB |
+| Facebook Event Cover | `facebook-event-cover` | 1920×1005 px |
 | YouTube thumbnail, Xiaohongshu card | `yt-thumbnail`, `xhs-card` | 1280×720, 1080×1440 px |
 | Insert, care card, postcard, invitation | `a5`, `a6`, `a7`, `postcard-4x6` | 148×210, 105×148, 74×105 mm, 4×6 in |
 | Business card, jewelry display card, swing tag | `business-card`, `business-card-us` | 85×55 mm, 3.5×2 in |
