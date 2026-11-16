@@ -30,6 +30,7 @@ If you don't say whether it's for print or screens, the agent asks first. You do
 | Business card, jewelry display card, swing tag | `business-card`, `business-card-us` | 85×55 mm, 3.5×2 in |
 | Game cards (corners cut round) | `trading-card`, `tarot-card`, `mini-card` | 2.5×3.5, 2.75×4.75, 1.75×2.5 in |
 | Shop product image and banners | `shop-product`, `shop-banner`, `shop-collection` | 2048×2048, 1920×800, 1920×600 px |
+| Digital ebook cover (Kindle) | `ebook-cover` | 1600×2560 px |
 
 Every id, with its safe area, bleed and minimum type size, is in [Canvas formats](../reference/tools.md#canvas-formats). Pinterest recommends a 2:3 image at 1000×1500 px; the desktop upload limit is 20 MB ([official Pinterest specs](https://help.pinterest.com/en/business/article/pinterest-product-specs)).
 
