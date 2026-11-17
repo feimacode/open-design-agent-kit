@@ -37,6 +37,10 @@ interface ExportArtifactInput {
   fps?: number;
   duration?: number;
   loop?: boolean;
+  audio?: string;
+  audioVolume?: number;
+  captions?: string;
+  burnCaptions?: boolean;
 }
 
 export class ExportArtifactTool implements vscode.LanguageModelTool<ExportArtifactInput> {

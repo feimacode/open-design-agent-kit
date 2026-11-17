@@ -1138,6 +1138,10 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | Code | Meaning |
 |---|---|
 | `invalid-args` | An argument is out of range or a bad combination (the message says which). |
+| `audio` | string | no | `mp4`/`webm` only: a workspace sound file laid under the whole film, trimmed to it with a 0.5 s fade out. `<audio>` tracks in the page (`data-start`, `data-duration`, `data-volume`, `data-fade-in`, `data-fade-out`) are mixed too; the mix is normalised to about −14 LUFS. Supplied files only. See [Sound](../guides/export-animations.md#sound). |
+| `audioVolume` | number 0–1 | no | Volume of `audio`. Default 1. |
+| `captions` | string | no | `mp4`/`webm`/`gif` only: a workspace SRT or WebVTT file. Captions are drawn into the frames inside the safe area and `exports/<name>.vtt` is written. Page cues marked `data-od-caption` are used too. See [Captions](../guides/export-animations.md#captions). |
+| `burnCaptions` | boolean | no | `false` writes only the `.vtt` sidecar. Default true. |
 | `not-found` | No file at `entryPath`. |
 | `not-registered` | [The file exists but has no manifest](../troubleshooting.md#export-failed-not-registered). |
 | `unsupported-kind` | The artifact's renderer can't be rendered (e.g. React or Markdown). |

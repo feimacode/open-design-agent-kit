@@ -36,8 +36,49 @@ Any animated design works: the motion templates in the gallery's **Animation** t
 | `duration` | Seconds, 0.5–60 |
 | `loop` | GIF only. Default true |
 | `maxBytes` | Re-encode smaller to fit a platform limit: lower bitrate for video; fewer frames, then a narrower image, for GIF |
+| `audio` | MP4 and WebM: a sound file in your workspace laid under the whole film, trimmed to it with a 0.5 s fade out |
+| `audioVolume` | Volume of `audio`, 0 to 1. Default 1 |
+| `captions` | An SRT or WebVTT file in your workspace |
+| `burnCaptions` | `false` writes only the `.vtt` file, without drawing captions into the frames. Default true |
 
 Capturing takes roughly 8 frames per second on a laptop, so a 30-second, 30 fps MP4 takes a couple of minutes.
+
+## Sound
+
+> Add the music in `assets/theme.wav` under the launch film and a whoosh when the logo lands.
+
+A film can carry music, voice and sound effects. The kit uses only files you supply: it never downloads, generates or bundles music, and after an export with sound it reminds the agent to check that you may use the tracks where the film will be published.
+
+Sound is placed in the page with the same markup as upstream Open Design, so its motion templates work unchanged:
+
+```html
+<meta name="od-motion-audio" content="required">
+<audio src="assets/theme.wav" data-start="0" data-volume="0.3" data-fade-out="1"></audio>
+<audio src="assets/whoosh.wav" data-start="4.2" data-duration="0.6"></audio>
+```
+
+- `data-start` and `data-duration` are seconds (a track without `data-duration` plays to its end or the film's end), `data-volume` is 0 to 1, and `data-fade-in` / `data-fade-out` are seconds.
+- Files must be in the design's folder. A web address or a file outside the folder is skipped with a warning.
+- `od-motion-audio` records the decision: `required` makes the export fail with `no-audio-track` when no track can be played, and `none` (or upstream's `silent`) is a deliberate silent film.
+- You can also pass `audio` for a music bed under the whole film.
+
+The frames are still captured silently on the virtual clock. ffmpeg then mixes the tracks in one pass, in sync with the frames, and normalises the mix to about −14 LUFS with a −1 dB peak ceiling, the level YouTube, Instagram and TikTok play at. The exporter then probes the file: the result gives the measured loudness, and a film whose sound came out missing or silent fails when sound is `required`. A track cut off mid-sound at the end of the film is reported as `audio-clipped`. GIFs have no sound; the export says so.
+
+MP4 uses AAC and WebM uses Opus (or Vorbis). Without those encoders the video is written silent with a warning, or fails when sound is `required`.
+
+## Captions
+
+> Export the reel with the captions in `captions.srt`.
+
+Pass `captions` with an SRT or WebVTT file, or mark cues in the page:
+
+```html
+<p data-od-caption data-start="1.5" data-duration="2.5">Launching Tuesday</p>
+```
+
+Captions are drawn into the frames in the design system's body font and colours, centred inside the safe area. In a 9:16 frame they sit above the bottom fifth, where Reels, Shorts and TikTok put their buttons. `exports/<name>.vtt` is written beside the video either way, for players and platforms that take a captions file; `burnCaptions: false` writes only that file.
+
+The check reports `caption-too-fast` for a cue over 20 characters a second, and the export reports `caption-outside-safe-area` for one too long to fit. Captions marked in the page appear in the check's timed screenshots (`at`), as they will in the film.
 
 ## Limits
 
@@ -45,7 +86,7 @@ Capturing takes roughly 8 frames per second on a laptop, so a 30-second, 30 fps 
 - **WebGL** renders in software (SwiftShader) during export, so it works without a GPU, just more slowly.
 - **HyperFrames compositions** built with the HyperFrames framework render with its own CLI; see [YouTube videos](youtube-video.md).
 
-> **From the CLI:** `npx @feimacode/open-design-agent-kit export .open-design/outro/outro.html --format gif --fps 15 --duration 3 --max-bytes 5000000`
+> **From the CLI:** `npx @feimacode/open-design-agent-kit export .open-design/outro/outro.html --format gif --fps 15 --duration 3 --max-bytes 5000000`, or with sound and captions: `--format mp4 --audio assets/theme.wav --audio-volume 0.4 --captions captions.srt`
 
 ## Related
 

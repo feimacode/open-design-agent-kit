@@ -103,6 +103,10 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--duration <seconds>` | `mp4`/`webm`/`gif`: length, 0.5–60. Default: from the page. |
 | `--loop`, `--no-loop` | `gif`: loop forever (the default) or play once. |
 | `--transparent` | `png`: capture without the page background, for cut-outs such as a [3D product shot](../guides/3d-objects.md). |
+| `--audio <file>` | `mp4`/`webm`: a sound file laid under the whole film, trimmed to it with a short fade out. Use a file you may use; nothing is downloaded. `<audio>` tracks in the page are mixed too. See [Sound](../guides/export-animations.md#sound). |
+| `--audio-volume <0-1>` | Volume of `--audio`. Default 1. |
+| `--captions <file>` | `mp4`/`webm`/`gif`: an SRT or WebVTT file, drawn into the frames inside the safe area and written as `exports/<name>.vtt`. See [Captions](../guides/export-animations.md#captions). |
+| `--no-burn-captions` | Write only the `.vtt` file, without drawing captions into the frames. |
 | `--ffmpeg <path>` | ffmpeg executable. Default: [`OPEN_DESIGN_FFMPEG_PATH`](settings-and-env.md#open_design_ffmpeg_path), then auto-detect. |
 | `--campaign-sheet` | Fluid designs: also write `campaign-sheet.png`, every shape plus the other pieces in the master's collection. See [Run a campaign](../guides/campaigns.md). |
 | `--shape-sheet` | Fluid designs: also write `<name>-shapes.png`, the design at every shape (all formats unless `--presets`). |

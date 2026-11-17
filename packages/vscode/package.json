@@ -2855,6 +2855,24 @@
             "transparent": {
               "type": "boolean",
               "description": "png only: capture without the page background, so everything the design doesn't paint is transparent — for cut-outs such as a 3D product shot to place on slides or pages. The page (and a 3D scene's renderer) must have a transparent background; a warning says so when every pixel came out opaque. PNGs aren't re-encoded to fit maxBytes when transparent."
+            "audio": {
+              "type": "string",
+              "description": "mp4/webm only: a workspace audio file (WAV, MP3, M4A, OGG…) laid under the whole film, trimmed to its length with a 0.5s fade out. Use only a file the user supplied and may use; the kit never downloads or generates music. Sound placed in the page with <audio src data-start data-duration data-volume> (local files in the design's folder) is mixed too, and the mix is normalised to about -14 LUFS."
+            },
+            "audioVolume": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "mp4/webm only: volume of audio, 0 to 1. Default 1."
+            },
+            "captions": {
+              "type": "string",
+              "description": "mp4/webm/gif only: a workspace SRT or WebVTT file. Captions are drawn into the frames in the design system's font and colours, inside the safe area, and exports/<name>.vtt is written beside the video. Cues marked in the page with data-od-caption data-start data-duration (seconds) are used too."
+            },
+            "burnCaptions": {
+              "type": "boolean",
+              "description": "mp4/webm/gif only: false writes only the .vtt sidecar without drawing captions into the frames. Default true."
+            },
             }
           },
           "required": []

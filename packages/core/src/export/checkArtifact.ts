@@ -12,6 +12,8 @@ import { readArtifact } from '../vendored/artifactCreate';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { openArtifactPage, type ArtifactPageSession } from './artifactPage';
 import { VIRTUAL_CLOCK_SCRIPT } from './motion/virtualClock';
+import { COLLECT_CAPTIONS_SCRIPT, captionSafeArea, cuesFromPage, installCaptionOverlay, type RawCaptionCue } from './motion/captions';
+import { filmSoundFindings } from './motion/filmChecks';
 import { extractRootTokens, isStyleTileSkill, missingTileTokens } from '../generation/styleTiles';
 import { findBrowser } from './browserDiscovery';
 import { formatSavedCheckRun, saveCheckRun, type SavedCheckRun } from './checkHistory';
@@ -494,6 +496,8 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
     } else if (probe) {
       result.scene3d = { views: [], note: reviewUnavailableNote(probe), tier: probe.tier };
     }
+    // A film's sound and captions (openspec add-video-sound-and-captions).
+    result.findings.push(...(await filmSoundFindings(options.workspaceRoot, options.entryPath, artifact.entryContent)));
     // Designs on a design system saved from an app: token findings (openspec add-design-from-app).
     result.findings.push(...(await appTokenFindings(options.workspaceRoot, options.outputDir ?? '.open-design', manifest, artifact.entryContent)));
     // A redesign's base screen, beside the new design, second (openspec add-design-from-app).
@@ -733,9 +737,16 @@ async function captureAtTimes(options: CheckArtifactOptions, executablePath: str
     const card = await page.$(CARD_SELECTOR);
     const box = card ? await card.boundingBox() : null;
     const clip = box && box.width >= 1 && box.height >= 1 ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined;
+    // Caption cues in the page are drawn as the export draws them, so the timed images show them.
+    const cues = cuesFromPage((await page.evaluate(COLLECT_CAPTIONS_SCRIPT)) as RawCaptionCue[]);
+    if (cues.length > 0) {
+      const region = clip ?? { x: 0, y: 0, width: viewport.width, height: viewport.height };
+      await page.evaluate(installCaptionOverlay, { cues, clip: region, safe: captionSafeArea(region.width, region.height), hideSource: true });
+    }
     const images: CheckImage[] = [];
     for (const t of [...options.at!].sort((a, b) => a - b)) {
       await page.evaluate(`window.__odClock.advanceTo(${t * 1000})`);
+      if (cues.length > 0) await page.evaluate(`window.__odCaptions.show(${t * 1000})`);
       await page.evaluate('window.__odClock.painted()');
       const png = Buffer.from(await page.screenshot({ type: 'png', ...(clip ? { clip } : {}) }));
       images.push(await toCheckImage(browser, `t=${t}s`, png));

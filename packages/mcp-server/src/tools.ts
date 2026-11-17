@@ -1352,6 +1352,10 @@ export async function exportArtifact(
     fps?: number;
     duration?: number;
     loop?: boolean;
+    audio?: string;
+    audioVolume?: number;
+    captions?: string;
+    burnCaptions?: boolean;
   },
 ): Promise<string> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself;

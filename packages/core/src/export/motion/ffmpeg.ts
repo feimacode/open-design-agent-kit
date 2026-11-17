@@ -18,6 +18,17 @@ export interface FfmpegCapabilities {
   vp9: boolean;
   vp8: boolean;
   gif: boolean;
+  /** Audio encoders (openspec add-video-sound-and-captions): AAC for MP4, Opus or Vorbis for WebM. */
+  aac?: boolean;
+  opus?: boolean;
+  vorbis?: boolean;
+}
+
+/** The audio encoder for a video format with this ffmpeg, or undefined when it has none. */
+export function audioEncoderFor(format: MotionFormat, c: FfmpegCapabilities): 'aac' | 'libopus' | 'libvorbis' | undefined {
+  if (format === 'mp4') return c.aac ? 'aac' : undefined;
+  if (format === 'webm') return c.opus ? 'libopus' : c.vorbis ? 'libvorbis' : undefined;
+  return undefined;
 }
 
 export type FfmpegDiscovery =
@@ -72,6 +83,9 @@ export function parseCapabilities(probe: { encoders: string; filters: string }):
     vp9: has(/^\s*V\S*\s+libvpx-vp9\b/m, probe.encoders),
     vp8: has(/^\s*V\S*\s+libvpx\s/m, probe.encoders),
     gif: has(/^\s*V\S*\s+gif\b/m, probe.encoders) && has(/\bpalettegen\b/, probe.filters) && has(/\bpaletteuse\b/, probe.filters),
+    aac: has(/^\s*A\S*\s+aac\b/m, probe.encoders),
+    opus: has(/^\s*A\S*\s+libopus\b/m, probe.encoders),
+    vorbis: has(/^\s*A\S*\s+libvorbis\b/m, probe.encoders),
   };
 }
 

@@ -139,6 +139,14 @@ export interface ExportArtifactOptions {
   duration?: number;
   /** gif: loop forever (default true). */
   loop?: boolean;
+  /** mp4/webm: a workspace audio file laid under the whole film (openspec add-video-sound-and-captions). */
+  audio?: string;
+  /** mp4/webm: volume of `audio`, 0–1 (default 1). */
+  audioVolume?: number;
+  /** mp4/webm/gif: a workspace SRT or WebVTT file of captions. */
+  captions?: string;
+  /** mp4/webm/gif: draw captions into the frames (default true); a .vtt sidecar is written either way. */
+  burnCaptions?: boolean;
   /** mp4/webm/gif: explicit ffmpeg (setting/flag); falls back to discovery. */
   ffmpegPath?: string;
   /** mp4/webm/gif: progress after each captured frame. */
@@ -283,10 +291,11 @@ function validateOptions(o: ExportArtifactOptions): string | undefined {
   }
   if (isMotionFormat(o.format)) {
     const other = (['quality', 'selector', 'deck', 'slides', 'badge', 'baseUrl', 'bleed', 'cropMarks', 'dpi', 'printHouse', 'checkOnly', 'data', 'presets', 'shapeSheet', 'campaignSheet', 'target', 'transparent'] as const).filter((k) => o[k] !== undefined);
-    if (other.length > 0) return `${other.join(', ')} ${other.length === 1 ? "doesn't" : "don't"} apply to the "${o.format}" format (it takes fps, duration, loop, width/height or preset, scale and maxBytes).`;
+    if (other.length > 0) return `${other.join(', ')} ${other.length === 1 ? "doesn't" : "don't"} apply to the "${o.format}" format (it takes fps, duration, loop, audio, audioVolume, captions, burnCaptions, width/height or preset, scale and maxBytes).`;
     return undefined;
   }
   if (o.fps !== undefined || o.duration !== undefined || o.loop !== undefined) return 'fps, duration and loop apply to the mp4, webm and gif formats only.';
+  if (o.audio !== undefined || o.audioVolume !== undefined || o.captions !== undefined || o.burnCaptions !== undefined) return 'audio, audioVolume, captions and burnCaptions apply to the mp4, webm and gif formats only.';
   if (isInlineFormat(o.format)) {
     const other = (['width', 'height', 'scale', 'quality', 'selector', 'maxBytes', 'deck', 'slides', 'badge', 'preset', 'bleed', 'cropMarks', 'dpi', 'printHouse', 'checkOnly', 'data', 'presets', 'shapeSheet', 'transparent'] as const).filter((k) => o[k] !== undefined);
     if (other.length > 0) return `${other.join(', ')} ${other.length === 1 ? "doesn't" : "don't"} apply to the "${o.format}" format (it takes target and baseUrl).`;

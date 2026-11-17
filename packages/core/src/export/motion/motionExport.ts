@@ -17,7 +17,9 @@ import { openArtifactPage, type ArtifactPageSession } from '../artifactPage';
 import { findBrowser } from '../browserDiscovery';
 import { loadPage, mergeExportRecords } from '../exportArtifact';
 import { isValidDimension, resolveExportSize } from '../exportSize';
-import { findFfmpeg, type MotionFormat } from './ffmpeg';
+import { audioEncoderFor, findFfmpeg, type MotionFormat } from './ffmpeg';
+import { COLLECT_CAPTIONS_SCRIPT, captionSafeArea, captionTimingWarnings, cuesFromPage, installCaptionOverlay, parseCaptions, toVtt, type CaptionCue, type RawCaptionCue } from './captions';
+import { audioFilterGraph, clippedTracks, COLLECT_AUDIO_SCRIPT, muxArgs, probeAudio, probeDurationS, readAudioDecision, resolveAudioTracks, skippedMessage, type RawAudioTrack } from './soundtrack';
 import { SWIFTSHADER_ARGS } from '../webgl';
 import { VIRTUAL_CLOCK_SCRIPT } from './virtualClock';
 
@@ -51,6 +53,14 @@ export interface MotionExportOptions {
   lookupAspectHint?: (sourceSkillId: string) => Promise<string | undefined>;
   readyTimeoutMs?: number;
   settleMs?: number;
+  /** mp4/webm: a workspace audio file laid under the whole film, trimmed to it with a short fade out. */
+  audio?: string;
+  /** Volume of `audio`, 0–1 (default 1). */
+  audioVolume?: number;
+  /** A workspace SRT or WebVTT file of captions. */
+  captions?: string;
+  /** Draw captions into the frames (default true); a .vtt sidecar is written either way. */
+  burnCaptions?: boolean;
   /** Called after each captured frame. */
   onProgress?: (frame: number, total: number) => void;
   /** Checked between frames; true stops the export. */
@@ -71,8 +81,12 @@ export type MotionExportResult =
       warnings: string[];
       ffmpegPath: string;
       browserPath: string;
+      /** The mixed sound: how many tracks and the measured integrated loudness. */
+      audio?: { tracks: string[]; lufs: number; peakDb?: number };
+      /** The .vtt sidecar, when the film has captions. */
+      captions?: { path: string; cues: number; burned: boolean };
     }
-  | { ok: false; code: 'invalid-args' | 'not-found' | 'not-registered' | 'unsupported-kind' | 'no-browser' | 'no-ffmpeg' | 'ffmpeg-missing-encoder' | 'capture-failed' | 'encode-failed' | 'cancelled'; error: string };
+  | { ok: false; code: 'no-audio-track' | 'audio-silent' | 'invalid-args' | 'not-found' | 'not-registered' | 'unsupported-kind' | 'no-browser' | 'no-ffmpeg' | 'ffmpeg-missing-encoder' | 'capture-failed' | 'encode-failed' | 'cancelled'; error: string };
 
 const MOTION_RENDERERS = new Set(['html', 'mini-app', 'svg', 'diagram']);
 
@@ -80,7 +94,8 @@ function fail(code: Extract<MotionExportResult, { ok: false }>['code'], error: s
   return { ok: false, code, error };
 }
 
-export function validateMotionOptions(o: Pick<MotionExportOptions, 'fps' | 'duration' | 'width' | 'height' | 'scale' | 'maxBytes' | 'preset'>): string | undefined {
+export function validateMotionOptions(o: Pick<MotionExportOptions, 'fps' | 'duration' | 'width' | 'height' | 'scale' | 'maxBytes' | 'preset' | 'audioVolume'>): string | undefined {
+  if (o.audioVolume !== undefined && !(typeof o.audioVolume === 'number' && o.audioVolume >= 0 && o.audioVolume <= 1)) return 'audioVolume must be between 0 and 1.';
   if (o.fps !== undefined && !(Number.isInteger(o.fps) && o.fps >= 1 && o.fps <= 60)) return 'fps must be an integer between 1 and 60.';
   if (o.duration !== undefined && !(typeof o.duration === 'number' && o.duration >= 0.5 && o.duration <= MAX_MOTION_SECONDS)) return `duration must be between 0.5 and ${MAX_MOTION_SECONDS} seconds.`;
   if ((o.width === undefined) !== (o.height === undefined)) return 'width and height must be given together.';
@@ -241,6 +256,39 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
     await page.evaluate('window.__odClock.advanceTo(0)');
     await page.evaluate('window.__odClock.painted()');
 
+    // Sound and captions (openspec add-video-sound-and-captions): supplied local files only.
+    const decision = readAudioDecision(artifact.entryContent);
+    const rawTracks = (await page.evaluate(COLLECT_AUDIO_SCRIPT)) as RawAudioTrack[];
+    const sound = await resolveAudioTracks({ workspaceRoot: options.workspaceRoot, entryDir, raw: rawTracks, bed: options.audio, bedVolume: options.audioVolume });
+    for (const s of sound.skipped) warnings.push(`Sound: ${skippedMessage(s)}`);
+    if (decision === 'required' && sound.tracks.length === 0) {
+      const named = sound.skipped.map((s) => s.src);
+      return fail('no-audio-track', `The page declares od-motion-audio "required" but has no playable sound${named.length ? `: ${named.join(', ')} can't be used` : ''}. Put the sound file in the design's folder and reference it with an <audio> element, or pass audio.`);
+    }
+    let tracks = sound.tracks;
+    const audioEncoder = options.format === 'gif' ? undefined : audioEncoderFor(options.format, ff.capabilities);
+    if (tracks.length > 0 && options.format === 'gif') {
+      warnings.push(`GIF has no sound: ${tracks.map((t) => t.src).join(', ')} not included. Export mp4 or webm for a film with sound.`);
+      tracks = [];
+    } else if (tracks.length > 0 && !audioEncoder) {
+      if (decision === 'required') return fail('ffmpeg-missing-encoder', `The ffmpeg at ${ff.path} has no ${options.format === 'mp4' ? 'AAC' : 'Opus or Vorbis'} audio encoder, and the page requires sound. Install a full ffmpeg build or set OPEN_DESIGN_FFMPEG_PATH to one.`);
+      warnings.push(`The ffmpeg at ${ff.path} has no ${options.format === 'mp4' ? 'AAC' : 'Opus or Vorbis'} audio encoder, so the video was written silent. Install a full ffmpeg build to include sound.`);
+      tracks = [];
+    }
+    const pageCueEls = (await page.evaluate(COLLECT_CAPTIONS_SCRIPT)) as RawCaptionCue[];
+    let cues: CaptionCue[] = cuesFromPage(pageCueEls);
+    if (options.captions) {
+      const capAbs = path.resolve(options.workspaceRoot, options.captions);
+      const rootAbs = path.resolve(options.workspaceRoot);
+      if (!capAbs.startsWith(rootAbs + path.sep)) return fail('invalid-args', `captions must be a file inside the workspace: ${options.captions}.`);
+      const text = await fs.readFile(capAbs, 'utf8').catch(() => undefined);
+      if (text === undefined) return fail('invalid-args', `No captions file at ${options.captions}.`);
+      const parsed = parseCaptions(text);
+      if (parsed.length === 0) return fail('invalid-args', `${options.captions} has no cues SRT or WebVTT can read (expected "00:00:01,000 --> 00:00:03,000" lines).`);
+      cues = [...cues, ...parsed].sort((a, b) => a.startMs - b.startMs);
+    }
+    if (pageCueEls.length > 0) await page.evaluate(`for (const el of document.querySelectorAll('[data-od-caption]')) el.style.display = 'none'`);
+
     let durationMs: number;
     let durationSource: DurationSource;
     if (options.duration !== undefined) {
@@ -248,7 +296,7 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
       durationSource = 'explicit';
     } else {
       const facts = (await page.evaluate(`(() => {
-        const dataDurations = Array.prototype.map.call(document.querySelectorAll('[data-duration]'), (el) => Number(el.getAttribute('data-duration')) || 0);
+        const dataDurations = Array.prototype.map.call(document.querySelectorAll('[data-duration]:not(audio):not(video):not([data-od-caption])'), (el) => Number(el.getAttribute('data-duration')) || 0);
         const finiteAnimationEnds = [];
         let infiniteAnimations = 0;
         for (const a of document.getAnimations ? document.getAnimations() : []) {
@@ -271,14 +319,24 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
     const clip = box && box.width >= 1 && box.height >= 1 ? { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) } : { x: 0, y: 0, width: sized.viewport.width, height: sized.viewport.height };
     const frameExt: 'jpg' | 'png' = options.format === 'gif' ? 'png' : 'jpg';
     const total = Math.max(1, Math.round((durationMs / 1000) * fps));
+    const burn = cues.length > 0 && options.burnCaptions !== false;
+    if (burn) await page.evaluate(installCaptionOverlay, { cues, clip, safe: captionSafeArea(clip.width, clip.height, canvas?.safeInset), hideSource: true });
+    for (const w of captionTimingWarnings(cues, durationMs)) warnings.push(`${w.check}: ${w.message}`);
+    const outside = new Set<number>();
     for (let i = 0; i < total; i++) {
       if (options.isCancelled?.()) return fail('cancelled', 'Export cancelled.');
-      await page.evaluate(`window.__odClock.advanceTo(${(i * 1000) / fps})`);
+      const t = (i * 1000) / fps;
+      await page.evaluate(`window.__odClock.advanceTo(${t})`);
+      if (burn && (await page.evaluate(`window.__odCaptions.show(${t})`)) === true) {
+        const cue = cues.findIndex((c) => t >= c.startMs && t < c.endMs);
+        if (cue >= 0) outside.add(cue);
+      }
       await page.evaluate('window.__odClock.painted()');
       const shot = await page.screenshot(frameExt === 'png' ? { type: 'png', clip } : { type: 'jpeg', quality: 92, clip });
       await fs.writeFile(path.join(framesDir, `frame-${String(i + 1).padStart(5, '0')}.${frameExt}`), shot);
       options.onProgress?.(i + 1, total);
     }
+    for (const i of outside) warnings.push(`caption-outside-safe-area: the caption at ${(cues[i].startMs / 1000).toFixed(2)}s ("${cues[i].text.slice(0, 40)}") doesn't fit inside the safe area; shorten or split it.`);
     const workers = Number(await page.evaluate('window.__odClock.workers()'));
     if (workers > 0) warnings.push('The page starts a Web Worker, whose timers run on real time: anything it animates may not match the frames.');
     if (await page.$('video')) warnings.push('The page has a <video> element; it shows whatever frame it is on, not one synced to the export.');
@@ -292,7 +350,10 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
     await fs.mkdir(path.dirname(absOut), { recursive: true });
     // A share format's platform video limit is the byte budget when none is given (Dribbble: 20 MB).
     const platformBudgets = platformsForFormat(canvas?.id).map((p) => p.video?.maxBytes).filter((n): n is number => n !== undefined);
-    const budget = options.maxBytes ?? (platformBudgets.length ? Math.min(...platformBudgets) : undefined);
+    const fullBudget = options.maxBytes ?? (platformBudgets.length ? Math.min(...platformBudgets) : undefined);
+    // Leave room for the sound in a byte budget (192 kbit/s AAC, 160 kbit/s Opus).
+    const audioBytes = tracks.length > 0 ? Math.ceil(((audioEncoder === 'aac' ? 192 : 160) * 1000 * (durationMs / 1000)) / 8) : 0;
+    const budget = fullBudget === undefined ? undefined : Math.max(Math.floor(fullBudget * 0.1), fullBudget - audioBytes);
     const encoded = await encodeWithinBudget(
       { ffmpegPath: ff.path, format: options.format, webmCodec: ff.webmCodec, framesDir, frameExt, fps, width, loop: options.loop ?? true, out: absOut },
       budget,
@@ -300,6 +361,38 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
       warnings,
     );
     if (!encoded.ok) return fail('encode-failed', `ffmpeg (${ff.path}) failed: ${encoded.error}`);
+    let audio: { tracks: string[]; lufs: number; peakDb?: number } | undefined;
+    if (tracks.length > 0 && audioEncoder) {
+      const filmS = durationMs / 1000;
+      const sources = await Promise.all(tracks.map((t) => probeDurationS(ff.path, t.abs)));
+      for (const c of clippedTracks(tracks, filmS, sources)) warnings.push(`audio-clipped: ${c}`);
+      const graph = audioFilterGraph(tracks, filmS, sources);
+      if (graph) {
+        const used = tracks.filter((t, i) => t.startS < filmS && (sources[i] ?? 1) > 0);
+        const muxed = `${absOut}.mux${path.extname(absOut)}`;
+        const r = await ffmpeg(ff.path, muxArgs({ video: absOut, tracks, graph, encoder: audioEncoder, filmS, out: muxed }));
+        if (!r.ok) {
+          await fs.rm(muxed, { force: true });
+          return fail('encode-failed', `ffmpeg (${ff.path}) couldn't mix the sound: ${r.error}`);
+        }
+        await fs.rename(muxed, absOut);
+        const probe = await probeAudio(ff.path, absOut);
+        if (!probe.ok) {
+          const why = probe.reason === 'missing' ? 'has no audio stream' : `is silent (${probe.lufs === -Infinity ? '-inf' : probe.lufs?.toFixed(1)} LUFS)`;
+          if (decision === 'required') return fail('audio-silent', `${relOut} was written but its sound ${why}. Check the tracks: ${used.map((t) => t.src).join(', ')}.`);
+          warnings.push(`The exported sound ${why}; check ${used.map((t) => t.src).join(', ')}.`);
+        } else {
+          audio = { tracks: used.map((t) => t.src), lufs: probe.lufs, peakDb: probe.peakDb };
+          warnings.push(`Sound: ${used.map((t) => t.src).join(', ')}. Confirm with the user that they may use ${used.length === 1 ? 'this track' : 'these tracks'} wherever the film will be published.`);
+        }
+      }
+    }
+    let captionsOut: { path: string; cues: number; burned: boolean } | undefined;
+    if (cues.length > 0) {
+      const relVtt = path.posix.join(entryDir, 'exports', `${base}.vtt`);
+      await fs.writeFile(path.join(options.workspaceRoot, relVtt), toVtt(cues), 'utf8');
+      captionsOut = { path: relVtt, cues: cues.length, burned: burn };
+    }
     const bytes = await size(absOut);
     for (const f of platformLimitFindings(canvas?.id, { path: relOut, kind: 'video', bytes, width })) warnings.push(`${f.severity === 'error' ? 'Over a platform limit' : 'Platform note'}: ${f.message}`);
     try {
@@ -311,7 +404,20 @@ export async function exportMotion(options: MotionExportOptions): Promise<Motion
     } catch (err) {
       warnings.push(`Exported, but couldn't record the export in the manifest: ${err instanceof Error ? err.message : String(err)}`);
     }
-    return { ok: true, motion: options.format, files: [{ path: relOut, bytes, width, height }], fps, frames: total, durationMs, durationSource, warnings, ffmpegPath: ff.path, browserPath: browser.browserURL ?? browser.executablePath };
+    return {
+      ok: true,
+      motion: options.format,
+      files: [{ path: relOut, bytes, width, height }],
+      fps,
+      frames: total,
+      durationMs,
+      durationSource,
+      warnings,
+      ffmpegPath: ff.path,
+      browserPath: browser.browserURL ?? browser.executablePath,
+      ...(audio ? { audio } : {}),
+      ...(captionsOut ? { captions: captionsOut } : {}),
+    };
   } catch (err) {
     return fail('capture-failed', `Motion export failed using ${browser.browserURL ?? browser.executablePath}: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
@@ -336,6 +442,9 @@ export function formatMotionExportResult(result: MotionExportResult): string {
     `- ${f.path} — ${f.width}×${f.height}px, ${(f.bytes / 1024).toFixed(0)} KB`,
     `${(result.durationMs / 1000).toFixed(2)}s at ${result.fps} fps (${result.frames} frames); duration from ${SOURCE_TEXT[result.durationSource]}.`,
   ];
+  if (result.audio) lines.push(`Sound: ${result.audio.tracks.length} track(s) mixed, ${result.audio.lufs.toFixed(1)} LUFS integrated${result.audio.peakDb !== undefined && Number.isFinite(result.audio.peakDb) ? `, peak ${result.audio.peakDb.toFixed(1)} dBFS` : ''}.`);
+  else if (result.motion !== 'gif') lines.push("Sound: none (silent video). For music or sound, the user supplies a file they may use: put it in the design's folder and add an <audio> element, or pass audio.");
+  if (result.captions) lines.push(`Captions: ${result.captions.cues} cue(s)${result.captions.burned ? ' burned in' : ''}; sidecar ${result.captions.path}.`);
   if (result.warnings.length > 0) lines.push('Warnings:', ...result.warnings.map((w) => `- ${w}`));
   return lines.join('\n');
 }

@@ -14,7 +14,7 @@ Video exports (`mp4`, `webm`) SHALL mix every `<audio>` element in the page that
 
 ### Requirement: Audio Decision
 
-A page MAY declare `<meta name="od-motion-audio" content="required">` or `content="none"`. With `required`, an export with no playable track SHALL fail with `no-audio-track`. With `none` or no meta and no tracks, the export SHALL be silent as before. After writing a video with audio, the system SHALL probe the file and fail the export result if the audio stream is missing or silent.
+A page MAY declare `<meta name="od-motion-audio" content="required">` or `content="none"` (upstream's `silent` SHALL be read as `none`). With `required`, an export with no playable track SHALL fail with `no-audio-track`. With `none` or no meta and no tracks, the export SHALL be silent as before. After writing a video with audio, the system SHALL probe the file and fail the export result if the audio stream is missing or silent.
 
 #### Scenario: Required sound missing
 - **WHEN** a page declares `required` and its only `<audio>` source file doesn't exist
