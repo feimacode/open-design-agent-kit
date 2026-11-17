@@ -66,11 +66,12 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 ### Next
 
 - **Readable colour pairs and dark mode, as one token-contract change.** Store each accent and status colour with a partner that is guaranteed readable on it, and give each role a light and a dark value. Today white text on the accent fails 4.5:1 in 62 of 198 systems, `--warn` as text fails in 136, and only 1 system has a dark variant. Derive at resolve time or through the overlay, since the token schema is vendored. Source: Astryx study, 9 November 2026 (items 1 and 2). Not yet proposed.
+- **Motion vocabulary:** derive a fuller set of durations, easings, stagger and travel from the three core motion tokens, with speed and bounce dials; fill it from measured site motion; state it in the brief; add a film craft doc adapted from upstream's `motion-design` skill ([add-motion-vocabulary](../openspec/changes/add-motion-vocabulary/), proposed, 0 of 10 tasks). Source: motion design study, 17 November 2026.
 
 ### Later
 
 - Palettes generated from one pinned brand colour (Astryx study, item 3).
-- Corner radius by role with one roundness dial and a nested-corner rule; motion as two dials, speed and bounce (Astryx study, item 4).
+- Corner radius by role with one roundness dial and a nested-corner rule; motion as two dials moved into [add-motion-vocabulary](../openspec/changes/add-motion-vocabulary/) (Astryx study, item 4).
 - Chart colour tokens (Astryx study, item 5).
 - Numbered design rules that checks can cite (Astryx study, item 6).
 - Figma variable modes (light/dark from Figma), follow-up to the Figma change.
@@ -128,12 +129,15 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 ### Next
 
 - **Work import:** a folder of images, Figma frames as pictures rather than rebuilt code, and live captures, with WebP, `srcset` and alt text. It arrives with `add-work-library` ([#133]) and also serves comment import.
+- **Sound and captions in video export:** mix `<audio>` tracks and a music bed into MP4 and WebM using upstream open-design's markup, normalise loudness, burn in captions with a `.vtt` sidecar, and check that the audio is really there ([add-video-sound-and-captions](../openspec/changes/add-video-sound-and-captions/), proposed, 0 of 11 tasks).
+- **Start from a reference video:** measure a supplied video's cuts, frames and soundtrack, build from the measurements, and compare the result at the cut times; files only, no link downloads ([add-reference-video-replication](../openspec/changes/add-reference-video-replication/), proposed, 0 of 9 tasks). Adapted from upstream open-design v0.27.
 
 ### Later
 
 - Export into a customer's own PowerPoint slide master (`.potx`). Keep the editable-PPTX extractor separate from the writer so a second writer can fill a template package.
 - Developer spec / handoff packet export: measurements, tokens used, states and assets for a developer (UI design research item 9, team collaboration research item 3).
 - Import a Canva design itself, not just its brand (needs a real Canva design to test).
+- Figma Motion timelines in (Figma MCP `get_motion_context`), and playing a supplied Lottie file in designs and exports (motion design study, recommendation 4).
 
 ### Parked
 
@@ -195,6 +199,7 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 
 - **More "AI look" rules and a check command for CI:** port about 13 rules (gradient text, nested cards, hero eyebrow chip and others) and add `check --json --github` with a failing exit code (Impeccable study, item 2).
 - **A baseline arm in evals:** run the same briefs without the kit and score blind, so we measure what the kit adds (Astryx study, item 7).
+- **Motion checks and motion steering verbs:** motion findings in the check (slow or linear UI transitions, layout-property animation, crowding, off-vocabulary values, no reduced-motion path), a filmstrip at beat boundaries, and `calmer`, `snappier` and `smoother` verbs ([add-motion-checks-and-steering](../openspec/changes/add-motion-checks-and-steering/), proposed, 0 of 11 tasks).
 
 ### Later
 
@@ -230,6 +235,7 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 
 - Ask for flow tasks at plan time, not at the end.
 - App store rules check, a finding for screens that drift from their siblings.
+- Refresh the vendored HyperFrames template to upstream (audio clips, shader transitions, lint), and list video editors as hand-off integrations (motion design study, recommendation 5).
 - Pitch pack, batches of prospects, content migration (web agency research).
 
 ### Parked
@@ -296,6 +302,7 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 ### Later
 
 - A "feature of the week" calendar with a proof kit for each feature.
+- A motion row in the online gallery and a 30-second on-brand reel from one extracted brand (motion design study, recommendation 6).
 - A chat server once there are about 30 active users.
 
 ### Parked
