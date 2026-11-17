@@ -310,11 +310,27 @@ When refining existing screens generated with this design system:
 5. Always check whether a section should be light or dark — the chessboard alternation is a core pattern
 6. Reserve Renault Yellow for ONE button per screen — if yellow appears in more than one CTA, the hierarchy collapses
 
+## Motion
+
+Durations and easings for this system. Use these for every transition, animation delay and easing; don't invent others.
+
+| Token | Value |
+| --- | --- |
+| `--motion-fast` | `140ms` |
+| `--motion-base` | `230ms` |
+| `--ease-standard` | `cubic-bezier(0.16, 1, 0.3, 1)` |
+| `--motion-instant` | `70ms` |
+| `--motion-slow` | `460ms` |
+| `--motion-scene` | `920ms` |
+| `--ease-enter` | `cubic-bezier(0.34, 1.12, 0.64, 1)` |
+| `--ease-exit` | `cubic-bezier(0.7, 0, 0.84, 0)` |
+| `--ease-spring` | a `linear()` spring |
+| `--motion-stagger` | `70ms` |
+| `--motion-distance` | `16px` |
+
 ## Not synced from Open Design
 
-- --motion-fast skipped: Claude design systems have no motion family.
-- --motion-base skipped: Claude design systems have no motion family.
-- --ease-standard skipped: Claude design systems have no motion family.
 - Written as literal colours computed from color-mix(): --accent-hover, --accent-active. They won't follow later edits to the colours they mix.
+- Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.
 - Fonts are named by family only (hosted faces); no font files were copied.
 - No components or assets: Open Design design systems carry tokens and guidance only.

@@ -229,13 +229,29 @@ What distinguishes Pinterest is its generous border-radius system (12px–40px, 
 5. Photography carries the design — the UI stays warm and minimal
 6. Plum black (#211922) for text — warmer than pure black
 
+## Motion
+
+Durations and easings for this system. Use these for every transition, animation delay and easing; don't invent others.
+
+| Token | Value |
+| --- | --- |
+| `--motion-fast` | `150ms` |
+| `--motion-base` | `200ms` |
+| `--ease-standard` | `cubic-bezier(0.2, 0, 0, 1)` |
+| `--motion-instant` | `80ms` |
+| `--motion-slow` | `400ms` |
+| `--motion-scene` | `800ms` |
+| `--ease-enter` | `cubic-bezier(0.34, 1.12, 0.64, 1)` |
+| `--ease-exit` | `cubic-bezier(0.7, 0, 0.84, 0)` |
+| `--ease-spring` | a `linear()` spring |
+| `--motion-stagger` | `60ms` |
+| `--motion-distance` | `16px` |
+
 ## Not synced from Open Design
 
 - --font-display shortened to Claude's 200-character limit: "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell, "Fira Sans", "Droid Sans", sans-serif.
 - --font-body shortened to Claude's 200-character limit: "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell, "Fira Sans", "Droid Sans", sans-serif.
-- --motion-fast skipped: Claude design systems have no motion family.
-- --motion-base skipped: Claude design systems have no motion family.
-- --ease-standard skipped: Claude design systems have no motion family.
 - Written as literal colours computed from color-mix(): --accent-hover, --accent-active, --focus-ring. They won't follow later edits to the colours they mix.
+- Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.
 - Fonts are named by family only (hosted faces); no font files were copied.
 - No components or assets: Open Design design systems carry tokens and guidance only.

@@ -35,6 +35,8 @@ export * from './generation/customDesignSystemInstructions';
 export * from './generation/designSystemPreview';
 export * from './generation/designSystemSource';
 export * from './generation/designSystemTokens';
+export * from './generation/motionVocabulary';
+export * from './generation/motionBrief';
 export * from './generation/designSystemVisualize';
 export * from './generation/designSystemImport';
 export * from './generation/claudeDesignSystem';

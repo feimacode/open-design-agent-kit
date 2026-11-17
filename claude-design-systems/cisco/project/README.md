@@ -197,11 +197,27 @@ What makes Cisco distinct is the combination of **deep infrastructure darkness**
 - "Design a technical dashboard card on a dark surface with a subtle gray border, white text, and Cisco Blue chart highlights."
 - "Build a dark glass navigation bar with restrained white labels and one Cisco Blue active indicator."
 
+## Motion
+
+Durations and easings for this system. Use these for every transition, animation delay and easing; don't invent others.
+
+| Token | Value |
+| --- | --- |
+| `--motion-fast` | `160ms` |
+| `--motion-base` | `240ms` |
+| `--ease-standard` | `cubic-bezier(0.2, 0, 0, 1)` |
+| `--motion-instant` | `80ms` |
+| `--motion-slow` | `480ms` |
+| `--motion-scene` | `960ms` |
+| `--ease-enter` | `cubic-bezier(0.34, 1.12, 0.64, 1)` |
+| `--ease-exit` | `cubic-bezier(0.7, 0, 0.84, 0)` |
+| `--ease-spring` | a `linear()` spring |
+| `--motion-stagger` | `70ms` |
+| `--motion-distance` | `16px` |
+
 ## Not synced from Open Design
 
-- --motion-fast skipped: Claude design systems have no motion family.
-- --motion-base skipped: Claude design systems have no motion family.
-- --ease-standard skipped: Claude design systems have no motion family.
 - Written as literal colours computed from color-mix(): --accent-hover, --accent-active. They won't follow later edits to the colours they mix.
+- Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.
 - Fonts are named by family only (hosted faces); no font files were copied.
 - No components or assets: Open Design design systems carry tokens and guidance only.

@@ -194,6 +194,7 @@ import {
   exportDesignSystemForClaude,
   type BrandKind,
 } from '@feimacode/open-design-agent-kit-core';
+import { motionSectionForBrief } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
 import type { DesignLayout } from './layout';
 import { holdsRegisteredArtifact, writeManagedFile } from './managedWorkspace';
@@ -463,6 +464,7 @@ export async function prepareBrief(
     recentDesigns,
     productContext: ctx.managedWorkspace ? undefined : await readProductContext(ctx.workspaceRoot),
     projectDesignMdPath: ctx.managedWorkspace || designSystem ? undefined : await findProjectDesignMd(ctx.workspaceRoot),
+    motionSection: motionSectionForBrief(skill, designSystem),
   });
   const instructions = portfolio
     ? `${composed}\n\n${portfolio.section}\n\nWhen you register, pass \`portfolio\` (${JSON.stringify(portfolio.record)}) so the portfolio checks run.`

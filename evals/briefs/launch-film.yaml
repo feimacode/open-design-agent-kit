@@ -1,0 +1,15 @@
+id: launch-film
+request: "Make a 15-second launch film for Ledgerly's new invoice reminders, for our LinkedIn page."
+expect:
+  surface: animation
+  skills: [video-hyperframes, hyperframes, motion-frames]
+  questions: { max: 1 }
+designSystem: null
+answers:
+  message: "Invoices chase themselves now: Ledgerly sends polite reminders so freelancers get paid on time"
+  aspect: "16:9"
+  sound: "No sound"
+must:
+  - "Every duration and easing in the film uses the brief's motion vocabulary (no invented values)"
+  - "A beat map with times is stated before the build"
+  - "The film exports to MP4 with the duration it says"

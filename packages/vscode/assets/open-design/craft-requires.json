@@ -67,5 +67,56 @@
     "state-coverage",
     "ux-writing",
     "action-states"
+  ],
+  "video-hyperframes": [
+    "motion-film"
+  ],
+  "hyperframes": [
+    "motion-film"
+  ],
+  "remotion": [
+    "motion-film"
+  ],
+  "frame-data-chart-nyt": [
+    "motion-film"
+  ],
+  "frame-flowchart-sticky": [
+    "motion-film"
+  ],
+  "frame-glitch-title": [
+    "motion-film"
+  ],
+  "frame-light-leak-cinema": [
+    "motion-film"
+  ],
+  "frame-liquid-bg-hero": [
+    "motion-film"
+  ],
+  "frame-logo-outro": [
+    "motion-film"
+  ],
+  "frame-macos-notification": [
+    "motion-film"
+  ],
+  "vfx-text-cursor": [
+    "motion-film"
+  ],
+  "motion-frames": [
+    "motion-film"
+  ],
+  "video-shortform": [
+    "motion-film"
+  ],
+  "chat-motion-overlay": [
+    "motion-film"
+  ],
+  "8-bit-orbit-video-template": [
+    "motion-film"
+  ],
+  "swiss-user-research-video-template": [
+    "motion-film"
+  ],
+  "weread-year-in-review-video-template": [
+    "motion-film"
   ]
 }

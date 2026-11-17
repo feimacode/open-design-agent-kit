@@ -13,6 +13,7 @@
 // Importing maps arbitrary Claude token names onto the Open Design token
 // contract by name heuristics, keeping the original names as well.
 
+import { MOTION_CORE_NAMES, MOTION_VOCABULARY_NAMES, withMotionVocabulary } from './motionVocabulary';
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
 import { contrastRatio, parseColor, resolveColorValue, resolveColorsIn } from './colorMix';
 import { contrastFindings } from './claudeDesignSystemFormat';
@@ -203,6 +204,7 @@ const TEXT_GROUNDS: Record<string, string> = {
 export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDesignSystemFiles {
   const now = input.now ?? new Date().toISOString();
   const notes: string[] = [];
+  let motionSeen = false;
   const blocks = input.tokensCss ? cssBlocks(input.tokensCss) : [];
   const base = new Map<string, string>();
   const dark = new Map<string, string>();
@@ -308,7 +310,7 @@ export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDe
     } else if (/^(leading|tracking)-/.test(name)) {
       if (claim(name)) typeMetrics.push({ name, value, usage });
     } else if (/^(motion|ease|duration)-/.test(name)) {
-      notes.push(`--${name} skipped: Claude design systems have no motion family.`);
+      motionSeen = true;
     } else if (/(^|-)(elev|shadow)(-|$)|^focus-ring$/.test(name)) {
       const first = resolveColorsIn(raw, baseLookup);
       if (first === undefined) {
@@ -374,7 +376,10 @@ export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDe
     if (t) t.usage = `${t.usage} Below 4.5:1 on \`${f.ground}\`${themes.length > 1 ? ` in ${f.theme}` : ''} (${f.ratio}:1), as the brand has it.`;
   }
 
-  const readme = `${brandBook(input.designMd)}\n\n## Not synced from Open Design\n\n${
+  // Claude has no motion family: the motion tokens and the derived vocabulary go into the README as guidance (openspec add-motion-vocabulary).
+  const motion = motionSeen || base.size > 0 ? motionReadmeSection(base) : '';
+  if (motion) notes.push('Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.');
+  const readme = `${brandBook(input.designMd)}${motion}\n\n## Not synced from Open Design\n\n${
     notes.length ? notes.map((n) => `- ${n}`).join('\n') : '- Everything in tokens.css carried across.'
   }\n- Fonts are named by family only (hosted faces); no font files were copied.\n- No components or assets: Open Design design systems carry tokens and guidance only.\n`;
 
@@ -862,4 +867,14 @@ function designMdFrom(title: string, readme: string, mapping: string[], notes: s
   }
   const report = [...mapping.map((m) => `- Mapped ${m}`), ...notes.map((n) => `- ${n}`)];
   return `${out}\n\n## Imported from Claude Design\n\n${report.length ? report.join('\n') : '- Tokens carried across by name.'}\n`;
+}
+
+/** The README's Motion section: core motion tokens and the derived vocabulary, with values (openspec add-motion-vocabulary). */
+function motionReadmeSection(base: ReadonlyMap<string, string>): string {
+  const full = withMotionVocabulary(new Map([...base].filter(([k]) => /^(motion|ease)-/.test(k)).map(([k, v]) => [`--${k}`, v])));
+  const rows = [...MOTION_CORE_NAMES, ...MOTION_VOCABULARY_NAMES]
+    .filter((n) => full.has(n))
+    .map((n) => `| \`${n}\` | ${n === '--ease-spring' && full.get(n)!.startsWith('linear(') ? 'a `linear()` spring' : `\`${full.get(n)}\``} |`);
+  if (rows.length === 0) return '';
+  return `\n\n## Motion\n\nDurations and easings for this system. Use these for every transition, animation delay and easing; don't invent others.\n\n| Token | Value |\n| --- | --- |\n${rows.join('\n')}`;
 }

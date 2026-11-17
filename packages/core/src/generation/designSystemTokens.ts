@@ -11,9 +11,11 @@
 //                    heuristics match the curated tokens.css only ~⅓ of the time
 //   4. the token contract's A2 fallbacks
 //   5. the token contract's B-slot aliases (`var(--sibling)`)
+//   6. the derived motion vocabulary (motionVocabulary.ts), for names still unset
 
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
 import { renderDesignSystemShowcase } from '../vendored/designSystemShowcase';
+import { deriveMotionVocabulary } from './motionVocabulary';
 
 export interface ResolveDesignSystemTokensInput {
   designMd: string;
@@ -32,6 +34,8 @@ export interface ResolvedDesignSystemTokens {
   fromDefaults: string[];
   /** Contract names still without a value (A1 tokens have no contract default). */
   missing: string[];
+  /** Motion vocabulary names derived from the motion tokens and dials (openspec add-motion-vocabulary). */
+  derivedMotion: string[];
 }
 
 const TOKEN_NAME = /^--[a-zA-Z0-9_-]+$/;
@@ -147,8 +151,16 @@ export function resolveDesignSystemTokens(input: ResolveDesignSystemTokensInput)
     }
   }
 
+  // 6. the derived motion vocabulary, after the A2 fallbacks so it derives from the final motion tokens.
+  const derivedMotion: string[] = [];
+  for (const [name, value] of deriveMotionVocabulary(tokens)) {
+    tokens.set(name, value);
+    derivedMotion.push(name);
+  }
+
   return {
     tokens,
+    derivedMotion,
     approximated: input.tokensCss === undefined,
     fromDesignMd,
     fromDefaults,

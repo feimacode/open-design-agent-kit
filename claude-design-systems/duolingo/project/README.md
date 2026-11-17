@@ -156,10 +156,26 @@ Shape language is friendly: 16–20px radii on cards, 12px on buttons, 9999px on
 - Reserve oversized bold type for lesson, streak, and progress moments where the product needs encouragement or feedback.
 - Use playful motion sparingly around progress state changes, avoiding generic bouncy animation on every control.
 
+## Motion
+
+Durations and easings for this system. Use these for every transition, animation delay and easing; don't invent others.
+
+| Token | Value |
+| --- | --- |
+| `--motion-fast` | `180ms` |
+| `--motion-base` | `320ms` |
+| `--ease-standard` | `cubic-bezier(0.34, 1.56, 0.64, 1)` |
+| `--motion-instant` | `90ms` |
+| `--motion-slow` | `640ms` |
+| `--motion-scene` | `1280ms` |
+| `--ease-enter` | `cubic-bezier(0.34, 1.12, 0.64, 1)` |
+| `--ease-exit` | `cubic-bezier(0.7, 0, 0.84, 0)` |
+| `--ease-spring` | a `linear()` spring |
+| `--motion-stagger` | `100ms` |
+| `--motion-distance` | `16px` |
+
 ## Not synced from Open Design
 
-- --motion-fast skipped: Claude design systems have no motion family.
-- --motion-base skipped: Claude design systems have no motion family.
-- --ease-standard skipped: Claude design systems have no motion family.
+- Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.
 - Fonts are named by family only (hosted faces); no font files were copied.
 - No components or assets: Open Design design systems carry tokens and guidance only.

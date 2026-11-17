@@ -132,11 +132,27 @@ Respect `prefers-reduced-motion: reduce`. This package sets `--motion-fast` and 
 - Nested LayerCards, conditional dialog mounting, placeholder-only form labels, or unlabeled icon buttons.
 - Claiming that OpenDesign's compatibility section/layout bindings are official Kumo tokens.
 
+## Motion
+
+Durations and easings for this system. Use these for every transition, animation delay and easing; don't invent others.
+
+| Token | Value |
+| --- | --- |
+| `--motion-fast` | `150ms` |
+| `--motion-base` | `250ms` |
+| `--ease-standard` | `cubic-bezier(0.77, 0, 0.175, 1)` |
+| `--motion-instant` | `80ms` |
+| `--motion-slow` | `500ms` |
+| `--motion-scene` | `1000ms` |
+| `--ease-enter` | `cubic-bezier(0.34, 1.12, 0.64, 1)` |
+| `--ease-exit` | `cubic-bezier(0.7, 0, 0.84, 0)` |
+| `--ease-spring` | a `linear()` spring |
+| `--motion-stagger` | `80ms` |
+| `--motion-distance` | `16px` |
+
 ## Not synced from Open Design
 
-- --motion-fast skipped: Claude design systems have no motion family.
-- --motion-base skipped: Claude design systems have no motion family.
-- --ease-standard skipped: Claude design systems have no motion family.
 - Written as literal colours computed from color-mix(): --accent. They won't follow later edits to the colours they mix.
+- Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.
 - Fonts are named by family only (hosted faces); no font files were copied.
 - No components or assets: Open Design design systems carry tokens and guidance only.

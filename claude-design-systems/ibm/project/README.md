@@ -331,11 +331,27 @@ What defines IBM's visual identity beyond monochrome-plus-blue is the reliance o
 7. Use `--cds-` prefix for token naming to stay Carbon-compatible
 8. 48px is the universal interactive element height
 
+## Motion
+
+Durations and easings for this system. Use these for every transition, animation delay and easing; don't invent others.
+
+| Token | Value |
+| --- | --- |
+| `--motion-fast` | `110ms` |
+| `--motion-base` | `180ms` |
+| `--ease-standard` | `cubic-bezier(0.2, 0, 0.38, 0.9)` |
+| `--motion-instant` | `60ms` |
+| `--motion-slow` | `360ms` |
+| `--motion-scene` | `720ms` |
+| `--ease-enter` | `cubic-bezier(0.34, 1.12, 0.64, 1)` |
+| `--ease-exit` | `cubic-bezier(0.7, 0, 0.84, 0)` |
+| `--ease-spring` | a `linear()` spring |
+| `--motion-stagger` | `50ms` |
+| `--motion-distance` | `16px` |
+
 ## Not synced from Open Design
 
-- --motion-fast skipped: Claude design systems have no motion family.
-- --motion-base skipped: Claude design systems have no motion family.
-- --ease-standard skipped: Claude design systems have no motion family.
 - Written as literal colours computed from color-mix(): --accent-hover, --accent-active. They won't follow later edits to the colours they mix.
+- Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.
 - Fonts are named by family only (hosted faces); no font files were copied.
 - No components or assets: Open Design design systems carry tokens and guidance only.

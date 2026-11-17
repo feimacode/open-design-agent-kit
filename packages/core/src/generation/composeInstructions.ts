@@ -199,6 +199,8 @@ export interface ComposeInstructionsInput {
   baseScreen?: { path: string; from: string };
   /** A redesign of a live site: its content inventory and audit findings (openspec add-redesign-from-url). */
   redesign?: RedesignContext;
+  /** The Motion section for skills that animate, already composed (openspec add-motion-vocabulary). */
+  motionSection?: string;
 }
 
 /**
@@ -257,6 +259,8 @@ export function composeInstructions(input: ComposeInstructionsInput): string {
       `\n\n## Active design system${input.designSystemTitle ? ` — ${input.designSystemTitle}` : ''}\n\nTreat the following as authoritative for color, typography, spacing, and component rules. Do not invent tokens outside this palette.\n\n${input.designSystemBody.trim()}`,
     );
   }
+
+  if (input.motionSection) parts.push(`\n\n${input.motionSection.trim()}`);
 
   parts.push(`\n\n## Active skill — ${input.skillName}\n\nFollow this skill's workflow exactly (see the disclaimer above about path-looking text).\n\n${input.skillBody.trim()}`);
 
