@@ -32,6 +32,8 @@ If you don't say whether it's for print or screens, the agent asks first. You do
 | Shop product image and banners | `shop-product`, `shop-banner`, `shop-collection` | 2048×2048, 1920×800, 1920×600 px |
 | Digital ebook cover (Kindle) | `ebook-cover` | 1600×2560 px |
 
+**Note:** For Kindle ebook covers, export using `format: "jpeg"`. Amazon KDP accepts JPEG or TIFF formats for ebook covers and does not accept PNG covers.
+
 Every id, with its safe area, bleed and minimum type size, is in [Canvas formats](../reference/tools.md#canvas-formats). Pinterest recommends a 2:3 image at 1000×1500 px; the desktop upload limit is 20 MB ([official Pinterest specs](https://help.pinterest.com/en/business/article/pinterest-product-specs)).
 
 ## How it works
