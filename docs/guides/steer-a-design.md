@@ -23,12 +23,17 @@ Each verb has a fixed meaning, written down in the kit, so "bolder" means the sa
 | **distill** | simplify, too busy | Filler copy, badges and ornaments taken out | The main action and every fact |
 | **polish** | clean it up | Alignment, spacing on the scale, consistent styles, hover and focus states | The content and the look |
 | **harden** | what if the name is really long? | Long and missing content, empty, loading and error states | The happy path, exactly |
+| **calmer** | the animation is too much, too bouncy | Fewer moving elements, shorter travel, no overshoot | Hover and focus feedback; the still picture |
+| **snappier** | too slow, sluggish | Shorter durations, a stronger ease-out, no bounce | What moves and in which order |
+| **smoother** | janky, abrupt | One easing family, no abrupt starts or stops, `transform` and `opacity` only | What moves and the timing |
+
+The three motion verbs take their values from the design system's [motion vocabulary](design-systems.md#motion-vocabulary).
 
 Asking for the same verb again goes one step further. Two verbs ("bolder and roomier") are two edits, one after the other.
 
 ## Which part
 
-Name it the way you'd say it: "the pricing section" (the section with that heading), "the header", "the hero", "the footer". In a preview you can also select the part and click a verb (below). Only **polish** and **harden** can take the whole page; a whole page made bolder is a new direction, so the agent offers to [explore directions](explore-directions.md) instead.
+Name it the way you'd say it: "the pricing section" (the section with that heading), "the header", "the hero", "the footer". In a preview you can also select the part and click a verb (below). Only **polish**, **harden** and the motion verbs can take the whole page; a whole page made bolder is a new direction, so the agent offers to [explore directions](explore-directions.md) instead.
 
 The kit marks the part with a `data-od-id` attribute if it doesn't have one yet. That attribute is the only change it makes to your design itself; the agent makes the edit.
 
@@ -36,8 +41,8 @@ The kit marks the part with a `data-od-id` attribute if it doesn't have one yet.
 
 The check (`check_open_design_artifact` with the edit's id) compares the design with a snapshot taken just before the edit:
 
-- **Nothing outside the part changed**: not in the HTML, not in shared CSS, and not on screen at desktop and phone width. A taller part may push the rest down; that's fine. Anything else is `edit-out-of-scope`, with the changed area outlined.
-- **The part moved in the asked direction**: for **bolder**, the largest text grew or got heavier, or more of it is in the brand colour; for **denser**, the spacing went down. If nothing moved, you get `edit-no-effect` and the agent goes one step further.
+- **Nothing outside the part changed**: not in the HTML, not in shared CSS, and not on screen at desktop and phone width. A taller part may push the rest down; that's fine. Anything else is `edit-out-of-scope`, with the changed area outlined. Motion counts too: a shared transition rule that now makes the footer's buttons move differently is out of scope, named by element.
+- **The part moved in the asked direction**: for **bolder**, the largest text grew or got heavier, or more of it is in the brand colour; for **denser**, the spacing went down; for **calmer**, fewer elements move, they travel less or overshoot less; for **snappier**, the mean duration went down; for **smoother**, fewer easing curves or abrupt starts. If nothing moved, you get `edit-no-effect` and the agent goes one step further.
 - **Nothing got worse**: a finding the snapshot didn't have (a button too small to tap after **denser**, text too faint after **quieter**) is `edit-regression`.
 
 The agent fixes what the check reports, at most twice, then shows you the before and after.

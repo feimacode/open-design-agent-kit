@@ -156,6 +156,7 @@ program
   .option('--slides <list>', 'Decks: comma-separated 1-based slide numbers to check, e.g. 1,3')
   .option('--max-images <n>', 'Screenshots to write with --screenshots, 0-6 (default 3)')
   .option('--at <seconds>', 'Animations: also capture these moments, comma-separated, e.g. 0,1.5,3 (needs --screenshots to see them)')
+  .option('--filmstrip', 'Animations: one image of up to 12 key frames at the beats (needs --screenshots to see it)')
   .option('--views <list|none>', '3D scenes exposing odScene handles: review views on the sheet, comma-separated from overview,closeup,low,wireframe (default all), or none')
   .option('--no-states', 'Pages: skip the hover and focus, tap-target, 320 px reflow and reduced-motion checks (a faster check)')
   .option('--screenshots <dir>', 'Write the screenshots (JPEG) to this directory')

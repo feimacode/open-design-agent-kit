@@ -1585,6 +1585,11 @@ const TOOL_DEFS: ToolDef[] = [
             description:
               "Animations: up to 6 times in seconds. Also captures the artifact at those moments on a virtual clock (labelled t=<seconds>s), so you can see the start, middle and end of an animation. They share maxImages with the regular screenshots.",
           },
+          filmstrip: {
+            type: 'boolean',
+            description:
+              "Animated designs: one image of up to 12 key frames, each labelled with its time, taken at the beats (the starts of data-duration frames, or where animations start and end). Counts as one image within maxImages. Use it to see a film or an entrance sequence as a whole.",
+          },
           maxImages: {
             type: 'integer',
             minimum: 0,
@@ -1606,7 +1611,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'prepare_open_design_edit',
       description:
-        "Steers one part of a registered design in one direction, and changes nothing else: use it for any change to an existing design that fits a verb, from the user's everyday words. bolder (\"make it pop\", \"more punch\"), quieter (\"tone it down\", \"too loud\"), denser (\"tighten it up\", \"fit more in\"), roomier (\"it feels cramped\", \"give it room\"), distill (\"simplify\", \"too busy\", \"cut the clutter\"), polish (\"clean it up\", \"make it feel finished\"), harden (\"what if the name is really long?\", \"empty and error states\"). The scope is one part: { heading: \"Pricing\" } for the section with that heading, { region: \"header\" | \"hero\" | \"main\" | \"footer\" }, { selector }, { id } (a data-od-id) or { commentId } (a preview comment); { region: \"page\" } only for polish and harden (a page-wide bolder is a new direction: explore instead). Marks the part with a data-od-id if it has none (the only change it makes to the design), snapshots the design, and returns an editId and instructions: what the verb means, the part's HTML, the design's tokens and the scope rules. Make the edit yourself, then call check_open_design_artifact with the editId: it proves only that part changed, that it moved in the verb's direction and that nothing got worse, and attaches the part before and after. undo with an editId restores the design to before that edit (newest first). For a free-text change that isn't one of these directions, edit the design as usual.",
+        "Steers one part of a registered design in one direction, and changes nothing else: use it for any change to an existing design that fits a verb, from the user's everyday words. bolder (\"make it pop\", \"more punch\"), quieter (\"tone it down\", \"too loud\"), denser (\"tighten it up\", \"fit more in\"), roomier (\"it feels cramped\", \"give it room\"), distill (\"simplify\", \"too busy\", \"cut the clutter\"), polish (\"clean it up\", \"make it feel finished\"), harden (\"what if the name is really long?\", \"empty and error states\"); for motion: calmer (\"the animation is too much\", \"too bouncy\"), snappier (\"too slow\", \"sluggish\"), smoother (\"janky\", \"abrupt\"). The scope is one part: { heading: \"Pricing\" } for the section with that heading, { region: \"header\" | \"hero\" | \"main\" | \"footer\" }, { selector }, { id } (a data-od-id) or { commentId } (a preview comment); { region: \"page\" } only for polish, harden and the motion verbs (a page-wide bolder is a new direction: explore instead). Marks the part with a data-od-id if it has none (the only change it makes to the design), snapshots the design, and returns an editId and instructions: what the verb means, the part's HTML, the design's tokens and the scope rules. Make the edit yourself, then call check_open_design_artifact with the editId: it proves only that part changed, that it moved in the verb's direction and that nothing got worse, and attaches the part before and after. undo with an editId restores the design to before that edit (newest first). For a free-text change that isn't one of these directions, edit the design as usual.",
       inputSchema: {
         type: 'object',
         properties: {

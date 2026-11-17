@@ -2212,8 +2212,8 @@
       {
         "name": "prepare_open_design_edit",
         "displayName": "Steer Part of a Design",
-        "modelDescription": "Steers one part of a registered design in one direction and changes nothing else: bolder (\"make it pop\"), quieter (\"tone it down\"), denser (\"tighten it up\"), roomier (\"it feels cramped\"), distill (\"simplify\", \"too busy\"), polish (\"clean it up\") or harden (\"what if the name is really long?\"). The scope is one part: { heading: \"Pricing\" }, { region: \"header\" | \"hero\" | \"main\" | \"footer\" }, { selector }, { id } (a data-od-id) or { commentId }; { region: \"page\" } only for polish and harden. Marks the part with a data-od-id if it has none, snapshots the design and returns an editId and instructions (what the verb means, the part's HTML, the design's tokens, the scope rules). Make the edit, then run #od-check with the editId: it proves only that part changed, that it moved in the verb's direction and that nothing got worse. undo with an editId restores the design to before that edit (newest first).",
-        "userDescription": "Make one part of a design bolder, quieter, denser, roomier, simpler, more polished or sturdier, and nothing else",
+        "modelDescription": "Steers one part of a registered design in one direction and changes nothing else: bolder (\"make it pop\"), quieter (\"tone it down\"), denser (\"tighten it up\"), roomier (\"it feels cramped\"), distill (\"simplify\", \"too busy\"), polish (\"clean it up\") harden (\"what if the name is really long?\"), or for motion calmer (\"the animation is too much\"), snappier (\"too slow\") or smoother (\"janky\"). The scope is one part: { heading: \"Pricing\" }, { region: \"header\" | \"hero\" | \"main\" | \"footer\" }, { selector }, { id } (a data-od-id) or { commentId }; { region: \"page\" } only for polish, harden and the motion verbs. Marks the part with a data-od-id if it has none, snapshots the design and returns an editId and instructions (what the verb means, the part's HTML, the design's tokens, the scope rules). Make the edit, then run #od-check with the editId: it proves only that part changed, that it moved in the verb's direction and that nothing got worse. undo with an editId restores the design to before that edit (newest first).",
+        "userDescription": "Make one part of a design bolder, quieter, denser, roomier, simpler, more polished, sturdier, calmer, snappier or smoother, and nothing else",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "od-edit",
         "icon": "$(wand)",
@@ -2233,7 +2233,10 @@
                 "roomier",
                 "distill",
                 "polish",
-                "harden"
+                "harden",
+                "calmer",
+                "snappier",
+                "smoother"
               ],
               "description": "The direction. Not needed with undo."
             },
@@ -2852,9 +2855,6 @@
               "type": "boolean",
               "description": "gif only: loop forever. Default true."
             },
-            "transparent": {
-              "type": "boolean",
-              "description": "png only: capture without the page background, so everything the design doesn't paint is transparent — for cut-outs such as a 3D product shot to place on slides or pages. The page (and a 3D scene's renderer) must have a transparent background; a warning says so when every pixel came out opaque. PNGs aren't re-encoded to fit maxBytes when transparent."
             "audio": {
               "type": "string",
               "description": "mp4/webm only: a workspace audio file (WAV, MP3, M4A, OGG…) laid under the whole film, trimmed to its length with a 0.5s fade out. Use only a file the user supplied and may use; the kit never downloads or generates music. Sound placed in the page with <audio src data-start data-duration data-volume> (local files in the design's folder) is mixed too, and the mix is normalised to about -14 LUFS."
@@ -2873,6 +2873,9 @@
               "type": "boolean",
               "description": "mp4/webm/gif only: false writes only the .vtt sidecar without drawing captions into the frames. Default true."
             },
+            "transparent": {
+              "type": "boolean",
+              "description": "png only: capture without the page background, so everything the design doesn't paint is transparent — for cut-outs such as a 3D product shot to place on slides or pages. The page (and a 3D scene's renderer) must have a transparent background; a warning says so when every pixel came out opaque. PNGs aren't re-encoded to fit maxBytes when transparent."
             }
           },
           "required": []
@@ -2976,6 +2979,10 @@
               },
               "maxItems": 6,
               "description": "Animations: up to 6 times in seconds. Also captures the artifact at those moments on a virtual clock (labelled t=<seconds>s), so you can see the start, middle and end of an animation. They share maxImages with the regular screenshots."
+            },
+            "filmstrip": {
+              "type": "boolean",
+              "description": "Animated designs: one image of up to 12 key frames, each labelled with its time, taken at the beats (the starts of data-duration frames, or where animations start and end). Counts as one image within maxImages. Use it to see a film or an entrance sequence as a whole."
             },
             "editId": {
               "type": "string",

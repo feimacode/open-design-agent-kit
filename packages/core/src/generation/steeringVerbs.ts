@@ -2,11 +2,14 @@
 // the preview shells can show the verb buttons and build the chat message.
 import type { ArtifactComment } from '../workspace/artifactCommentTypes';
 
-export const STEERING_VERBS = ['bolder', 'quieter', 'denser', 'roomier', 'distill', 'polish', 'harden'] as const;
+export const STEERING_VERBS = ['bolder', 'quieter', 'denser', 'roomier', 'distill', 'polish', 'harden', 'calmer', 'snappier', 'smoother'] as const;
+
+/** Verbs about motion (openspec add-motion-checks-and-steering): measured from the animation inventory. */
+export const MOTION_VERBS: readonly SteeringVerb[] = ['calmer', 'snappier', 'smoother'];
 export type SteeringVerb = (typeof STEERING_VERBS)[number];
 
 /** Verbs that may take the whole page as their scope; a page-wide "bolder" is a new direction, not an edit. */
-export const PAGE_SCOPE_VERBS: readonly SteeringVerb[] = ['polish', 'harden'];
+export const PAGE_SCOPE_VERBS: readonly SteeringVerb[] = ['polish', 'harden', 'calmer', 'snappier', 'smoother'];
 
 export const STEERING_VERB_LABELS: Record<SteeringVerb, string> = {
   bolder: 'Bolder',
@@ -16,6 +19,9 @@ export const STEERING_VERB_LABELS: Record<SteeringVerb, string> = {
   distill: 'Distill',
   polish: 'Polish',
   harden: 'Harden',
+  calmer: 'Calmer',
+  snappier: 'Snappier',
+  smoother: 'Smoother',
 };
 
 /** One line per verb, for tool descriptions and tooltips. */
@@ -27,6 +33,9 @@ export const STEERING_VERB_HINTS: Record<SteeringVerb, string> = {
   distill: 'removes what doesn’t serve the purpose: filler, badges, ornaments',
   polish: 'finished: alignment, spacing on the scale, consistent styles and states',
   harden: 'holds up: long and missing content, empty, loading and error states',
+  calmer: 'less motion: fewer moving elements, shorter travel, no overshoot',
+  snappier: 'quicker motion: shorter durations, stronger ease-out, no overshoot',
+  smoother: 'even motion: one easing family, no abrupt starts or stops',
 };
 
 export function isSteeringVerb(value: unknown): value is SteeringVerb {

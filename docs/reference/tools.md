@@ -949,6 +949,8 @@ What it renders depends on the artifact:
 | `slides` | integer[] | no | Decks only: 1-based slide numbers to check. Default: every slide; the contact sheet shows the first 12 of them. |
 | `maxImages` | integer 0–6 | no | How many screenshots to attach. Default 3. `0` returns findings only. |
 | `at` | number[] (up to 6) | no | Animations: also capture the artifact at these times in seconds, on a virtual clock, labelled `t=<seconds>s`. They come first and share `maxImages`. |
+| `filmstrip` | boolean | no | Animated designs: one image of up to 12 frames, each labelled with its time, at the beats: the starts of the `data-duration` frames, or where the animations start and end. It comes first and counts as one image within `maxImages`; it is saved with the run, so the critic sees it. |
+| `motion` | boolean | no | `false` skips the motion pass (the motion findings above). Default: on when the source has transitions, animations or script motion. |
 | `views` | (`overview` · `closeup` · `low` · `wireframe`)[] or `false` | no | 3D scenes that expose their handles (below): which review views go on the review sheet. Default all four; `false` for no sheet. |
 | `states` | boolean | no | Pages: run the [state accessibility checks](#taste-and-accessibility-checks) (hover and focus, tap targets, 320 px reflow, reduced motion). Default `true`; `false` for a faster check. |
 | `editId` | string | no | After a [steering edit](#prepare_open_design_edit): also compare the design with the snapshot taken before it (below). |
@@ -993,7 +995,18 @@ For a deliberate exception (a brand that really is purple, three equal pricing t
 | `focus-visible` | An error: an element that shows no visible change when focused (no outline, and no change of shadow, border, background, text decoration or `::before`/`::after`). The browser's own outline counts, so only pages that remove it without a replacement fail |
 | `tap-target` | On the phone viewport: an interactive element smaller than 24×24 px whose 24 px circle touches another target (WCAG 2.2 target size, with its spacing exception). An error below 16 px. Links inside running text and labelled checkboxes are exempt |
 | `reflow` | An error: at 320 px wide (WCAG 1.4.10), the page scrolls sideways or clips text. Not repeated when the phone viewport already scrolls sideways |
-| `reduced-motion` | When the page animates: with `prefers-reduced-motion: reduce`, an animation or transition longer than 200 ms still running, or an element with `will-change: transform` or an inline transform still moving. Canvases (three.js) are exempt |
+| `reduced-motion` | When the page animates: with `prefers-reduced-motion: reduce`, a transition longer than 200 ms still running. Canvases (three.js) are exempt |
+| `motion-no-reduced-path` | An error: with `prefers-reduced-motion: reduce`, an animation longer than 200 ms (an entrance or a loop) still running, or an element with `will-change: transform` or an inline transform still moving (a script loop such as GSAP) |
+
+**Motion** (pages, mini-apps and films whose source has transitions, animations or script motion; warnings). The check plays the design on the virtual clock: 3 seconds of load, then four scroll steps. It lists what moves from `document.getAnimations()` and every element's computed transitions (what hover and focus will run), plus inline style changes made by scripts, which it reports as inferred. Films (a video recipe or a `data-duration` storyboard) get only `motion-crowded` and `motion-off-vocabulary`. `motion: false` skips this pass.
+
+| Check | Finds |
+|---|---|
+| `motion-slow-ui` | A transition over 500 ms: UI feedback that slow feels sluggish |
+| `motion-linear-ui` | Linear easing on a UI transition, except on spinners, progress bars, marquees and tickers |
+| `motion-layout-property` | A transition or animation of `width`, `height`, `top`, `left`, margins, padding or other layout properties instead of `transform` and `opacity` |
+| `motion-crowded` | More than 6 elements starting to move within 100 ms (outside a stagger) |
+| `motion-off-vocabulary` | When the page declares motion tokens on `:root`: a duration more than 10% away from every [motion vocabulary](../guides/design-systems.md#motion-vocabulary) value, or an easing that isn't one of its `--ease-*` curves |
 
 **Portfolio** (only designs registered with [`portfolio`](#register_open_design_artifact); all warnings except `portfolio-internal`):
 
@@ -1125,6 +1138,10 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `fps` | integer 1–60 | no | `mp4`/`webm`/`gif` only: frames per second. Default 30 (15 for GIF). See [Export animations](../guides/export-animations.md). |
 | `duration` | number 0.5–60 | no | `mp4`/`webm`/`gif` only: length in seconds. Default: the sum of the frames' `data-duration`, else the longest CSS or Web animation, else 6. |
 | `loop` | boolean | no | `gif` only: loop forever. Default true. |
+| `audio` | string | no | `mp4`/`webm` only: a workspace sound file laid under the whole film, trimmed to it with a 0.5 s fade out. `<audio>` tracks in the page (`data-start`, `data-duration`, `data-volume`, `data-fade-in`, `data-fade-out`) are mixed too; the mix is normalised to about −14 LUFS. Supplied files only. See [Sound](../guides/export-animations.md#sound). |
+| `audioVolume` | number 0–1 | no | Volume of `audio`. Default 1. |
+| `captions` | string | no | `mp4`/`webm`/`gif` only: a workspace SRT or WebVTT file. Captions are drawn into the frames inside the safe area and `exports/<name>.vtt` is written. Page cues marked `data-od-caption` are used too. See [Captions](../guides/export-animations.md#captions). |
+| `burnCaptions` | boolean | no | `false` writes only the `.vtt` sidecar. Default true. |
 | `shell` | boolean | no | Device screens (`data-od-device` on `<body>`): PNG and JPEG exports show the screen in the kit's device frame by default; `false` exports the bare screen at the device's screen size. Not for PDF or other formats. |
 | `transparent` | boolean | no | `png` only: capture without the page background, so whatever the design doesn't paint is transparent (cut-outs such as a [3D product shot](../guides/3d-objects.md)). The page, and a 3D scene's renderer, must have a transparent background; a warning says when every pixel came out opaque. Not re-encoded to fit `maxBytes`. |
 | `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. Next to it, `exports/campaign-sheet.json` lists each tile in order (label, shape preset or member entry path, exported file, image, error findings) and `exports/campaign-sheet-tiles/` holds each tile's image. See [Run a campaign](../guides/campaigns.md). |
@@ -1138,10 +1155,6 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | Code | Meaning |
 |---|---|
 | `invalid-args` | An argument is out of range or a bad combination (the message says which). |
-| `audio` | string | no | `mp4`/`webm` only: a workspace sound file laid under the whole film, trimmed to it with a 0.5 s fade out. `<audio>` tracks in the page (`data-start`, `data-duration`, `data-volume`, `data-fade-in`, `data-fade-out`) are mixed too; the mix is normalised to about −14 LUFS. Supplied files only. See [Sound](../guides/export-animations.md#sound). |
-| `audioVolume` | number 0–1 | no | Volume of `audio`. Default 1. |
-| `captions` | string | no | `mp4`/`webm`/`gif` only: a workspace SRT or WebVTT file. Captions are drawn into the frames inside the safe area and `exports/<name>.vtt` is written. Page cues marked `data-od-caption` are used too. See [Captions](../guides/export-animations.md#captions). |
-| `burnCaptions` | boolean | no | `false` writes only the `.vtt` sidecar. Default true. |
 | `not-found` | No file at `entryPath`. |
 | `not-registered` | [The file exists but has no manifest](../troubleshooting.md#export-failed-not-registered). |
 | `unsupported-kind` | The artifact's renderer can't be rendered (e.g. React or Markdown). |
@@ -1188,8 +1201,8 @@ A **steering edit**: one verb on one part of a registered HTML design, and nothi
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `entryPath` | string | yes | The registered design. |
-| `verb` | `bolder` · `quieter` · `denser` · `roomier` · `distill` · `polish` · `harden` | yes, unless `undo` | The direction. Each verb's meaning is in the [steering verbs craft doc](../../packages/content/local/craft/steering-verbs.md). |
-| `scope` | object or string | yes, unless `undo` | Exactly one of `heading` (the section whose heading has that text), `region` (`header`, `hero`, `main`, `footer`, or `page` for `polish` and `harden` only), `selector` (matching one element), `id` (a `data-od-id`) or `commentId` (a preview comment's element). A string is read as a region name or a heading. |
+| `verb` | `bolder` · `quieter` · `denser` · `roomier` · `distill` · `polish` · `harden` · `calmer` · `snappier` · `smoother` | yes, unless `undo` | The direction. Each verb's meaning is in the [steering verbs craft doc](../../packages/content/local/craft/steering-verbs.md). |
+| `scope` | object or string | yes, unless `undo` | Exactly one of `heading` (the section whose heading has that text), `region` (`header`, `hero`, `main`, `footer`, or `page` for `polish`, `harden`, `calmer`, `snappier` and `smoother` only), `selector` (matching one element), `id` (a `data-od-id`) or `commentId` (a preview comment's element). A string is read as a region name or a heading. |
 | `notes` | string | no | The user's own words, passed into the instructions. |
 | `undo` | string | no | An `editId` to undo: restores the design to the snapshot taken before that edit. Edits made after it must be undone first. |
 

@@ -160,6 +160,7 @@ npx @feimacode/open-design-agent-kit check <entryPath> [options]
 | `--viewport <name:WxH>` | Pages: a viewport to check instead of desktop `1440x900` and mobile `390x844`, e.g. `tablet:768x1024`. Repeat for several (at most 4). |
 | `--slides <list>` | Decks only: 1-based slide numbers, e.g. `1,3`. |
 | `--screenshots <dir>` | Write the screenshots as JPEG files named after their labels (`desktop.jpg`, `mobile.jpg`, `slides-1-12.jpg`) to this folder. Without it, no screenshots are rendered. |
+| `--filmstrip` | Animations: one image of up to 12 frames at the beats (`data-duration` frames, or where animations start and end). Write it with `--screenshots`. |
 | `--at <seconds>` | Animations: also capture these moments, comma-separated (e.g. `0,1.5,3`). Write them with `--screenshots`. |
 | `--max-images <n>` | With `--screenshots`: how many, 0–6. Default 3. |
 | `--views <list\|none>` | 3D scenes exposing their `odScene` handles: the review views on the sheet, comma-separated from `overview,closeup,low,wireframe` (default all), or `none`. The sheet is written as `3d-views-<views>.jpg`. See [the check tool](tools.md#check_open_design_artifact). |
