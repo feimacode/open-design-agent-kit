@@ -183,8 +183,22 @@ async function checkLocalCraft() {
   }
 }
 
+// The kit's motion-film craft doc is adapted from upstream's motion-design skill (openspec
+// add-motion-vocabulary). Once the sync pin brings that skill in, say so: drop or keep the doc on purpose.
+async function checkMotionFilmOverlap() {
+  try {
+    await fs.access(path.join(assetsRoot, 'skills', 'motion-design', 'SKILL.md'));
+    console.warn(
+      'Upstream now ships skills/motion-design. packages/content/local/craft/motion-film.md is adapted from it: compare the two and drop the craft doc (and its craft-requires.json entries) or keep it on purpose.',
+    );
+  } catch {
+    // Not vendored yet: the craft doc is the only film craft.
+  }
+}
+
 async function main() {
   await checkLocalOverlay();
+  await checkMotionFilmOverlap();
   await checkUnreviewedScaffolds();
   await checkSurfaceCatalog();
   await checkPrintHouseCatalog();

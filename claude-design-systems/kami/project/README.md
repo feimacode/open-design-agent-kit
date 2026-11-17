@@ -406,10 +406,26 @@ Forbidden:
 
 Aesthetic inspiration drawn from [tw93/kami](https://github.com/tw93/kami) (MIT, © Tw93 and contributors). kami is a Claude skill for typesetting professional documents and slide decks; the tokens, type rules, and "ten invariants" above adapt its print-first design language for use as an OpenDesign system.
 
+## Motion
+
+Durations and easings for this system. Use these for every transition, animation delay and easing; don't invent others.
+
+| Token | Value |
+| --- | --- |
+| `--motion-fast` | `150ms` |
+| `--motion-base` | `200ms` |
+| `--ease-standard` | `cubic-bezier(0.2, 0, 0, 1)` |
+| `--motion-instant` | `80ms` |
+| `--motion-slow` | `400ms` |
+| `--motion-scene` | `800ms` |
+| `--ease-enter` | `cubic-bezier(0.34, 1.12, 0.64, 1)` |
+| `--ease-exit` | `cubic-bezier(0.7, 0, 0.84, 0)` |
+| `--ease-spring` | a `linear()` spring |
+| `--motion-stagger` | `60ms` |
+| `--motion-distance` | `16px` |
+
 ## Not synced from Open Design
 
-- --motion-fast skipped: Claude design systems have no motion family.
-- --motion-base skipped: Claude design systems have no motion family.
-- --ease-standard skipped: Claude design systems have no motion family.
+- Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.
 - Fonts are named by family only (hosted faces); no font files were copied.
 - No components or assets: Open Design design systems carry tokens and guidance only.

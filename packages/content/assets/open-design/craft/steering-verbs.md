@@ -63,3 +63,27 @@ Make the part hold up when real content and real conditions arrive.
 - **Change:** handle long names and long unbroken strings (wrap or truncate with the full value in a `title`), missing images (a sized placeholder), zero, one and many items, very large numbers; add empty, loading and error states where the part shows data (as `data-od-state` frames when the design has a states board); visible focus and hover on every control; nothing scrolls sideways at 320 px.
 - **Keep:** the happy path's look and copy exactly as it is.
 - **Avoid:** changing the design to make room for edge cases; solve them inside it.
+
+## calmer
+
+Make the part move less, so it reads before it performs.
+
+- **Change:** fewer moving elements (keep the one that carries the idea, let the rest appear without travel); shorter travel (`--motion-distance` or less); remove overshoot (`--ease-enter` with `--motion-bounce: 0`, never `--ease-spring`); stop decorative loops; stagger with `--motion-stagger` instead of moving everything at once.
+- **Keep:** the content, the layout, the still picture, and motion that gives feedback (hover, focus, pressed). Durations and easings stay on the motion vocabulary.
+- **Avoid:** removing every transition (that's a different design), slowing motion down to make it feel calm (that's sluggish), or changing motion outside the part.
+
+## snappier
+
+Make the part's motion feel quicker and more decisive.
+
+- **Change:** shorter durations (one step down the vocabulary: `--motion-slow` → `--motion-base`, `--motion-base` → `--motion-fast`); a stronger ease-out on arrivals (`--ease-enter`); no overshoot or bounce; shorter delays and stagger.
+- **Keep:** what moves and in which order; UI feedback stays at or above `--motion-instant` so it is still seen.
+- **Avoid:** cutting motion to 0 ms, linear easing, or changing durations outside the part.
+
+## smoother
+
+Make the part's motion even and continuous, without jolts.
+
+- **Change:** one easing family for the part (`--ease-standard` for state changes, `--ease-enter` for arrivals, `--ease-exit` for departures); no ease-in on arrivals and no step easings; animate `transform` and `opacity` instead of layout properties; keep the speed and direction across hand-offs.
+- **Keep:** what moves, the order and the timing on the vocabulary.
+- **Avoid:** adding motion, lengthening durations to hide a jolt, or changing easing outside the part.

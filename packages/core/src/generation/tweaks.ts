@@ -57,6 +57,12 @@ export interface TweakDeclaration {
   options?: string[];
 }
 
+/** `--motion-speed` multiplies durations, `--motion-bounce` sets overshoot (openspec add-motion-vocabulary). */
+const MOTION_DIAL_RANGES: ReadonlyArray<[string, Pick<TweakKnob, 'min' | 'max' | 'step' | 'label' | 'description'>]> = [
+  ['--motion-speed', { min: 0.5, max: 2, step: 0.05, label: 'Motion speed', description: 'Multiplies the durations written as calc(… * var(--motion-speed)): above 1 is slower and calmer, below 1 is snappier.' }],
+  ['--motion-bounce', { min: 0, max: 1, step: 0.05, label: 'Motion bounce', description: 'Overshoot of arrivals and springs written with var(--motion-bounce).' }],
+];
+
 export const TWEAKS_BLOCK_TYPE = 'application/od-tweaks+json';
 /** Fewer primary knobs than this shows the "ask the agent to tokenize it" empty state. */
 export const FEW_VARIABLES_THRESHOLD = 3;
@@ -272,6 +278,13 @@ export function discoverTweaks(html: string): TweakDiscovery {
     if (CONTRACT.has(d.var) || !values.has(d.var) || knobs.some((k) => k.name === d.var)) continue;
     const { resolved } = resolveVar(d.var, values);
     knobs.push(make(d.var, 'declared', inferTweakType(d.var, resolved) ?? 'text', 'Design'));
+  }
+  // The motion dials (openspec add-motion-vocabulary): fixed ranges, in their own group.
+  for (const [name, range] of MOTION_DIAL_RANGES) {
+    if (!values.has(name) || knobs.some((k) => k.name === name)) continue;
+    const knob = make(name, declared.has(name) ? 'declared' : 'inferred', 'number', 'Motion');
+    if (!declared.get(name)?.min) Object.assign(knob, range);
+    knobs.push(knob);
   }
   // Everything else whose type we can tell.
   for (const name of values.keys()) {

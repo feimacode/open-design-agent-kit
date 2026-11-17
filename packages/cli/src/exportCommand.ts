@@ -51,6 +51,11 @@ export interface ExportCliOptions {
   /** --loop / --no-loop (gif). */
   loop?: boolean;
   ffmpeg?: string;
+  audio?: string;
+  audioVolume?: string;
+  captions?: string;
+  /** --no-burn-captions sets false. */
+  burnCaptions?: boolean;
 }
 
 export class ExportArgsError extends Error {}
@@ -133,6 +138,10 @@ export function parseExportFlags(flags: ExportCliOptions): Omit<ExportArtifactOp
     duration: parseNumberFlag('duration', flags.duration),
     loop: flags.loop,
     ffmpegPath: flags.ffmpeg,
+    audio: flags.audio,
+    audioVolume: parseNumberFlag('audio-volume', flags.audioVolume),
+    captions: flags.captions,
+    burnCaptions: flags.burnCaptions === false ? false : undefined,
   };
 }
 

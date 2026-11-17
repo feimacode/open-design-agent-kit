@@ -301,6 +301,11 @@ const TOOL_DEFS: ToolDef[] = [
           },
           flow: FLOW_INPUT_SCHEMA,
           portfolio: PORTFOLIO_INPUT_SCHEMA,
+          referenceId: {
+            type: 'string',
+            description:
+              "A reference video the user attached, inspected with inspect_open_design_reference_video: adds its measured cuts and frames and the rules for building from a reference (measure the timeline, never estimate it; for 'like this, for my brand' the active design system's colours, type and motion replace the reference's, and its logos, people and words aren't reused).",
+          },
           redesign: {
             type: 'object',
             description:
@@ -374,6 +379,7 @@ const TOOL_DEFS: ToolDef[] = [
           assumptions?: string[];
           redesign?: unknown;
           portfolio?: unknown;
+          referenceId?: string;
         },
       ),
   },
@@ -835,6 +841,21 @@ const TOOL_DEFS: ToolDef[] = [
       },
     },
     handler: (ctx, args) => tools.auditSite(ctx, args as { url?: string; extraUrls?: string[] }),
+  },
+  {
+    tool: {
+      name: 'inspect_open_design_reference_video',
+      description:
+        "Reads a reference video the user attached (a file in the workspace: .mp4, .mov, .m4v, .webm or .mkv, up to 200 MB and 180 seconds) so a film can be built from measured timing instead of guesses. Uses the installed ffmpeg. Writes .open-design/.references/<id>/ with facts.json (duration, size, fps, whether it has sound, shot cuts in seconds from scene detection), up to 24 frames (one early in each shot plus an even grid), contact.jpg and audio.wav when it has sound, and returns the facts, the contact sheet and a referenceId. Then pass referenceId to prepare_open_design_brief (it adds the cuts and the replication rules) and to check_open_design_artifact (it pairs the design with the reference and reports timing drift). Files only: it never downloads from a link; for a link, ask the user to download the video and attach it. Reuse the reference's soundtrack only after the user confirms they own it or may use it.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          video: { type: 'string', description: 'Workspace-relative path of the video file.' },
+        },
+        required: ['video'],
+      },
+    },
+    handler: (ctx, args) => tools.inspectReferenceVideo(ctx, args as { video: string }),
   },
   {
     tool: {
@@ -1345,6 +1366,28 @@ const TOOL_DEFS: ToolDef[] = [
             description:
               "gif only: loop forever. Default true.",
           },
+          audio: {
+            type: 'string',
+            description:
+              "mp4/webm only: a workspace audio file (WAV, MP3, M4A, OGG\u2026) laid under the whole film, trimmed to its length with a 0.5s fade out. Use only a file the user supplied and may use; the kit never downloads or generates music. Sound placed in the page with <audio src data-start data-duration data-volume> (local files in the design's folder) is mixed too, and the mix is normalised to about -14 LUFS.",
+          },
+          audioVolume: {
+            type: 'number',
+            minimum: 0,
+            maximum: 1,
+            description:
+              "mp4/webm only: volume of audio, 0 to 1. Default 1.",
+          },
+          captions: {
+            type: 'string',
+            description:
+              "mp4/webm/gif only: a workspace SRT or WebVTT file. Captions are drawn into the frames in the design system's font and colours, inside the safe area, and exports/<name>.vtt is written beside the video. Cues marked in the page with data-od-caption data-start data-duration (seconds) are used too.",
+          },
+          burnCaptions: {
+            type: 'boolean',
+            description:
+              "mp4/webm/gif only: false writes only the .vtt sidecar without drawing captions into the frames. Default true.",
+          },
           transparent: {
             type: 'boolean',
             description:
@@ -1377,6 +1420,10 @@ const TOOL_DEFS: ToolDef[] = [
           fps?: number;
           duration?: number;
           loop?: boolean;
+          audio?: string;
+          audioVolume?: number;
+          captions?: string;
+          burnCaptions?: boolean;
           quality?: number;
           width?: number;
           height?: number;
@@ -1559,6 +1606,16 @@ const TOOL_DEFS: ToolDef[] = [
             description:
               "Animations: up to 6 times in seconds. Also captures the artifact at those moments on a virtual clock (labelled t=<seconds>s), so you can see the start, middle and end of an animation. They share maxImages with the regular screenshots.",
           },
+          referenceId: {
+            type: 'string',
+            description:
+              'A reference video inspected with inspect_open_design_reference_video: also pairs the design with the reference at the start of each shot (reference left, design right, one image) and reports reference-timing-drift for a beat more than 0.25 s from the nearest reference cut.',
+          },
+          filmstrip: {
+            type: 'boolean',
+            description:
+              "Animated designs: one image of up to 12 key frames, each labelled with its time, taken at the beats (the starts of data-duration frames, or where animations start and end). Counts as one image within maxImages. Use it to see a film or an entrance sequence as a whole.",
+          },
           maxImages: {
             type: 'integer',
             minimum: 0,
@@ -1580,7 +1637,7 @@ const TOOL_DEFS: ToolDef[] = [
     tool: {
       name: 'prepare_open_design_edit',
       description:
-        "Steers one part of a registered design in one direction, and changes nothing else: use it for any change to an existing design that fits a verb, from the user's everyday words. bolder (\"make it pop\", \"more punch\"), quieter (\"tone it down\", \"too loud\"), denser (\"tighten it up\", \"fit more in\"), roomier (\"it feels cramped\", \"give it room\"), distill (\"simplify\", \"too busy\", \"cut the clutter\"), polish (\"clean it up\", \"make it feel finished\"), harden (\"what if the name is really long?\", \"empty and error states\"). The scope is one part: { heading: \"Pricing\" } for the section with that heading, { region: \"header\" | \"hero\" | \"main\" | \"footer\" }, { selector }, { id } (a data-od-id) or { commentId } (a preview comment); { region: \"page\" } only for polish and harden (a page-wide bolder is a new direction: explore instead). Marks the part with a data-od-id if it has none (the only change it makes to the design), snapshots the design, and returns an editId and instructions: what the verb means, the part's HTML, the design's tokens and the scope rules. Make the edit yourself, then call check_open_design_artifact with the editId: it proves only that part changed, that it moved in the verb's direction and that nothing got worse, and attaches the part before and after. undo with an editId restores the design to before that edit (newest first). For a free-text change that isn't one of these directions, edit the design as usual.",
+        "Steers one part of a registered design in one direction, and changes nothing else: use it for any change to an existing design that fits a verb, from the user's everyday words. bolder (\"make it pop\", \"more punch\"), quieter (\"tone it down\", \"too loud\"), denser (\"tighten it up\", \"fit more in\"), roomier (\"it feels cramped\", \"give it room\"), distill (\"simplify\", \"too busy\", \"cut the clutter\"), polish (\"clean it up\", \"make it feel finished\"), harden (\"what if the name is really long?\", \"empty and error states\"); for motion: calmer (\"the animation is too much\", \"too bouncy\"), snappier (\"too slow\", \"sluggish\"), smoother (\"janky\", \"abrupt\"). The scope is one part: { heading: \"Pricing\" } for the section with that heading, { region: \"header\" | \"hero\" | \"main\" | \"footer\" }, { selector }, { id } (a data-od-id) or { commentId } (a preview comment); { region: \"page\" } only for polish, harden and the motion verbs (a page-wide bolder is a new direction: explore instead). Marks the part with a data-od-id if it has none (the only change it makes to the design), snapshots the design, and returns an editId and instructions: what the verb means, the part's HTML, the design's tokens and the scope rules. Make the edit yourself, then call check_open_design_artifact with the editId: it proves only that part changed, that it moved in the verb's direction and that nothing got worse, and attaches the part before and after. undo with an editId restores the design to before that edit (newest first). For a free-text change that isn't one of these directions, edit the design as usual.",
       inputSchema: {
         type: 'object',
         properties: {

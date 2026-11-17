@@ -176,6 +176,8 @@ export interface Capture {
   /** The scope's box in document coordinates; the whole first screen for a page scope. */
   scope: Box;
   measurements: ScopeMeasurements;
+  /** Motion declared on elements outside the scope, by element (openspec add-motion-checks-and-steering). */
+  outsideMotion?: Record<string, string>;
 }
 
 function rowsDiffer(a: PNG, ay: number, b: PNG, by: number, width: number): number[] {
@@ -310,6 +312,109 @@ export interface ScopeMeasurements {
   words: number;
   height: number;
   stateFrames: number;
+  /** The scope's motion, read before animations are switched off for the capture. */
+  motion?: MotionMeasurements;
+}
+
+export interface MotionMeasurements {
+  /** Elements with an animation or a transition. */
+  moving: number;
+  /** Pixels of translation in their keyframes, added up. */
+  travel: number;
+  /** Mean of the animation and transition durations, ms. */
+  meanDuration: number;
+  /** Largest overshoot past 1 in a cubic-bezier or linear() easing (0 for none). */
+  overshoot: number;
+  /** Distinct easing curves. */
+  easings: number;
+  /** Ease-in curves or keywords (abrupt stops), and step easings (abrupt starts). */
+  abrupt: number;
+}
+
+/**
+ * Runs in the page, before animations are switched off: the scope's motion (from computed animation and transition
+ * styles and the @keyframes they name) and a signature of the motion on every element outside it.
+ */
+export function measureMotionInPage(scopeId: string | null): { inside: MotionMeasurements; outside: Record<string, string> } {
+  const root = scopeId ? document.querySelector(`[data-od-id="${CSS.escape(scopeId)}"]`) : document.body;
+  const travelOf = new Map<string, number>();
+  const translate = (t: string): number => {
+    const m = /translate(?:3d|X|Y)?\(\s*(-?[\d.]+)px(?:\s*,\s*(-?[\d.]+)px)?/.exec(t);
+    if (!m) return 0;
+    const isY = /translateY/.test(t);
+    return Math.hypot(isY ? 0 : Number(m[1]), isY ? Number(m[1]) : Number(m[2] ?? 0));
+  };
+  const visit = (rules: CSSRuleList): void => {
+    for (const r of Array.from(rules)) {
+      if (r instanceof CSSKeyframesRule) {
+        const values = Array.from(r.cssRules).map((k) => translate((k as CSSKeyframeRule).style.transform || (k as CSSKeyframeRule).style.translate || ''));
+        travelOf.set(r.name, values.length ? Math.max(...values) - Math.min(...values) : 0);
+      } else if ('cssRules' in r && (r as CSSGroupingRule).cssRules) visit((r as CSSGroupingRule).cssRules);
+    }
+  };
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      visit(sheet.cssRules);
+    } catch {
+      /* cross-origin sheet */
+    }
+  }
+  const secs = (v: string): number[] => v.split(',').map((x) => (x.trim().endsWith('ms') ? parseFloat(x) : parseFloat(x) * 1000) || 0);
+  const splitEasing = (v: string): string[] => v.split(/,(?![^(]*\))/).map((x) => x.trim());
+  const overshootOf = (e: string): number => {
+    const cb = /cubic-bezier\(([^)]+)\)/.exec(e);
+    if (cb) {
+      const p = cb[1].split(',').map(Number);
+      return Math.max(0, p[1] - 1, p[3] - 1);
+    }
+    const lin = /linear\(([^)]+)\)/.exec(e);
+    if (lin) return Math.max(0, ...lin[1].split(',').map((x) => parseFloat(x) - 1).filter((n) => Number.isFinite(n)));
+    return 0;
+  };
+  const describe = (el: HTMLElement, i: number): string => {
+    let s = el.tagName.toLowerCase();
+    if (el.id) s += '#' + el.id;
+    else if (el.classList.length > 0) s += '.' + Array.from(el.classList).join('.');
+    return `${s}@${i}`;
+  };
+  const inside: MotionMeasurements = { moving: 0, travel: 0, meanDuration: 0, overshoot: 0, easings: 0, abrupt: 0 };
+  const durations: number[] = [];
+  const easings = new Set<string>();
+  const outside: Record<string, string> = {};
+  const all = Array.from(document.body ? document.body.querySelectorAll<HTMLElement>('*') : []);
+  all.forEach((el, i) => {
+    const cs = getComputedStyle(el);
+    const anim = cs.animationName && cs.animationName !== 'none';
+    const animDur = anim ? secs(cs.animationDuration) : [];
+    const transDur = secs(cs.transitionDuration).filter((d) => d > 0);
+    if (!anim && transDur.length === 0) return;
+    const sig = `${anim ? `animation ${cs.animationName} ${cs.animationDuration} ${cs.animationTimingFunction}` : ''}${transDur.length ? ` transition ${cs.transitionProperty} ${cs.transitionDuration} ${cs.transitionTimingFunction}` : ''}`.trim();
+    if (root && (root === el || root.contains(el))) {
+      inside.moving++;
+      if (anim) for (const name of cs.animationName.split(',')) inside.travel += travelOf.get(name.trim()) ?? 0;
+      durations.push(...animDur.filter((d) => d > 0), ...transDur);
+      for (const e of [...(anim ? splitEasing(cs.animationTimingFunction) : []), ...(transDur.length ? splitEasing(cs.transitionTimingFunction) : [])]) {
+        easings.add(e.replace(/\s+/g, ''));
+        inside.overshoot = Math.max(inside.overshoot, overshootOf(e));
+        if (/^(ease-in|steps|step-start|step-end)\b/.test(e) || (/cubic-bezier/.test(e) && /cubic-bezier\(\s*0?\.[5-9]\d*\s*,\s*0\s*,\s*(?:0?\.[7-9]|1)/.test(e))) inside.abrupt++;
+      }
+    } else outside[describe(el, i)] = sig;
+  });
+  inside.meanDuration = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
+  inside.easings = easings.size;
+  return { inside, outside };
+}
+
+/** Elements outside the scope whose motion changed, as messages (the out-of-scope check for motion). */
+export function compareMotionOutsideScope(before: Record<string, string> | undefined, after: Record<string, string> | undefined): string[] {
+  if (!before || !after) return [];
+  const out: string[] = [];
+  for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (before[key] === after[key]) continue;
+    const el = key.replace(/@\d+$/, '');
+    out.push(`${el} outside the edited part moves differently now (${before[key] ?? 'no motion'} → ${after[key] ?? 'no motion'}). A shared transition or animation rule changed; scope it to the edited part.`);
+  }
+  return out.slice(0, MAX_LISTED);
 }
 
 /** Runs in the page: the scope's box and its measurements. Self-contained for page.evaluate. */
@@ -458,6 +563,31 @@ export function verbEffect(verb: SteeringVerb, e: EffectEvidence): string[] {
       add(a.distinctRadii < b.distinctRadii, `corner radii ${b.distinctRadii}→${a.distinctRadii}`);
       add(e.signalsAfter > e.signalsBefore, 'states added (hover, focus, pressed)');
       break;
+    case 'calmer': {
+      const bm = b.motion;
+      const am = a.motion;
+      if (!bm || !am) break;
+      add(am.moving < bm.moving, `moving elements ${bm.moving}→${am.moving}`);
+      add(am.travel < bm.travel - 0.5, `travel ${Math.round(bm.travel)}→${Math.round(am.travel)} px`);
+      add(am.overshoot < bm.overshoot - 0.01, `overshoot ${bm.overshoot.toFixed(2)}→${am.overshoot.toFixed(2)}`);
+      break;
+    }
+    case 'snappier': {
+      const bm = b.motion;
+      const am = a.motion;
+      if (!bm || !am) break;
+      add(am.meanDuration < bm.meanDuration * 0.95 && am.meanDuration > 0, `mean duration ${Math.round(bm.meanDuration)}→${Math.round(am.meanDuration)} ms`);
+      add(am.overshoot < bm.overshoot - 0.01, `overshoot ${bm.overshoot.toFixed(2)}→${am.overshoot.toFixed(2)}`);
+      break;
+    }
+    case 'smoother': {
+      const bm = b.motion;
+      const am = a.motion;
+      if (!bm || !am) break;
+      add(am.easings < bm.easings, `easing curves ${bm.easings}→${am.easings}`);
+      add(am.abrupt < bm.abrupt, `abrupt starts or stops ${bm.abrupt}→${am.abrupt}`);
+      break;
+    }
     case 'harden':
       add(e.findingsAfter < e.findingsBefore, `findings ${e.findingsBefore}→${e.findingsAfter}`);
       add(a.stateFrames > b.stateFrames, `state frames ${b.stateFrames}→${a.stateFrames}`);
@@ -499,6 +629,7 @@ export async function captureForGuard(
   for (const viewport of GUARD_VIEWPORTS) {
     await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
     await load(page, url);
+    const motion = (await page.evaluate(measureMotionInPage, scopeId ?? null)) as ReturnType<typeof measureMotionInPage>;
     await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}' });
     await page.evaluate('window.scrollTo(0, 0)');
     await new Promise((r) => setTimeout(r, 120));
@@ -507,7 +638,7 @@ export async function captureForGuard(
     const fullHeight = (await page.evaluate('Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0)')) as number;
     const height = Math.min(MAX_CAPTURE_HEIGHT, Math.max(viewport.height, fullHeight));
     const png = Buffer.from(await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: viewport.width, height }, captureBeyondViewport: true }));
-    out.set(viewport.name, { png, scope: measured.box, measurements: measured.m });
+    out.set(viewport.name, { png, scope: measured.box, measurements: { ...measured.m, motion: motion.inside }, outsideMotion: motion.outside });
   }
   return out;
 }

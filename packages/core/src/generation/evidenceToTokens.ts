@@ -11,7 +11,7 @@
 
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
 import { deltaE2000, outOfSrgb, parseColor as parseCssColor } from './colorMix';
-import { observedMotionTokens, type MotionObservation } from './motionCapture';
+import { observedMotionTokens, summariseMotion, type MotionObservation } from './motionCapture';
 
 /** One sampled element for a colour role. */
 export interface RoleSample {
@@ -423,6 +423,33 @@ export function evidenceToTokens(evidence: SiteEvidence): DraftTokens {
     if (observed.ease) {
       tokens['--ease-standard'] = observed.ease;
       sources['--ease-standard'] = { selector: observed.fastFrom ?? observed.baseFrom ?? '', page: motionPage, basis: 'observed' };
+    }
+  }
+  // Measured entrances fill the motion vocabulary; a site where nothing moved gets no bounce (openspec add-motion-vocabulary).
+  const motionPageEvidence = evidence.pages.find((p) => p.motion);
+  if (motionPageEvidence?.motion) {
+    const summary = summariseMotion(motionPageEvidence.motion);
+    const entrance = summary.entrance && summary.entrance !== 'none' ? summary.entrance : undefined;
+    const observedSource = (selector: string) => ({ selector, page: motionPageEvidence.url, basis: 'observed' as const });
+    if (entrance) {
+      const what = `scroll entrance on ${entrance.targets.join(', ') || 'content'}`;
+      if (entrance.distance) {
+        tokens['--motion-distance'] = `${entrance.distance}px`;
+        sources['--motion-distance'] = observedSource(what);
+      }
+      if (entrance.duration >= 30) {
+        tokens['--motion-slow'] = `${Math.round(entrance.duration)}ms`;
+        sources['--motion-slow'] = observedSource(what);
+      }
+      if (entrance.stagger) {
+        tokens['--motion-stagger'] = `${entrance.stagger}ms`;
+        sources['--motion-stagger'] = observedSource(what);
+      }
+    }
+    if (!observed) {
+      tokens['--motion-bounce'] = '0';
+      sources['--motion-bounce'] = observedSource('');
+      notes.push('Nothing moved on load, hover or scroll: the site is still, so --motion-bounce is 0. Keep motion to hover and focus feedback.');
     }
   }
   if (durations.length > 0) {

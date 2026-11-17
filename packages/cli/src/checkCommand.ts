@@ -28,6 +28,9 @@ export interface CheckCliOptions {
   failOn?: string;
   /** Comma-separated seconds, e.g. 0,1.5,3. */
   at?: string;
+  filmstrip?: boolean;
+  /** --reference <id>: a reference video measured by `reference`. */
+  reference?: string;
   /** 3D review views: comma-separated names, or "none". */
   views?: string;
   /** false with --no-states: skip the hover/focus, tap-target, reflow and reduced-motion checks. */
@@ -85,7 +88,7 @@ export function parseCheckFlags(flags: CheckCliOptions): { options: Omit<CheckAr
       views = names as ReviewView[];
     }
   }
-  return { options: { viewports, slides, maxImages, browserPath: flags.browser, at, views, states: flags.states === false ? false : undefined }, failOn };
+  return { options: { viewports, slides, maxImages, browserPath: flags.browser, at, filmstrip: flags.filmstrip, referenceId: flags.reference, views, states: flags.states === false ? false : undefined }, failOn };
 }
 
 /** A screenshot label as a file name: "desktop 2/3" → "desktop-2-3.jpg". */

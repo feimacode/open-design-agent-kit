@@ -246,7 +246,7 @@ describe('state accessibility checks (real browser; skipped when none is install
   });
   const findings = async (html: string, extra: Partial<Parameters<typeof checkArtifact>[0]> = {}, manifest: Record<string, unknown> = {}) =>
     ok(await checkArtifact({ workspaceRoot: await workspace(html, manifest), entryPath: ENTRY, browserPath, settleMs: 0, maxImages: 0, ...extra })).findings;
-  const STATE = ['state-contrast', 'focus-visible', 'tap-target', 'reflow', 'reduced-motion'];
+  const STATE = ['state-contrast', 'focus-visible', 'tap-target', 'reflow', 'reduced-motion', 'motion-no-reduced-path'];
   const stateCodes = (list: Awaited<ReturnType<typeof findings>>) => list.filter((f) => STATE.includes(f.check) && f.severity !== 'info');
 
   it('reports a hover colour that drops below 4.5:1, naming the button and the state', async () => {
@@ -292,11 +292,12 @@ describe('state accessibility checks (real browser; skipped when none is install
   it('reports an endless marquee that ignores reduced motion, and not one that honours it', async () => {
     const marquee = '<div class="m">Now booking</div>';
     const css = '@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-100px)}} .m{animation:slide 4s linear infinite}';
-    const hits = (await findings(page(marquee, css))).filter((f) => f.check === 'reduced-motion');
+    const hits = (await findings(page(marquee, css))).filter((f) => f.check === 'motion-no-reduced-path');
     assert.strictEqual(hits.length, 1);
+    assert.strictEqual(hits[0].severity, 'error');
     assert.match(hits[0].message, /div\.m "Now booking" keeps its animation "slide" \(looping\)/);
     const honoured = await findings(page(marquee, `${css} @media (prefers-reduced-motion: reduce){.m{animation:none}}`));
-    assert.deepStrictEqual(honoured.filter((f) => f.check === 'reduced-motion'), []);
+    assert.deepStrictEqual(honoured.filter((f) => f.check === 'motion-no-reduced-path' || f.check === 'reduced-motion'), []);
   });
 
   it('runs none of the state checks with states: false, or on a fixed-format poster', async () => {

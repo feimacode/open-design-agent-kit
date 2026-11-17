@@ -1,6 +1,6 @@
 ---
 name: open-design-edit
-description: Steer one part of an existing design in one direction — bolder, quieter, denser, roomier, simpler, more polished or sturdier — and change nothing else, with a check that proves only that part changed and a before and after to show
+description: Steer one part of an existing design in one direction — bolder, quieter, denser, roomier, simpler, more polished, sturdier, or calmer, snappier or smoother in motion — and change nothing else, with a check that proves only that part changed and a before and after to show
 argument_hint: what to change and where (e.g. "make the pricing section bolder", "the table feels cramped")
 placeholder: Which part should change, and how?
 model_trigger: use whenever the user wants one part of an existing Open Design design changed in a direction rather than redesigned ("make the hero pop", "tone down the footer", "the table feels cramped", "simplify this section", "clean up the pricing cards", "what if the names are really long?", "make it bolder"), or clicked a verb in the preview, even if they don't mention Open Design; not for a new design or a whole new direction
@@ -19,14 +19,17 @@ The design is the one the user is looking at or just made; if there are several,
 | They say | Verb |
 |---|---|
 | make it pop, more punch, stand out, more confident | `bolder` |
-| tone it down, too loud, calmer, softer, less shouty | `quieter` |
+| tone it down, too loud, softer, less shouty | `quieter` |
 | tighten it up, fit more in, too much space, compact | `denser` |
 | feels cramped, give it room, breathe, too tight | `roomier` |
 | simplify, too busy, cut the clutter, less is more | `distill` |
 | clean it up, feels unfinished, tidy, sharpen | `polish` |
 | long names, empty or error states, edge cases, make it robust | `harden` |
+| the animation is too much, too much movement, distracting, too bouncy | `calmer` |
+| too slow, sluggish, laggy, takes forever to appear | `snappier` |
+| janky, jerky, abrupt, choppy, make it flow | `smoother` |
 
-The part is what they pointed at: a section by its heading ("the pricing section" → `{ "heading": "Pricing" }`), a region (`header`, `hero`, `main`, `footer`), or the comment they made in the preview (`{ "commentId": "c-…" }`). Use the whole page (`{ "region": "page" }`) only for `polish` and `harden`.
+The part is what they pointed at: a section by its heading ("the pricing section" → `{ "heading": "Pricing" }`), a region (`header`, `hero`, `main`, `footer`), or the comment they made in the preview (`{ "commentId": "c-…" }`). Use the whole page (`{ "region": "page" }`) only for `polish`, `harden` and the motion verbs (`calmer`, `snappier`, `smoother`).
 
 Ask one short question only when you can't tell the part. When the request is for a whole new look ("make the whole page bolder", "a completely different style"), don't edit: offer to explore directions with `open-design-explore`. When the change isn't a direction at all ("change the price to $19", "add a FAQ"), make it as an ordinary edit.
 

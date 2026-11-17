@@ -103,6 +103,10 @@ npx @feimacode/open-design-agent-kit export <entryPath> [options]
 | `--duration <seconds>` | `mp4`/`webm`/`gif`: length, 0.5–60. Default: from the page. |
 | `--loop`, `--no-loop` | `gif`: loop forever (the default) or play once. |
 | `--transparent` | `png`: capture without the page background, for cut-outs such as a [3D product shot](../guides/3d-objects.md). |
+| `--audio <file>` | `mp4`/`webm`: a sound file laid under the whole film, trimmed to it with a short fade out. Use a file you may use; nothing is downloaded. `<audio>` tracks in the page are mixed too. See [Sound](../guides/export-animations.md#sound). |
+| `--audio-volume <0-1>` | Volume of `--audio`. Default 1. |
+| `--captions <file>` | `mp4`/`webm`/`gif`: an SRT or WebVTT file, drawn into the frames inside the safe area and written as `exports/<name>.vtt`. See [Captions](../guides/export-animations.md#captions). |
+| `--no-burn-captions` | Write only the `.vtt` file, without drawing captions into the frames. |
 | `--ffmpeg <path>` | ffmpeg executable. Default: [`OPEN_DESIGN_FFMPEG_PATH`](settings-and-env.md#open_design_ffmpeg_path), then auto-detect. |
 | `--campaign-sheet` | Fluid designs: also write `campaign-sheet.png`, every shape plus the other pieces in the master's collection. See [Run a campaign](../guides/campaigns.md). |
 | `--shape-sheet` | Fluid designs: also write `<name>-shapes.png`, the design at every shape (all formats unless `--presets`). |
@@ -156,6 +160,8 @@ npx @feimacode/open-design-agent-kit check <entryPath> [options]
 | `--viewport <name:WxH>` | Pages: a viewport to check instead of desktop `1440x900` and mobile `390x844`, e.g. `tablet:768x1024`. Repeat for several (at most 4). |
 | `--slides <list>` | Decks only: 1-based slide numbers, e.g. `1,3`. |
 | `--screenshots <dir>` | Write the screenshots as JPEG files named after their labels (`desktop.jpg`, `mobile.jpg`, `slides-1-12.jpg`) to this folder. Without it, no screenshots are rendered. |
+| `--filmstrip` | Animations: one image of up to 12 frames at the beats (`data-duration` frames, or where animations start and end). Write it with `--screenshots`. |
+| `--reference <id>` | Animations: pair the design with a reference video measured by [`reference`](#reference) and report `reference-timing-drift`. Write the pairs with `--screenshots`. |
 | `--at <seconds>` | Animations: also capture these moments, comma-separated (e.g. `0,1.5,3`). Write them with `--screenshots`. |
 | `--max-images <n>` | With `--screenshots`: how many, 0–6. Default 3. |
 | `--views <list\|none>` | 3D scenes exposing their `odScene` handles: the review views on the sheet, comma-separated from `overview,closeup,low,wireframe` (default all), or `none`. The sheet is written as `3d-views-<views>.jpg`. See [the check tool](tools.md#check_open_design_artifact). |
@@ -174,6 +180,22 @@ npx @feimacode/open-design-agent-kit check .open-design/landing/landing.html --f
 # Save what the agent sees
 npx @feimacode/open-design-agent-kit check .open-design/pitch/pitch.html --screenshots ./check-shots
 ```
+
+### reference
+
+Measures a reference video file with the installed ffmpeg, for [building a film from a reference](../guides/export-animations.md#start-from-a-reference-video): duration, size, fps, sound and shot cuts, with frames, a contact sheet and the soundtrack under `.open-design/.references/<id>/`. Files only: a video-site link is refused, not downloaded.
+
+```bash
+npx @feimacode/open-design-agent-kit reference <video> [options]
+```
+
+| Option | Meaning |
+|---|---|
+| `--ffmpeg <path>` | ffmpeg executable. Default: `OPEN_DESIGN_FFMPEG_PATH`, then auto-detect. |
+| `--json` | Print `facts.json` instead of text. |
+| `--workspace <dir>` | Workspace root. Default: the nearest folder above the video that contains `.open-design/`, else the current directory. |
+
+Prints the facts and the `referenceId` to pass to `check --reference`. Exit code `1` when the video can't be read (with the reason).
 
 ### preview
 

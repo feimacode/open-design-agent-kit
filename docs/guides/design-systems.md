@@ -369,6 +369,14 @@ To add one to an existing custom system, use **Generate tokens.css** (in the pre
 
 The agent calls `create_open_design_design_system` with `existingDesignSystemId: "user:acme"`, reads your `DESIGN.md`, and writes only the `tokens.css`. You can also write or edit it by hand.
 
+### Motion vocabulary
+
+`tokens.css` needs only three motion tokens (`--motion-fast`, `--motion-base`, `--ease-standard`). The kit derives the rest when it resolves a system: `--motion-instant` (fast × 0.5), `--motion-slow` (base × 2), `--motion-scene` (base × 4), `--motion-stagger` (base × 0.3), `--motion-distance` (16px), and `--ease-enter`, `--ease-exit` and `--ease-spring` (a `linear()` spring, with a `cubic-bezier` fallback for engines without `linear()`). Any of these you declare keeps your value.
+
+Two optional dials shape the derived values: `--motion-speed` (0.5 to 2, default 1) multiplies every derived duration, and `--motion-bounce` (0 to 1, default 0.2) sets how far `--ease-spring` and `--ease-enter` overshoot; 0 means none. A design system extracted from a website takes its entrance distance, duration and stagger from what the site does, and a site that doesn't move gets `--motion-bounce: 0`.
+
+Briefs for animated recipes (films, frames, motion prototypes) get a **Motion** section listing the vocabulary with its values, the brand's measured entrance when it has one, and the reduced-motion rule; static recipes don't. Designs built that way declare both dials, so the preview's Tweaks panel offers **Speed** and **Bounce** sliders. The Claude Design export lists the vocabulary in its README, since Claude Design has no motion tokens.
+
 ## Troubleshooting
 
 - **"Unknown designSystemId"**: the id doesn't exist. The message lists some valid ones; ask the agent to list design systems. Custom ids need the `user:` prefix.

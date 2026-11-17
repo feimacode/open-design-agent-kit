@@ -9,6 +9,8 @@ interface CheckArtifactInput {
   slides?: number[];
   maxImages?: number;
   at?: number[];
+  filmstrip?: boolean;
+  referenceId?: string;
   views?: ReviewView[] | false;
   states?: boolean;
   editId?: string;

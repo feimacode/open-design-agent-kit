@@ -1,0 +1,15 @@
+id: landing-entrances
+request: "Build a landing page for Ledgerly, our bookkeeping app for freelancers, with sections that animate in as you scroll."
+expect:
+  surface: prototype
+  skills: [saas-landing, web-prototype, gsap-scrolltrigger]
+  questions: { max: 1 }
+designSystem: null
+answers:
+  audience: "UK freelancers and sole traders"
+  style: "you pick"
+  cta: "Start a free 30-day trial"
+must:
+  - "Section entrances use --motion-slow, --motion-stagger, --motion-distance and --ease-enter from the brief"
+  - "--motion-speed is declared and the durations scale with it"
+  - "With reduced motion, sections appear without travel"

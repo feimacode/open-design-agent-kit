@@ -12,6 +12,10 @@ import { readArtifact } from '../vendored/artifactCreate';
 import type { JsonRecord } from '../vendored/artifactManifest';
 import { openArtifactPage, type ArtifactPageSession } from './artifactPage';
 import { VIRTUAL_CLOCK_SCRIPT } from './motion/virtualClock';
+import { COLLECT_CAPTIONS_SCRIPT, captionSafeArea, cuesFromPage, installCaptionOverlay, type RawCaptionCue } from './motion/captions';
+import { filmSoundFindings } from './motion/filmChecks';
+import { filmstripBeats, hasMotionSource, isFilm, motionFindings, playMotionInventory, type MotionInventory } from './motionAudit';
+import { readReferenceFacts, referenceBeats, timingDrift, type ReferenceFacts } from '../media/referenceVideo';
 import { extractRootTokens, isStyleTileSkill, missingTileTokens } from '../generation/styleTiles';
 import { findBrowser } from './browserDiscovery';
 import { formatSavedCheckRun, saveCheckRun, type SavedCheckRun } from './checkHistory';
@@ -46,6 +50,7 @@ import { BEFORE_DATA_FILE, editLogOf, hashHtml, readEditRecord, screenDataFile, 
 import { writeArtifactManifest } from '../vendored/artifactCreate';
 import {
   captureForGuard,
+  compareMotionOutsideScope,
   comparePixelsOutsideScope,
   compareMarkupOutsideScope,
   composeEditSheet,
@@ -101,6 +106,12 @@ export interface CheckArtifactOptions {
   outputDir?: string;
   /** Up to 6 times in seconds: also capture the artifact at those moments on a virtual clock (animations). */
   at?: number[];
+  /** Animated designs: one image of up to 12 key frames at the beats (data-duration frames, or animation starts and ends), labelled with times (openspec add-motion-checks-and-steering). */
+  filmstrip?: boolean;
+  /** false skips playing the design for the motion checks (default: on when the source has motion). */
+  motion?: boolean;
+  /** A reference video inspected with inspect_open_design_reference_video: pairs the design with it at each cut and reports reference-timing-drift (openspec add-reference-video-replication). */
+  referenceId?: string;
   /** 3D pages exposing odScene handles: the review views on the sheet (default all four), or false for none. */
   views?: ReviewView[] | false;
   /** Save the run's images and findings under <outputDir>/.checks/ for the user (default true; openspec add-browser-preview). */
@@ -189,6 +200,7 @@ function validateOptions(o: CheckArtifactOptions): string | undefined {
     return `maxImages must be an integer between 0 and ${MAX_IMAGES_CAP}.`;
   }
   if (o.states !== undefined && typeof o.states !== 'boolean') return 'states must be true or false.';
+  if (o.filmstrip !== undefined && typeof o.filmstrip !== 'boolean') return 'filmstrip must be true or false.';
   if (o.slides !== undefined && (!Array.isArray(o.slides) || o.slides.length === 0 || !o.slides.every((n) => Number.isInteger(n) && n >= 1))) {
     return 'slides must be a non-empty list of 1-based slide numbers.';
   }
@@ -385,8 +397,25 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
   const relEntry = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath));
   let session: ArtifactPageSession | undefined;
   let timed: CheckImage[] = [];
+  let motion: { findings: Finding[]; filmstrip?: CheckImage; reference?: CheckImage } = { findings: [] };
   try {
     if (options.at && maxImages > 0) timed = await captureAtTimes(options, browser.executablePath, viewports[0], warnings);
+    // Motion checks and the filmstrip (openspec add-motion-checks-and-steering): pages, films and mini-apps, not decks.
+    const playable = kind !== 'deck' && renderer !== 'deck-html' && !isDiagram;
+    let reference: ReferenceFacts | undefined;
+    if (options.referenceId) {
+      reference = await readReferenceFacts(options.workspaceRoot, options.outputDir ?? '.open-design', options.referenceId);
+      if (!reference) return fail('invalid-args', `No reference video "${options.referenceId}". Inspect the video with inspect_open_design_reference_video and pass the referenceId it returns.`);
+    }
+    if (playable && (options.filmstrip || reference || (options.motion !== false && hasMotionSource(artifact.entryContent)))) {
+      try {
+        motion = await motionPass(options, browser.executablePath, viewports[0], artifact.entryContent, sourceSkillId, maxImages > 0 && options.filmstrip === true, reference, maxImages > 0);
+      } catch (err) {
+        warnings.push(`The motion checks didn't run: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      if (motion.filmstrip) timed = [motion.filmstrip, ...timed];
+      if (motion.reference) timed = [motion.reference, ...timed];
+    }
     session = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry, executablePath: browser.executablePath });
     const { browser: instance, page } = session;
     await page.setViewport({ width: viewports[0].width, height: viewports[0].height, deviceScaleFactor: 1 });
@@ -421,7 +450,7 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
       viewports: mode === 'page' ? viewports : undefined,
       ok: true,
       mode,
-      findings: [...tileFindings, ...deviceFindings, ...dataFindings, ...webgl, ...sceneSpecFindings(artifact.entryContent, sourceSkillId), ...out.findings, ...brokenAssetFindings(warnings), ...staleFindings],
+      findings: [...tileFindings, ...deviceFindings, ...dataFindings, ...webgl, ...sceneSpecFindings(artifact.entryContent, sourceSkillId), ...out.findings, ...motion.findings, ...brokenAssetFindings(warnings), ...staleFindings],
       images,
       omitted: [...out.omitted, ...dropped],
       slideCount: mode === 'deck' ? slideCount : undefined,
@@ -494,6 +523,8 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
     } else if (probe) {
       result.scene3d = { views: [], note: reviewUnavailableNote(probe), tier: probe.tier };
     }
+    // A film's sound and captions (openspec add-video-sound-and-captions).
+    result.findings.push(...(await filmSoundFindings(options.workspaceRoot, options.entryPath, artifact.entryContent)));
     // Designs on a design system saved from an app: token findings (openspec add-design-from-app).
     result.findings.push(...(await appTokenFindings(options.workspaceRoot, options.outputDir ?? '.open-design', manifest, artifact.entryContent)));
     // A redesign's base screen, beside the new design, second (openspec add-design-from-app).
@@ -658,6 +689,10 @@ async function guardEdit(options: CheckArtifactOptions, result: Extract<CheckArt
     }
   }
 
+  // Motion outside the scope: a shared transition or animation rule that now moves other parts differently.
+  if (before && typeof before !== 'string' && after && typeof after !== 'string' && scopeId) {
+    for (const change of compareMotionOutsideScope(before.get('desktop')?.outsideMotion, after.get('desktop')?.outsideMotion)) findings.push({ check: 'edit-out-of-scope', severity: 'error', message: change });
+  }
   // The verb's direction, measured at desktop width.
   const afterCounted = countedFindings(result.findings);
   const beforeCounted = countedFindings(beforeFindings);
@@ -720,6 +755,113 @@ async function appTokenFindings(workspaceRoot: string, outputDir: string, manife
   return [...tokenFindings(html, file.tokens, tokensCss), ...(await appDesignSystemStaleness(workspaceRoot, id, file))];
 }
 
+/**
+ * Plays the design on the virtual clock for the motion findings, then (with `filmstrip`) captures the beats in a
+ * second pass and puts them on one labelled sheet.
+ */
+async function motionPass(
+  options: CheckArtifactOptions,
+  executablePath: string,
+  viewport: CheckViewport,
+  html: string,
+  sourceSkillId: string | undefined,
+  filmstrip: boolean,
+  reference?: ReferenceFacts,
+  referenceImage = false,
+): Promise<{ findings: Finding[]; filmstrip?: CheckImage; reference?: CheckImage }> {
+  const relEntry = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath));
+  const film = isFilm(html, sourceSkillId);
+  let inventory: MotionInventory;
+  let frames: number[];
+  const session = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry, executablePath });
+  try {
+    const { page } = session;
+    await page.evaluateOnNewDocument(VIRTUAL_CLOCK_SCRIPT);
+    await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
+    await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, 0, [], { still: false });
+    await page.evaluate('window.__odClock.advanceTo(0)');
+    frames = (await page.evaluate(`Array.prototype.map.call(document.querySelectorAll('[data-duration]:not(audio):not(video):not([data-od-caption])'), (el) => Number(el.getAttribute('data-duration')) || 0)`)) as number[];
+    inventory = await playMotionInventory(page, viewport.height);
+  } finally {
+    await session.close();
+  }
+  const findings = options.motion === false || (options.referenceId && !hasMotionSource(html)) ? [] : motionFindings(inventory, { film });
+  let referenceSheet: Array<{ label: string; png: Buffer }> | undefined;
+  if (reference) {
+    // The design's beats: its data-duration frames, else where its animations start.
+    const starts: number[] = [];
+    if (frames.some((d) => d > 0)) {
+      let t = 0;
+      for (const d of frames.filter((x) => x > 0)) {
+        starts.push(Math.round(t) / 1000);
+        t += d;
+      }
+    } else for (const a of inventory.animations.filter((x) => !x.infinite)) starts.push(Math.round(a.startMs / 10) / 100);
+    const designBeats = [...new Set(starts)].sort((a, b) => a - b);
+    for (const d of timingDrift(designBeats, referenceBeats(reference))) {
+      findings.push({ check: 'reference-timing-drift', severity: 'warning', message: `Beat ${d.beat} starts at ${d.at.toFixed(2)}s; the nearest reference cut is at ${d.nearest.toFixed(2)}s (${d.diff > 0 ? '+' : ''}${d.diff.toFixed(2)}s). Build beat timing from the reference's measured cuts.` });
+    }
+    if (designBeats.length === 0) findings.push({ check: 'reference-timing-drift', severity: 'info', message: 'The design has no data-duration frames or timed animations, so its beats could not be compared with the reference cuts.' });
+    if (referenceImage) {
+      // One pair per shot: the reference's frame early in the shot beside the design at the same moment (6 pairs at most).
+      const shotStarts = referenceBeats(reference);
+      const picks = shotStarts
+        .map((start) => reference.frames.find((f) => f.at >= start - 0.01))
+        .filter((f): f is ReferenceFacts['frames'][number] => f !== undefined)
+        .filter((f, i, all) => all.findIndex((x) => x.path === f.path) === i)
+        .slice(0, 6);
+      const shots = await captureMoments(options, executablePath, viewport, picks.map((p) => p.at));
+      referenceSheet = [];
+      for (const [i, p] of picks.entries()) {
+        const ref = await fs.readFile(path.join(options.workspaceRoot, p.path)).catch(() => undefined);
+        if (!ref || !shots[i]) continue;
+        referenceSheet.push({ label: `reference t=${p.at}s`, png: ref }, { label: `design t=${p.at}s`, png: shots[i].png });
+      }
+    }
+  }
+  if (!filmstrip && !referenceSheet?.length) return { findings };
+  const shots = filmstrip ? await captureMoments(options, executablePath, viewport, filmstripBeats({ frameDurationsMs: frames, animations: inventory.animations })) : [];
+  const strip = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry, executablePath });
+  try {
+    const out: { findings: Finding[]; filmstrip?: CheckImage; reference?: CheckImage } = { findings };
+    if (filmstrip) out.filmstrip = await toCheckImage(strip.browser, `filmstrip: ${shots.map((s) => s.label.slice(2)).join(', ')}`, await composeReviewSheet(strip.browser, shots));
+    if (referenceSheet?.length) out.reference = await toCheckImage(strip.browser, `reference ${reference!.referenceId} vs design, at each shot`, await composeReviewSheet(strip.browser, referenceSheet));
+    return out;
+  } finally {
+    await strip.close();
+  }
+}
+
+/** Raw captures of the first viewport (or the card) at each time on the virtual clock, with page captions drawn. */
+async function captureMoments(options: CheckArtifactOptions, executablePath: string, viewport: CheckViewport, times: number[]): Promise<Array<{ label: string; png: Buffer }>> {
+  const relEntry = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath));
+  const session = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry, executablePath });
+  try {
+    const { page } = session;
+    await page.evaluateOnNewDocument(VIRTUAL_CLOCK_SCRIPT);
+    await page.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
+    await loadPage(page, session.url, options.readyTimeoutMs ?? 15000, options.settleMs ?? 300, [], { still: false });
+    const card = await page.$(CARD_SELECTOR);
+    const box = card ? await card.boundingBox() : null;
+    const clip = box && box.width >= 1 && box.height >= 1 ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined;
+    const cues = cuesFromPage((await page.evaluate(COLLECT_CAPTIONS_SCRIPT)) as RawCaptionCue[]);
+    if (cues.length > 0) {
+      const region = clip ?? { x: 0, y: 0, width: viewport.width, height: viewport.height };
+      await page.evaluate(installCaptionOverlay, { cues, clip: region, safe: captionSafeArea(region.width, region.height), hideSource: true });
+    }
+    const out: Array<{ label: string; png: Buffer }> = [];
+    for (const t of [...times].sort((a, b) => a - b)) {
+      await page.evaluate(`window.__odClock.advanceTo(${t * 1000})`);
+      if (cues.length > 0) await page.evaluate(`window.__odCaptions.show(${t * 1000})`);
+      await page.evaluate('window.__odClock.painted()');
+      out.push({ label: `t=${t}s`, png: Buffer.from(await page.screenshot({ type: 'png', ...(clip ? { clip } : {}) })) });
+    }
+    return out;
+  } finally {
+    await session.close();
+  }
+}
+
 /** Captures the first viewport (or the card) at each time in `at` on the virtual clock, labelled t=<seconds>s. */
 async function captureAtTimes(options: CheckArtifactOptions, executablePath: string, viewport: CheckViewport, warnings: string[]): Promise<CheckImage[]> {
   const relEntry = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath));
@@ -733,9 +875,16 @@ async function captureAtTimes(options: CheckArtifactOptions, executablePath: str
     const card = await page.$(CARD_SELECTOR);
     const box = card ? await card.boundingBox() : null;
     const clip = box && box.width >= 1 && box.height >= 1 ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined;
+    // Caption cues in the page are drawn as the export draws them, so the timed images show them.
+    const cues = cuesFromPage((await page.evaluate(COLLECT_CAPTIONS_SCRIPT)) as RawCaptionCue[]);
+    if (cues.length > 0) {
+      const region = clip ?? { x: 0, y: 0, width: viewport.width, height: viewport.height };
+      await page.evaluate(installCaptionOverlay, { cues, clip: region, safe: captionSafeArea(region.width, region.height), hideSource: true });
+    }
     const images: CheckImage[] = [];
     for (const t of [...options.at!].sort((a, b) => a - b)) {
       await page.evaluate(`window.__odClock.advanceTo(${t * 1000})`);
+      if (cues.length > 0) await page.evaluate(`window.__odCaptions.show(${t * 1000})`);
       await page.evaluate('window.__odClock.painted()');
       const png = Buffer.from(await page.screenshot({ type: 'png', ...(clip ? { clip } : {}) }));
       images.push(await toCheckImage(browser, `t=${t}s`, png));
@@ -917,7 +1066,11 @@ async function reducedMotionPass(browser: Browser, page: Page, viewport: CheckVi
     await reduced.setViewport({ width: viewport.width, height: viewport.height, deviceScaleFactor: 1 });
     await reduced.goto(states.url, { waitUntil: 'load', timeout: states.readyTimeoutMs }).catch(() => undefined);
     await new Promise((r) => setTimeout(r, REDUCED_MOTION_WAIT_MS));
-    return ((await reduced.evaluate(collectRunningMotion, REDUCED_MOTION_MIN_MS)) as Finding[]).map((f) => ({ ...f, viewport: viewport.name }));
+    // Entrance and looping motion (animations, script loops) still running is an error, motion-no-reduced-path
+    // (openspec add-motion-checks-and-steering); a transition still running stays a reduced-motion warning.
+    return ((await reduced.evaluate(collectRunningMotion, REDUCED_MOTION_MIN_MS)) as Finding[]).map((f) =>
+      / keeps its transition of /.test(f.message) ? { ...f, viewport: viewport.name } : { ...f, check: 'motion-no-reduced-path', severity: 'error' as const, viewport: viewport.name },
+    );
   } finally {
     await reduced.close();
   }

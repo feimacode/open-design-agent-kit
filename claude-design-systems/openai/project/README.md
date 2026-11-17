@@ -142,11 +142,27 @@ The shape system is uniformly soft: 8px–12px radii, 9999px pills for tags and 
 - Use Signifier-style display moments only for editorial or announcement hierarchy, keeping product controls in the sans system.
 - Avoid ornamental motion, heavy shadows, and oversized decorative cards; the system should feel calm, readable, and deliberate.
 
+## Motion
+
+Durations and easings for this system. Use these for every transition, animation delay and easing; don't invent others.
+
+| Token | Value |
+| --- | --- |
+| `--motion-fast` | `150ms` |
+| `--motion-base` | `220ms` |
+| `--ease-standard` | `cubic-bezier(0.16, 1, 0.3, 1)` |
+| `--motion-instant` | `80ms` |
+| `--motion-slow` | `440ms` |
+| `--motion-scene` | `880ms` |
+| `--ease-enter` | `cubic-bezier(0.34, 1.12, 0.64, 1)` |
+| `--ease-exit` | `cubic-bezier(0.7, 0, 0.84, 0)` |
+| `--ease-spring` | a `linear()` spring |
+| `--motion-stagger` | `70ms` |
+| `--motion-distance` | `16px` |
+
 ## Not synced from Open Design
 
-- --motion-fast skipped: Claude design systems have no motion family.
-- --motion-base skipped: Claude design systems have no motion family.
-- --ease-standard skipped: Claude design systems have no motion family.
 - Written as literal colours computed from color-mix(): --accent-active. They won't follow later edits to the colours they mix.
+- Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.
 - Fonts are named by family only (hosted faces); no font files were copied.
 - No components or assets: Open Design design systems carry tokens and guidance only.

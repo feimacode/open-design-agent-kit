@@ -243,11 +243,27 @@ What makes Runway distinctive is its complete commitment to visual content as de
 5. Uppercase labels need letter-spacing (0.35px) — never tight uppercase
 6. Dark sections should be truly dark (#000000 or #1a1a1a) — no medium grays as surfaces
 
+## Motion
+
+Durations and easings for this system. Use these for every transition, animation delay and easing; don't invent others.
+
+| Token | Value |
+| --- | --- |
+| `--motion-fast` | `150ms` |
+| `--motion-base` | `220ms` |
+| `--ease-standard` | `cubic-bezier(0.2, 0, 0, 1)` |
+| `--motion-instant` | `80ms` |
+| `--motion-slow` | `440ms` |
+| `--motion-scene` | `880ms` |
+| `--ease-enter` | `cubic-bezier(0.34, 1.12, 0.64, 1)` |
+| `--ease-exit` | `cubic-bezier(0.7, 0, 0.84, 0)` |
+| `--ease-spring` | a `linear()` spring |
+| `--motion-stagger` | `70ms` |
+| `--motion-distance` | `16px` |
+
 ## Not synced from Open Design
 
-- --motion-fast skipped: Claude design systems have no motion family.
-- --motion-base skipped: Claude design systems have no motion family.
-- --ease-standard skipped: Claude design systems have no motion family.
 - Written as literal colours computed from color-mix(): --focus-ring. They won't follow later edits to the colours they mix.
+- Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.
 - Fonts are named by family only (hosted faces); no font files were copied.
 - No components or assets: Open Design design systems carry tokens and guidance only.

@@ -24,6 +24,7 @@ Two rules apply to every tool (and over MCP every tool declares `readOnlyHint`, 
 | [`create_open_design_design_system`](#create_open_design_design_system) | `#od-create-design-system` | yes | Instructions for a custom design system |
 | [`extract_open_design_design_system`](#extract_open_design_design_system) | `#od-extract-design-system` | yes | Measure a website's colours, fonts and spacing as a draft design system, or map a Figma file or Canva export the agent read |
 | [`audit_open_design_site`](#audit_open_design_site) | `#od-audit-site` | yes | Check a live website for design and accessibility problems, with a plain-language report |
+| [`inspect_open_design_reference_video`](#inspect_open_design_reference_video) | `#od-reference-video` | yes | Measure a reference video the user attached: cuts, frames, contact sheet and sound |
 | [`compare_open_design_before_after`](#compare_open_design_before_after) | `#od-before-after` | yes | Put a redesign beside the site as it is, with the audit's problems re-checked |
 | [`get_open_design_library`](#get_open_design_library) | `#od-library` | yes | Read the designer's work library: projects, privacy and what each still lacks |
 | [`save_open_design_project`](#save_open_design_project) | `#od-save-project` | yes | Save the designer's details, the portfolio style, project order and one project's facts |
@@ -304,6 +305,7 @@ Composes the instructions for a new design. It combines the skill's workflow, th
 | `fluid` | boolean | no | Build a **fluid** design that [reflows to any shape](../guides/posters.md#change-the-shape): the format becomes the default shape, and the Canvas section teaches container-unit sizing with wide and tall layout rules. Default: `true` for print formats, `false` for screen formats. `fluid: true` without `format` uses A3. |
 | `answers` | object | no | The user's answers to the surface's [questions](../guides/generate-a-design.md#a-few-questions-first) (and the design-system recommender's), by question id, e.g. `{ "where": "Printed" }`. |
 | `assumptions` | string[] (≤ 6, ≤ 160 characters each) | no | What the agent decided without asking, e.g. `["dark theme"]`. Answers and assumptions together are at most 2 KB. Both go into a **Build to these decisions** section, and the Output section asks the agent to pass them to `register_open_design_artifact` as `brief`. |
+| `referenceId` | string | no | A reference video measured by [`inspect_open_design_reference_video`](#inspect_open_design_reference_video). Adds a **Reference video** section with its duration, size, sound and measured cuts, and the [rules for building from a reference](../guides/export-animations.md#start-from-a-reference-video): measure the timeline, never estimate it; for "like this, for my brand" the active design system's colours, type and motion replace the reference's, and its logos, people, footage and words aren't reused. An unknown id is an error. |
 
 **Result:** `{ instructions, suggestedEntryPath, suggestedKind, format?, fluid?, designSystemId?, designSystemName?, designSystemHint?, outlinePath?, sources?, flowScreenId?, flowNote?, baseScreenPath?, portfolio?, redesign? }`. `portfolio` is the record to register (`{ kind, projects, length? }`) with the number of pictures copied and notes on drafted alt text. `redesign` is `{ contentPath, auditPath?, findings, concept }` (the audit finding ids and whether the ribbon is asked for). `flowNote` says when this screen wasn't in the plan and was added to it. When the design system was [saved from an app](../guides/design-from-your-app.md), the instructions also list up to 60 of its components (most imported first, with their variants) and ask for each part to be marked `data-od-component="<Name>"`, or `new:<Name>` when nothing fits. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given. `designSystemHint` is present when no design system was used, and points at [`recommend_open_design_design_systems`](#recommend_open_design_design_systems).
 
@@ -704,6 +706,20 @@ Limits: the same as `extract_open_design_design_system`. Hidden on the hosted se
 ## Beyond the prototype
 
 
+### inspect_open_design_reference_video
+
+Measures a reference video the user attached, so a film can be built from [measured timing instead of guesses](../guides/export-animations.md#start-from-a-reference-video). Uses the installed ffmpeg. Hidden on the hosted server.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `video` | string | yes | Workspace path of the video: `.mp4`, `.mov`, `.m4v`, `.webm` or `.mkv`, up to 200 MB and 180 seconds. |
+
+It writes `.open-design/.references/<referenceId>/`: `facts.json` (duration, size, fps, whether there is sound, and the shot cuts in seconds from ffmpeg's scene detection), `frames/` (up to 24 frames at least 0.4 s apart: one early in each shot, then an even grid), `contact.jpg`, and `audio.wav` when the video has sound.
+
+**Files only.** A YouTube, Vimeo, TikTok or other video-site link is refused with `link` and nothing is written: ask the user to download the video and attach the file. The soundtrack is someone else's work; the rules say to use it only when the user confirms they own it or may use it.
+
+**Result:** the facts as text, the `referenceId`, and the contact sheet as an image. Errors: `link`, `invalid-args`, `not-found`, `unsupported` (another extension), `too-large`, `too-long`, `not-video`, `no-ffmpeg` or `probe-failed`. Pass `referenceId` to [`prepare_open_design_brief`](#prepare_open_design_brief) and [`check_open_design_artifact`](#check_open_design_artifact).
+
 ### compare_open_design_before_after
 
 Writes a before/after page for a [redesign](../guides/redesign-a-website.md#show-the-owner-before-and-after) with a base screen. **It changes nothing in the design.** Hidden on the hosted server. Hidden on the hosted server.
@@ -949,6 +965,9 @@ What it renders depends on the artifact:
 | `slides` | integer[] | no | Decks only: 1-based slide numbers to check. Default: every slide; the contact sheet shows the first 12 of them. |
 | `maxImages` | integer 0–6 | no | How many screenshots to attach. Default 3. `0` returns findings only. |
 | `at` | number[] (up to 6) | no | Animations: also capture the artifact at these times in seconds, on a virtual clock, labelled `t=<seconds>s`. They come first and share `maxImages`. |
+| `filmstrip` | boolean | no | Animated designs: one image of up to 12 frames, each labelled with its time, at the beats: the starts of the `data-duration` frames, or where the animations start and end. It comes first and counts as one image within `maxImages`; it is saved with the run, so the critic sees it. |
+| `motion` | boolean | no | `false` skips the motion pass (the motion findings above). Default: on when the source has transitions, animations or script motion. |
+| `referenceId` | string | no | Animated designs: a reference video measured by [`inspect_open_design_reference_video`](#inspect_open_design_reference_video). The check captures the design at the start of each reference shot and attaches one image pairing each reference frame (left) with the design at the same time (right), first; and reports `reference-timing-drift` (warning) for each beat of the design (a `data-duration` frame, else where an animation starts) more than 0.25 s from the nearest reference cut. An unknown id gives `invalid-args`. |
 | `views` | (`overview` · `closeup` · `low` · `wireframe`)[] or `false` | no | 3D scenes that expose their handles (below): which review views go on the review sheet. Default all four; `false` for no sheet. |
 | `states` | boolean | no | Pages: run the [state accessibility checks](#taste-and-accessibility-checks) (hover and focus, tap targets, 320 px reflow, reduced motion). Default `true`; `false` for a faster check. |
 | `editId` | string | no | After a [steering edit](#prepare_open_design_edit): also compare the design with the snapshot taken before it (below). |
@@ -993,7 +1012,18 @@ For a deliberate exception (a brand that really is purple, three equal pricing t
 | `focus-visible` | An error: an element that shows no visible change when focused (no outline, and no change of shadow, border, background, text decoration or `::before`/`::after`). The browser's own outline counts, so only pages that remove it without a replacement fail |
 | `tap-target` | On the phone viewport: an interactive element smaller than 24×24 px whose 24 px circle touches another target (WCAG 2.2 target size, with its spacing exception). An error below 16 px. Links inside running text and labelled checkboxes are exempt |
 | `reflow` | An error: at 320 px wide (WCAG 1.4.10), the page scrolls sideways or clips text. Not repeated when the phone viewport already scrolls sideways |
-| `reduced-motion` | When the page animates: with `prefers-reduced-motion: reduce`, an animation or transition longer than 200 ms still running, or an element with `will-change: transform` or an inline transform still moving. Canvases (three.js) are exempt |
+| `reduced-motion` | When the page animates: with `prefers-reduced-motion: reduce`, a transition longer than 200 ms still running. Canvases (three.js) are exempt |
+| `motion-no-reduced-path` | An error: with `prefers-reduced-motion: reduce`, an animation longer than 200 ms (an entrance or a loop) still running, or an element with `will-change: transform` or an inline transform still moving (a script loop such as GSAP) |
+
+**Motion** (pages, mini-apps and films whose source has transitions, animations or script motion; warnings). The check plays the design on the virtual clock: 3 seconds of load, then four scroll steps. It lists what moves from `document.getAnimations()` and every element's computed transitions (what hover and focus will run), plus inline style changes made by scripts, which it reports as inferred. Films (a video recipe or a `data-duration` storyboard) get only `motion-crowded` and `motion-off-vocabulary`. `motion: false` skips this pass.
+
+| Check | Finds |
+|---|---|
+| `motion-slow-ui` | A transition over 500 ms: UI feedback that slow feels sluggish |
+| `motion-linear-ui` | Linear easing on a UI transition, except on spinners, progress bars, marquees and tickers |
+| `motion-layout-property` | A transition or animation of `width`, `height`, `top`, `left`, margins, padding or other layout properties instead of `transform` and `opacity` |
+| `motion-crowded` | More than 6 elements starting to move within 100 ms (outside a stagger) |
+| `motion-off-vocabulary` | When the page declares motion tokens on `:root`: a duration more than 10% away from every [motion vocabulary](../guides/design-systems.md#motion-vocabulary) value, or an easing that isn't one of its `--ease-*` curves |
 
 **Portfolio** (only designs registered with [`portfolio`](#register_open_design_artifact); all warnings except `portfolio-internal`):
 
@@ -1125,6 +1155,10 @@ Renders a registered artifact in a headless browser (an installed Chrome, Edge o
 | `fps` | integer 1–60 | no | `mp4`/`webm`/`gif` only: frames per second. Default 30 (15 for GIF). See [Export animations](../guides/export-animations.md). |
 | `duration` | number 0.5–60 | no | `mp4`/`webm`/`gif` only: length in seconds. Default: the sum of the frames' `data-duration`, else the longest CSS or Web animation, else 6. |
 | `loop` | boolean | no | `gif` only: loop forever. Default true. |
+| `audio` | string | no | `mp4`/`webm` only: a workspace sound file laid under the whole film, trimmed to it with a 0.5 s fade out. `<audio>` tracks in the page (`data-start`, `data-duration`, `data-volume`, `data-fade-in`, `data-fade-out`) are mixed too; the mix is normalised to about −14 LUFS. Supplied files only. See [Sound](../guides/export-animations.md#sound). |
+| `audioVolume` | number 0–1 | no | Volume of `audio`. Default 1. |
+| `captions` | string | no | `mp4`/`webm`/`gif` only: a workspace SRT or WebVTT file. Captions are drawn into the frames inside the safe area and `exports/<name>.vtt` is written. Page cues marked `data-od-caption` are used too. See [Captions](../guides/export-animations.md#captions). |
+| `burnCaptions` | boolean | no | `false` writes only the `.vtt` sidecar. Default true. |
 | `shell` | boolean | no | Device screens (`data-od-device` on `<body>`): PNG and JPEG exports show the screen in the kit's device frame by default; `false` exports the bare screen at the device's screen size. Not for PDF or other formats. |
 | `transparent` | boolean | no | `png` only: capture without the page background, so whatever the design doesn't paint is transparent (cut-outs such as a [3D product shot](../guides/3d-objects.md)). The page, and a 3D scene's renderer, must have a transparent background; a warning says when every pixel came out opaque. Not re-encoded to fit `maxBytes`. |
 | `campaignSheet` | boolean | no | Fluid designs only: also write `exports/campaign-sheet.png`: the design at every shape in `presets`, plus the first screen of every other piece registered in the same collection (landing page, email…), each marked when it has errors. Next to it, `exports/campaign-sheet.json` lists each tile in order (label, shape preset or member entry path, exported file, image, error findings) and `exports/campaign-sheet-tiles/` holds each tile's image. See [Run a campaign](../guides/campaigns.md). |
@@ -1184,8 +1218,8 @@ A **steering edit**: one verb on one part of a registered HTML design, and nothi
 | Argument | Type | Required | Meaning |
 |---|---|---|---|
 | `entryPath` | string | yes | The registered design. |
-| `verb` | `bolder` · `quieter` · `denser` · `roomier` · `distill` · `polish` · `harden` | yes, unless `undo` | The direction. Each verb's meaning is in the [steering verbs craft doc](../../packages/content/local/craft/steering-verbs.md). |
-| `scope` | object or string | yes, unless `undo` | Exactly one of `heading` (the section whose heading has that text), `region` (`header`, `hero`, `main`, `footer`, or `page` for `polish` and `harden` only), `selector` (matching one element), `id` (a `data-od-id`) or `commentId` (a preview comment's element). A string is read as a region name or a heading. |
+| `verb` | `bolder` · `quieter` · `denser` · `roomier` · `distill` · `polish` · `harden` · `calmer` · `snappier` · `smoother` | yes, unless `undo` | The direction. Each verb's meaning is in the [steering verbs craft doc](../../packages/content/local/craft/steering-verbs.md). |
+| `scope` | object or string | yes, unless `undo` | Exactly one of `heading` (the section whose heading has that text), `region` (`header`, `hero`, `main`, `footer`, or `page` for `polish`, `harden`, `calmer`, `snappier` and `smoother` only), `selector` (matching one element), `id` (a `data-od-id`) or `commentId` (a preview comment's element). A string is read as a region name or a heading. |
 | `notes` | string | no | The user's own words, passed into the instructions. |
 | `undo` | string | no | An `editId` to undo: restores the design to the snapshot taken before that edit. Edits made after it must be undone first. |
 

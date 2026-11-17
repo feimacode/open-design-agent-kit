@@ -13,6 +13,7 @@ import { RemixExampleTool } from './remixExampleTool';
 import { CreateCustomDesignSystemTool } from './createCustomDesignSystemTool';
 import { AuditSiteTool } from './auditSiteTool';
 import { BeforeAfterTool } from './beforeAfterTool';
+import { ReferenceVideoTool } from './referenceVideoTool';
 import { GetLibraryTool, ImportWorkTool, SaveProjectTool, SaveTargetTool } from './workLibraryTools';
 import { PrepareEditTool } from './prepareEditTool';
 import { ExtractDesignSystemTool } from './extractDesignSystemTool';
@@ -63,6 +64,7 @@ export function registerTools(
     ['extract_open_design_design_system', new ExtractDesignSystemTool(contentIndex, context)],
     ['audit_open_design_site', new AuditSiteTool()],
     ['compare_open_design_before_after', new BeforeAfterTool()],
+    ['inspect_open_design_reference_video', new ReferenceVideoTool()],
     ['save_open_design_project', new SaveProjectTool(contentIndex)],
     ['save_open_design_portfolio_target', new SaveTargetTool()],
     ['get_open_design_library', new GetLibraryTool()],

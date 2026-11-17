@@ -79,8 +79,10 @@ describe('toClaudeDesignSystem', () => {
 
   it('reports what did not carry across, in notes and the README', () => {
     assert.ok(result.notes.some((n) => n.startsWith('Written as literal colours computed from color-mix(): --accent-hover')));
-    assert.ok(result.notes.some((n) => n.startsWith('--motion-fast')));
-    assert.match(result.files['project/README.md'], /^> Warm paper, ink-blue accent\.[\s\S]*## Not synced from Open Design[\s\S]*--motion-fast/);
+    // Motion has no Claude token family: it is listed in the README's Motion section instead (openspec add-motion-vocabulary).
+    assert.ok(result.notes.some((n) => /^Motion tokens are not Claude tokens/.test(n)));
+    assert.match(result.files['project/README.md'], /^> Warm paper, ink-blue accent\.[\s\S]*## Motion[\s\S]*`--motion-fast` \| `150ms`/);
+    assert.match(result.files['project/README.md'], /## Not synced from Open Design/);
   });
 
   it('writes a brand book with no title or provenance, and passes the format validator', () => {

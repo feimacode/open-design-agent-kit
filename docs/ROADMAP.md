@@ -58,6 +58,7 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 
 ### In progress
 
+- **Motion vocabulary:** derive a fuller set of durations, easings, stagger and travel from the three core motion tokens, with speed and bounce dials; fill it from measured site motion; state it in the brief; add a film craft doc adapted from upstream's `motion-design` skill ([add-motion-vocabulary](../openspec/changes/add-motion-vocabulary/), implemented, 10 of 10 tasks, awaiting merge). Source: motion design study, 17 November 2026.
 - Canva: live check with a real design in Claude and through the hosted gateway (task 3.3 of [add-design-system-from-canva](../openspec/changes/add-design-system-from-canva/)). Needs a machine that can reach Canva's export host.
 - Extraction benchmark: the first baseline, and before/after numbers for accent candidates and coverage voting ([add-extraction-benchmark](../openspec/changes/add-extraction-benchmark/)). Needs a machine with open network access.
 - Claude Design: import one system through "Add design system → GitHub repo" (task 4.2 of [add-claude-design-system-builds](../openspec/changes/add-claude-design-system-builds/)).
@@ -66,7 +67,6 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 ### Next
 
 - **Readable colour pairs and dark mode, as one token-contract change.** Store each accent and status colour with a partner that is guaranteed readable on it, and give each role a light and a dark value. Today white text on the accent fails 4.5:1 in 62 of 198 systems, `--warn` as text fails in 136, and only 1 system has a dark variant. Derive at resolve time or through the overlay, since the token schema is vendored. Source: Astryx study, 9 November 2026 (items 1 and 2). Not yet proposed.
-- **Motion vocabulary:** derive a fuller set of durations, easings, stagger and travel from the three core motion tokens, with speed and bounce dials; fill it from measured site motion; state it in the brief; add a film craft doc adapted from upstream's `motion-design` skill ([add-motion-vocabulary](../openspec/changes/add-motion-vocabulary/), proposed, 0 of 10 tasks). Source: motion design study, 17 November 2026.
 
 ### Later
 
@@ -123,14 +123,14 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 
 ### In progress
 
+- **Start from a reference video:** measure a supplied video's cuts, frames and soundtrack, build from the measurements, and compare the result at the cut times; files only, no link downloads ([add-reference-video-replication](../openspec/changes/add-reference-video-replication/), implemented, 9 of 9 tasks, awaiting merge). Adapted from upstream open-design v0.27.
+- **Sound and captions in video export:** mix `<audio>` tracks and a music bed into MP4 and WebM using upstream open-design's markup, normalise loudness, burn in captions with a `.vtt` sidecar, and check that the audio is really there ([add-video-sound-and-captions](../openspec/changes/add-video-sound-and-captions/), implemented, 10 of 11 tasks, awaiting merge; vendoring upstream's audio examples is deferred).
 - Canva private upload: confirm the file appears in Canva Uploads from Desktop Chat (task 3.1 of [canva-upload-from-server](../openspec/changes/canva-upload-from-server/)).
 - Component set: end-to-end runs on a fresh MUI app and a shadcn app (tasks 4.2 and 4.3 of [add-component-library-port](../openspec/changes/add-component-library-port/)).
 
 ### Next
 
 - **Work import:** a folder of images, Figma frames as pictures rather than rebuilt code, and live captures, with WebP, `srcset` and alt text. It arrives with `add-work-library` ([#133]) and also serves comment import.
-- **Sound and captions in video export:** mix `<audio>` tracks and a music bed into MP4 and WebM using upstream open-design's markup, normalise loudness, burn in captions with a `.vtt` sidecar, and check that the audio is really there ([add-video-sound-and-captions](../openspec/changes/add-video-sound-and-captions/), proposed, 0 of 11 tasks).
-- **Start from a reference video:** measure a supplied video's cuts, frames and soundtrack, build from the measurements, and compare the result at the cut times; files only, no link downloads ([add-reference-video-replication](../openspec/changes/add-reference-video-replication/), proposed, 0 of 9 tasks). Adapted from upstream open-design v0.27.
 
 ### Later
 
@@ -192,6 +192,7 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 
 ### In progress
 
+- **Motion checks and motion steering verbs:** motion findings in the check (slow or linear UI transitions, layout-property animation, crowding, off-vocabulary values, no reduced-motion path), a filmstrip at beat boundaries, and `calmer`, `snappier` and `smoother` verbs ([add-motion-checks-and-steering](../openspec/changes/add-motion-checks-and-steering/), implemented, 11 of 11 tasks, awaiting merge).
 - Calibrate the site audit's taste checks on hand-made and AI-default sites ([calibrate-site-audit-taste-checks](../openspec/changes/calibrate-site-audit-taste-checks/)). Until the first calibration run, live taste findings are notes only. Needs network access.
 - Trials with real agent runs: critic on five briefs, variety over five briefs.
 
@@ -199,7 +200,6 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 
 - **More "AI look" rules and a check command for CI:** port about 13 rules (gradient text, nested cards, hero eyebrow chip and others) and add `check --json --github` with a failing exit code (Impeccable study, item 2).
 - **A baseline arm in evals:** run the same briefs without the kit and score blind, so we measure what the kit adds (Astryx study, item 7).
-- **Motion checks and motion steering verbs:** motion findings in the check (slow or linear UI transitions, layout-property animation, crowding, off-vocabulary values, no reduced-motion path), a filmstrip at beat boundaries, and `calmer`, `snappier` and `smoother` verbs ([add-motion-checks-and-steering](../openspec/changes/add-motion-checks-and-steering/), proposed, 0 of 11 tasks).
 
 ### Later
 

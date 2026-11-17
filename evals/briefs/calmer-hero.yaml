@@ -1,0 +1,13 @@
+id: calmer-hero
+request: "Make a landing page for Fieldnote, a field-research notebook app, with cards that animate in. Then: the hero animation is too much."
+expect:
+  surface: prototype
+  skills: [saas-landing, web-prototype]
+  questions: { max: 1 }
+designSystem: null
+answers:
+  audience: "UX researchers"
+must:
+  - "The second request is made as a steering edit with the verb calmer on the hero, not a redesign"
+  - "The check with the editId reports no edit-out-of-scope and no edit-no-effect"
+  - "After the edit, fewer hero elements move or they travel less, and hover and focus feedback still works"
