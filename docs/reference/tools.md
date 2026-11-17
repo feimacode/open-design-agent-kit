@@ -335,6 +335,7 @@ When `.open-design/history.json` lists earlier designs, the instructions also ge
 | `shop-product` | screen | 2048×2048 px | 96 px | | | 20 MB |
 | `shop-banner` | screen | 1920×800 px | 120 px | | | 20 MB |
 | `shop-collection` | screen | 1920×600 px | 120 px | | | 20 MB |
+| `ebook-cover` | screen | 1600×2560 px | 80 px | | | 50 MB |
 | `dribbble-shot` | screen | 1600×1200 px (4:3) | 80 px | | | 10 MB (video 20 MB) |
 | `behance-module` | screen | 1400×1050 px per card | 70 px | | | 10 MB (50 MB refused) |
 | `behance-cover` | screen | 808×632 px, captured at 2× | 40 px | | | |

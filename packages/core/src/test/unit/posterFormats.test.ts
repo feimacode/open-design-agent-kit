@@ -19,6 +19,7 @@ describe('poster formats', () => {
       ['xhs-card', 1080, 1440, undefined, 'od:prototype:card-xiaohongshu'],
       ['yt-thumbnail', 1280, 720, 2_000_000, 'od:prototype:social-youtube-thumbnail'],
       ['facebook-event-cover', 1920, 1005, 8_000_000, 'od:prototype:poster-hero'],
+      ['ebook-cover', 1600, 2560, 50_000_000, 'od:prototype:poster-hero'],
     ];
     for (const [id, w, h, bytes, skill] of rows) {
       const f = FORMATS[id];
@@ -39,6 +40,10 @@ describe('poster formats', () => {
   it('has small print, card and shop formats, with rounded corners only on cards', () => {
     for (const id of ['a5', 'a6', 'a7', 'postcard-4x6', 'business-card', 'business-card-us', 'trading-card', 'tarot-card', 'mini-card']) assert.strictEqual(FORMATS[id].medium, 'print', id);
     for (const id of ['shop-product', 'shop-banner', 'shop-collection']) assert.strictEqual(FORMATS[id].medium, 'screen', id);
+    const ebook = getFormat('ebook-cover')!;
+    assert.deepStrictEqual([ebook.medium, ebook.width, ebook.height, ebook.unit, ebook.maxBytes, ebook.fileLabel], ['screen', 1600, 2560, 'px', 50_000_000, 'ebook-cover']);
+    assert.ok(ebook.safeInset > 0);
+    assert.strictEqual(getFormat('ebook-cover')!.skillHint, 'od:prototype:poster-hero');
     const card = getFormat('trading-card')!;
     assert.deepStrictEqual([card.width, card.height, card.bleed, card.cornerRadius, card.fileLabel], [63.5, 88.9, 3.175, 3.175, 'trading-card']);
     assert.deepStrictEqual(bleedBox(card), { width: 69.85, height: 95.25, bleed: 3.175 });
@@ -90,6 +95,8 @@ describe('export size with a canvas format', () => {
     assert.deepStrictEqual([preset.source, preset.viewport], ['preset', { width: 1080, height: 1920 }]);
     const recorded = resolveExportSize({ aspectHint: '1600×900', canvas: { format: story, source: 'recorded-format' } });
     assert.strictEqual(recorded.source, 'recorded-format');
+    const ebook = resolveExportSize({ canvas: { format: getFormat('ebook-cover')!, source: 'preset' } });
+    assert.deepStrictEqual([ebook.source, ebook.viewport], ['preset', { width: 1600, height: 2560 }]);
   });
 
   it('sizes a print viewport to the bleed box in CSS px', () => {
