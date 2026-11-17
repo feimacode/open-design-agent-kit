@@ -571,6 +571,10 @@
                   "description": "A tailored version from save_open_design_portfolio_target: its projects and order when projects is left out, privacy ceiling, cover note and limits."
                 }
               }
+            },
+            "referenceId": {
+              "type": "string",
+              "description": "A reference video inspected with #od-reference-video: adds its measured cuts and frames and the rules for building from a reference; for 'like this, for my brand' the active design system's colours, type and motion replace the reference's."
             }
           },
           "required": [
@@ -1617,6 +1621,27 @@
               "description": "Optional: up to 3 summary lines, each citing fixed findings."
             }
           }
+        }
+      },
+      {
+        "name": "inspect_open_design_reference_video",
+        "displayName": "Read a Reference Video",
+        "modelDescription": "Reads a reference video the user attached (a workspace file: .mp4, .mov, .m4v, .webm or .mkv, up to 200 MB and 180 seconds) with the installed ffmpeg, so a film is built from measured timing. Writes .open-design/.references/<id>/: facts.json (duration, size, fps, sound, shot cuts in seconds), up to 24 frames, contact.jpg and audio.wav when it has sound. Returns the facts, the contact sheet and a referenceId to pass to #od-prepare-brief and #od-check. Files only: for a link, ask the user to download and attach the video. Reuse its soundtrack only after the user confirms they may.",
+        "userDescription": "Measure a video you like (cuts, frames, sound) to build a film from it",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "od-reference-video",
+        "icon": "$(device-camera-video)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "video": {
+              "type": "string",
+              "description": "Workspace-relative path of the video file."
+            }
+          },
+          "required": [
+            "video"
+          ]
         }
       },
       {
@@ -2987,6 +3012,10 @@
             "editId": {
               "type": "string",
               "description": "After a steering edit: the editId #od-edit returned. Also compares the design with its snapshot: edit-out-of-scope, edit-no-effect and edit-regression, with the edited part before and after attached first."
+            },
+            "referenceId": {
+              "type": "string",
+              "description": "A reference video inspected with #od-reference-video: pairs the design with the reference at the start of each shot and reports reference-timing-drift for a beat more than 0.25 s from the nearest reference cut."
             }
           },
           "required": []

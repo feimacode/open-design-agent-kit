@@ -24,6 +24,7 @@ Two rules apply to every tool (and over MCP every tool declares `readOnlyHint`, 
 | [`create_open_design_design_system`](#create_open_design_design_system) | `#od-create-design-system` | yes | Instructions for a custom design system |
 | [`extract_open_design_design_system`](#extract_open_design_design_system) | `#od-extract-design-system` | yes | Measure a website's colours, fonts and spacing as a draft design system, or map a Figma file or Canva export the agent read |
 | [`audit_open_design_site`](#audit_open_design_site) | `#od-audit-site` | yes | Check a live website for design and accessibility problems, with a plain-language report |
+| [`inspect_open_design_reference_video`](#inspect_open_design_reference_video) | `#od-reference-video` | yes | Measure a reference video the user attached: cuts, frames, contact sheet and sound |
 | [`compare_open_design_before_after`](#compare_open_design_before_after) | `#od-before-after` | yes | Put a redesign beside the site as it is, with the audit's problems re-checked |
 | [`get_open_design_library`](#get_open_design_library) | `#od-library` | yes | Read the designer's work library: projects, privacy and what each still lacks |
 | [`save_open_design_project`](#save_open_design_project) | `#od-save-project` | yes | Save the designer's details, the portfolio style, project order and one project's facts |
@@ -304,6 +305,7 @@ Composes the instructions for a new design. It combines the skill's workflow, th
 | `fluid` | boolean | no | Build a **fluid** design that [reflows to any shape](../guides/posters.md#change-the-shape): the format becomes the default shape, and the Canvas section teaches container-unit sizing with wide and tall layout rules. Default: `true` for print formats, `false` for screen formats. `fluid: true` without `format` uses A3. |
 | `answers` | object | no | The user's answers to the surface's [questions](../guides/generate-a-design.md#a-few-questions-first) (and the design-system recommender's), by question id, e.g. `{ "where": "Printed" }`. |
 | `assumptions` | string[] (≤ 6, ≤ 160 characters each) | no | What the agent decided without asking, e.g. `["dark theme"]`. Answers and assumptions together are at most 2 KB. Both go into a **Build to these decisions** section, and the Output section asks the agent to pass them to `register_open_design_artifact` as `brief`. |
+| `referenceId` | string | no | A reference video measured by [`inspect_open_design_reference_video`](#inspect_open_design_reference_video). Adds a **Reference video** section with its duration, size, sound and measured cuts, and the [rules for building from a reference](../guides/export-animations.md#start-from-a-reference-video): measure the timeline, never estimate it; for "like this, for my brand" the active design system's colours, type and motion replace the reference's, and its logos, people, footage and words aren't reused. An unknown id is an error. |
 
 **Result:** `{ instructions, suggestedEntryPath, suggestedKind, format?, fluid?, designSystemId?, designSystemName?, designSystemHint?, outlinePath?, sources?, flowScreenId?, flowNote?, baseScreenPath?, portfolio?, redesign? }`. `portfolio` is the record to register (`{ kind, projects, length? }`) with the number of pictures copied and notes on drafted alt text. `redesign` is `{ contentPath, auditPath?, findings, concept }` (the audit finding ids and whether the ribbon is asked for). `flowNote` says when this screen wasn't in the plan and was added to it. When the design system was [saved from an app](../guides/design-from-your-app.md), the instructions also list up to 60 of its components (most imported first, with their variants) and ask for each part to be marked `data-od-component="<Name>"`, or `new:<Name>` when nothing fits. `outlinePath` and `sources` (`[{ path, markdownPath, kind }]`) are present when `sources` was given. `designSystemHint` is present when no design system was used, and points at [`recommend_open_design_design_systems`](#recommend_open_design_design_systems).
 
@@ -704,6 +706,20 @@ Limits: the same as `extract_open_design_design_system`. Hidden on the hosted se
 ## Beyond the prototype
 
 
+### inspect_open_design_reference_video
+
+Measures a reference video the user attached, so a film can be built from [measured timing instead of guesses](../guides/export-animations.md#start-from-a-reference-video). Uses the installed ffmpeg. Hidden on the hosted server.
+
+| Argument | Type | Required | Meaning |
+|---|---|---|---|
+| `video` | string | yes | Workspace path of the video: `.mp4`, `.mov`, `.m4v`, `.webm` or `.mkv`, up to 200 MB and 180 seconds. |
+
+It writes `.open-design/.references/<referenceId>/`: `facts.json` (duration, size, fps, whether there is sound, and the shot cuts in seconds from ffmpeg's scene detection), `frames/` (up to 24 frames at least 0.4 s apart: one early in each shot, then an even grid), `contact.jpg`, and `audio.wav` when the video has sound.
+
+**Files only.** A YouTube, Vimeo, TikTok or other video-site link is refused with `link` and nothing is written: ask the user to download the video and attach the file. The soundtrack is someone else's work; the rules say to use it only when the user confirms they own it or may use it.
+
+**Result:** the facts as text, the `referenceId`, and the contact sheet as an image. Errors: `link`, `invalid-args`, `not-found`, `unsupported` (another extension), `too-large`, `too-long`, `not-video`, `no-ffmpeg` or `probe-failed`. Pass `referenceId` to [`prepare_open_design_brief`](#prepare_open_design_brief) and [`check_open_design_artifact`](#check_open_design_artifact).
+
 ### compare_open_design_before_after
 
 Writes a before/after page for a [redesign](../guides/redesign-a-website.md#show-the-owner-before-and-after) with a base screen. **It changes nothing in the design.** Hidden on the hosted server. Hidden on the hosted server.
@@ -951,6 +967,7 @@ What it renders depends on the artifact:
 | `at` | number[] (up to 6) | no | Animations: also capture the artifact at these times in seconds, on a virtual clock, labelled `t=<seconds>s`. They come first and share `maxImages`. |
 | `filmstrip` | boolean | no | Animated designs: one image of up to 12 frames, each labelled with its time, at the beats: the starts of the `data-duration` frames, or where the animations start and end. It comes first and counts as one image within `maxImages`; it is saved with the run, so the critic sees it. |
 | `motion` | boolean | no | `false` skips the motion pass (the motion findings above). Default: on when the source has transitions, animations or script motion. |
+| `referenceId` | string | no | Animated designs: a reference video measured by [`inspect_open_design_reference_video`](#inspect_open_design_reference_video). The check captures the design at the start of each reference shot and attaches one image pairing each reference frame (left) with the design at the same time (right), first; and reports `reference-timing-drift` (warning) for each beat of the design (a `data-duration` frame, else where an animation starts) more than 0.25 s from the nearest reference cut. An unknown id gives `invalid-args`. |
 | `views` | (`overview` · `closeup` · `low` · `wireframe`)[] or `false` | no | 3D scenes that expose their handles (below): which review views go on the review sheet. Default all four; `false` for no sheet. |
 | `states` | boolean | no | Pages: run the [state accessibility checks](#taste-and-accessibility-checks) (hover and focus, tap targets, 320 px reflow, reduced motion). Default `true`; `false` for a faster check. |
 | `editId` | string | no | After a [steering edit](#prepare_open_design_edit): also compare the design with the snapshot taken before it (below). |

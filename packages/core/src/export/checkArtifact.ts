@@ -15,6 +15,7 @@ import { VIRTUAL_CLOCK_SCRIPT } from './motion/virtualClock';
 import { COLLECT_CAPTIONS_SCRIPT, captionSafeArea, cuesFromPage, installCaptionOverlay, type RawCaptionCue } from './motion/captions';
 import { filmSoundFindings } from './motion/filmChecks';
 import { filmstripBeats, hasMotionSource, isFilm, motionFindings, playMotionInventory, type MotionInventory } from './motionAudit';
+import { readReferenceFacts, referenceBeats, timingDrift, type ReferenceFacts } from '../media/referenceVideo';
 import { extractRootTokens, isStyleTileSkill, missingTileTokens } from '../generation/styleTiles';
 import { findBrowser } from './browserDiscovery';
 import { formatSavedCheckRun, saveCheckRun, type SavedCheckRun } from './checkHistory';
@@ -109,6 +110,8 @@ export interface CheckArtifactOptions {
   filmstrip?: boolean;
   /** false skips playing the design for the motion checks (default: on when the source has motion). */
   motion?: boolean;
+  /** A reference video inspected with inspect_open_design_reference_video: pairs the design with it at each cut and reports reference-timing-drift (openspec add-reference-video-replication). */
+  referenceId?: string;
   /** 3D pages exposing odScene handles: the review views on the sheet (default all four), or false for none. */
   views?: ReviewView[] | false;
   /** Save the run's images and findings under <outputDir>/.checks/ for the user (default true; openspec add-browser-preview). */
@@ -394,18 +397,24 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
   const relEntry = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath));
   let session: ArtifactPageSession | undefined;
   let timed: CheckImage[] = [];
-  let motion: { findings: Finding[]; filmstrip?: CheckImage } = { findings: [] };
+  let motion: { findings: Finding[]; filmstrip?: CheckImage; reference?: CheckImage } = { findings: [] };
   try {
     if (options.at && maxImages > 0) timed = await captureAtTimes(options, browser.executablePath, viewports[0], warnings);
     // Motion checks and the filmstrip (openspec add-motion-checks-and-steering): pages, films and mini-apps, not decks.
     const playable = kind !== 'deck' && renderer !== 'deck-html' && !isDiagram;
-    if (playable && (options.filmstrip || (options.motion !== false && hasMotionSource(artifact.entryContent)))) {
+    let reference: ReferenceFacts | undefined;
+    if (options.referenceId) {
+      reference = await readReferenceFacts(options.workspaceRoot, options.outputDir ?? '.open-design', options.referenceId);
+      if (!reference) return fail('invalid-args', `No reference video "${options.referenceId}". Inspect the video with inspect_open_design_reference_video and pass the referenceId it returns.`);
+    }
+    if (playable && (options.filmstrip || reference || (options.motion !== false && hasMotionSource(artifact.entryContent)))) {
       try {
-        motion = await motionPass(options, browser.executablePath, viewports[0], artifact.entryContent, sourceSkillId, maxImages > 0 && options.filmstrip === true);
+        motion = await motionPass(options, browser.executablePath, viewports[0], artifact.entryContent, sourceSkillId, maxImages > 0 && options.filmstrip === true, reference, maxImages > 0);
       } catch (err) {
         warnings.push(`The motion checks didn't run: ${err instanceof Error ? err.message : String(err)}`);
       }
       if (motion.filmstrip) timed = [motion.filmstrip, ...timed];
+      if (motion.reference) timed = [motion.reference, ...timed];
     }
     session = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry, executablePath: browser.executablePath });
     const { browser: instance, page } = session;
@@ -750,7 +759,16 @@ async function appTokenFindings(workspaceRoot: string, outputDir: string, manife
  * Plays the design on the virtual clock for the motion findings, then (with `filmstrip`) captures the beats in a
  * second pass and puts them on one labelled sheet.
  */
-async function motionPass(options: CheckArtifactOptions, executablePath: string, viewport: CheckViewport, html: string, sourceSkillId: string | undefined, filmstrip: boolean): Promise<{ findings: Finding[]; filmstrip?: CheckImage }> {
+async function motionPass(
+  options: CheckArtifactOptions,
+  executablePath: string,
+  viewport: CheckViewport,
+  html: string,
+  sourceSkillId: string | undefined,
+  filmstrip: boolean,
+  reference?: ReferenceFacts,
+  referenceImage = false,
+): Promise<{ findings: Finding[]; filmstrip?: CheckImage; reference?: CheckImage }> {
   const relEntry = path.relative(options.workspaceRoot, path.resolve(options.workspaceRoot, options.entryPath));
   const film = isFilm(html, sourceSkillId);
   let inventory: MotionInventory;
@@ -767,14 +785,48 @@ async function motionPass(options: CheckArtifactOptions, executablePath: string,
   } finally {
     await session.close();
   }
-  const findings = options.motion === false ? [] : motionFindings(inventory, { film });
-  if (!filmstrip) return { findings };
-  const beats = filmstripBeats({ frameDurationsMs: frames, animations: inventory.animations });
-  const shots = await captureMoments(options, executablePath, viewport, beats);
+  const findings = options.motion === false || (options.referenceId && !hasMotionSource(html)) ? [] : motionFindings(inventory, { film });
+  let referenceSheet: Array<{ label: string; png: Buffer }> | undefined;
+  if (reference) {
+    // The design's beats: its data-duration frames, else where its animations start.
+    const starts: number[] = [];
+    if (frames.some((d) => d > 0)) {
+      let t = 0;
+      for (const d of frames.filter((x) => x > 0)) {
+        starts.push(Math.round(t) / 1000);
+        t += d;
+      }
+    } else for (const a of inventory.animations.filter((x) => !x.infinite)) starts.push(Math.round(a.startMs / 10) / 100);
+    const designBeats = [...new Set(starts)].sort((a, b) => a - b);
+    for (const d of timingDrift(designBeats, referenceBeats(reference))) {
+      findings.push({ check: 'reference-timing-drift', severity: 'warning', message: `Beat ${d.beat} starts at ${d.at.toFixed(2)}s; the nearest reference cut is at ${d.nearest.toFixed(2)}s (${d.diff > 0 ? '+' : ''}${d.diff.toFixed(2)}s). Build beat timing from the reference's measured cuts.` });
+    }
+    if (designBeats.length === 0) findings.push({ check: 'reference-timing-drift', severity: 'info', message: 'The design has no data-duration frames or timed animations, so its beats could not be compared with the reference cuts.' });
+    if (referenceImage) {
+      // One pair per shot: the reference's frame early in the shot beside the design at the same moment (6 pairs at most).
+      const shotStarts = referenceBeats(reference);
+      const picks = shotStarts
+        .map((start) => reference.frames.find((f) => f.at >= start - 0.01))
+        .filter((f): f is ReferenceFacts['frames'][number] => f !== undefined)
+        .filter((f, i, all) => all.findIndex((x) => x.path === f.path) === i)
+        .slice(0, 6);
+      const shots = await captureMoments(options, executablePath, viewport, picks.map((p) => p.at));
+      referenceSheet = [];
+      for (const [i, p] of picks.entries()) {
+        const ref = await fs.readFile(path.join(options.workspaceRoot, p.path)).catch(() => undefined);
+        if (!ref || !shots[i]) continue;
+        referenceSheet.push({ label: `reference t=${p.at}s`, png: ref }, { label: `design t=${p.at}s`, png: shots[i].png });
+      }
+    }
+  }
+  if (!filmstrip && !referenceSheet?.length) return { findings };
+  const shots = filmstrip ? await captureMoments(options, executablePath, viewport, filmstripBeats({ frameDurationsMs: frames, animations: inventory.animations })) : [];
   const strip = await openArtifactPage({ workspaceRoot: options.workspaceRoot, relEntry, executablePath });
   try {
-    const label = `filmstrip: ${beats.map((t) => `${t}s`).join(', ')}`;
-    return { findings, filmstrip: await toCheckImage(strip.browser, label, await composeReviewSheet(strip.browser, shots.map((s) => ({ label: s.label, png: s.png })))) };
+    const out: { findings: Finding[]; filmstrip?: CheckImage; reference?: CheckImage } = { findings };
+    if (filmstrip) out.filmstrip = await toCheckImage(strip.browser, `filmstrip: ${shots.map((s) => s.label.slice(2)).join(', ')}`, await composeReviewSheet(strip.browser, shots));
+    if (referenceSheet?.length) out.reference = await toCheckImage(strip.browser, `reference ${reference!.referenceId} vs design, at each shot`, await composeReviewSheet(strip.browser, referenceSheet));
+    return out;
   } finally {
     await strip.close();
   }

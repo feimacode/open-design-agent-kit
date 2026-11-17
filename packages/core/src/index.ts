@@ -37,6 +37,7 @@ export * from './generation/designSystemSource';
 export * from './generation/designSystemTokens';
 export * from './generation/motionVocabulary';
 export * from './generation/motionBrief';
+export * from './media/referenceVideo';
 export * from './generation/designSystemVisualize';
 export * from './generation/designSystemImport';
 export * from './generation/claudeDesignSystem';

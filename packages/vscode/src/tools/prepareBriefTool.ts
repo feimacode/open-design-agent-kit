@@ -28,7 +28,7 @@ import {
 import { getOutputDirectory, getWorkspaceRoot, slugify, suggestEntryPath } from '../workspace/artifactWriter';
 import { vscodeActiveDesignSystemStore } from '../workspace/activeDesignSystem';
 import { detectExistingApp } from '@feimacode/open-design-agent-kit-core';
-import { motionSectionForBrief } from '@feimacode/open-design-agent-kit-core';
+import { motionSectionForBrief, readReferenceFacts, referenceBriefSection } from '@feimacode/open-design-agent-kit-core';
 
 interface PrepareBriefInput {
   skillId: string;
@@ -47,6 +47,7 @@ interface PrepareBriefInput {
   assumptions?: string[];
   redesign?: unknown;
   portfolio?: unknown;
+  referenceId?: string;
 }
 
 export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefInput> {
@@ -55,7 +56,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<PrepareBriefInput>,
   ): Promise<vscode.LanguageModelToolResult> {
-    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, flow, baseScreen: baseScreenInput, sources: sourcePaths, format, fluid, answers, assumptions, redesign: redesignInput, portfolio: portfolioInput } = options.input;
+    const { skillId, designSystemId: explicitDesignSystemId, brief, collectionId, collectionName, screenRole, screenTotal, flow, baseScreen: baseScreenInput, sources: sourcePaths, format, fluid, answers, assumptions, redesign: redesignInput, portfolio: portfolioInput, referenceId } = options.input;
 
     const decisions = validateBriefDecisions(answers, assumptions);
     if (!decisions.ok) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(decisions.error)]);
@@ -103,6 +104,15 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
 
     const allCraftSections = await this.contentIndex.craftSections();
     const craftSections = resolveCraftSections(allCraftSections, craftRequirementsFor(skill, designSystem));
+    // A reference video (openspec add-reference-video-replication): its facts and the replication rules.
+    let referenceSection: string | undefined;
+    if (referenceId) {
+      const facts = await readReferenceFacts(getWorkspaceRoot(), getOutputDirectory(), referenceId);
+      if (!facts) return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(`No reference video "${referenceId}". Run #od-reference-video on the video file first and pass the referenceId it returns.`)]);
+      const doc = allCraftSections.find((c) => c.id === 'reference-video');
+      if (doc && !craftSections.some((c) => c.id === doc.id)) craftSections.push(doc);
+      referenceSection = referenceBriefSection(facts, designSystem?.name);
+    }
     // Deliberately reads workspaceFolders directly rather than
     // getWorkspaceRoot() (which throws with no folder open) — this tool has
     // never required an open workspace to compose instructions, and
@@ -202,7 +212,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       fluid: canvas.fluid,
       decisions: decisions.decisions,
       recentDesigns,
-      motionSection: motionSectionForBrief(skill, designSystem),
+      motionSection: [motionSectionForBrief(skill, designSystem), referenceSection].filter(Boolean).join('\n\n') || undefined,
     });
     const instructions = portfolio
       ? `${composed}\n\n${portfolio.section}\n\nWhen you register, pass \`portfolio\` (${JSON.stringify(portfolio.record)}) so the portfolio checks run.`

@@ -194,7 +194,7 @@ import {
   exportDesignSystemForClaude,
   type BrandKind,
 } from '@feimacode/open-design-agent-kit-core';
-import { motionSectionForBrief } from '@feimacode/open-design-agent-kit-core';
+import { formatReferenceFacts, inspectReferenceVideo as inspectReferenceVideoCore, motionSectionForBrief, readReferenceFacts, referenceBriefSection } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
 import type { DesignLayout } from './layout';
 import { holdsRegisteredArtifact, writeManagedFile } from './managedWorkspace';
@@ -360,6 +360,7 @@ export async function prepareBrief(
     assumptions?: string[];
     redesign?: unknown;
     portfolio?: unknown;
+    referenceId?: string;
   },
 ): Promise<string> {
   const decisions = validateBriefDecisions(input.answers, input.assumptions);
@@ -384,6 +385,15 @@ export async function prepareBrief(
 
   const allCraftSections = await ctx.contentIndex.craftSections();
   const craftSections = resolveCraftSections(allCraftSections, craftRequirementsFor(skill, designSystem));
+  // A reference video (openspec add-reference-video-replication): its facts and the replication rules.
+  let referenceSection: string | undefined;
+  if (input.referenceId) {
+    const facts = await readReferenceFacts(ctx.workspaceRoot, ctx.outputDir, input.referenceId);
+    if (!facts) return `No reference video "${input.referenceId}". Call inspect_open_design_reference_video with the video file first and pass the referenceId it returns.`;
+    const doc = allCraftSections.find((c) => c.id === 'reference-video');
+    if (doc && !craftSections.some((c) => c.id === doc.id)) craftSections.push(doc);
+    referenceSection = referenceBriefSection(facts, designSystem?.name);
+  }
   const existingAppFrameworks = await detectExistingApp(ctx.workspaceRoot);
 
   let suggestedEntryPath: string;
@@ -464,7 +474,7 @@ export async function prepareBrief(
     recentDesigns,
     productContext: ctx.managedWorkspace ? undefined : await readProductContext(ctx.workspaceRoot),
     projectDesignMdPath: ctx.managedWorkspace || designSystem ? undefined : await findProjectDesignMd(ctx.workspaceRoot),
-    motionSection: motionSectionForBrief(skill, designSystem),
+    motionSection: [motionSectionForBrief(skill, designSystem), referenceSection].filter(Boolean).join('\n\n') || undefined,
   });
   const instructions = portfolio
     ? `${composed}\n\n${portfolio.section}\n\nWhen you register, pass \`portfolio\` (${JSON.stringify(portfolio.record)}) so the portfolio checks run.`
@@ -1417,7 +1427,7 @@ export async function listIntegrations(ctx: ToolContext, input: ListIntegrations
 /** check_open_design_artifact: renders the artifact and returns findings plus screenshots; writes nothing. */
 export async function checkArtifact(
   ctx: ToolContext,
-  input: { entryPath?: string; collectionId?: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number; at?: number[]; filmstrip?: boolean; views?: ReviewView[] | false; states?: boolean; editId?: string },
+  input: { entryPath?: string; collectionId?: string; viewports?: CheckViewport[]; slides?: number[]; maxImages?: number; at?: number[]; filmstrip?: boolean; referenceId?: string; views?: ReviewView[] | false; states?: boolean; editId?: string },
 ): Promise<ToolOutput> {
   // Browser path: OPEN_DESIGN_BROWSER_PATH is read by core's discovery itself.
   const lookupAspectHint = async (id: string) => (await ctx.contentIndex.getSkill(id))?.aspectHint;
@@ -1571,4 +1581,14 @@ export async function startJobRun(ctx: ToolContext, input: { jobPath: string; ru
 /** finish_open_design_job_run: browserless checks, the final status and the run record, plus a summary. */
 export async function finishJobRun(ctx: ToolContext, input: FinishJobRunInput): Promise<string> {
   return formatFinishJobRunResult(await finishJobRunCore({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir }, input));
+}
+
+/** inspect_open_design_reference_video: measures a reference video the user attached (openspec add-reference-video-replication). */
+export async function inspectReferenceVideo(ctx: ToolContext, input: { video: string }): Promise<ToolOutput> {
+  const result = await inspectReferenceVideoCore({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, video: input.video });
+  if (!result.ok) return { text: result.code === 'link' ? result.error : `Couldn't read the reference video (${result.code}): ${result.error}` };
+  return {
+    text: `${formatReferenceFacts(result.facts)}\nreferenceId: ${result.facts.referenceId}. Pass it to prepare_open_design_brief and, after building, to check_open_design_artifact. The contact sheet is attached.`,
+    images: [{ data: result.contact, mime: 'image/jpeg' }],
+  };
 }

@@ -301,6 +301,11 @@ const TOOL_DEFS: ToolDef[] = [
           },
           flow: FLOW_INPUT_SCHEMA,
           portfolio: PORTFOLIO_INPUT_SCHEMA,
+          referenceId: {
+            type: 'string',
+            description:
+              "A reference video the user attached, inspected with inspect_open_design_reference_video: adds its measured cuts and frames and the rules for building from a reference (measure the timeline, never estimate it; for 'like this, for my brand' the active design system's colours, type and motion replace the reference's, and its logos, people and words aren't reused).",
+          },
           redesign: {
             type: 'object',
             description:
@@ -374,6 +379,7 @@ const TOOL_DEFS: ToolDef[] = [
           assumptions?: string[];
           redesign?: unknown;
           portfolio?: unknown;
+          referenceId?: string;
         },
       ),
   },
@@ -835,6 +841,21 @@ const TOOL_DEFS: ToolDef[] = [
       },
     },
     handler: (ctx, args) => tools.auditSite(ctx, args as { url?: string; extraUrls?: string[] }),
+  },
+  {
+    tool: {
+      name: 'inspect_open_design_reference_video',
+      description:
+        "Reads a reference video the user attached (a file in the workspace: .mp4, .mov, .m4v, .webm or .mkv, up to 200 MB and 180 seconds) so a film can be built from measured timing instead of guesses. Uses the installed ffmpeg. Writes .open-design/.references/<id>/ with facts.json (duration, size, fps, whether it has sound, shot cuts in seconds from scene detection), up to 24 frames (one early in each shot plus an even grid), contact.jpg and audio.wav when it has sound, and returns the facts, the contact sheet and a referenceId. Then pass referenceId to prepare_open_design_brief (it adds the cuts and the replication rules) and to check_open_design_artifact (it pairs the design with the reference and reports timing drift). Files only: it never downloads from a link; for a link, ask the user to download the video and attach it. Reuse the reference's soundtrack only after the user confirms they own it or may use it.",
+      inputSchema: {
+        type: 'object',
+        properties: {
+          video: { type: 'string', description: 'Workspace-relative path of the video file.' },
+        },
+        required: ['video'],
+      },
+    },
+    handler: (ctx, args) => tools.inspectReferenceVideo(ctx, args as { video: string }),
   },
   {
     tool: {
@@ -1584,6 +1605,11 @@ const TOOL_DEFS: ToolDef[] = [
             items: { type: 'number', minimum: 0, maximum: 60 },
             description:
               "Animations: up to 6 times in seconds. Also captures the artifact at those moments on a virtual clock (labelled t=<seconds>s), so you can see the start, middle and end of an animation. They share maxImages with the regular screenshots.",
+          },
+          referenceId: {
+            type: 'string',
+            description:
+              'A reference video inspected with inspect_open_design_reference_video: also pairs the design with the reference at the start of each shot (reference left, design right, one image) and reports reference-timing-drift for a beat more than 0.25 s from the nearest reference cut.',
           },
           filmstrip: {
             type: 'boolean',

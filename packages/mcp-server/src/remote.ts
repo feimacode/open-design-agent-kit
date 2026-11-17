@@ -77,6 +77,7 @@ export const REMOTE_HIDDEN_TOOLS: Record<string, string> = {
   restore_open_design_artifact: 'a Claude artifact read on the user’s side',
   audit_open_design_site: 'rendering any website from the server',
   compare_open_design_before_after: 'a redesign of a live website, which the hosted server doesn\'t render',
+  inspect_open_design_reference_video: "a video file on the user's computer (the hosted server takes no video uploads)",
 };
 
 /** Why a remote call with these arguments is refused, or undefined when it's fine. */

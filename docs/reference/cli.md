@@ -161,6 +161,7 @@ npx @feimacode/open-design-agent-kit check <entryPath> [options]
 | `--slides <list>` | Decks only: 1-based slide numbers, e.g. `1,3`. |
 | `--screenshots <dir>` | Write the screenshots as JPEG files named after their labels (`desktop.jpg`, `mobile.jpg`, `slides-1-12.jpg`) to this folder. Without it, no screenshots are rendered. |
 | `--filmstrip` | Animations: one image of up to 12 frames at the beats (`data-duration` frames, or where animations start and end). Write it with `--screenshots`. |
+| `--reference <id>` | Animations: pair the design with a reference video measured by [`reference`](#reference) and report `reference-timing-drift`. Write the pairs with `--screenshots`. |
 | `--at <seconds>` | Animations: also capture these moments, comma-separated (e.g. `0,1.5,3`). Write them with `--screenshots`. |
 | `--max-images <n>` | With `--screenshots`: how many, 0–6. Default 3. |
 | `--views <list\|none>` | 3D scenes exposing their `odScene` handles: the review views on the sheet, comma-separated from `overview,closeup,low,wireframe` (default all), or `none`. The sheet is written as `3d-views-<views>.jpg`. See [the check tool](tools.md#check_open_design_artifact). |
@@ -179,6 +180,22 @@ npx @feimacode/open-design-agent-kit check .open-design/landing/landing.html --f
 # Save what the agent sees
 npx @feimacode/open-design-agent-kit check .open-design/pitch/pitch.html --screenshots ./check-shots
 ```
+
+### reference
+
+Measures a reference video file with the installed ffmpeg, for [building a film from a reference](../guides/export-animations.md#start-from-a-reference-video): duration, size, fps, sound and shot cuts, with frames, a contact sheet and the soundtrack under `.open-design/.references/<id>/`. Files only: a video-site link is refused, not downloaded.
+
+```bash
+npx @feimacode/open-design-agent-kit reference <video> [options]
+```
+
+| Option | Meaning |
+|---|---|
+| `--ffmpeg <path>` | ffmpeg executable. Default: `OPEN_DESIGN_FFMPEG_PATH`, then auto-detect. |
+| `--json` | Print `facts.json` instead of text. |
+| `--workspace <dir>` | Workspace root. Default: the nearest folder above the video that contains `.open-design/`, else the current directory. |
+
+Prints the facts and the `referenceId` to pass to `check --reference`. Exit code `1` when the video can't be read (with the reason).
 
 ### preview
 

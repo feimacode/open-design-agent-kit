@@ -80,6 +80,18 @@ Captions are drawn into the frames in the design system's body font and colours,
 
 The check reports `caption-too-fast` for a cue over 20 characters a second, and the export reports `caption-outside-safe-area` for one too long to fit. Captions marked in the page appear in the check's timed screenshots (`at`), as they will in the film.
 
+## Start from a reference video
+
+> Here's a promo I like (`refs/promo.mp4`). Make one like it for our brand.
+
+Attach the video as a file in the workspace (`.mp4`, `.mov`, `.m4v`, `.webm` or `.mkv`, up to 200 MB and 3 minutes). Links to YouTube, Vimeo or TikTok aren't downloaded: download the video and attach it.
+
+1. **The agent measures it.** [`inspect_open_design_reference_video`](../reference/tools.md#inspect_open_design_reference_video) finds the shot cuts with ffmpeg's scene detection and pulls a frame early in each shot, a contact sheet and the soundtrack. Timing is measured, never eyeballed: guessing beats from stills has been off by more than a second in a 15-second film.
+2. **The brief carries the measurements.** With the `referenceId`, the brief lists the cuts and adds the rules for building from a reference. "Like this" keeps the reference's rhythm, beat structure, motion and composition and takes colours, type and motion from your design system. The reference's logos, people, footage and words aren't reused unless you say it's your own material or you have the right to; ask for "the same film" only then.
+3. **The check compares them.** Checking with the `referenceId` pairs each reference frame with your film at the same moment, in one image, and reports `reference-timing-drift` for a beat more than 0.25 s from the nearest cut.
+
+The reference's soundtrack goes into your film only when you confirm you own it or may use it. Otherwise give the agent a track of your own, or the film is silent.
+
 ## Limits
 
 - **Web Workers** keep real time, and `<video>` elements show whatever frame they're on. The export warns when a page has either.

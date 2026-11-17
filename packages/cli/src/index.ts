@@ -7,6 +7,7 @@ import { getClaudeSkillsAssetRoot, getCodexSkillsAssetRoot } from './env';
 import { mergeClaudeLaunchConfig, mergeClaudeMcpConfig, writeClaudeSkills } from './claudeSetup';
 import { codexConfigSnippet, ensureCodexMcpConfig, writeCodexSkills } from './codexSetup';
 import { runCheck, type CheckCliOptions } from './checkCommand';
+import { runReference, type ReferenceCliOptions } from './referenceCommand';
 import { runExport, runRenderVideo, type ExportCliOptions } from './exportCommand';
 import { runPreview, type PreviewCliOptions } from './previewCommand';
 import { cliHelpEpilogue } from './docsLinks';
@@ -150,12 +151,28 @@ program
   });
 
 program
+  .command('reference <video>')
+  .description('Measure a reference video file (.mp4, .mov, .m4v, .webm, .mkv; up to 200 MB and 180 s) with the installed ffmpeg: duration, size, fps, sound and shot cuts, with frames, a contact sheet and the soundtrack under .open-design/.references/<id>/. Files only; links are not downloaded')
+  .option('--ffmpeg <path>', 'ffmpeg executable (default: OPEN_DESIGN_FFMPEG_PATH, then auto-detect)')
+  .option('--json', 'Print facts.json instead of text')
+  .option('--workspace <dir>', 'Workspace root (default: nearest ancestor containing .open-design/)')
+  .action(async (video: string, options: ReferenceCliOptions) => {
+    try {
+      process.exitCode = await runReference(video, options);
+    } catch (err) {
+      console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      process.exitCode = 1;
+    }
+  });
+
+program
   .command('check <entryPath>')
   .description('Render a registered Open Design artifact (needs an installed Chrome, Edge, or Chromium) and print its preflight findings: pages at desktop and mobile widths, card designs at their format size, decks slide by slide. Saves the run under .open-design/.checks/ (for the preview\'s Checks panel); writes screenshots elsewhere only with --screenshots')
   .option('--viewport <name:WxH>', 'Pages: a viewport to check instead of desktop 1440x900 and mobile 390x844; repeat for several', (value: string, previous: string[] = []) => [...previous, value])
   .option('--slides <list>', 'Decks: comma-separated 1-based slide numbers to check, e.g. 1,3')
   .option('--max-images <n>', 'Screenshots to write with --screenshots, 0-6 (default 3)')
   .option('--at <seconds>', 'Animations: also capture these moments, comma-separated, e.g. 0,1.5,3 (needs --screenshots to see them)')
+  .option('--reference <id>', 'Animations: pair the design with a reference video measured by `reference` and report timing drift (needs --screenshots to see the pairs)')
   .option('--filmstrip', 'Animations: one image of up to 12 key frames at the beats (needs --screenshots to see it)')
   .option('--views <list|none>', '3D scenes exposing odScene handles: review views on the sheet, comma-separated from overview,closeup,low,wireframe (default all), or none')
   .option('--no-states', 'Pages: skip the hover and focus, tap-target, 320 px reflow and reduced-motion checks (a faster check)')
