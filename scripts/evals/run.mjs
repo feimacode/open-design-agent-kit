@@ -10,7 +10,7 @@
 //
 //   npm run evals                                 every brief, twice
 //   npm run evals -- --only gig-poster --repeat 1 one quick look
-//   npm run evals -- --agent api --arm both       with vs without the kit (EVALS_API_KEY, EVALS_MODEL)
+//   npm run evals -- --agent api --arm both       with vs without the kit (EVALS_BASE_URL, EVALS_MODEL, EVALS_API_KEY)
 //   npm run evals -- --score-only <dir>           score designs made elsewhere (Desktop, Codex)
 //
 // Costs model tokens: run it by hand before and after a quality change, not in CI.
@@ -39,8 +39,13 @@ import { armComparison, bareEligible, caseVerdict, siteContentType } from './lib
 import { connectKit, fileTools, kitSystemPrompt, runTurn } from './apiAgent.mjs';
 
 const DEFAULTS = { repeat: 2, model: 'claude-sonnet-5-5', maxTurns: 80, maxRounds: 3, roundTimeoutMinutes: 20 };
-// ClinePass's OpenAI-compatible endpoint; any other works with --base-url or EVALS_BASE_URL.
-const DEFAULT_BASE_URL = 'https://api.cline.bot/api/v1';
+// The api loop's endpoint, model and key come only from the environment, so a
+// run, a workflow and a local shell are configured the same way.
+const API_ENV = {
+  EVALS_BASE_URL: 'the OpenAI-compatible base URL, e.g. https://api.cline.bot/api/v1',
+  EVALS_MODEL: 'the model id at that endpoint, e.g. cline-pass/glm-5.3',
+  EVALS_API_KEY: "the endpoint's key",
+};
 
 // What the api loop adds for its own file tools, in both arms.
 const API_FILE_PROMPT = 'You have list_files, read_file and write_file for the working folder; paths are relative to it.';
@@ -62,8 +67,9 @@ const USAGE = `Usage: npm run evals -- [options]
   --agent <claude|api>    Claude Code (default), or the runner's own loop over an OpenAI-compatible endpoint
   --arm <kit|bare|both>   api only: with the kit (default), without it (file tools only), or both; the bare arm skips
                           briefs with an app, a site or follow-ups
-  --base-url <url>        api only: endpoint base (default EVALS_BASE_URL, then ${DEFAULT_BASE_URL}); key in EVALS_API_KEY
-  --model <id>            Model for every run (default ${DEFAULTS.model}; api: EVALS_MODEL)
+  --model <id>            claude only: model for every run (default ${DEFAULTS.model})
+  The api agent is configured only by environment variables:
+${Object.entries(API_ENV).map(([k, v]) => `    ${k.padEnd(20)}${v}`).join('\n')}
   --max-turns <n>         Agent turn cap per round (default ${DEFAULTS.maxTurns})
   --max-budget-usd <n>    Spend cap per round
   --plugin <dir>          Plugin directory to load as-is (default: this checkout's plugin with the local MCP server)
@@ -106,15 +112,17 @@ function parseArgs(argv) {
     } else if (a === '--arm') {
       out.arm = next(i++, a);
       if (!['kit', 'bare', 'both'].includes(out.arm)) throw new Error(`--arm is kit, bare or both (got "${out.arm}")`);
-    } else if (a === '--base-url') out.baseUrl = next(i++, a);
-    else if (a === '--help' || a === '-h') out.help = true;
+    } else if (a === '--help' || a === '-h') out.help = true;
     else throw new Error(`Unknown argument ${a}\n${USAGE}`);
   }
   if (out.agent === 'claude' && out.arm !== 'kit') throw new Error('--arm bare and both need --agent api: Claude Code always loads its own tools.');
   if (out.agent === 'api') {
-    out.model ??= process.env.EVALS_MODEL?.trim() || undefined;
-    out.baseUrl ??= process.env.EVALS_BASE_URL?.trim() || DEFAULT_BASE_URL;
-    if (!out.model && !out.help && !out.scoreOnly) throw new Error('--agent api needs a model: --model <id> or EVALS_MODEL, e.g. cline-pass/glm-5.3.');
+    if (out.model) throw new Error('--agent api takes its model from EVALS_MODEL, not --model.');
+    out.model = process.env.EVALS_MODEL?.trim() || undefined;
+    out.baseUrl = process.env.EVALS_BASE_URL?.trim() || undefined;
+    const missing = Object.keys(API_ENV).filter((k) => !process.env[k]?.trim());
+    if (missing.length && !out.help && !out.scoreOnly) throw new Error(`--agent api needs ${missing.join(', ')}:\n${missing.map((k) => `  ${k}: ${API_ENV[k]}`).join('\n')}`);
+    if (out.baseUrl && !/^https?:\/\//.test(out.baseUrl)) throw new Error(`EVALS_BASE_URL must start with http:// or https:// (got "${out.baseUrl}").`);
   } else out.model ??= DEFAULTS.model;
   return out;
 }
@@ -356,7 +364,6 @@ async function main() {
     if (version.code !== 0) throw new Error('Claude Code (`claude`) is not on PATH. Install it, use --agent api, or score designs made elsewhere with --score-only <dir>.');
     mode = `agent claude (${version.stdout.trim()}), repeat ${args.repeat}`;
   } else {
-    if (!process.env.EVALS_API_KEY?.trim()) throw new Error('--agent api needs the endpoint key in EVALS_API_KEY.');
     mode = `api loop (${new URL(args.baseUrl).host}), ${arms.length > 1 ? 'with and without the kit' : arms[0] === 'kit' ? 'with the kit' : 'without the kit'}, repeat ${args.repeat}`;
   }
   const runDir = path.join(EVALS_DIR, 'runs', new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'));

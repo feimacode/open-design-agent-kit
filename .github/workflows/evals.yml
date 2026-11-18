@@ -5,9 +5,11 @@ name: Evals
 # endpoint, with the kit and without it, and scores every design with the
 # kit's checks. By hand only: every run spends model tokens.
 #
-# Needs the repository secret EVALS_API_KEY (for ClinePass, a key from
-# app.cline.bot under Settings > API Keys). The endpoint defaults to
-# ClinePass; set the repository variable EVALS_BASE_URL to use another one.
+# Configured only by repository settings (Settings > Secrets and variables >
+# Actions), the same environment variables a local run reads:
+#   variable EVALS_BASE_URL  OpenAI-compatible base URL, e.g. https://api.cline.bot/api/v1
+#   variable EVALS_MODEL     model id at that endpoint, e.g. cline-pass/glm-5.3
+#   secret   EVALS_API_KEY   the endpoint's key (ClinePass: app.cline.bot, Settings > API Keys)
 #
 # The scores, contact sheet and RESULTS.md section are uploaded as an
 # artifact and shown on the run's summary page. Commit the RESULTS.md section
@@ -27,11 +29,6 @@ on:
         type: choice
         options: [both, kit, bare]
         default: both
-      model:
-        description: 'Model id at the endpoint'
-        required: true
-        type: string
-        default: 'cline-pass/glm-5.3'
       repeat:
         description: 'Runs per brief and arm'
         required: true
@@ -66,27 +63,30 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check the key is set
+      - name: Check the endpoint is configured
         env:
+          EVALS_BASE_URL: ${{ vars.EVALS_BASE_URL }}
+          EVALS_MODEL: ${{ vars.EVALS_MODEL }}
           EVALS_API_KEY: ${{ secrets.EVALS_API_KEY }}
         run: |
-          if [ -z "$EVALS_API_KEY" ]; then
-            echo "::error::Add the repository secret EVALS_API_KEY (Settings > Secrets and variables > Actions)."
-            exit 1
-          fi
+          missing=0
+          [ -n "$EVALS_BASE_URL" ] || { echo "::error::Add the repository variable EVALS_BASE_URL (Settings > Secrets and variables > Actions > Variables)."; missing=1; }
+          [ -n "$EVALS_MODEL" ] || { echo "::error::Add the repository variable EVALS_MODEL (Settings > Secrets and variables > Actions > Variables)."; missing=1; }
+          [ -n "$EVALS_API_KEY" ] || { echo "::error::Add the repository secret EVALS_API_KEY (Settings > Secrets and variables > Actions > Secrets)."; missing=1; }
+          exit $missing
 
       # ubuntu-latest ships Google Chrome, which the checks use.
       - name: Run the evals
         env:
           EVALS_API_KEY: ${{ secrets.EVALS_API_KEY }}
           EVALS_BASE_URL: ${{ vars.EVALS_BASE_URL }}
+          EVALS_MODEL: ${{ vars.EVALS_MODEL }}
           ONLY: ${{ inputs.only }}
           ARM: ${{ inputs.arm }}
-          MODEL: ${{ inputs.model }}
           REPEAT: ${{ inputs.repeat }}
           LABEL: ${{ inputs.label }}
         run: |
-          ARGS=(--agent api --arm "$ARM" --model "$MODEL" --repeat "$REPEAT" --browser "$(command -v google-chrome)")
+          ARGS=(--agent api --arm "$ARM" --repeat "$REPEAT" --browser "$(command -v google-chrome)")
           if [ -n "$ONLY" ] && [ "$ONLY" != "all" ]; then ARGS+=(--only "$ONLY"); fi
           if [ -n "$LABEL" ]; then ARGS+=(--label "$LABEL"); fi
           npm run evals -- "${ARGS[@]}"

@@ -56,10 +56,19 @@ As root on Linux (a container), Chromium needs `--no-sandbox`, which the kit nev
 
 `--agent api` runs each brief through the runner's own agent loop ([scripts/evals/apiAgent.mjs](../scripts/evals/apiAgent.mjs)) instead of Claude Code. It calls any OpenAI-compatible `/chat/completions` endpoint with function tools, so no agent CLI or Claude subscription is needed: a ClinePass key, OpenRouter or a local model server all work.
 
+The endpoint, model and key are set only by environment variables, with no defaults, so a local shell and the workflow are configured the same way:
+
+| Variable | What | Example |
+|---|---|---|
+| `EVALS_BASE_URL` | the OpenAI-compatible base URL (`/chat/completions` is added) | `https://api.cline.bot/api/v1` (ClinePass) |
+| `EVALS_MODEL` | the model id at that endpoint | `cline-pass/glm-5.3` |
+| `EVALS_API_KEY` | the endpoint's key | |
+
 ```bash
-export EVALS_API_KEY=…                     # the endpoint's key
-export EVALS_BASE_URL=https://api.cline.bot/api/v1   # the default (ClinePass)
-npm run evals -- --agent api --model cline-pass/glm-5.3 --arm both --only gig-poster,saas-landing --repeat 2
+export EVALS_BASE_URL=https://api.cline.bot/api/v1
+export EVALS_MODEL=cline-pass/glm-5.3
+export EVALS_API_KEY=…
+npm run evals -- --agent api --arm both --only gig-poster,saas-landing --repeat 2
 ```
 
 `--arm` picks what the model gets. Both arms use the same loop, model and file tools (`list_files`, `read_file`, `write_file` in the run's folder), so the difference between them is what the kit adds:
@@ -80,7 +89,7 @@ Every run is also a test case, shown as PASS or FAIL as it finishes and in the t
 
 ### In GitHub Actions
 
-[.github/workflows/evals.yml](../.github/workflows/evals.yml) runs the api loop by hand (Actions → Evals → Run workflow). It needs the repository secret `EVALS_API_KEY`; set the repository variable `EVALS_BASE_URL` for an endpoint other than ClinePass. Its inputs are the briefs (by default eight that both arms can run), the arm, the model, the repeats and a label. The comparison and score tables appear on the run's summary page, and RESULTS.md, the contact sheet, scores, transcripts and pages are uploaded as an artifact. It never runs on a pull request.
+[.github/workflows/evals.yml](../.github/workflows/evals.yml) runs the api loop by hand (Actions → Evals → Run workflow). It reads the repository variables `EVALS_BASE_URL` and `EVALS_MODEL` and the repository secret `EVALS_API_KEY` (Settings → Secrets and variables → Actions), and stops with a message naming any that are missing. Its inputs are the briefs (by default eight that both arms can run), the arm, the repeats and a label. The comparison and score tables appear on the run's summary page, and RESULTS.md, the contact sheet, scores, transcripts and pages are uploaded as an artifact. It never runs on a pull request.
 
 ## Scores
 

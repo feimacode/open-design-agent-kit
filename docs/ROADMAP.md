@@ -195,7 +195,7 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 - **Motion checks and motion steering verbs:** motion findings in the check (slow or linear UI transitions, layout-property animation, crowding, off-vocabulary values, no reduced-motion path), a filmstrip at beat boundaries, and `calmer`, `snappier` and `smoother` verbs ([add-motion-checks-and-steering](../openspec/changes/add-motion-checks-and-steering/), implemented, 11 of 11 tasks, awaiting merge).
 - Calibrate the site audit's taste checks on hand-made and AI-default sites ([calibrate-site-audit-taste-checks](../openspec/changes/calibrate-site-audit-taste-checks/)). Until the first calibration run, live taste findings are notes only. Needs network access.
 - Trials with real agent runs: critic on five briefs, variety over five briefs.
-- **A baseline arm in evals, without an agent CLI:** `--agent api` runs the briefs through the runner's own loop on any OpenAI-compatible endpoint (ClinePass by default), with the kit and without it (`--arm both`), and reports each run as a pass or fail case; a manual Evals workflow runs it in GitHub Actions. Built; the first comparison run needs the `EVALS_API_KEY` secret (Astryx study, item 7).
+- **A baseline arm in evals, without an agent CLI:** `--agent api` runs the briefs through the runner's own loop on any OpenAI-compatible endpoint set by `EVALS_BASE_URL` and `EVALS_MODEL` (ClinePass for now), with the kit and without it (`--arm both`), and reports each run as a pass or fail case; a manual Evals workflow runs it in GitHub Actions. Built; the first comparison run needs those variables and the `EVALS_API_KEY` secret (Astryx study, item 7).
 
 ### Next
 
