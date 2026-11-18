@@ -36,7 +36,7 @@ import {
   writeContactSheet,
 } from './score.mjs';
 import { armComparison, bareEligible, caseVerdict, siteContentType } from './lib.mjs';
-import { connectKit, fileTools, kitSystemPrompt, runTurn } from './apiAgent.mjs';
+import { checkEndpoint, connectKit, fileTools, kitSystemPrompt, runTurn } from './apiAgent.mjs';
 
 const DEFAULTS = { repeat: 2, model: 'claude-sonnet-5-5', maxTurns: 80, maxRounds: 3, roundTimeoutMinutes: 20 };
 // The api loop's endpoint, model and key come only from the environment, so a
@@ -59,6 +59,7 @@ const EVAL_SYSTEM_PROMPT =
 // Variables of a parent Claude Code session that would make the child think it is that session.
 const PARENT_SESSION_ENV = ['CLAUDECODE', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_CODE_REMOTE_SESSION_ID', 'CLAUDE_CODE_INCLUDE_PARTIAL_MESSAGES', 'CLAUDE_CODE_ENTRYPOINT'];
 
+const MAX_FAILED_IN_A_ROW = 3;
 const ACCOUNT_ERROR = /session limit|usage limit|rate limit|log ?in|authenticat|credit balance/i;
 
 const USAGE = `Usage: npm run evals -- [options]
@@ -383,10 +384,18 @@ async function main() {
     ctx.endpoint = { baseUrl: args.baseUrl, apiKey: process.env.EVALS_API_KEY.trim(), model: args.model };
     ctx.server = path.join(REPO_ROOT, 'packages', 'mcp-server', 'out', 'index.js');
     ctx.kitPrompt = await kitSystemPrompt(REPO_ROOT);
+    // A wrong URL, model id or key would fail every case the same way: check once first.
+    console.error(`Checking ${args.baseUrl} with model ${args.model}…`);
+    try {
+      await checkEndpoint(ctx.endpoint);
+    } catch (err) {
+      throw new Error(`The endpoint check failed, so no brief ran. Check EVALS_BASE_URL, EVALS_MODEL and EVALS_API_KEY. ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
   const briefsById = new Map(briefs.map((b) => [b.id, b]));
 
   const scores = [];
+  let failedInARow = 0;
   for (const [brief, repeat, arm] of plan) {
     console.error(`[${scores.length + 1}/${plan.length}] ${brief.id}${arm === 'bare' ? ' (no kit)' : ''} #${repeat}…`);
     const score = args.agent === 'api' ? await runBriefApi(brief, repeat, arm, ctx) : await runBrief(brief, repeat, ctx);
@@ -395,6 +404,10 @@ async function main() {
     scores.push(score);
     // A usage limit or sign-in problem fails every later run the same way: stop instead of recording noise.
     if (score.designs.length === 0 && ACCOUNT_ERROR.test(score.agentError ?? '')) throw new Error(`The agent can't run: ${score.agentError}. Nothing was appended to RESULTS.md; try again later.`);
+    // An agent error with nothing made, case after case, is a setup problem, not a result.
+    // Hitting the turn cap is a result, so it doesn't count.
+    failedInARow = score.designs.length === 0 && score.agentError && !/turn cap/.test(score.agentError) ? failedInARow + 1 : 0;
+    if (failedInARow >= MAX_FAILED_IN_A_ROW) throw new Error(`${failedInARow} cases in a row failed with an agent error and made nothing; the last one: ${score.agentError}. Nothing was appended to RESULTS.md.`);
   }
   await fs.writeFile(path.join(runDir, 'scores.json'), JSON.stringify(scores, null, 2) + '\n');
   const contactSheet = await writeContactSheet(scores, path.join(runDir, 'contact-sheet.png'), browserPath);
