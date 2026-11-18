@@ -6,6 +6,8 @@ If you can install something, the local versions do more: they save designs in a
 
 ## Add it
 
+**Claude, with the skills:** install the **Open Design Hosted** plugin: in **Customize → Plugins**, choose **Add marketplace**, enter `feimacode/open-design-agent-kit` and install **Open Design Hosted** (in Claude Code, `/plugin install open-design-hosted`). It connects to this server and adds the skills, so results match the local plugin more closely. Needs no Node.js, so it suits work computers where Node is blocked.
+
 **Claude:** find **Open Design** in the connector directory once it's listed. Until then, add it as a custom connector: in **Settings → Connectors**, choose **Add custom connector** and give the URL above. No sign-in is needed. Custom connectors depend on your plan.
 
 **ChatGPT:** find **Open Design** in the plugin directory once it's listed. Until then, turn on developer mode (**Settings → Apps → Advanced**) and add an app with the URL above, with no authentication.

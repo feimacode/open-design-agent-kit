@@ -5,7 +5,7 @@ In Claude Code, Open Design comes as **skills** (they tell Claude when and how t
 ## Before you start
 
 - Claude Code.
-- Node.js 18 or later (the MCP server runs with `npx`).
+- Node.js 18 or later (the MCP server runs with `npx`), except with the [hosted plugin](#which-plugin).
 - Optional:
   - an installed Chrome, Edge or Chromium, for the [browser preview](../guides/browser-preview.md)'s window and comment screenshots, and for exporting images, PDFs and PowerPoint;
   - [FFmpeg](https://ffmpeg.org/), for video and for exporting animations.
@@ -17,6 +17,8 @@ In Claude Code, Open Design comes as **skills** (they tell Claude when and how t
 /plugin install open-design
 ```
 
+Without Node.js, run `/plugin install open-design-hosted` instead (see [Which plugin](#which-plugin)).
+
 This installs:
 
 - the `open-design` overview skill, which triggers on design requests;
@@ -24,6 +26,20 @@ This installs:
 - `/open-design:open-design-new`, to see what Open Design can make and start one;
 - one explicit-only skill per [curated entry](../reference/prompts-and-commands.md#curated-entries), named `/open-design:od-<mode>-<id>`;
 - the MCP server, registered automatically.
+
+## Which plugin
+
+The marketplace has two plugins. Install one, not both: they share the `open-design` name, so their skills and server would clash.
+
+| | `open-design` (local) | `open-design-hosted` |
+|---|---|---|
+| Needs | Node.js 18 or later | Nothing, only internet access to `open-design.feimacode.com` |
+| Where the tools run | On your computer | On our [hosted server](claude-and-chatgpt-web.md) |
+| Where designs go | `.open-design/` in your project | A project on the server, deleted 7 days after you last used it; no account |
+| What you get back | Files and paths | Viewer and download links (downloads last 24 hours) |
+| Missing | | Browser preview, your project's files, taking a design system from a website, Figma, Canva and shop hand-offs, porting to app code, recurring jobs ([full list](../reference/remote-server.md#what-a-project-can-do)) |
+
+Pick `open-design` if you can run Node. Pick `open-design-hosted` if Node isn't installed or is blocked, for example on a managed work laptop, and your designs may be stored on our server (see the [privacy policy](../legal/privacy.md#the-hosted-server)).
 
 ## Option B: write it into your project
 
