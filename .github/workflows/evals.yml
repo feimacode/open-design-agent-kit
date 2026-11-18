@@ -1,0 +1,107 @@
+name: Evals
+
+# Runs the eval briefs (evals/briefs) through the runner's own agent loop
+# (scripts/evals/apiAgent.mjs) against an OpenAI-compatible /chat/completions
+# endpoint, with the kit and without it, and scores every design with the
+# kit's checks. By hand only: every run spends model tokens.
+#
+# Configured only by repository settings (Settings > Secrets and variables >
+# Actions), the same environment variables a local run reads:
+#   variable EVALS_BASE_URL  OpenAI-compatible base URL, e.g. https://api.cline.bot/api/v1
+#   variable EVALS_MODEL     model id at that endpoint, e.g. cline-pass/glm-5.3
+#   secret   EVALS_API_KEY   the endpoint's key (ClinePass: app.cline.bot, Settings > API Keys)
+#
+# The scores, contact sheet and RESULTS.md section are uploaded as an
+# artifact and shown on the run's summary page. Commit the RESULTS.md section
+# from your machine when it becomes the new baseline.
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Comma-separated briefs (default: the comparison set; "all" for every brief)'
+        required: false
+        type: string
+        default: 'gig-poster,saas-landing,pitch-deck,analytics-dashboard,card-set,settings-screen,sign-in-flow,vague-bakery'
+      arm:
+        description: 'kit, bare (without the kit) or both'
+        required: true
+        type: choice
+        options: [both, kit, bare]
+        default: both
+      repeat:
+        description: 'Runs per brief and arm'
+        required: true
+        type: string
+        default: '2'
+      label:
+        description: 'A label for this run, e.g. "before add-taste-checks"'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals
+  cancel-in-progress: false
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the endpoint is configured
+        env:
+          EVALS_BASE_URL: ${{ vars.EVALS_BASE_URL }}
+          EVALS_MODEL: ${{ vars.EVALS_MODEL }}
+          EVALS_API_KEY: ${{ secrets.EVALS_API_KEY }}
+        run: |
+          missing=0
+          [ -n "$EVALS_BASE_URL" ] || { echo "::error::Add the repository variable EVALS_BASE_URL (Settings > Secrets and variables > Actions > Variables)."; missing=1; }
+          [ -n "$EVALS_MODEL" ] || { echo "::error::Add the repository variable EVALS_MODEL (Settings > Secrets and variables > Actions > Variables)."; missing=1; }
+          [ -n "$EVALS_API_KEY" ] || { echo "::error::Add the repository secret EVALS_API_KEY (Settings > Secrets and variables > Actions > Secrets)."; missing=1; }
+          exit $missing
+
+      # ubuntu-latest ships Google Chrome, which the checks use.
+      - name: Run the evals
+        env:
+          EVALS_API_KEY: ${{ secrets.EVALS_API_KEY }}
+          EVALS_BASE_URL: ${{ vars.EVALS_BASE_URL }}
+          EVALS_MODEL: ${{ vars.EVALS_MODEL }}
+          ONLY: ${{ inputs.only }}
+          ARM: ${{ inputs.arm }}
+          REPEAT: ${{ inputs.repeat }}
+          LABEL: ${{ inputs.label }}
+        run: |
+          ARGS=(--agent api --arm "$ARM" --repeat "$REPEAT" --browser "$(command -v google-chrome)")
+          if [ -n "$ONLY" ] && [ "$ONLY" != "all" ]; then ARGS+=(--only "$ONLY"); fi
+          if [ -n "$LABEL" ]; then ARGS+=(--label "$LABEL"); fi
+          npm run evals -- "${ARGS[@]}"
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-${{ github.run_id }}
+          path: |
+            evals/RESULTS.md
+            evals/runs/*/scores.json
+            evals/runs/*/contact-sheet.png
+            evals/runs/*/*/transcript.jsonl
+            evals/runs/*/*/score.json
+            evals/runs/*/*/workspace/**/*.html
+          if-no-files-found: warn
+          retention-days: 30

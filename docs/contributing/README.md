@@ -33,7 +33,7 @@ See [Content sync](content-sync.md) for the order the steps run in.
 
 ## Evals
 
-`npm run evals` runs a fixed set of briefs (a poster, a landing page, a deck, a shop pack, a card set, a dashboard and two vague requests) headless through Claude Code with this checkout's plugin, and scores every design with the kit's own checks. See [evals/README.md](../../evals/README.md) for the brief format, the options and what each score means.
+`npm run evals` runs a fixed set of briefs (a poster, a landing page, a deck, a shop pack, a card set, a dashboard and two vague requests) headless through Claude Code with this checkout's plugin, and scores every design with the kit's own checks. Without Claude Code, `--agent api` runs the same briefs through the runner's own loop on any OpenAI-compatible endpoint, with and without the kit (`--arm both`), and the Evals workflow does that in GitHub Actions. See [evals/README.md](../../evals/README.md) for the brief format, the options and what each score means.
 
 It costs model tokens and isn't run in CI. Run it by hand:
 

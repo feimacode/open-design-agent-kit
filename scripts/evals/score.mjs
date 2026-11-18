@@ -17,8 +17,9 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanArtifactManifests } from '../../packages/core/src/workspace/collectionScan';
 import { findBrowser } from '../../packages/core/src/export/browserDiscovery';
+import { writeArtifactManifest } from '../../packages/core/src/vendored/artifactCreate';
 import { renderShapeSheetHtml } from '../../packages/core/src/poster/shapeSheet';
-import { countAssumptionLines, DESIGN_FOLDERS, EVALS_DIR, htmlFiles, loadBriefs, lookSignature, REPO_ROOT, scoreTable, signatureKey, summary, total } from './lib.mjs';
+import { armComparison, countAssumptionLines, DESIGN_FOLDERS, EVALS_DIR, htmlFiles, loadBriefs, lookSignature, REPO_ROOT, scoreTable, signatureKey, summary, total } from './lib.mjs';
 
 export * from './lib.mjs';
 const TSX = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx');
@@ -77,7 +78,15 @@ export function steeringEdits(manifest) {
 export async function scoreWorkspace({ workspaceRoot, shotsDir, brief, run, env }) {
   const registered = await registeredDesigns(workspaceRoot);
   // A redesign's before/after page is evidence about the designs, not a design (openspec add-before-after).
-  const manifests = registered.filter((m) => !m.manifest.metadata?.beforeAfter);
+  let manifests = registered.filter((m) => !m.manifest.metadata?.beforeAfter);
+  // The "without the kit" arm registers nothing: every HTML page it wrote is a design.
+  // The check needs a manifest, so each page gets a minimal one (kind and title only) before it is checked.
+  if (run?.arm === 'bare' && manifests.length === 0) {
+    for (const entryPath of await htmlFiles(workspaceRoot)) {
+      const manifest = await writeArtifactManifest({ workspaceRoot, entryPath, artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: path.basename(entryPath) } });
+      manifests.push({ entryPath, manifest });
+    }
+  }
   const beforeAfter = registered
     .filter((m) => m.manifest.metadata?.beforeAfter)
     .map(({ entryPath, manifest }) => ({ entryPath, fixed: manifest.metadata.beforeAfter.fixed?.length ?? 0, open: manifest.metadata.beforeAfter.open?.length ?? 0, summary: manifest.metadata.beforeAfter.summary ?? 0 }));
@@ -107,6 +116,7 @@ export async function scoreWorkspace({ workspaceRoot, shotsDir, brief, run, env 
   }
   return {
     brief: brief?.id,
+    ...(run?.arm ? { arm: run.arm } : {}),
     unregistered: designs.length === 0 ? (await htmlFiles(workspaceRoot)).filter((f) => !entries.has(f)) : [],
     repeat: run?.repeat,
     workspace: workspaceRoot,
@@ -117,6 +127,7 @@ export async function scoreWorkspace({ workspaceRoot, shotsDir, brief, run, env 
     toolCalls: transcript?.toolUses.length,
     wallSeconds: run?.wallSeconds,
     costUsd: run?.costUsd,
+    ...(run?.tokens ? { tokens: run.tokens } : {}),
     agentError: run?.error,
   };
 }
@@ -235,6 +246,7 @@ export async function appendResults({ scores, briefs, mode, model, label, contac
     '',
     summary(scores),
     '',
+    ...(armComparison(scores, briefsById) ? [armComparison(scores, briefsById), ''] : []),
     scoreTable(scores, briefsById),
     '',
   ];

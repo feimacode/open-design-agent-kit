@@ -239,14 +239,60 @@ function inRange(value, range) {
   return (range.min === undefined || value >= range.min) && (range.max === undefined || value <= range.max);
 }
 
+/** Briefs the "without the kit" arm can run: no app or site to start from and no follow-up that steers a kit design. */
+export function bareEligible(brief) {
+  return !brief.fixture && !brief.site && !(brief.followUps?.length > 0);
+}
+
+/**
+ * A run as a test case: it passes when it made a design, every design's check
+ * ran with no errors, the questions stayed in the brief's range and, for the
+ * kit arm, every design came from one of the brief's expected skills.
+ */
+export function caseVerdict(score, brief) {
+  const reasons = [];
+  if (score.agentError) reasons.push(`agent error: ${score.agentError}`);
+  if (score.designs.length === 0) reasons.push('no design');
+  for (const d of score.designs) {
+    if (!d.checkOk) reasons.push(`${d.entryPath}: check failed`);
+    else if (total(d.errors) > 0) reasons.push(`${d.entryPath}: ${total(d.errors)} check error(s)`);
+    const skills = brief?.expect?.skills;
+    if (score.arm !== 'bare' && skills && d.skill && !skills.includes(d.skill.split(':').pop())) reasons.push(`${d.entryPath}: off-route skill ${d.skill}`);
+  }
+  if (!inRange(score.questions, brief?.expect?.questions)) reasons.push(`${score.questions} question(s), expected ${JSON.stringify(brief.expect.questions)}`);
+  return { pass: reasons.length === 0, reasons };
+}
+
+/** Per-arm totals when a run has more than one arm: the "with vs without the kit" comparison. */
+export function armComparison(scores, briefsById = new Map()) {
+  const arms = [...new Set(scores.map((s) => s.arm).filter(Boolean))];
+  if (arms.length < 2) return undefined;
+  const label = { kit: 'With the kit', bare: 'Without the kit' };
+  const rows = arms.map((arm) => {
+    const runs = scores.filter((s) => s.arm === arm);
+    const designs = runs.flatMap((s) => s.designs);
+    const checked = designs.filter((d) => d.checkOk);
+    const errors = checked.reduce((a, d) => a + total(d.errors), 0);
+    const warnings = checked.reduce((a, d) => a + total(d.warnings), 0);
+    const passed = runs.filter((s) => caseVerdict(s, briefsById.get(s.brief)).pass).length;
+    const signatures = new Set(designs.map((d) => signatureKey(d.signature))).size;
+    const tokens = runs.reduce((a, s) => a + (s.tokens ? s.tokens.prompt + s.tokens.completion : 0), 0);
+    const avg = (n) => (checked.length ? (n / checked.length).toFixed(1) : '—');
+    return `| ${label[arm] ?? arm} | ${runs.length} | ${passed} (${Math.round((100 * passed) / runs.length)}%) | ${runs.filter((s) => s.designs.length === 0).length} | ${avg(errors)} | ${avg(warnings)} | ${signatures} of ${designs.length} | ${tokens ? tokens.toLocaleString('en') : 'n/a'} |`;
+  });
+  return ['| Arm | Runs | Passed | No design | Errors per design | Warnings per design | Distinct looks | Tokens |', '|---|---|---|---|---|---|---|---|', ...rows].join('\n');
+}
+
 /** The markdown table rows: one per design, or one per run that produced none. */
 export function scoreRows(scores, briefsById = new Map()) {
   const rows = [];
   for (const s of scores) {
     const brief = briefsById.get(s.brief);
     const q = s.questions === undefined ? 'n/a' : `${s.questions}${inRange(s.questions, brief?.expect?.questions) ? '' : ' ⚠'}`;
+    const verdict = caseVerdict(s, brief);
     const common = {
-      brief: s.brief ?? path.basename(s.workspace),
+      brief: `${s.brief ?? path.basename(s.workspace)}${s.arm === 'bare' ? ' (no kit)' : ''}`,
+      pass: s.questions === undefined && s.toolCalls === undefined ? 'n/a' : verdict.pass ? 'pass' : 'FAIL',
       repeat: s.repeat ?? '—',
       questions: q,
       toolCalls: s.toolCalls ?? 'n/a',
@@ -280,6 +326,7 @@ export function scoreRows(scores, briefsById = new Map()) {
 const COLUMNS = [
   ['brief', 'Brief'],
   ['repeat', '#'],
+  ['pass', 'Pass'],
   ['design', 'Design'],
   ['skill', 'Skill'],
   ['errors', 'Errors'],
@@ -331,5 +378,7 @@ export function summary(scores) {
   }
   const cost = scores.reduce((a, s) => a + (s.costUsd ?? 0), 0);
   if (cost > 0) lines.push(`- Agent cost: $${cost.toFixed(2)}.`);
+  const tokens = scores.reduce((a, s) => a + (s.tokens ? s.tokens.prompt + s.tokens.completion : 0), 0);
+  if (tokens > 0) lines.push(`- Tokens: ${tokens.toLocaleString('en')}.`);
   return lines.join('\n');
 }

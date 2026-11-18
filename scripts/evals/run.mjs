@@ -1,11 +1,16 @@
 #!/usr/bin/env -S npx tsx
 // Runs the Open Design eval briefs (openspec add-output-quality-evals)
-// headless through Claude Code with this checkout's plugin and MCP server,
-// one fresh temporary workspace per brief and repeat, then scores every
-// design with scripts/evals/score.mjs and appends a section to evals/RESULTS.md.
+// headless, one fresh temporary workspace per brief and repeat, then scores
+// every design with scripts/evals/score.mjs and appends a section to
+// evals/RESULTS.md. Two drivers:
+//   --agent claude (default)  Claude Code with this checkout's plugin and MCP server
+//   --agent api               the runner's own loop over an OpenAI-compatible
+//                             /chat/completions endpoint (scripts/evals/apiAgent.mjs),
+//                             with or without the kit (--arm kit|bare|both)
 //
 //   npm run evals                                 every brief, twice
 //   npm run evals -- --only gig-poster --repeat 1 one quick look
+//   npm run evals -- --agent api --arm both       with vs without the kit (EVALS_BASE_URL, EVALS_MODEL, EVALS_API_KEY)
 //   npm run evals -- --score-only <dir>           score designs made elsewhere (Desktop, Codex)
 //
 // Costs model tokens: run it by hand before and after a quality change, not in CI.
@@ -30,9 +35,22 @@ import {
   summary,
   writeContactSheet,
 } from './score.mjs';
-import { siteContentType } from './lib.mjs';
+import { armComparison, bareEligible, caseVerdict, siteContentType } from './lib.mjs';
+import { connectKit, fileTools, kitSystemPrompt, runTurn } from './apiAgent.mjs';
 
 const DEFAULTS = { repeat: 2, model: 'claude-sonnet-5-5', maxTurns: 80, maxRounds: 3, roundTimeoutMinutes: 20 };
+// The api loop's endpoint, model and key come only from the environment, so a
+// run, a workflow and a local shell are configured the same way.
+const API_ENV = {
+  EVALS_BASE_URL: 'the OpenAI-compatible base URL, e.g. https://api.cline.bot/api/v1',
+  EVALS_MODEL: 'the model id at that endpoint, e.g. cline-pass/glm-5.3',
+  EVALS_API_KEY: "the endpoint's key",
+};
+
+// What the api loop adds for its own file tools, in both arms.
+const API_FILE_PROMPT = 'You have list_files, read_file and write_file for the working folder; paths are relative to it.';
+// Only the arm without the kit is told where a design goes, so its pages can be found and checked.
+const BARE_PROMPT = 'Make each design as a self-contained HTML page and save it in the working folder with write_file.';
 
 // The only thing the agent is told beyond the request: there is no one to click a picker.
 const EVAL_SYSTEM_PROMPT =
@@ -46,7 +64,12 @@ const ACCOUNT_ERROR = /session limit|usage limit|rate limit|log ?in|authenticat|
 const USAGE = `Usage: npm run evals -- [options]
   --only <id,...>         Run only these briefs
   --repeat <n>            Runs per brief (default ${DEFAULTS.repeat})
-  --model <id>            Model for every run (default ${DEFAULTS.model})
+  --agent <claude|api>    Claude Code (default), or the runner's own loop over an OpenAI-compatible endpoint
+  --arm <kit|bare|both>   api only: with the kit (default), without it (file tools only), or both; the bare arm skips
+                          briefs with an app, a site or follow-ups
+  --model <id>            claude only: model for every run (default ${DEFAULTS.model})
+  The api agent is configured only by environment variables:
+${Object.entries(API_ENV).map(([k, v]) => `    ${k.padEnd(20)}${v}`).join('\n')}
   --max-turns <n>         Agent turn cap per round (default ${DEFAULTS.maxTurns})
   --max-budget-usd <n>    Spend cap per round
   --plugin <dir>          Plugin directory to load as-is (default: this checkout's plugin with the local MCP server)
@@ -58,7 +81,7 @@ const USAGE = `Usage: npm run evals -- [options]
   --score-only <dir>      Score designs already made (a workspace or a folder of workspaces); no agent run`;
 
 function parseArgs(argv) {
-  const out = { ...DEFAULTS, build: true, results: true };
+  const out = { ...DEFAULTS, model: undefined, agent: 'claude', arm: 'kit', build: true, results: true };
   const next = (i, flag) => {
     const v = argv[i + 1];
     if (v === undefined || v.startsWith('--')) throw new Error(`${flag} needs a value`);
@@ -84,11 +107,23 @@ function parseArgs(argv) {
     else if (a === '--no-results') out.results = false;
     else if (a === '--dry-run') out.dryRun = true;
     else if (a === '--agent') {
-      const agent = next(i++, a);
-      if (agent !== 'claude') throw new Error(`Only --agent claude can be driven from here (got "${agent}"); score other hosts' designs with --score-only.`);
+      out.agent = next(i++, a);
+      if (!['claude', 'api'].includes(out.agent)) throw new Error(`--agent is claude or api (got "${out.agent}"); score other hosts' designs with --score-only.`);
+    } else if (a === '--arm') {
+      out.arm = next(i++, a);
+      if (!['kit', 'bare', 'both'].includes(out.arm)) throw new Error(`--arm is kit, bare or both (got "${out.arm}")`);
     } else if (a === '--help' || a === '-h') out.help = true;
     else throw new Error(`Unknown argument ${a}\n${USAGE}`);
   }
+  if (out.agent === 'claude' && out.arm !== 'kit') throw new Error('--arm bare and both need --agent api: Claude Code always loads its own tools.');
+  if (out.agent === 'api') {
+    if (out.model) throw new Error('--agent api takes its model from EVALS_MODEL, not --model.');
+    out.model = process.env.EVALS_MODEL?.trim() || undefined;
+    out.baseUrl = process.env.EVALS_BASE_URL?.trim() || undefined;
+    const missing = Object.keys(API_ENV).filter((k) => !process.env[k]?.trim());
+    if (missing.length && !out.help && !out.scoreOnly) throw new Error(`--agent api needs ${missing.join(', ')}:\n${missing.map((k) => `  ${k}: ${API_ENV[k]}`).join('\n')}`);
+    if (out.baseUrl && !/^https?:\/\//.test(out.baseUrl)) throw new Error(`EVALS_BASE_URL must start with http:// or https:// (got "${out.baseUrl}").`);
+  } else out.model ??= DEFAULTS.model;
   return out;
 }
 
@@ -230,6 +265,81 @@ async function runBrief(brief, repeat, ctx) {
   return score;
 }
 
+/** The same as runBrief, through the runner's own loop over a chat-completions endpoint; arm "bare" runs without the kit. */
+async function runBriefApi(brief, repeat, arm, ctx) {
+  const caseDir = path.join(ctx.runDir, `${brief.id}${arm === 'bare' ? '-bare' : ''}-${repeat}`);
+  await fs.mkdir(caseDir, { recursive: true });
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), `od-eval-${brief.id}-`));
+  if (brief.fixture) await fs.cp(path.join(EVALS_DIR, 'fixtures', brief.fixture), tmp, { recursive: true });
+  const site = brief.site ? await serveSite(path.join(EVALS_DIR, 'fixtures', brief.site)) : undefined;
+  const transcriptFile = path.join(caseDir, 'transcript.jsonl');
+  const log = (event) => fs.appendFile(transcriptFile, JSON.stringify(event) + '\n').catch(() => {});
+  const started = Date.now();
+  const files = fileTools(tmp);
+  let kit;
+  let questions = 0;
+  let error;
+  let rounds = 0;
+  const texts = [];
+  const toolUses = [];
+  const tokens = { prompt: 0, completion: 0 };
+  try {
+    const toolsets = [files];
+    if (arm === 'kit') {
+      kit = await connectKit({ serverPath: ctx.server, workspace: tmp, env: ctx.agentEnv });
+      toolsets.push(kit);
+    }
+    const system = [EVAL_SYSTEM_PROMPT, API_FILE_PROMPT, arm === 'kit' ? ctx.kitPrompt : BARE_PROMPT].join('\n\n');
+    const messages = [{ role: 'system', content: system }];
+    const turn = async (content) => {
+      rounds++;
+      messages.push({ role: 'user', content });
+      await log({ type: 'user', content });
+      const t = await Promise.race([
+        runTurn({ endpoint: ctx.endpoint, messages, toolsets, maxTurns: ctx.maxTurns, log }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`round ${rounds} timed out`)), DEFAULTS.roundTimeoutMinutes * 60_000).unref()),
+      ]);
+      texts.push(...t.texts);
+      toolUses.push(...t.toolUses);
+      tokens.prompt += t.usage.prompt;
+      tokens.completion += t.usage.completion;
+      return t;
+    };
+    const built = async () => (arm === 'kit' && (await registeredDesigns(tmp)).length > 0) || (await htmlFiles(tmp)).length > 0;
+    let message = site ? brief.request.replaceAll('{{site}}', site.url) : brief.request;
+    while (rounds < ctx.maxRounds) {
+      const t = await turn(message);
+      if (t.error) error = t.error;
+      if (error || (await built())) break;
+      questions += Math.max(1, countQuestions(t.finalText));
+      message = answerMessage(brief);
+    }
+    for (const followUp of !error && arm === 'kit' ? (brief.followUps ?? []) : []) {
+      const t = await turn(followUp);
+      if (t.error) error = t.error;
+      if (error) break;
+    }
+  } catch (err) {
+    error = err instanceof Error ? err.message : String(err);
+  } finally {
+    await kit?.close().catch(() => {});
+    site?.close();
+  }
+  const wallSeconds = (Date.now() - started) / 1000;
+  const workspace = path.join(caseDir, 'workspace');
+  await fs.cp(tmp, workspace, { recursive: true, filter: (src) => !src.split(path.sep).includes('node_modules') });
+  await fs.rm(tmp, { recursive: true, force: true });
+  const score = await scoreWorkspace({
+    workspaceRoot: workspace,
+    shotsDir: path.join(caseDir, 'shots'),
+    brief,
+    env: ctx.checkEnv,
+    run: { repeat, arm, transcript: { texts, toolUses }, questions, rounds, wallSeconds, tokens, error },
+  });
+  await fs.writeFile(path.join(caseDir, 'score.json'), JSON.stringify(score, null, 2) + '\n');
+  return score;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) return console.log(USAGE);
@@ -239,15 +349,23 @@ async function main() {
   const unknown = (args.only ?? []).filter((id) => !briefs.some((b) => b.id === id));
   if (unknown.length) throw new Error(`Unknown brief(s): ${unknown.join(', ')}. Briefs: ${briefs.map((b) => b.id).join(', ')}`);
   const selected = args.only ? briefs.filter((b) => args.only.includes(b.id)) : briefs;
-  const plan = selected.flatMap((b) => Array.from({ length: args.repeat }, (_, i) => [b, i + 1]));
+  const arms = args.arm === 'both' ? ['kit', 'bare'] : [args.arm];
+  const plan = selected.flatMap((b) => arms.filter((arm) => arm === 'kit' || bareEligible(b)).flatMap((arm) => Array.from({ length: args.repeat }, (_, i) => [b, i + 1, arm])));
+  if (plan.length === 0) throw new Error('Nothing to run: the arm without the kit skips briefs with an app, a site or follow-ups.');
   if (args.dryRun) {
-    console.log(`${plan.length} run(s) with ${args.model}, at most ${args.maxTurns} turns and ${DEFAULTS.maxRounds} rounds each:`);
-    for (const [b, r] of plan) console.log(`- ${b.id} #${r}: ${b.request}`);
+    console.log(`${plan.length} run(s) with ${args.model}${args.agent === 'api' ? ` at ${args.baseUrl}` : ''}, at most ${args.maxTurns} turns and ${DEFAULTS.maxRounds} rounds each:`);
+    for (const [b, r, arm] of plan) console.log(`- ${b.id}${arm === 'bare' ? ' (no kit)' : ''} #${r}: ${b.request}`);
     return;
   }
 
-  const version = await exec('claude', ['--version']);
-  if (version.code !== 0) throw new Error('Claude Code (`claude`) is not on PATH. Install it, or score designs made elsewhere with --score-only <dir>.');
+  let mode;
+  if (args.agent === 'claude') {
+    const version = await exec('claude', ['--version']);
+    if (version.code !== 0) throw new Error('Claude Code (`claude`) is not on PATH. Install it, use --agent api, or score designs made elsewhere with --score-only <dir>.');
+    mode = `agent claude (${version.stdout.trim()}), repeat ${args.repeat}`;
+  } else {
+    mode = `api loop (${new URL(args.baseUrl).host}), ${arms.length > 1 ? 'with and without the kit' : arms[0] === 'kit' ? 'with the kit' : 'without the kit'}, repeat ${args.repeat}`;
+  }
   const runDir = path.join(EVALS_DIR, 'runs', new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'));
   await fs.mkdir(runDir, { recursive: true });
   if (args.build && !args.plugin) {
@@ -255,30 +373,43 @@ async function main() {
     const built = await exec('npm', ['run', 'compile', '--workspace=packages/mcp-server'], { cwd: REPO_ROOT });
     if (built.code !== 0) throw new Error(`Compiling the MCP server failed:\n${built.stderr || built.stdout}`);
   }
-  const plugin = args.plugin ?? (await localPlugin(runDir));
+  const plugin = args.agent === 'claude' ? (args.plugin ?? (await localPlugin(runDir))) : undefined;
   const { env: checkEnv, browserPath, problem } = await browserEnv(runDir, args.browser);
   if (problem) console.error(`Browser: ${problem} Checks will fail until one is found.`);
   const agentEnv = { ...checkEnv };
   for (const key of PARENT_SESSION_ENV) delete agentEnv[key];
   const ctx = { runDir, plugin, model: args.model, maxTurns: args.maxTurns, maxRounds: DEFAULTS.maxRounds, maxBudgetUsd: args.maxBudgetUsd, agentEnv, checkEnv };
+  if (args.agent === 'api') {
+    ctx.endpoint = { baseUrl: args.baseUrl, apiKey: process.env.EVALS_API_KEY.trim(), model: args.model };
+    ctx.server = path.join(REPO_ROOT, 'packages', 'mcp-server', 'out', 'index.js');
+    ctx.kitPrompt = await kitSystemPrompt(REPO_ROOT);
+  }
+  const briefsById = new Map(briefs.map((b) => [b.id, b]));
 
   const scores = [];
-  for (const [brief, repeat] of plan) {
-    console.error(`[${scores.length + 1}/${plan.length}] ${brief.id} #${repeat}…`);
-    const score = await runBrief(brief, repeat, ctx);
-    console.error(`  ${score.designs.length} design(s), ${score.questions ?? 0} question(s), ${Math.round(score.wallSeconds)}s${score.agentError ? `, ${score.agentError}` : ''}`);
+  for (const [brief, repeat, arm] of plan) {
+    console.error(`[${scores.length + 1}/${plan.length}] ${brief.id}${arm === 'bare' ? ' (no kit)' : ''} #${repeat}…`);
+    const score = args.agent === 'api' ? await runBriefApi(brief, repeat, arm, ctx) : await runBrief(brief, repeat, ctx);
+    const verdict = caseVerdict(score, brief);
+    console.error(`  ${verdict.pass ? 'PASS' : 'FAIL'}: ${score.designs.length} design(s), ${score.questions ?? 0} question(s), ${Math.round(score.wallSeconds)}s${verdict.reasons.length ? `; ${verdict.reasons.join('; ')}` : ''}`);
     scores.push(score);
     // A usage limit or sign-in problem fails every later run the same way: stop instead of recording noise.
-    if (score.designs.length === 0 && ACCOUNT_ERROR.test(score.agentError ?? '')) throw new Error(`Claude Code can't run: ${score.agentError}. Nothing was appended to RESULTS.md; try again later.`);
+    if (score.designs.length === 0 && ACCOUNT_ERROR.test(score.agentError ?? '')) throw new Error(`The agent can't run: ${score.agentError}. Nothing was appended to RESULTS.md; try again later.`);
   }
   await fs.writeFile(path.join(runDir, 'scores.json'), JSON.stringify(scores, null, 2) + '\n');
   const contactSheet = await writeContactSheet(scores, path.join(runDir, 'contact-sheet.png'), browserPath);
-  const briefsById = new Map(briefs.map((b) => [b.id, b]));
+  const comparison = armComparison(scores, briefsById);
   console.log(summary(scores));
+  if (comparison) console.log(`\n${comparison}`);
   console.log(scoreTable(scores, briefsById));
   if (args.results) {
-    const file = await appendResults({ scores, briefs, mode: `agent claude (${version.stdout.trim()}), repeat ${args.repeat}`, model: args.model, label: args.label, contactSheet, runDir });
+    const file = await appendResults({ scores, briefs, mode, model: args.model, label: args.label, contactSheet, runDir });
     console.log(`\nAppended to ${file}`);
+  }
+  // In GitHub Actions, the same numbers on the run's summary page.
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const lines = [`## Evals${args.label ? `: ${args.label}` : ''}`, '', `- Mode: ${mode}, model ${args.model}`, summary(scores), '', ...(comparison ? [comparison, ''] : []), scoreTable(scores, briefsById), ''];
+    await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, lines.join('\n'));
   }
 }
 
