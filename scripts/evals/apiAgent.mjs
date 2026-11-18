@@ -44,8 +44,17 @@ export async function chatCompletion({ baseUrl, apiKey, model, messages, tools, 
       continue;
     }
     if (res.ok) {
-      const json = await res.json();
-      if (!json?.choices?.[0]?.message) throw new Error(`The endpoint answered without a message: ${JSON.stringify(json).slice(0, 300)}`);
+      const text = await res.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(`${url} returned a ${res.status} that is not JSON: ${text.slice(0, 300)}`);
+      }
+      // ClinePass and some other gateways wrap the completion as { data: { choices: [...] } }.
+      if (!json?.choices && json?.data?.choices) json = json.data;
+      // Some OpenAI-compatible endpoints answer 200 with an error object instead of a completion.
+      if (!json?.choices?.[0]?.message) throw new Error(`${url} returned no message for model "${model}": ${(json?.error ? JSON.stringify(json.error) : text).slice(0, 400)}`);
       return json;
     }
     const text = await res.text().catch(() => '');
@@ -56,6 +65,15 @@ export async function chatCompletion({ baseUrl, apiKey, model, messages, tools, 
     }
     throw new Error(`${res.status} from ${url}: ${text.slice(0, 300) || res.statusText}`);
   }
+}
+
+/**
+ * One small call before any brief runs, so a wrong URL, model id or key stops
+ * the run at once instead of failing every case. No max_tokens: a reasoning
+ * model can spend a small cap thinking and come back empty.
+ */
+export async function checkEndpoint({ baseUrl, apiKey, model, fetchImpl, sleep }) {
+  await chatCompletion({ baseUrl, apiKey, model, messages: [{ role: 'user', content: 'Reply with the word ok.' }], fetchImpl, sleep, retries: 1 });
 }
 
 // ---------------------------------------------------------------- tools

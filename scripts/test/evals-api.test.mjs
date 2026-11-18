@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { chatCompletion, fileTools, HIDDEN_KIT_TOOLS, mcpResultText, mcpToFunctions, runTurn } from '../evals/apiAgent.mjs';
+import { chatCompletion, checkEndpoint, fileTools, HIDDEN_KIT_TOOLS, mcpResultText, mcpToFunctions, runTurn } from '../evals/apiAgent.mjs';
 import { armComparison, bareEligible, caseVerdict } from '../evals/lib.mjs';
 
-const ok = (message, usage = { prompt_tokens: 10, completion_tokens: 5 }) => ({ ok: true, status: 200, json: async () => ({ choices: [{ message }], usage }) });
+const ok200 = (body) => ({ ok: true, status: 200, text: async () => (typeof body === 'string' ? body : JSON.stringify(body)) });
+const ok = (message, usage = { prompt_tokens: 10, completion_tokens: 5 }) => ok200({ choices: [{ message }], usage });
 
 test('chatCompletion posts to /chat/completions with the key and retries a rate limit', async () => {
   const calls = [];
@@ -25,6 +26,30 @@ test('chatCompletion throws a client error at once, with the status', async () =
   const fetchImpl = async () => (n++, { ok: false, status: 401, statusText: 'Unauthorized', text: async () => 'bad key' });
   await assert.rejects(chatCompletion({ baseUrl: 'https://x/v1', apiKey: 'k', model: 'm', messages: [], fetchImpl, sleep: async () => {} }), /401.*bad key/);
   assert.equal(n, 1);
+});
+
+test('chatCompletion unwraps a { data: { choices } } envelope, as ClinePass sends', async () => {
+  const fetchImpl = async () => ok200({ data: { choices: [{ message: { role: 'assistant', content: 'wrapped' } }], usage: { prompt_tokens: 1 } } });
+  const res = await chatCompletion({ baseUrl: 'https://x/v1', apiKey: 'k', model: 'm', messages: [], fetchImpl, sleep: async () => {} });
+  assert.equal(res.choices[0].message.content, 'wrapped');
+  assert.equal(res.usage.prompt_tokens, 1);
+});
+
+test('chatCompletion shows the body of a 200 that has no message', async () => {
+  const withError = async () => ok200({ error: { message: 'model not found' } });
+  await assert.rejects(chatCompletion({ baseUrl: 'https://x/v1', apiKey: 'k', model: 'nope', messages: [], fetchImpl: withError, sleep: async () => {} }), /no message for model "nope".*model not found/);
+  const notJson = async () => ok200('<html>gateway</html>');
+  await assert.rejects(chatCompletion({ baseUrl: 'https://x/v1', apiKey: 'k', model: 'm', messages: [], fetchImpl: notJson, sleep: async () => {} }), /not JSON.*gateway/);
+});
+
+test('checkEndpoint sends one small request with no max_tokens or temperature', async () => {
+  const bodies = [];
+  await checkEndpoint({ baseUrl: 'https://x/v1', apiKey: 'k', model: 'm', fetchImpl: async (_u, init) => (bodies.push(JSON.parse(init.body)), ok({ role: 'assistant', content: 'ok' })), sleep: async () => {} });
+  assert.equal(bodies.length, 1);
+  assert.equal(bodies[0].max_tokens, undefined);
+  assert.equal(bodies[0].temperature, undefined);
+  assert.equal(bodies[0].tools, undefined);
+  await assert.rejects(checkEndpoint({ baseUrl: 'https://x/v1', apiKey: 'k', model: 'm', fetchImpl: async () => ({ ok: false, status: 404, text: async () => 'no such model' }), sleep: async () => {} }), /404.*no such model/);
 });
 
 test('fileTools write, read and list inside the folder and refuse paths outside it', async () => {
