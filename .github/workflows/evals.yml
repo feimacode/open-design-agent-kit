@@ -1,0 +1,107 @@
+name: Evals
+
+# Runs the eval briefs (evals/briefs) through the runner's own agent loop
+# (scripts/evals/apiAgent.mjs) against an OpenAI-compatible /chat/completions
+# endpoint, with the kit and without it, and scores every design with the
+# kit's checks. By hand only: every run spends model tokens.
+#
+# Needs the repository secret EVALS_API_KEY (for ClinePass, a key from
+# app.cline.bot under Settings > API Keys). The endpoint defaults to
+# ClinePass; set the repository variable EVALS_BASE_URL to use another one.
+#
+# The scores, contact sheet and RESULTS.md section are uploaded as an
+# artifact and shown on the run's summary page. Commit the RESULTS.md section
+# from your machine when it becomes the new baseline.
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Comma-separated briefs (default: the comparison set; "all" for every brief)'
+        required: false
+        type: string
+        default: 'gig-poster,saas-landing,pitch-deck,analytics-dashboard,card-set,settings-screen,sign-in-flow,vague-bakery'
+      arm:
+        description: 'kit, bare (without the kit) or both'
+        required: true
+        type: choice
+        options: [both, kit, bare]
+        default: both
+      model:
+        description: 'Model id at the endpoint'
+        required: true
+        type: string
+        default: 'cline-pass/glm-5.3'
+      repeat:
+        description: 'Runs per brief and arm'
+        required: true
+        type: string
+        default: '2'
+      label:
+        description: 'A label for this run, e.g. "before add-taste-checks"'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals
+  cancel-in-progress: false
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the key is set
+        env:
+          EVALS_API_KEY: ${{ secrets.EVALS_API_KEY }}
+        run: |
+          if [ -z "$EVALS_API_KEY" ]; then
+            echo "::error::Add the repository secret EVALS_API_KEY (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      # ubuntu-latest ships Google Chrome, which the checks use.
+      - name: Run the evals
+        env:
+          EVALS_API_KEY: ${{ secrets.EVALS_API_KEY }}
+          EVALS_BASE_URL: ${{ vars.EVALS_BASE_URL }}
+          ONLY: ${{ inputs.only }}
+          ARM: ${{ inputs.arm }}
+          MODEL: ${{ inputs.model }}
+          REPEAT: ${{ inputs.repeat }}
+          LABEL: ${{ inputs.label }}
+        run: |
+          ARGS=(--agent api --arm "$ARM" --model "$MODEL" --repeat "$REPEAT" --browser "$(command -v google-chrome)")
+          if [ -n "$ONLY" ] && [ "$ONLY" != "all" ]; then ARGS+=(--only "$ONLY"); fi
+          if [ -n "$LABEL" ]; then ARGS+=(--label "$LABEL"); fi
+          npm run evals -- "${ARGS[@]}"
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-${{ github.run_id }}
+          path: |
+            evals/RESULTS.md
+            evals/runs/*/scores.json
+            evals/runs/*/contact-sheet.png
+            evals/runs/*/*/transcript.jsonl
+            evals/runs/*/*/score.json
+            evals/runs/*/*/workspace/**/*.html
+          if-no-files-found: warn
+          retention-days: 30

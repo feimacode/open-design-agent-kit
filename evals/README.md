@@ -39,7 +39,7 @@ npm run evals -- --score-only ~/designs          # score designs made in Desktop
 npm run evals -- --dry-run                       # list the runs, run nothing
 ```
 
-Agent runs need Claude Code (`claude`) on `PATH`, signed in, and a Chrome, Edge or Chromium for the checks. Each run:
+With the default `--agent claude`, agent runs need Claude Code (`claude`) on `PATH`, signed in. Every run needs a Chrome, Edge or Chromium for the checks. Each run:
 
 1. compiles `packages/mcp-server` and loads this checkout's plugin with that server (`--plugin <dir>` loads another plugin as it is);
 2. starts `claude -p` with the brief's request in a fresh temporary workspace, with a fixed model (`--model`, default `claude-sonnet-5-5`), a turn cap (`--max-turns`, default 80) and permissions bypassed. The only added instruction is that there is no interactive user, so questions are asked as text (the question picker is turned off);
@@ -51,6 +51,36 @@ A run costs model tokens: a full run is thirty-two agent sessions. Use `--only` 
 `--score-only <dir>` takes one workspace (a folder with `.open-design/`) or a folder of workspaces. A subfolder named after a brief, such as `gig-poster` or `gig-poster-2`, is scored as that brief (repeat 2). The transcript columns are `n/a`.
 
 As root on Linux (a container), Chromium needs `--no-sandbox`, which the kit never passes; the runner writes a small wrapper into the run folder and points `OPEN_DESIGN_BROWSER_PATH` at it for the checks and the agent.
+
+## Without an agent CLI: the api loop and the "without the kit" arm
+
+`--agent api` runs each brief through the runner's own agent loop ([scripts/evals/apiAgent.mjs](../scripts/evals/apiAgent.mjs)) instead of Claude Code. It calls any OpenAI-compatible `/chat/completions` endpoint with function tools, so no agent CLI or Claude subscription is needed: a ClinePass key, OpenRouter or a local model server all work.
+
+```bash
+export EVALS_API_KEY=…                     # the endpoint's key
+export EVALS_BASE_URL=https://api.cline.bot/api/v1   # the default (ClinePass)
+npm run evals -- --agent api --model cline-pass/glm-5.3 --arm both --only gig-poster,saas-landing --repeat 2
+```
+
+`--arm` picks what the model gets. Both arms use the same loop, model and file tools (`list_files`, `read_file`, `write_file` in the run's folder), so the difference between them is what the kit adds:
+
+| Arm | Tools | System prompt |
+|---|---|---|
+| `kit` (default) | file tools + this checkout's MCP server, connected over stdio (minus the tools that pick another folder or open windows) | the no-interactive-user line + the plugin's `open-design` skill |
+| `bare` | file tools only | the no-interactive-user line + "save each design as a self-contained HTML page" |
+| `both` | each brief in both arms | |
+
+The bare arm skips briefs with an app (`fixture`), a site or follow-ups, since those exercise kit tools. Its pages get a minimal manifest so the same `check` scores them; the skill and critic columns stay empty. When a run has both arms, RESULTS.md gets a comparison table: runs, passed, runs with no design, errors and warnings per design, distinct looks and tokens per arm.
+
+This measures the kit behind a minimal agent, not inside Claude Code, Codex or Desktop. Keep an occasional `--agent claude` run for the real host.
+
+### Briefs as test cases
+
+Every run is also a test case, shown as PASS or FAIL as it finishes and in the table's Pass column. A run passes when it made a design, every design's check ran with no errors, its questions stayed in the brief's `expect.questions` range and, with the kit, every design came from one of `expect.skills`. Model output varies, so read the pass rate across repeats, not one case.
+
+### In GitHub Actions
+
+[.github/workflows/evals.yml](../.github/workflows/evals.yml) runs the api loop by hand (Actions → Evals → Run workflow). It needs the repository secret `EVALS_API_KEY`; set the repository variable `EVALS_BASE_URL` for an endpoint other than ClinePass. Its inputs are the briefs (by default eight that both arms can run), the arm, the model, the repeats and a label. The comparison and score tables appear on the run's summary page, and RESULTS.md, the contact sheet, scores, transcripts and pages are uploaded as an artifact. It never runs on a pull request.
 
 ## Scores
 

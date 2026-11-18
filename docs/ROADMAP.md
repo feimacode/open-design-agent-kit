@@ -195,11 +195,11 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 - **Motion checks and motion steering verbs:** motion findings in the check (slow or linear UI transitions, layout-property animation, crowding, off-vocabulary values, no reduced-motion path), a filmstrip at beat boundaries, and `calmer`, `snappier` and `smoother` verbs ([add-motion-checks-and-steering](../openspec/changes/add-motion-checks-and-steering/), implemented, 11 of 11 tasks, awaiting merge).
 - Calibrate the site audit's taste checks on hand-made and AI-default sites ([calibrate-site-audit-taste-checks](../openspec/changes/calibrate-site-audit-taste-checks/)). Until the first calibration run, live taste findings are notes only. Needs network access.
 - Trials with real agent runs: critic on five briefs, variety over five briefs.
+- **A baseline arm in evals, without an agent CLI:** `--agent api` runs the briefs through the runner's own loop on any OpenAI-compatible endpoint (ClinePass by default), with the kit and without it (`--arm both`), and reports each run as a pass or fail case; a manual Evals workflow runs it in GitHub Actions. Built; the first comparison run needs the `EVALS_API_KEY` secret (Astryx study, item 7).
 
 ### Next
 
 - **More "AI look" rules and a check command for CI:** port about 13 rules (gradient text, nested cards, hero eyebrow chip and others) and add `check --json --github` with a failing exit code (Impeccable study, item 2).
-- **A baseline arm in evals:** run the same briefs without the kit and score blind, so we measure what the kit adds (Astryx study, item 7).
 
 ### Later
 
