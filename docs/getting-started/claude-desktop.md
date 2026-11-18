@@ -20,7 +20,9 @@ The plugin brings the skills (everywhere, including Chat) and its own copy of th
 
 1. Open **Customize → Plugins** and choose **Add marketplace**.
 2. Enter `feimacode/open-design-agent-kit`.
-3. Install **Open Design**.
+3. Install **Open Design**, or **Open Design Hosted** if Node.js isn't installed or is blocked on this computer. Install one, not both.
+
+**Open Design Hosted** runs the tools on our [hosted server](claude-and-chatgpt-web.md) instead of your computer, so it needs no Node.js and its tools also work in a Chat without a folder, on the web and on your phone. Designs are kept on the server (deleted 7 days after you last used them) and you get links instead of files, and some things aren't offered, such as a folder of your own, the Browser pane preview and Figma or Canva hand-offs. See [Which plugin](claude-code.md#which-plugin).
 
 In the Code tab you can also install it the Claude Code way (`/plugin marketplace add feimacode/open-design-agent-kit`, then `/plugin install open-design`), or write it into your project with [`init`](claude-code.md#option-b-write-it-into-your-project).
 
