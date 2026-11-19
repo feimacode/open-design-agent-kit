@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Café Menu</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #ffffff;
+      --fg: #2d3748;
+      --muted: #718096;
+      --accent: #ff6b6b;
+      --font-display: "Inter", system-ui, sans-serif;
+      --font-body: "Inter", system-ui, sans-serif;
+      --text-sm: 14px;
+      --text-2xl: 32px;
+      --leading-relaxed: 1.4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: var(--font-body); background: var(--bg); color: var(--fg); }
+    .od-safe { inset: 48px; max-width: none; overflow: visible; }
+    @page { size: 210mm 297mm; margin: 20mm; @top-center { content: none; } @bottom-center { content: none; } }
+    @media print { .no-print { display: none; } }
+    body { min-height: 100%; display: flex; flex-direction: column; }
+    .header { text-align: center; margin-bottom: 48px; padding-bottom: 48px; border-bottom: 1px solid var(--muted); }
+    .header h1 { font-size: var(--text-2xl); font-weight: 600; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .header .tagline { color: var(--muted); font-size: var(--text-sm); }
+    .sections { display: flex; flex-direction: column; gap: 48px; }
+    .section { }
+    .section h2 { font-size: var(--text-sm); font-weight: 600; color: var(--accent); margin-bottom: 24px; text-transform: uppercase; letter-spacing: 0.1em; }
+    .menu-item { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: start; margin-bottom: 24px; }
+    .menu-item .name { font-weight: 500; }
+    .menu-item .description { color: var(--muted); font-size: var(--text-sm); line-height: 1.4; }
+    .menu-item .price { text-align: right; font-weight: 600; color: var(--accent); }
+    .drinks .menu-item { border-top: 1px solid var(--muted); padding-top: 24px; margin-top: 24px; }
+    .desserts .menu-item { border-top: 1px solid var(--muted); padding-top: 24px; margin-top: 24px; }
+    .contact { text-align: center; margin-top: 48px; padding: 24px; color: var(--muted); font-size: var(--text-sm); font-size: var(--text-sm); }
+    .instagram-story { position: relative; width: 1080px; height: 1920px; background: var(--bg); margin: 0 auto; }
+    .instagram-story .badge { position: absolute; top: 48px; left: 48px; width: 120px; height: 40px; background: var(--accent); color: white; font-size: var(--text-sm); font-weight: 600; text-align: center; line-height: 40px; text-transform: uppercase; }
+    .instagram-story .title { position: absolute; top: 160px; left: 48px; font-size: var(--text-2xl); font-weight: 700; line-height: 1.1; }
+    .instagram-story .special { position: absolute; top: 360px; left: 48px; font-size: var(--text-xl); color: var(--accent); font-weight: 600; }
+    .instagram-story .details { position: absolute; top: 560px; left: 48px; right: 48px; color: var(--muted); font-size: var(--text-sm); line-height: 1.6; }
+    .instagram-story .cta { position: absolute; bottom: 160px; left: 48px; right: 48px; text-align: center; }
+    .instagram-story .cta .price { font-size: var(--text-3xl); font-weight: 700; color: var(--accent); }
+  </style>
+</head>
+
+<body>
+
+  <!-- A4 Menu -->
+  <div class="a4-menu">
+    <header class="header">
+      <h1>Sunny Café</h1>
+      <div class="tagline">Since 2010</div>
+    </header>
+
+    <main class="sections">
+      <section class="section drinks">
+        <h2>Drinks</h2>
+        <div class="menu-item">
+          <span class="name">Espresso</span>
+          <span class="description">Rich and bold single shot</span>
+          <span class="price">$3.50</span>
+        </div>
+        <div class="menu-item">
+          <span class="name">Cappuccino</span>
+          <span class="description">Espresso with steamed milk</span>
+          <span class="price">$4.50</span>
+        </div>
+        <div class="menu-item">
+          <span class="name">Latte</span>
+          <span class="description">Espresso with generous steamed milk</span>
+          <span class="price">$4.75</span>
+        </div>
+      </section>
+
+      <section class="section desserts">
+        <h2>Desserts</h2>
+        <div class="menu-item">
+          <span class="name">Chocolate Cake</span>
+          <span class="description">Daily slice, rich and chocolatey</span>
+          <span class="price">$6.50</span>
+        </div>
+        <div class="menu-item">
+          <span class="name">Tiramisu</span>
+          <span class="description">Classic Italian dessert</span>
+          <span class="price">$7.00</span>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Daily Specials</h2>
+        <div class="menu-item">
+          <span class="name">Soup of the Day</span>
+          <span class="description">Chef's creation, ask your server</span>
+          <span class="price">$5.75</span>
+        </div>
+      </div>
+    </main>
+
+    <footer class="contact">
+      <p>123 Main Street · Open: 8am - 4pm · (555) 123-4567</p>
+    </footer>
+  </div>
+
+  <!-- Instagram Story -->
+  <div class="instagram-story">
+    <div class="badge">Sunny Café</div>
+    <div class="title">Daily Specials</div>
+    <div class="special">20% off all drinks</div>
+    <div class="details">
+      <p>Espresso $3.50 | Cappuccino $4.50</p>
+      <p>Try our Chocolate Cake - $6.50</p>
+    </div>
+    <div class="cta">
+      <div class="price">20% off</div>
+      <p>Show this screen for the discount</p>
+    </div>
+  </div>
+
+</body>
+</html>
