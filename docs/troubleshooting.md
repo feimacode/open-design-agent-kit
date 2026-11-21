@@ -23,6 +23,15 @@ The agent answers with generic code instead of calling Open Design's tools.
 - **Claude Code:** `claude mcp list`. **Codex:** `codex mcp list`.
 - Behind a proxy or offline, the first `npx` download fails. Install once with network access, or install the package globally and point the MCP config at it.
 
+### I don't see the inline preview
+
+Inline galleries and previews need a running Open Design server and a host that renders MCP Apps.
+
+- Use [Claude on the web with the hosted connector](getting-started/claude-and-chatgpt-web.md), or [Claude Desktop Chat](getting-started/claude-desktop.md). With the local plugin, connect a folder; Chat without a folder needs the desktop extension or the hosted connector.
+- In the Code tab, Claude Code, Codex or a `remote-devices` bridge, expect text instead. Ask the agent for the [browser preview](guides/browser-preview.md) locally, or a viewer link with the hosted connector.
+
+See [Inline preview](guides/inline-preview.md) for the full host table.
+
 ### Unknown skillId
 
 The tool returns `Unknown skillId "…"` with a few valid ids. Skill ids are full `od:<mode>:<name>` strings from [`list_open_design_skills`](reference/tools.md#list_open_design_skills). Bare names such as `guizang-ppt` also work when unambiguous. An example that shares a name with a skill has a `:example` suffix, e.g. `od:deck:deck-guizang-editorial:example`.
