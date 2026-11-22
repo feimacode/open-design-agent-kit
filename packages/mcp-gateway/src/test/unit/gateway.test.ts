@@ -171,6 +171,16 @@ describe('hosted gateway over HTTP', function () {
       const refused = await client.callTool({ name: 'extract_open_design_design_system', arguments: { project, url: 'https://example.com' } });
       assert.strictEqual(refused.isError, true);
       assert.match(text(refused), /as sources/);
+      // The refusal hands out the measurement script, served by the gateway itself (add-browser-measured-source).
+      const block = JSON.parse(/^browserMeasure: (.+)$/m.exec(text(refused))![1]) as { loader: string; script: string };
+      const scriptUrl = /fetch\("([^"]+)"\)/.exec(block.loader)![1];
+      assert.ok(scriptUrl.startsWith(`${base}/measure/`), scriptUrl);
+      const served = await fetch(scriptUrl);
+      assert.strictEqual(served.status, 200);
+      assert.strictEqual(served.headers.get('access-control-allow-origin'), '*');
+      assert.match(served.headers.get('cache-control') ?? '', /immutable/);
+      assert.strictEqual(await served.text(), block.script);
+      assert.strictEqual((await fetch(`${base}/measure/${'0'.repeat(64)}.js`)).status, 404);
       const css = ':root { --color-primary: #e4002b; --color-background: #ffffff; --color-text: #1a1a1a; --font-heading: "Montserrat", sans-serif; }';
       const html = '<!doctype html><html><head><style>body { font-family: "Open Sans", sans-serif; }</style></head><body></body></html>';
       const drafted = await client.callTool({ name: 'extract_open_design_design_system', arguments: { project, sources: [{ kind: 'css', text: css }, { kind: 'html', text: html }] } });
