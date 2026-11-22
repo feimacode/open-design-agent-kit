@@ -43,7 +43,7 @@ import {
 import { defaultWorkspaceProblem, getAssetsRoot, getDefaultWorkspace, getFigmaToken, getOutputDirectory, getWorkspaceRootOverride, isDesktopExtension, isFolderlessAppHost, isPluginLaunched, workspaceRootFromArg, workspaceRootFromClientRoots } from './env';
 import { DEFERRED_TO_EXTENSION_MESSAGE, extensionLockPath, holdExtensionLock, readLiveExtensionLock, shouldDeferToExtension, watchExtensionLock } from './extensionLock';
 import { desktopLayout, type WorkspaceLayout } from './layout';
-import { folderUsage, newDownloads, REMOTE_HIDDEN_TOOLS, remoteArgRefusal, snapshotFiles, usageRefusal, type RemoteLimits } from './remote';
+import { folderUsage, hostedDesignSystemResult, newDownloads, REMOTE_HIDDEN_TOOLS, remoteArgRefusal, snapshotFiles, usageRefusal, type RemoteLimits } from './remote';
 import { getManagedRoot, openManagedWorkspace } from './managedWorkspace';
 import { createFileActiveDesignSystemStore } from './store';
 import { TOOL_ANNOTATIONS, TOOL_TITLES } from './toolAnnotations';
@@ -972,10 +972,12 @@ const TOOL_DEFS: ToolDef[] = [
             items: {
               type: 'object',
               properties: {
-                kind: { type: 'string', enum: ['screenshot', 'css', 'html', 'brandGuide', 'template', 'figma'], description: 'screenshot: a PNG of the site or app. css: a stylesheet, a Tailwind theme or W3C design-tokens JSON. html: page source. brandGuide: a PDF, DOCX, PPTX or Markdown guide with colour codes and fonts. template: a PowerPoint template (.pptx or .potx). figma: a Figma file the agent read with Figma\'s connector (see file, frames and designSystem).' },
+                kind: { type: 'string', enum: ['screenshot', 'css', 'html', 'brandGuide', 'template', 'figma', 'measured'], description: 'screenshot: a PNG of the site or app. css: a stylesheet, a Tailwind theme or W3C design-tokens JSON. html: page source. brandGuide: a PDF, DOCX, PPTX or Markdown guide with colour codes and fonts. template: a PowerPoint template (.pptx or .potx). figma: a Figma file the agent read with Figma\'s connector (see file, frames and designSystem). measured: a page measured in your own browser by the Open Design measurement script (the hosted server hands it out when it refuses a url): pass url, the script\'s result as data, unchanged, and a screenshot if you have one; at most 4, leave out the top-level url.' },
+                url: { type: 'string', description: 'For measured: the page the script ran on.' },
+                screenshot: { type: 'string', description: 'For measured: optional, one PNG (base64) of the viewport at the top of the page, for crops and the review page.' },
                 path: { type: 'string', description: 'Workspace-relative path to the file.' },
                 text: { type: 'string', description: 'For css and html: the text itself (at most 2 MB).' },
-                data: { type: 'string', description: 'For a screenshot or template: the file as base64 (screenshot at most 4 MB, template 20 MB).' },
+                data: { type: 'string', description: 'For a screenshot or template: the file as base64 (screenshot at most 4 MB, template 20 MB). For measured: the JSON text the measurement script returned, unchanged.' },
                 fileUrl: { type: 'string', description: "For a screenshot or template exported from Canva: export-design's download link, as Canva returned it. Downloaded only from Canva's export host (export-download.canva.com), at most 20 MB; any other host is refused." },
                 canva: {
                   type: 'object',
@@ -2086,6 +2088,8 @@ export interface RemoteSession {
   readOnlyMessage?: string;
   /** Runs an export through the gateway's queue: its result, or a job id when it takes too long to wait for (openspec add-mcp-gateway). */
   runExport?(project: RemoteProject, args: Record<string, unknown>, run: () => Promise<ToolResult>): Promise<{ result: ToolResult } | { jobId: string }>;
+  /** Where the gateway serves the browser measurement script, for the loader in a refused url (openspec add-browser-measured-source). */
+  measureScriptUrl?(): string | undefined;
   /** Extra serverInfo fields (title, icons, websiteUrl) that hosts show for the connector. */
   serverInfo?: { title?: string; websiteUrl?: string; icons?: { src: string; mimeType?: string; sizes?: string[] }[] };
 }
@@ -2236,7 +2240,7 @@ export function createSession(remote?: RemoteSession): Server {
       if (!def) return textResult(`Unknown tool: ${name}`, true);
       if (remote.readOnlyMessage && TOOL_ANNOTATIONS[name]?.readOnlyHint !== true) return textResult(remote.readOnlyMessage, true);
       const callArgs = (request.params.arguments as Record<string, unknown>) ?? {};
-      const refusal = remoteArgRefusal(name, callArgs);
+      const refusal = remoteArgRefusal(name, callArgs, { measureScriptUrl: remote.measureScriptUrl?.() });
       if (refusal) return textResult(refusal, true);
       const need = remoteNeedsProject(def);
       const catalogCall = need === 'none' || (need === 'optional' && callArgs.project === undefined && typeof def.catalogOnly === 'function' && def.catalogOnly(callArgs));
@@ -2284,6 +2288,12 @@ export function createSession(remote?: RemoteSession): Server {
             `Open Design now works in ${opened.root} (${state}, made by an earlier version, so it keeps its layout). Tell the user this path once so they can open it. Save every design file with ${WRITE_FILE_TOOL}, using paths under ${ctx.outputDir}/ (for example ${ctx.outputDir}/${opened.slug}/${opened.slug}.html), then register, check, show and export it as usual. Show it with show_open_design_artifact; exports land in this folder too, so give the user their absolute paths.`,
           );
         }
+        if (project) {
+          // Hosted: the folder is on the server, so no path for the user (openspec keep-hosted-extraction-honest).
+          return textResult(
+            `This design's folder on the Open Design server is ${opened.slug}/ (${state}). Don't show the user any path: the files aren't on their computer, so give them links (show_open_design_artifact and the exports give them). Save every file of this design with ${WRITE_FILE_TOOL} under ${opened.slug}/ (for example ${opened.slug}/${opened.slug}.html), then register, check, show and export it as usual.`,
+          );
+        }
         return textResult(
           `This design's folder is ${opened.designFolder} (${state}). Tell the user this path once, in one sentence, so they can open it. Save every file of this design with ${WRITE_FILE_TOOL} under ${opened.slug}/ (for example ${opened.slug}/${opened.slug}.html; workspace paths are relative to ${opened.root}, where every design gets its own folder), then register, check, show and export it as usual. Show it with show_open_design_artifact. Saved PDFs and images land beside the design, named like ${opened.slug}-A4.pdf.`,
         );
@@ -2314,7 +2324,11 @@ export function createSession(remote?: RemoteSession): Server {
           return textResult(`This project has reached its limit of ${remote!.limits.maxExports} exports. Nothing was exported. Start a new project with start_open_design_project.`, true);
         }
         const before = exporting ? await snapshotFiles(project!.root) : undefined;
-        const out = await def.handler(callCtx, args);
+        let out = await def.handler(callCtx, args);
+        if (project && typeof out === 'string') {
+          const p = project;
+          out = await hostedDesignSystemResult(name, out, { download: (rel) => p.downloadLink(rel), ...(p.viewLink ? { view: (entry) => p.viewLink!(entry) } : {}) });
+        }
         const structuredContent = typeof out === 'string' ? undefined : out.structuredContent;
         const content: ToolResult['content'] = tools.toCallToolContent(out);
         if (exporting && before) {

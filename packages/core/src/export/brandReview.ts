@@ -135,6 +135,8 @@ interface EvidenceFile {
     textRoles?: Array<{ role: string; fontFamily: string }>;
     radii?: Array<{ px: number; count: number; kind: string }>;
   }>;
+  /** The extraction draft: which contract tokens it didn't measure. */
+  draft?: { unmeasured?: string[]; sources?: Record<string, { confidence?: string }> };
   /** From the brand-kit capture (add-brand-kit-capture), when present. */
   components?: { button?: { primary?: { height?: number; radius?: number } }; card?: { radius?: number }; input?: { radius?: number } };
 }
@@ -233,6 +235,38 @@ export function compareBrandSample(site: SampleMeasure, sample: SampleMeasure): 
   return out;
 }
 
+/** `--name: value` pairs from tokens.css's first `:root` block (the light set), first one of each name. */
+export function rootTokenValues(css: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const clean = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const block = /:root\s*\{([^}]*)\}/.exec(clean)?.[1] ?? '';
+  for (const m of block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);?/g)) if (!out.has(m[1])) out.set(m[1], m[2].trim());
+  return out;
+}
+
+/**
+ * brand-unmeasured (openspec keep-hosted-extraction-honest): a token the
+ * extraction didn't measure, set in tokens.css to a literal value. Derived
+ * values (var(), color-mix(), calc()) and stated sources don't count. Pure.
+ */
+export function unmeasuredTokenFindings(css: string, draft: EvidenceFile['draft']): Finding[] {
+  const unmeasured = new Set(draft?.unmeasured ?? []);
+  if (unmeasured.size === 0) return [];
+  const out: Finding[] = [];
+  for (const [name, value] of rootTokenValues(css)) {
+    if (!unmeasured.has(name)) continue;
+    if (/\b(var|color-mix|calc|min|max|clamp)\(/i.test(value)) continue;
+    if (draft?.sources?.[name]?.confidence === 'stated') continue;
+    out.push({
+      check: 'brand-unmeasured',
+      severity: 'info',
+      message: `\`${name}: ${value}\` wasn't measured on the site. Remove it to use the default, derive it from a measured token, or confirm it with the user.`,
+      selector: name,
+    });
+  }
+  return out;
+}
+
 /** The fidelity pass for a page marked data-od-brand-review: reads its evidence and compares. Undefined when the page isn't a review. */
 export async function brandReviewFindings(page: Page, workspaceRoot: string, entryPath: string, html: string, warnings: string[]): Promise<Finding[]> {
   const m = new RegExp(`${BRAND_REVIEW_ATTR}\\s*=\\s*"([^"]+)"`).exec(html);
@@ -248,6 +282,8 @@ export async function brandReviewFindings(page: Page, workspaceRoot: string, ent
   }
   const sample = (await page.evaluate(measureBrandSample)) as SampleMeasure;
   const findings = compareBrandSample(expectedFromEvidence(ev), sample);
+  const tokensCss = await fs.readFile(path.resolve(workspaceRoot, path.dirname(entryPath), 'tokens.css'), 'utf8').catch(() => '');
+  findings.push(...unmeasuredTokenFindings(tokensCss, ev.draft));
   // Components rebuilt from the tokens, against the site's crops (openspec add-component-restyle-review).
   if (html.includes('id="od-components"')) findings.push(...(await componentFidelityFindings(page, path.dirname(file), warnings)));
   return findings;

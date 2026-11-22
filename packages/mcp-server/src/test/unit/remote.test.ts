@@ -5,6 +5,7 @@ import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import {
+  hostedDesignSystemResult,
   isRemoteProfile,
   MinuteRateLimiter,
   newDownloads,
@@ -55,6 +56,42 @@ describe('remote profile (add-remote-mcp-server)', () => {
     assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { url: 'https://www.canva.com/design/DAHXIhXhUfw/AbCd/edit' }), undefined);
     assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { url: 'https://canva.link/abc123', sources: [{ kind: 'template', fileUrl: 'https://export-download.canva.com/a/b.pptx' }] }), undefined);
     assert.match(remoteArgRefusal('extract_open_design_design_system', { url: 'https://www.canva.com/pricing/' }) ?? '', /does not fetch websites/);
+  });
+
+  it('hands out the measurement script when it refuses a website, and never asks for estimates (add-browser-measured-source)', () => {
+    const refusal = remoteArgRefusal('extract_open_design_design_system', { url: 'https://example.com/' }, { measureScriptUrl: 'https://od.example/measure/abc.js' }) ?? '';
+    const block = JSON.parse(/^browserMeasure: (.+)$/m.exec(refusal)![1]) as { scriptVersion: string; loader: string; script: string; next: string };
+    assert.match(block.scriptVersion, /^\d+-[0-9a-f]{12}$/);
+    assert.match(block.loader, /od\.example\/measure\/abc\.js/);
+    assert.ok(block.script.startsWith('(async () => {') && block.script.length < 60 * 1024);
+    assert.match(block.next, /kind: "measured", url: "https:\/\/example\.com\/"/);
+    assert.match(refusal, /browser tool/);
+    assert.match(refusal, /Without a browser tool/);
+    assert.match(refusal, /Never estimate/);
+    // No gateway URL: the inline script only.
+    assert.ok(!/"loader"/.test(remoteArgRefusal('extract_open_design_design_system', { url: 'https://example.com/' }) ?? ''));
+    // A measured source is fine on the hosted server.
+    assert.strictEqual(remoteArgRefusal('extract_open_design_design_system', { sources: [{ kind: 'measured', url: 'https://example.com/', data: '{}' }] }), undefined);
+  });
+
+  it('gives hosted design-system results links, never server paths (keep-hosted-extraction-honest)', async () => {
+    const links = { download: (rel: string) => `https://od.example/files/odf_x/${rel}?sig=1`, view: async (entry: string) => `https://view.example/v/odv_1/#${entry}` };
+    const exported = JSON.parse(
+      await hostedDesignSystemResult(
+        'export_open_design_design_system',
+        JSON.stringify({ dir: 'claude-design/acme', files: ['claude-design/acme/project/tokens.json'], brandPage: 'claude-design/acme/brand.html', zip: 'claude-design/acme/claude-design-project.zip', notes: ['n'], warnings: [], next: 'give the user the folder' }),
+        links,
+      ),
+    );
+    assert.deepStrictEqual(Object.keys(exported).sort(), ['brandPageLink', 'claudeDesignDownload', 'next', 'notes', 'warnings']);
+    assert.match(exported.claudeDesignDownload, /claude-design-project\.zip/);
+    assert.ok(!/\/data\/|give the user the folder/.test(JSON.stringify(exported)));
+    assert.match(exported.next, /never show the user a file or folder path/);
+    const created = JSON.parse(await hostedDesignSystemResult('create_open_design_design_system', JSON.stringify({ instructions: 'x', suggestedEntryPath: 'design-systems/acme/DESIGN.md', id: 'user:acme', review: 'design-systems/acme/review.html' }), links));
+    assert.match(created.next, /write_open_design_file only/);
+    assert.match(created.next, /show_open_design_artifact with entryPath "design-systems\/acme\/review\.html"/);
+    assert.match(created.next, /Not measured/);
+    assert.strictEqual(await hostedDesignSystemResult('list_open_design_skills', 'plain', links), 'plain');
   });
 
   it('reads limits from the environment, ignoring bad values', () => {

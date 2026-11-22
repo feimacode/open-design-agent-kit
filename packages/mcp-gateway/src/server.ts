@@ -8,6 +8,7 @@
 //   GET  /.well-known/openai-apps-challenge     OpenAI domain verification
 //   GET  /.well-known/oauth-protected-resource  sign-in metadata (when sign-in is on)
 //   GET  /v/<view id>/…                         read-only viewer, on the user-content host only
+//   GET  /measure/<sha256>.js                   the browser measurement script (add-browser-measured-source)
 //
 // MCP sessions hold only the client's capabilities (so MCP Apps views work);
 // every durable thing lives in a project folder named by the handle the agent
@@ -21,6 +22,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import * as path from 'node:path';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { browserMeasurePath, browserMeasureScript } from '@feimacode/open-design-agent-kit-core';
 import { createSession, type RemoteProject, type RemoteSession } from '@feimacode/open-design-agent-kit-mcp/src/session';
 import { challengeHeader, protectedResourceMetadata, TokenVerifier } from './auth';
 import type { GatewayConfig } from './config';
@@ -165,6 +167,7 @@ export async function startGateway(config: GatewayConfig, serverVersion: string,
     limits: config.limits,
     instructions: GATEWAY_INSTRUCTIONS,
     extraTools,
+    measureScriptUrl: () => `${caller().origin.replace(/\/+$/, '')}${browserMeasurePath(browserMeasureScript().hash)}`,
     ...(config.readOnly ? { readOnlyMessage: READ_ONLY_MESSAGE } : {}),
     openProject: async (handle) => {
       const { user, origin } = caller();
@@ -293,6 +296,12 @@ export async function startGateway(config: GatewayConfig, serverVersion: string,
         if (url.pathname === '/.well-known/oauth-protected-resource' || url.pathname === '/.well-known/oauth-protected-resource/mcp') {
           if (!auth || !config.authIssuer) return send(res, 404, 'Not found');
           return sendJson(res, 200, protectedResourceMetadata(resource(publicOrigin(req)), config.authIssuer), { 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' });
+        }
+        if (url.pathname.startsWith('/measure/') && (req.method === 'GET' || req.method === 'HEAD')) {
+          // Content-addressed, so cached for good; any page may fetch it (the agent runs it in the user's browser).
+          const script = browserMeasureScript();
+          if (url.pathname !== browserMeasurePath(script.hash)) return send(res, 404, 'Not found: this script version is gone. Call extract_open_design_design_system again for the current one.', { 'access-control-allow-origin': '*' });
+          return send(res, 200, script.source, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=31536000, immutable', 'access-control-allow-origin': '*', 'x-content-type-options': 'nosniff' });
         }
         if (url.pathname.startsWith('/files/')) {
           if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Method not allowed');

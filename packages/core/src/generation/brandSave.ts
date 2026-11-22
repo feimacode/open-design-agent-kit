@@ -30,7 +30,7 @@ export interface SaveNewBrandInput {
  * extraction, its sources and the site screenshot as reference.png; then a
  * registered review.html comparing the site with a sample styled by tokens.css.
  */
-export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: BrandRecord; review?: string }> {
+export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: BrandRecord; review?: string; unmeasured?: string[] }> {
   const dir = path.join(input.workspaceRoot, input.dirRel);
   const d = input.descriptor && typeof input.descriptor === 'object' ? (input.descriptor as Record<string, unknown>) : {};
   const list = (v: unknown): string[] | undefined => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 8) : undefined);
@@ -40,6 +40,7 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
     descriptor: input.descriptor ? { moods: list(d.moods), industries: list(d.industries), surfaces: list(d.surfaces) } : undefined,
   };
   let components: CapturedBrandKit['components'] | undefined;
+  let unmeasured: string[] | undefined;
   if (input.evidenceDir) {
     const extractRoot = path.posix.join(input.outputDir.split(path.sep).join('/'), '.extract') + '/';
     const rel = path.posix.normalize(input.evidenceDir.replace(/\\/g, '/')).replace(/\/$/, '');
@@ -50,6 +51,12 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
     let kit: CapturedBrandKit | undefined;
     let figma: FigmaSourceRecord | undefined;
     let canva: CanvaSourceRecord | undefined;
+    try {
+      const draft = (JSON.parse(await fs.readFile(path.join(bundle, 'evidence.json'), 'utf8')) as { draft?: { unmeasured?: unknown } }).draft;
+      if (Array.isArray(draft?.unmeasured)) unmeasured = draft.unmeasured.filter((n): n is string => typeof n === 'string');
+    } catch {
+      // Read again below, where a missing file is reported.
+    }
     try {
       const ev = JSON.parse(await fs.readFile(path.join(bundle, 'evidence.json'), 'utf8')) as { url?: string; measuredAt?: string; pages?: Array<{ url?: string }>; brandKit?: CapturedBrandKit; figma?: FigmaSourceRecord; canva?: CanvaSourceRecord };
       urls = ev.pages?.map((p) => p.url).filter((u): u is string => typeof u === 'string') ?? (ev.url ? [ev.url] : undefined);
@@ -81,7 +88,7 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
     }
   }
   const brand = await writeBrandRecord(dir, update);
-  if (!brand.sources?.bundleDir) return { brand };
+  if (!brand.sources?.bundleDir) return { brand, unmeasured };
   const review = path.posix.join(input.dirRel, BRAND_REVIEW_FILE);
   const evidence = path.posix.relative(input.dirRel, path.posix.join(brand.sources.bundleDir, 'evidence.json'));
   const canvaSource = brand.sources.canva;
@@ -90,7 +97,7 @@ export async function saveNewBrand(input: SaveNewBrandInput): Promise<{ brand: B
     : undefined;
   await fs.writeFile(path.join(input.workspaceRoot, review), renderBrandReviewPage({ name: input.name, evidence, reference: brand.reference, components, sourceLine }));
   await writeArtifactManifest({ workspaceRoot: input.workspaceRoot, entryPath: review, artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: `${input.name}: review` } });
-  return { brand, review };
+  return { brand, review, unmeasured };
 }
 
 /**

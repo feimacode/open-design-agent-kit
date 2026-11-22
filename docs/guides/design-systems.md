@@ -198,6 +198,8 @@ The review is `review.html` in the design system's folder: the site's screenshot
 
 For a reference site, the design system is named "<Name>-inspired" and no logos or images are copied. Dark values are only measured when the site has a dark theme. A page behind a bot check or login comes back as blocked, with its screenshot; give the agent the CSS or a screenshot instead. Without a browser, the agent reads the page source and stylesheets, takes roles from the names the CSS gives them, and asks you to confirm the brand colour and font.
 
+**On the hosted server** (Claude or ChatGPT on the web, or the hosted plugin), the server can't open websites. If the agent has a browser tool, such as Claude in Chrome, it runs Open Design's measurement script on the page in your browser and sends the measurements back, so you get the same draft as a local extraction; hover and focus styles come from the site's stylesheets. Without one, it asks for a screenshot, the CSS, a brand guide or a template. Either way it never guesses a value: whatever wasn't measured stays on the default, DESIGN.md lists those tokens under "Not measured", and checking the review flags any guessed value (`brand-unmeasured`). You get links to the review and the brand page, and a download of the Claude Design files, never a folder on the server.
+
 ### Take one from Figma
 
 > Make a design system from my Figma file: https://www.figma.com/design/…

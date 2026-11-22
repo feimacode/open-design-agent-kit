@@ -5,6 +5,7 @@
 // the host's job (Claude's Artifact tool); this only writes files, so it
 // needs no checkout of the kit.
 
+import JSZip from 'jszip';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { DesignSystemDetail } from '../content/contentIndex';
@@ -171,4 +172,17 @@ export async function exportDesignSystemForClaude(input: { workspaceRoot: string
   const brandPage = path.posix.join(dirRel, BRAND_PAGE_FILE);
   await fs.writeFile(path.join(dir, BRAND_PAGE_FILE), renderBrandPage(detail, name, assets));
   return { dir: dirRel, files: written, brandPage, notes, warnings };
+}
+
+/** The export's project/ files as one zip beside them, for a hosted download link (openspec keep-hosted-extraction-honest). Returns its workspace-relative path. */
+export async function zipDesignSystemExport(workspaceRoot: string, result: DesignSystemExportResult): Promise<string> {
+  const zip = new JSZip();
+  const prefix = `${result.dir}/`;
+  for (const rel of result.files) {
+    if (!rel.startsWith(`${prefix}project/`)) continue;
+    zip.file(rel.slice(prefix.length), await fs.readFile(path.join(workspaceRoot, rel)));
+  }
+  const zipRel = path.posix.join(result.dir, 'claude-design-project.zip');
+  await fs.writeFile(path.join(workspaceRoot, zipRel), await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
+  return zipRel;
 }

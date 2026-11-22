@@ -22,8 +22,8 @@ When a design system is saved with an extraction's evidence, the review's check 
 
 ### Requirement: Hosted Results Give Links
 
-On the hosted server, the results of `create_open_design_design_system` and `export_open_design_design_system` SHALL carry no server file paths in their user-facing fields. They SHALL give the review and brand pages as viewer links and the Claude Design export as a download link, with a `next` line telling the agent to share links and never paths.
+On the hosted server, the results of `create_open_design_design_system` and `export_open_design_design_system` SHALL carry no server file paths in their user-facing fields. They SHALL give the brand page as a viewer link and the Claude Design export as a download link, and the review as a viewer link once its files are written, with a `next` line telling the agent to share links and never paths.
 
 #### Scenario: Saved on the hosted server
 - **WHEN** a design system is saved in a hosted project
-- **THEN** the result has a review link the user can open, and no path starting with the server's data folder
+- **THEN** the result has no path starting with the server's data folder, and its `next` line says to show the review once both files are written, which gives the user a viewer link (a link minted at save time would copy the folder before tokens.css exists)

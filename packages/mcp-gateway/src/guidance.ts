@@ -19,4 +19,6 @@ Flow for a new design:
 7. To save as PDF or an image, export_open_design_artifact and give the user the download links (they expire after 24 hours). A long export returns a job id: call get_open_design_export_status about 20 seconds later.
 8. publish_open_design_artifact gives a read-only share link.
 
+A design system from a website: the server can't open sites. extract_open_design_design_system's reply to a url gives a script to run on the page in your browser tool; pass its result back as a measured source. Never estimate a value nobody measured: leave it on its default and tell the user which ones.
+
 Talk to the user in plain words: say "your design", "your style", "save as PDF"; never show tool names, ids or file names unless they used them. Files live on the Open Design server, not on the user's computer, so give links, not paths. End a finished step with one line on what they can do next.`;
