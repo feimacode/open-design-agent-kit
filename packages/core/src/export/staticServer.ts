@@ -1,15 +1,26 @@
-// A throwaway, loopback-only static file server rooted at the workspace,
-// used to load an artifact for export. Serving over http://127.0.0.1 rather
-// than file:// makes ES modules and fetch() of sibling files work, lets
-// sandboxed browsers (e.g. snap Chromium) reach files under hidden
-// directories, and keeps relative references outside the artifact's own
-// folder (`../shared.css`) resolving. GET/HEAD only, paths confined to the
-// root, closed right after capture.
+// A throwaway static file server rooted at the workspace, used to load an
+// artifact for export. Serving over http rather than file:// makes ES modules
+// and fetch() of sibling files work, lets sandboxed browsers (e.g. snap
+// Chromium) reach files under hidden directories, and keeps relative
+// references outside the artifact's own folder (`../shared.css`) resolving.
+// GET/HEAD only, paths confined to the root, closed right after capture.
+//
+// Host selection: with a local browser the server is loopback-only
+// (127.0.0.1), which is the safe default. When a *remote* browser is configured
+// (OPEN_DESIGN_BROWSER_URL, e.g. a shared browserless service in another Pod),
+// the browser cannot reach this process's 127.0.0.1, so the server binds
+// 0.0.0.0 and the base URL advertises a cluster-reachable address (the Pod IP
+// from OPEN_DESIGN_ARTIFACT_HOST, else the first non-internal IPv4). That lets
+// export/check render local artifacts through the remote browser.
 import { promises as fs } from 'node:fs';
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { hasIncludes, resolveIncludes } from './flowIncludes';
+
+const BROWSER_URL_ENV = 'OPEN_DESIGN_BROWSER_URL';
+const ARTIFACT_HOST_ENV = 'OPEN_DESIGN_ARTIFACT_HOST';
 
 const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -37,6 +48,26 @@ const CONTENT_TYPES: Record<string, string> = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
+function isRemoteBrowser(): boolean {
+  return !!process.env[BROWSER_URL_ENV]?.trim();
+}
+
+/** First non-internal IPv4 address of this host (the Pod IP in Kubernetes). */
+function firstReachableIPv4(): string | undefined {
+  const ifaces = os.networkInterfaces();
+  for (const name of Object.keys(ifaces)) {
+    for (const addr of ifaces[name] ?? []) {
+      if ((addr.family === 'IPv4' || (addr.family as unknown) === 4) && !addr.internal) return addr.address;
+    }
+  }
+  return undefined;
+}
+
+function hostForUrl(host: string): string {
+  // IPv6 literals need brackets in a URL authority.
+  return host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+}
+
 export interface StaticServer {
   /** Base URL with a trailing slash, e.g. http://127.0.0.1:43123/ (plus the path token, when there is one) */
   baseUrl: string;
@@ -56,11 +87,20 @@ export interface StaticServerOptions {
    * process that finds the port still can't read the workspace.
    */
   pathToken?: string;
+  /** Address to bind. Defaults to 127.0.0.1, or 0.0.0.0 when a remote browser is configured. */
+  bindHost?: string;
+  /** Host used in baseUrl. Defaults to 127.0.0.1, or a cluster-reachable address when a remote browser is configured. */
+  publicHost?: string;
 }
 
 export async function startStaticServer(root: string, options: StaticServerOptions = {}): Promise<StaticServer> {
   const absRoot = path.resolve(root);
   const absEntry = options.entryPath ? path.resolve(absRoot, options.entryPath) : undefined;
+  const remote = isRemoteBrowser();
+  const bindHost = options.bindHost ?? (remote ? '0.0.0.0' : '127.0.0.1');
+  const publicHost =
+    options.publicHost ??
+    (remote ? process.env[ARTIFACT_HOST_ENV]?.trim() || firstReachableIPv4() || '127.0.0.1' : '127.0.0.1');
   const server = http.createServer(async (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.writeHead(405).end();
@@ -107,11 +147,11 @@ export async function startStaticServer(root: string, options: StaticServerOptio
 
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => resolve());
+    server.listen(0, bindHost, () => resolve());
   });
   const { port } = server.address() as AddressInfo;
   return {
-    baseUrl: `http://127.0.0.1:${port}/${options.pathToken ? `${options.pathToken}/` : ''}`,
+    baseUrl: `http://${hostForUrl(publicHost)}:${port}/${options.pathToken ? `${options.pathToken}/` : ''}`,
     close: () =>
       new Promise<void>((resolve) => {
         server.closeAllConnections?.();
