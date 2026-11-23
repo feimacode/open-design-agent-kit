@@ -1,0 +1,12 @@
+{
+  "name": "example-cafe-menu",
+  "title": "Café Menu",
+  "description": "A4 printed menu and Instagram story for a café, using Open Design kit poster flow.",
+  "od": {
+    "useCase": {
+      "query": {
+        "en": "Make me a café menu with an A4 printed version and an Instagram story version. Include the café logo, daily specials, drink menu with prices, and dessert menu."
+      }
+    }
+  }
+}
