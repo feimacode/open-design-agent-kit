@@ -10,6 +10,8 @@ The plugin bundles 45 skills (a router skill, task skills such as `open-design-p
 copilot plugin install open-design@awesome-copilot
 ```
 
+Or straight from this repo, which always has the latest version: `copilot plugin marketplace add feimacode/open-design-agent-kit`, then `copilot plugin install open-design@open-design-agent-kit`. Copilot reads the repo's `.github/plugin/marketplace.json`, which lists this folder (Claude Code reads `.claude-plugin/marketplace.json` instead).
+
 Needs Node.js 18 or later on `PATH`. The first start downloads the pinned server (`@feimacode/open-design-agent-kit-mcp`) with `npx` and caches it.
 
 Then ask for something in plain words, for example:
