@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { composePublishCanvaTemplateInstructions, ContentIndex, findBrowser, formatIntegrations, saveCheckRun, writeArtifactComments, writeArtifactManifest, writeCommentCrop } from '@feimacode/open-design-agent-kit-core';
+import { browserMeasureScript, composePublishCanvaTemplateInstructions, ContentIndex, findBrowser, formatIntegrations, saveCheckRun, writeArtifactComments, writeArtifactManifest, writeCommentCrop } from '@feimacode/open-design-agent-kit-core';
 import * as tools from '../../tools';
 import type { ToolContext } from '../../tools';
 import { createFileActiveDesignSystemStore } from '../../store';
@@ -447,6 +447,37 @@ describe('mcp-server tools', () => {
     const result = JSON.parse(out.text);
     assert.notStrictEqual(result.status, 'needs-figma-read');
     assert.ok(result.draft, 'expected a draft from the css source');
+  });
+
+  it('extractDesignSystemFromSite drafts from a page measured in the agent\'s browser, and refuses a stale script (add-browser-measured-source)', async () => {
+    const ctx = await makeContext();
+    const data = {
+      scriptVersion: browserMeasureScript().version,
+      url: 'https://example.com/',
+      viewport: { width: 1280, height: 800, dpr: 1 },
+      page: {
+        roles: { bg: { value: 'rgb(255, 255, 255)', selector: 'body', count: 1 }, fg: { value: 'rgb(17, 17, 17)', selector: 'p', count: 9 }, accent: { value: 'rgb(99, 91, 255)', selector: 'a.btn', count: 3 } },
+        textRoles: [{ role: 'body', selector: 'p', fontFamily: 'Inter, sans-serif', fontSize: 16, lineHeight: 24, fontWeight: 400 }],
+        fonts: [],
+        customProperties: { root: { '--brand': '#635bff' }, themes: {} },
+        radii: [{ px: 8, count: 4, kind: 'button' }],
+        spacing: [{ px: 16, count: 6 }],
+        transitions: { durations: [], easings: [] },
+        rects: {},
+      },
+      declared: { hover: 'rgb(80, 70, 230)', unreadable: 0 },
+    };
+    const result = JSON.parse((await tools.extractDesignSystemFromSite({ ...ctx, hosted: true }, { sources: [{ kind: 'measured', url: 'https://example.com/', data: JSON.stringify(data) }] })).text);
+    assert.strictEqual(result.status, 'ok');
+    assert.strictEqual(result.draft.tokens['--accent'], '#635bff');
+    assert.strictEqual(result.draft.tokens['--accent-hover'], '#5046e6');
+    assert.strictEqual(result.draft.sources['--accent-hover'].confidence, 'declared');
+    assert.match(result.notes.join(' '), /in the user's browser/);
+    await assert.rejects(
+      tools.extractDesignSystemFromSite(ctx, { sources: [{ kind: 'measured', url: 'https://example.com/', data: JSON.stringify({ ...data, scriptVersion: '0-000000000000' }) }] }),
+      /this server reads .*Nothing was drafted/,
+    );
+    await assert.rejects(tools.extractDesignSystemFromSite(ctx, { url: 'https://example.com/', sources: [{ kind: 'measured', url: 'https://example.com/', data: JSON.stringify(data) }] }), /leave out url/);
   });
 
   it('extractDesignSystemFromSite returns Canva export steps for a Canva link, and refuses an export link from another host', async () => {

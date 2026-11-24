@@ -192,6 +192,10 @@ import {
   brandRefreshDiff,
   formatRefreshResult,
   exportDesignSystemForClaude,
+  zipDesignSystemExport,
+  extractFromMeasured,
+  validateMeasuredSource,
+  MAX_MEASURED_SOURCES,
   type BrandKind,
 } from '@feimacode/open-design-agent-kit-core';
 import { formatReferenceFacts, inspectReferenceVideo as inspectReferenceVideoCore, motionSectionForBrief, readReferenceFacts, referenceBriefSection } from '@feimacode/open-design-agent-kit-core';
@@ -1024,7 +1028,7 @@ export async function createCustomDesignSystem(
   const saved = kind ? await saveNewBrand({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, dirRel, name: input.name, kind, descriptor: input.descriptor, evidenceDir: input.evidenceDir, fontLicence: input.fontLicence === 'confirmed' && kind === 'own' ? 'confirmed' : undefined }) : undefined;
   const brand = saved?.brand;
   const review = saved?.review;
-  const instructions = composeCustomDesignSystemInstructions({ name: input.name, brief: input.brief, suggestedEntryPath, id, evidence, kind });
+  const instructions = composeCustomDesignSystemInstructions({ name: input.name, brief: input.brief, suggestedEntryPath, id, evidence, kind, unmeasured: saved?.unmeasured });
   return JSON.stringify({ instructions, suggestedEntryPath, id, ...(brand ? { brand: path.posix.join(dirRel, BRAND_FILE) } : {}), ...(review ? { review } : {}) }, null, 2);
 }
 
@@ -1045,9 +1049,12 @@ export async function exportDesignSystem(ctx: ToolContext, input: { designSystem
     entryPath: result.brandPage,
     artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: `${detail.name}: brand`, designSystemId: id },
   });
+  // Hosted: one zip of project/ the user can download (openspec keep-hosted-extraction-honest).
+  const zip = ctx.hosted ? await zipDesignSystemExport(ctx.workspaceRoot, result) : undefined;
   return JSON.stringify(
     {
       ...result,
+      ...(zip ? { zip } : {}),
       next:
         'To put it into Claude Design, publish the files under project/ as a Design System artifact with your Artifact tool (each at its path, e.g. project/tokens.json), with brand.html as the page to look at. Without an Artifact tool, give the user the folder: Claude Design imports a project/ folder the same way.',
     },
@@ -1072,10 +1079,33 @@ export async function extractDesignSystemFromSite(
   const registry = await ctx.contentIndex.getIntegrationRegistry();
   const exportHosts = registry.integrations.flatMap((i) => i.exportHosts ?? []);
   const allowedExportHosts = exportHosts.length ? exportHosts : DEFAULT_CANVA_EXPORT_HOSTS;
+  // A `measured` source: the kit's page script run in the agent's browser (openspec add-browser-measured-source).
+  const rawSources = Array.isArray(input.sources) ? (input.sources as unknown[]) : undefined;
+  const isMeasured = (s: unknown) => s !== null && typeof s === 'object' && (s as { kind?: unknown }).kind === 'measured';
+  const measuredRaw = rawSources?.filter(isMeasured) ?? [];
   if (input.sources !== undefined) {
-    const checked = validateSources(input.sources, { exportHosts: allowedExportHosts });
-    if (!checked.ok) throw new Error(checked.error);
-    sources = checked.sources.length ? checked.sources : undefined;
+    const rest: unknown = rawSources ? rawSources.filter((s) => !isMeasured(s)) : input.sources;
+    if (!rawSources || (rest as unknown[]).length > 0 || measuredRaw.length === 0) {
+      const checked = validateSources(rest, { exportHosts: allowedExportHosts });
+      if (!checked.ok) throw new Error(checked.error);
+      sources = checked.sources.length ? checked.sources : undefined;
+    }
+  }
+  if (measuredRaw.length > 0) {
+    if (measuredRaw.length > MAX_MEASURED_SOURCES) throw new Error(`"sources" takes at most ${MAX_MEASURED_SOURCES} measured pages (got ${measuredRaw.length}).`);
+    if ((typeof input.url === 'string' && input.url.trim()) || input.extraUrls?.length || input.compareTo || input.content) {
+      throw new Error('With measured sources, leave out url, extraUrls, compareTo and content: the pages were already measured in your browser.');
+    }
+    const measured = [];
+    for (const raw of measuredRaw) {
+      const checked = validateMeasuredSource(raw as Record<string, unknown>, rawSources!.indexOf(raw));
+      if (!checked.ok) throw new Error(checked.error);
+      measured.push(checked.source);
+    }
+    const base = await extractFromMeasured({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources: measured, allowHostsForTesting: evalAllowedHosts() });
+    const result = sources ? await extractFromSources({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, sources, urlResult: base, exportHosts: allowedExportHosts }) : base;
+    const near = await withNearestDesignSystems(result, ctx.contentIndex);
+    return await extractOutput(ctx, near, formatExtractSiteResult(near));
   }
   const figmaSource = sources?.some((s) => s.kind === 'figma') === true;
   const link = typeof input.url === 'string' ? input.url.trim() : '';

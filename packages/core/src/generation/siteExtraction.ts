@@ -171,7 +171,7 @@ export interface CapturedBrandKit {
 // ── In-page measurement ─────────────────────────────────────────────────
 // Serialized into the page by page.evaluate(), so it must be self-contained.
 
-interface MeasuredPage extends Omit<PageEvidence, 'url' | 'dark' | 'hiddenOverlays'> {
+export interface MeasuredPage extends Omit<PageEvidence, 'url' | 'dark' | 'hiddenOverlays'> {
   title: string;
   bodyTextLength: number;
   elementCount: number;
@@ -191,7 +191,7 @@ interface MeasuredPage extends Omit<PageEvidence, 'url' | 'dark' | 'hiddenOverla
   radiusRects?: Record<string, { x: number; y: number; width: number; height: number }>;
 }
 
-function measurePageInBrowser(): MeasuredPage {
+export function measurePageInBrowser(): MeasuredPage {
   const MARK = 'data-od-extract';
   const doc = document;
   const win = window;

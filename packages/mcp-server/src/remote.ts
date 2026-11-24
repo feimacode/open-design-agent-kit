@@ -10,6 +10,7 @@
 //   handles, signed links and sweeps live in packages/mcp-gateway.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { browserMeasureLoader, browserMeasureScript, MAX_MEASURED_SOURCES } from '@feimacode/open-design-agent-kit-core';
 import { parseCanvaUrl, parseFigmaUrl } from '@feimacode/open-design-agent-kit-core';
 
 export const REMOTE_PROFILE = 'remote';
@@ -80,19 +81,44 @@ export const REMOTE_HIDDEN_TOOLS: Record<string, string> = {
   inspect_open_design_reference_video: "a video file on the user's computer (the hosted server takes no video uploads)",
 };
 
+/**
+ * The hosted refusal of a website (openspec add-browser-measured-source):
+ * measure the page in the agent's own browser with the kit's script, or fall
+ * back to sources; never estimate.
+ */
+export function browserMeasureRefusal(url: string | undefined, scriptUrl?: string): string {
+  const script = browserMeasureScript();
+  const page = url || 'the page';
+  const block = {
+    scriptVersion: script.version,
+    ...(scriptUrl ? { loader: browserMeasureLoader(scriptUrl) } : {}),
+    script: script.source,
+    next: `extract_open_design_design_system with no url and sources: [{ kind: "measured", url: "${url || '<the page>'}", data: <the text the script returned, unchanged>, screenshot: <optional PNG base64 of the viewport at the top> }]`,
+  };
+  return [
+    'The hosted Open Design server does not fetch websites. Measure the page in your own browser instead, with the Open Design measurement script below. Use it only if you have a browser tool that runs JavaScript in a page (for example Claude in Chrome\'s javascript_tool):',
+    `1. Open ${page} at desktop width (about 1280px) and wait for it to load. Don't sign in, accept cookies or click anything.`,
+    `2. Run ${scriptUrl ? 'the loader (if the page blocks it, run the script itself)' : 'the script'} as one expression. It hides cookie banners, scrolls the page once in about 2 seconds, and resolves to a JSON text. It only reads styles and adds data-od-* marker attributes; reloading the page removes them.`,
+    '3. If your browser tool can return a screenshot as base64 PNG, take one of the viewport at the top of the page.',
+    `4. Call ${block.next}. Up to ${MAX_MEASURED_SOURCES} pages of the same site, one measured source each (a pricing or product page from its navigation helps).`,
+    'Without a browser tool, fetch the page yourself and pass its HTML and stylesheets as sources ({ kind: "html", text } and { kind: "css", text }), or ask the user for a screenshot, the CSS, a brand guide or a PowerPoint template.',
+    'Never estimate a value you didn\'t measure: leave the token out so its default applies, and tell the user which ones were not measured.',
+    '',
+    `browserMeasure: ${JSON.stringify(block)}`,
+  ].join('\n');
+}
+
 /** Why a remote call with these arguments is refused, or undefined when it's fine. */
-export function remoteArgRefusal(tool: string, args: Record<string, unknown>): string | undefined {
+export function remoteArgRefusal(tool: string, args: Record<string, unknown>, options: { measureScriptUrl?: string } = {}): string | undefined {
   if (tool === 'create_open_design_design_system' && typeof args.sourceUrl === 'string' && args.sourceUrl.trim()) {
     return 'The hosted Open Design server does not fetch websites. Call create_open_design_design_system again without sourceUrl, and describe the brand in brief (colours, fonts, tone) from what the user tells you.';
   }
   if (tool === 'extract_open_design_design_system') {
     const url = typeof args.url === 'string' ? args.url.trim() : '';
     // A Figma or Canva link is never opened: it returns the steps to read or export the design.
-    if (url && !parseFigmaUrl(url) && !parseCanvaUrl(url)) {
-      return 'The hosted Open Design server does not fetch websites, so it can draft a design system only from sources. Fetch the page yourself and pass its HTML and stylesheets as sources ({ kind: "html", text } and { kind: "css", text }), or pass a screenshot, a brand guide or a PowerPoint template, and leave out url, extraUrls, compareTo and content.';
-    }
+    if (url && !parseFigmaUrl(url) && !parseCanvaUrl(url)) return browserMeasureRefusal(url, options.measureScriptUrl);
     if (['extraUrls', 'compareTo', 'content'].some((k) => args[k] !== undefined && args[k] !== '' && args[k] !== false)) {
-      return 'The hosted Open Design server does not fetch websites, so it can draft a design system only from sources. Fetch the page yourself and pass its HTML and stylesheets as sources ({ kind: "html", text } and { kind: "css", text }), or pass a screenshot, a brand guide or a PowerPoint template, and leave out url, extraUrls, compareTo and content.';
+      return `Leave out extraUrls, compareTo and content: the hosted server opens no pages.\n${browserMeasureRefusal(Array.isArray(args.extraUrls) && typeof args.extraUrls[0] === 'string' ? args.extraUrls[0] : undefined, options.measureScriptUrl)}`;
     }
     const sources = Array.isArray(args.sources) ? (args.sources as unknown[]) : [];
     const figma = sources
@@ -241,4 +267,59 @@ export function newDownloads(before: Map<string, number>, after: Map<string, num
     .filter(([rel, mtime]) => before.get(rel) !== mtime && DOWNLOADABLE_EXTENSIONS.has(path.extname(rel).toLowerCase()))
     .map(([rel]) => rel)
     .sort();
+}
+
+/** Links a hosted project can hand out. */
+export interface HostedLinks {
+  download(rel: string): string;
+  view?(entryPath: string): Promise<string | undefined>;
+}
+
+const HOSTED_NO_PATHS = 'Files live on the Open Design server, not on the user\'s computer: never show the user a file or folder path. Give them links.';
+
+/**
+ * Hosted results for create_open_design_design_system and
+ * export_open_design_design_system (openspec keep-hosted-extraction-honest):
+ * links instead of server paths, and a `next` line saying so. Returns the
+ * text unchanged for other tools or output that isn't JSON.
+ */
+export async function hostedDesignSystemResult(tool: string, text: string, links: HostedLinks): Promise<string> {
+  if (tool !== 'create_open_design_design_system' && tool !== 'export_open_design_design_system') return text;
+  let out: Record<string, unknown>;
+  try {
+    out = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return text;
+  }
+  if (!out || typeof out !== 'object' || Array.isArray(out)) return text;
+  if (tool === 'create_open_design_design_system') {
+    if (typeof out.suggestedEntryPath !== 'string') return text;
+    const review = typeof out.review === 'string' ? out.review : undefined;
+    const showReview = review
+      ? ` Once both files are written, call show_open_design_artifact with entryPath "${review}" and give the user the viewer link in its reply: the site beside a sample styled by the new tokens.`
+      : ' Once both files are written, show the user a design made with it.';
+    return JSON.stringify(
+      {
+        ...out,
+        next: `The paths here are for write_open_design_file only. ${HOSTED_NO_PATHS}${showReview} Then offer export_open_design_design_system for a brand page link and a Claude Design download. Name the tokens left on their defaults ("Not measured") in your reply.`,
+      },
+      null,
+      2,
+    );
+  }
+  const brandPage = typeof out.brandPage === 'string' ? out.brandPage : undefined;
+  const zip = typeof out.zip === 'string' ? out.zip : undefined;
+  const brandLink = brandPage && links.view ? await links.view(brandPage).catch(() => undefined) : undefined;
+  const download = zip ? links.download(zip) : undefined;
+  const rest = Object.fromEntries(Object.entries(out).filter(([k]) => !['dir', 'files', 'brandPage', 'zip', 'next'].includes(k)));
+  return JSON.stringify(
+    {
+      ...rest,
+      ...(brandLink ? { brandPageLink: brandLink } : {}),
+      ...(download ? { claudeDesignDownload: download } : {}),
+      next: `${HOSTED_NO_PATHS}${brandLink ? ' Show the brand page link.' : ''}${download ? ' The download is a zip of Claude Design\'s project/ folder: the user unzips it and imports the folder in Claude Design (Design Systems). The link expires.' : ''}`,
+    },
+    null,
+    2,
+  );
 }

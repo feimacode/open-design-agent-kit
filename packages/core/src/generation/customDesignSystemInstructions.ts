@@ -12,6 +12,38 @@ export interface ComposeCustomDesignSystemInstructionsInput {
   evidence?: BrandEvidence;
   /** The person's own brand, or a reference site; decides the DESIGN.md heading. Unset reads as a reference. */
   kind?: BrandKind;
+  /** Contract tokens the extraction draft didn't measure (from evidenceDir), listed under "Not measured". */
+  unmeasured?: string[];
+}
+
+/** Each unmeasured contract token with the default it falls back to; tokens outside the contract are left out. */
+export function notMeasuredDefaults(unmeasured: string[]): Array<{ name: string; fallback: string }> {
+  const out: Array<{ name: string; fallback: string }> = [];
+  for (const name of unmeasured) {
+    const t = TOKEN_SCHEMA.find((x) => x.name === name);
+    const fallback = t?.fallback ?? t?.aliasTo;
+    if (fallback) out.push({ name, fallback });
+  }
+  return out;
+}
+
+/**
+ * The no-estimates rule (openspec keep-hosted-extraction-honest): a token
+ * nobody measured stays on the contract fallback, and DESIGN.md says which.
+ */
+export function composeNotMeasuredSection(unmeasured?: string[]): string {
+  const lines = [
+    '## Values nobody measured',
+    '',
+    'Write only values that were measured, derived from measured ones (`color-mix()` of `--accent`, `var()` of a sibling, a `calc()` step of a measured scale), or stated by the user or a source they gave. Never estimate a value from how the page looks: leave the token out of tokens.css so the contract fallback applies, and don\'t fill two steps with the same value.',
+    '',
+    'End DESIGN.md\'s Layout & Spacing section (or the section the tokens belong to) with a line starting "Not measured:" that names each token left to its fallback with the default it takes (e.g. "Not measured: --success (#16a34a), --radius-lg (16px), motion."). When you tell the user about the design system, name those tokens too, and say a screenshot or the site\'s CSS would fill them.',
+  ];
+  const defaults = unmeasured ? notMeasuredDefaults(unmeasured) : [];
+  if (defaults.length) {
+    lines.push('', 'The extraction didn\'t measure these, so they stay on their defaults unless the user gives a value:', '', ...defaults.map((d) => `- \`${d.name}\` (default \`${d.fallback}\`)`));
+  }
+  return lines.join('\n');
 }
 
 /** `<dir of DESIGN.md>/tokens.css` — custom design systems keep both files side by side, like bundled ones. */
@@ -78,6 +110,8 @@ export function composeCustomDesignSystemInstructions(input: ComposeCustomDesign
   );
 
   parts.push(`\n\n## Second file: tokens.css\n\nThen write \`${tokensPathFor(input.suggestedEntryPath)}\`.\n\n${composeTokenContractSection()}`);
+
+  parts.push(`\n\n${composeNotMeasuredSection(input.unmeasured)}`);
 
   parts.push(
     `\n\n## After writing both files\n\nCall \`set_active_design_system\` with designSystemId "${input.id}" so it's used for this and future requests — there is no separate "register" or "publish" step for design systems; the file becomes selectable the moment it exists.`,

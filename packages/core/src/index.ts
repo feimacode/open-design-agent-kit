@@ -156,3 +156,4 @@ export * from './preview/server/mcpApp';
 export * from './preview/server/previewRevision';
 export * from './preview/server/mcpAppPickers';
 export * from './portfolio';
+export * from './generation/browserMeasure';
