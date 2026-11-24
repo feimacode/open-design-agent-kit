@@ -44,7 +44,7 @@ Keep the answers by question id, and note anything you decide without asking (a 
 <!-- claude-only -->
 **Picking by eye (Claude Desktop Chat).** When the user wants to choose a starting example from pictures, and `show_open_design_examples` is in your tool list (it is listed only where the host shows MCP Apps inline), call it with `surface` set to the chosen id instead of listing entries in text. "Remix this" posts the pick in the chat; then call `remix_open_design_example` with the skillId it names. Without that tool, keep to the text list above.
 
-**Gallery links.** If the user is browsing rather than asking for something specific, and the in-chat gallery's result has `gallery.url`, add one line linking it ("See them all in the [Open Design gallery](…)."), once per conversation. When the design is ready and `register_open_design_artifact` returned `designSystem.galleryUrl`, name the design system with that link in the ready sentence, the first time you use it in the conversation. Never write a gallery link yourself, and never link it on a concrete request before the design.
+**Gallery links.** If the user is browsing rather than asking for something specific, and the in-chat gallery's result has `gallery.url`, add one line linking it ("See them all in the [Open Design gallery](https://…)."), once per conversation. When the design is ready and `register_open_design_artifact` returned `designSystem.galleryUrl`, name the design system with that link in the ready sentence, the first time you use it in the conversation. Never write a gallery link yourself, and never link it on a concrete request before the design.
 <!-- /claude-only -->
 
 <!-- claude-only -->
