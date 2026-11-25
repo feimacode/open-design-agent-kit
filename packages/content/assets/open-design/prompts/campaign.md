@@ -53,7 +53,7 @@ Ask which channels the campaign needs, unless the brief says. Offer this menu (f
 Call `export_open_design_artifact` with `presets` set to the chosen formats, `data: "<campaign folder>/copy.csv"`, `nameField: "locale"` and `checkOnly: true`. Fix every **error** in the findings (per shape and per row). For a shape that looks wrong or has errors, call `adapt_open_design_artifact` with those format ids and tune it in the same file. Tiny ad sizes usually need their own `@container` rule: headline and call to action only. Repeat until there are no errors.
 
 <!-- claude-only -->
-**Artifact preview.** If you have an Artifact tool, publish this design as its private artifact preview (the master) once every shape is clean: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+**Claude artifact.** If you have an Artifact tool and this design has no Claude artifact yet, offer once, as one of the next steps when the master is ready, to put it on claude.ai as a private artifact the user can open from any device and share later. Only on yes: call `publish_open_design_artifact` with `provider: "claude-artifact"`, follow what it returns and give the link. After that, publish again after each round of feedback you apply, without asking; it goes to the same artifact, so just say it was updated.
 <!-- /claude-only -->
 
 ## 5. Other pieces (optional)

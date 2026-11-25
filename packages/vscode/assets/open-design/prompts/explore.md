@@ -52,5 +52,5 @@ Give the user the comparison page path (it opens in any browser straight from th
 Call `choose_open_design_direction` with the `explorationId`, the chosen `directionId`, `next` (`build-out`, `merge` with `mergeFrom`, or `save-design-system`) and the user's own adjustments as `notes`. Follow the returned `instructions` and register the result as they say.
 
 <!-- claude-only -->
-**Artifact preview.** If you have an Artifact tool, publish the result as its private artifact preview (the built-out design, not the sketches) once it's registered: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+**Claude artifact.** If you have an Artifact tool and this design has no Claude artifact yet, offer once, as one of the next steps when the built-out design (not the sketches) is ready, to put it on claude.ai as a private artifact the user can open from any device and share later. Only on yes: call `publish_open_design_artifact` with `provider: "claude-artifact"`, follow what it returns and give the link. After that, publish again after each round of feedback you apply, without asking; it goes to the same artifact, so just say it was updated.
 <!-- /claude-only -->

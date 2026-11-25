@@ -633,12 +633,12 @@ export function isClaudeClient(clientName: string | undefined): boolean {
   return agent === 'claude-code' || agent === 'claude-desktop';
 }
 
-/** One line suggesting the private artifact preview, for Claude clients on a design that has none yet (openspec add-artifact-preview). */
+/** One line suggesting the agent offer a private artifact preview, for Claude clients on a design that has none yet (openspec add-artifact-preview). */
 function artifactPreviewHint(ctx: ToolContext, manifest: JsonRecord): string {
   // A managed workspace (a chat with no folder) shows designs inline with show_open_design_artifact; each artifact publish would resend the page.
   if (ctx.managedWorkspace) return '';
   if (!isClaudeClient(ctx.clientName) || latestShareFor(readShareRecords(manifest), CLAUDE_ARTIFACT_PROVIDER)) return '';
-  return '\n\nArtifact preview: if you have an Artifact tool, show the user this design as a private Claude artifact: call publish_open_design_artifact with provider "claude-artifact" and follow its instructions (later rounds update the same artifact).';
+  return '\n\nArtifact preview: if you have an Artifact tool, offer the user once, when this design is ready, to put it on claude.ai as a private Claude artifact. On yes, call publish_open_design_artifact with provider "claude-artifact" and follow its instructions (later rounds update the same artifact without asking).';
 }
 
 /** get_open_design_artifact: the manifest, entry, supporting files and unaddressed comments, with up to 4 comment crops attached as images. */

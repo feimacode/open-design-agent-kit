@@ -14,7 +14,8 @@ Brief: "$ARGUMENTS" — or, if that is empty, the user's request in this convers
 - Use the user's own words. If they say "artifact", "design tokens" or give a file path, use those terms back; otherwise use the plain words below.
 - Keep the machinery out of replies: no tool names, no ids like `od:prototype:poster-hero`, no internal files (`.artifact.json`, `.comments.json`, `config.json`), and not the words "register", "manifest", "sidecar", "entry" or "surface", unless the user used them first.
 - Explain a print term the first time it comes up, in one short clause, and not again.
-- Say where a file is the way the user would find it ("in your Open Design folder, under seed-swap-flyer"). Give a raw path only where the user can click it (Claude Code, Claude Desktop's Code tab, VS Code) or asks for it.
+- Say where a file is the way the user would find it ("in your Open Design folder, under seed-swap-flyer"). Give a raw path only where the user can click it (Claude Code, Claude Desktop's Code tab, VS Code, GitHub Copilot) or asks for it, and never a `file://` link.
+- When a design is ready, and after each export, end with a short **Files** list: the design itself first, then every file you exported. Where paths are clickable, write each as a Markdown link named by its file name (`[seed-swap-poster.html](<.open-design/seed-swap-poster/seed-swap-poster.html>)`; the angle brackets keep a path with spaces working); elsewhere, name the folder as above. Then one line on where to look at it, only if that place lasts: its Claude artifact link if it has one; in Claude Desktop's Code tab, that clicking the design opens it in the Browser pane; in Claude Desktop Chat, the preview above; in VS Code, the Artifact Preview; in a terminal or GitHub Copilot, the live preview's address, saying it works while this session is open.
 - End each reply that finishes a step with one line on what they can do next, with at most two options ("Want it in Instagram sizes too, or is it ready to print?").
 
 | Instead of | Say |
@@ -70,7 +71,7 @@ Ask which channels the campaign needs, unless the brief says. Offer this menu (f
 Call `export_open_design_artifact` with `presets` set to the chosen formats, `data: "<campaign folder>/copy.csv"`, `nameField: "locale"` and `checkOnly: true`. Fix every **error** in the findings (per shape and per row). For a shape that looks wrong or has errors, call `adapt_open_design_artifact` with those format ids and tune it in the same file. Tiny ad sizes usually need their own `@container` rule: headline and call to action only. Repeat until there are no errors.
 
 <!-- claude-only -->
-**Artifact preview.** If you have an Artifact tool, publish this design as its private artifact preview (the master) once every shape is clean: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+**Claude artifact.** If you have an Artifact tool and this design has no Claude artifact yet, offer once, as one of the next steps when the master is ready, to put it on claude.ai as a private artifact the user can open from any device and share later. Only on yes: call `publish_open_design_artifact` with `provider: "claude-artifact"`, follow what it returns and give the link. After that, publish again after each round of feedback you apply, without asking; it goes to the same artifact, so just say it was updated.
 <!-- /claude-only -->
 
 ## 5. Other pieces (optional)
