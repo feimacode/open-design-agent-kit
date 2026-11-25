@@ -39,7 +39,8 @@
     "state-coverage",
     "ux-writing",
     "action-states",
-    "product-ui"
+    "product-ui",
+    "dashboard-layout"
   ],
   "mobile-app": [
     "state-coverage",
@@ -118,5 +119,11 @@
   ],
   "weread-year-in-review-video-template": [
     "motion-film"
+  ],
+  "data-report": [
+    "dashboard-layout"
+  ],
+  "finance-report": [
+    "dashboard-layout"
   ]
 }

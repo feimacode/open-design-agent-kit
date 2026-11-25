@@ -31,6 +31,14 @@ describe('renderDesignSystemVisualize', () => {
     assert.strictEqual((html.match(/sandbox=""/g) ?? []).length, 2);
   });
 
+  it('shows the derived chart colours', () => {
+    const html = outer(visualize('# Acme\n'));
+    assert.match(html, />Chart colours</);
+    assert.match(html, /<strong>--chart-1<\/strong>/);
+    assert.match(html, /<strong>--chart-seq-5<\/strong>/);
+    assert.match(html, /<strong>--chart-neg<\/strong>/);
+  });
+
   it('omits modules with no data instead of rendering placeholders', () => {
     const html = outer(visualize('# Acme\n'));
     assert.doesNotMatch(html, />Voice</);

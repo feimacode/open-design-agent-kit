@@ -5,6 +5,7 @@
 
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import * as cheerio from 'cheerio';
 import { sourceKindFor } from '../vendored/documentExtract';
 import { readSource, readSourceMarkdown, resolveSourcePath, sha256Of } from '../workspace/sourceStore';
 
@@ -29,6 +30,21 @@ export interface NumberCheckResult {
   unmatched: UnmatchedNumber[];
   /** Unmatched numbers beyond the reported cap. */
   omitted: number;
+}
+
+/**
+ * The page's text with data-bound values removed (openspec add-data-bound-charts):
+ * text inside data-od-bind elements and kit charts comes from the data file
+ * when the page is served, so the template's own example values aren't claims.
+ */
+export function withoutBoundText(html: string): string {
+  if (!/\bdata-od-(?:bind|chart|repeat)\b/i.test(html)) return html;
+  const $ = cheerio.load(html);
+  $('[data-od-bind], [data-od-chart]').each((_, el) => {
+    $(el).empty();
+  });
+  $('[data-od-repeat] [data-od-bind]').empty();
+  return $.html();
 }
 
 /** Visible text of an HTML document: scripts, styles and comments removed, tags turned into spaces, common entities decoded. */
@@ -158,7 +174,7 @@ export async function prepareSourceRegistration(options: {
   if (/\.html?$/i.test(options.entryPath) && texts.length > 0) {
     try {
       const html = await fs.readFile(path.join(options.workspaceRoot, options.entryPath), 'utf8');
-      numberCheck = checkSourceNumbers(visibleText(html), texts);
+      numberCheck = checkSourceNumbers(visibleText(withoutBoundText(html)), texts);
     } catch {
       warnings.push('The number check was skipped: the entry file could not be read.');
     }

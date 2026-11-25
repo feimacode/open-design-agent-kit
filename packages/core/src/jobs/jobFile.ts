@@ -13,6 +13,8 @@ export const PERIOD_PLACEHOLDER = '{period}';
 export type JobPeriod = 'day' | 'week' | 'month';
 export type JobMode = 'update' | 'series';
 export type JobChecks = 'required' | 'best-effort';
+/** `data`: swap in new data and keep the design unchanged (openspec add-refreshable-dashboards); `design`: follow the recipe again. */
+export type JobRefresh = 'data' | 'design';
 
 /** A workspace file, or data a connector pulls into `snapshot` before the design work. */
 export type JobSource = { path: string } | { connector: string; snapshot: string };
@@ -33,6 +35,7 @@ export interface JobDefinition {
   sources: JobSource[];
   deliver: JobDelivery[];
   checks: JobChecks;
+  refresh: JobRefresh;
   rebuildOnSourceChange: boolean;
   previewUrl?: string;
   stateBranch: string;
@@ -65,6 +68,7 @@ const KNOWN_FIELDS = new Set([
   'sources',
   'deliver',
   'checks',
+  'refresh',
   'rebuildOnSourceChange',
   'preview',
   'cloud',
@@ -255,6 +259,9 @@ export function validateJob(data: Record<string, unknown>, body: string, jobPath
   let checks: JobChecks = 'best-effort';
   if (data.checks !== undefined) checks = oneOf('checks', ['required', 'best-effort'] as const) ?? 'best-effort';
 
+  let refresh: JobRefresh = 'design';
+  if (data.refresh !== undefined) refresh = oneOf('refresh', ['data', 'design'] as const) ?? 'design';
+
   let rebuildOnSourceChange = true;
   if (data.rebuildOnSourceChange !== undefined) {
     if (typeof data.rebuildOnSourceChange !== 'boolean') errors.push({ field: 'rebuildOnSourceChange', message: 'rebuildOnSourceChange must be true or false.' });
@@ -303,6 +310,7 @@ export function validateJob(data: Record<string, unknown>, body: string, jobPath
       sources,
       deliver,
       checks,
+      refresh,
       rebuildOnSourceChange,
       previewUrl,
       stateBranch,

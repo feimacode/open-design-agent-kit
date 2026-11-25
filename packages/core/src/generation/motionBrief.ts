@@ -4,6 +4,7 @@ import type { DesignSystemDetail } from '../content/contentIndex';
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
 import { resolveDesignSystemDetailTokens } from './designSystemPreview';
 import { composeMotionSection, skillAnimates } from './motionVocabulary';
+import { composeChartSection, skillCharts } from './chartVocabulary';
 
 /** The schema's motion fallbacks, for a brief made with no design system. */
 function defaultMotionTokens(): Map<string, string> {
@@ -20,4 +21,11 @@ export function motionSectionForBrief(
   if (!skillAnimates(skill)) return undefined;
   const tokens = designSystem ? resolveDesignSystemDetailTokens(designSystem).tokens : defaultMotionTokens();
   return composeMotionSection({ tokens, brandMotion: designSystem?.brand?.motion, designSystemName: designSystem?.name });
+}
+
+/** The Charts section for skills that draw charts, or undefined (openspec add-data-bound-charts, add-chart-tokens). */
+export function chartSectionForBrief(skill: { id: string; name?: string; category?: string }, designSystem?: DesignSystemDetail): string | undefined {
+  if (!skillCharts(skill)) return undefined;
+  const tokens = designSystem ? resolveDesignSystemDetailTokens(designSystem).tokens : new Map<string, string>();
+  return composeChartSection({ tokens, designSystemName: designSystem?.name });
 }

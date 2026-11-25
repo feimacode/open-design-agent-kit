@@ -379,6 +379,12 @@ Two optional dials shape the derived values: `--motion-speed` (0.5 to 2, default
 
 Briefs for animated recipes (films, frames, motion prototypes) get a **Motion** section listing the vocabulary with its values, the brand's measured entrance when it has one, and the reduced-motion rule; static recipes don't. Designs built that way declare both dials, so the preview's Tweaks panel offers **Speed** and **Bounce** sliders. The Claude Design export lists the vocabulary in its README, since Claude Design has no motion tokens.
 
+### Chart colours
+
+Every design system also resolves to chart colours derived from its own: `--chart-1` to `--chart-6` for series (starting from `--accent`), `--chart-seq-1` to `--chart-seq-5` for a light-to-dark ramp, `--chart-pos` and `--chart-neg` for up and down, and `--chart-grid` and `--chart-axis`. Series, up and down colours are at least 3:1 against `--bg`, and neighbouring series are far enough apart to tell apart. A system with a black or grey accent gets series that start from a blue. Any of these you declare in `tokens.css` keeps your value. The values are for light backgrounds for now.
+
+Briefs for dashboards and data reports list them, [kit charts](data-and-charts.md#charts) draw with them, the design system's visualize page shows them, and the Claude Design export lists them in its README.
+
 ## Troubleshooting
 
 - **"Unknown designSystemId"**: the id doesn't exist. The message lists some valid ones; ask the agent to list design systems. Custom ids need the `user:` prefix.

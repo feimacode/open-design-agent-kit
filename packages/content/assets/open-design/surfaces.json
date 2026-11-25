@@ -491,6 +491,7 @@
       "description": "Charts and KPIs from a CSV or spreadsheet: reports, dashboards, finance summaries.",
       "icon": "graph",
       "status": "ready",
+      "prompt": "open-design-dashboard",
       "entries": [
         "data-report",
         "dashboard",

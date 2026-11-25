@@ -38,6 +38,8 @@ import { renderShapeSheetHtml, type ShapeThumbnail } from '../poster/shapeSheet'
 import { isAppScreen, runScreenChecks } from './screenChecks';
 import { deviceViewports, drawsOwnFrame, parseDevice } from '../preview/deviceShell';
 import { hasDataBinds, resolveSampleData, sampleDataFindings, thinStaticTables } from './sampleData';
+import { chartFindings } from './chartChecks';
+import { skillCharts } from '../generation/chartVocabulary';
 import { findBaseScreen } from '../generation/baseScreen';
 import { redesignFindings } from './redesignChecks';
 import { portfolioRecordOf } from '../portfolio/portfolioBrief';
@@ -340,11 +342,16 @@ async function runCheck(options: CheckArtifactOptions): Promise<CheckArtifactRes
   // Sample data (openspec add-sample-data): binds that miss, thin lists, fewer items than the brief promised.
   const appForData = isAppScreen(sourceSkillId, artifact.entryContent);
   const dataFindings: Finding[] = [];
+  let filledHtml = artifact.entryContent;
   if (hasDataBinds(artifact.entryContent)) {
     const absRoot = path.resolve(options.workspaceRoot);
     const applied = await resolveSampleData(artifact.entryContent, path.resolve(absRoot, options.entryPath), absRoot);
     dataFindings.push(...sampleDataFindings(applied, promisedTexts(manifest)));
+    filledHtml = applied.html;
   }
+  // Chart checks (openspec add-dashboard-recipe), on pages with kit charts or made by a chart skill.
+  const chartSkill = sourceSkillId ? skillCharts({ id: sourceSkillId.replace(/^od:[a-z-]+:/, '') }) : false;
+  if (chartSkill || /\bdata-od-chart\s*=/i.test(artifact.entryContent)) dataFindings.push(...chartFindings(filledHtml));
   if (appForData && !isDiagram) dataFindings.push(...thinStaticTables(artifact.entryContent));
   dataFindings.push(...redesignFindings(artifact.entryContent));
   // The portfolio group, only on designs registered with portfolio inputs (openspec add-portfolio-site-and-deck).

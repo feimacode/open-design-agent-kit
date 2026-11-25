@@ -12,10 +12,12 @@
 //   4. the token contract's A2 fallbacks
 //   5. the token contract's B-slot aliases (`var(--sibling)`)
 //   6. the derived motion vocabulary (motionVocabulary.ts), for names still unset
+//   7. the derived chart colours (chartVocabulary.ts), for names still unset
 
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
 import { renderDesignSystemShowcase } from '../vendored/designSystemShowcase';
 import { deriveMotionVocabulary } from './motionVocabulary';
+import { deriveChartVocabulary } from './chartVocabulary';
 
 export interface ResolveDesignSystemTokensInput {
   designMd: string;
@@ -36,6 +38,8 @@ export interface ResolvedDesignSystemTokens {
   missing: string[];
   /** Motion vocabulary names derived from the motion tokens and dials (openspec add-motion-vocabulary). */
   derivedMotion: string[];
+  /** Chart colour names derived from the system's colours (openspec add-chart-tokens). */
+  derivedChart: string[];
 }
 
 const TOKEN_NAME = /^--[a-zA-Z0-9_-]+$/;
@@ -158,9 +162,17 @@ export function resolveDesignSystemTokens(input: ResolveDesignSystemTokensInput)
     derivedMotion.push(name);
   }
 
+  // 7. chart colours, last, so they derive from the final accent, background and status colours.
+  const derivedChart: string[] = [];
+  for (const [name, value] of deriveChartVocabulary(tokens)) {
+    tokens.set(name, value);
+    derivedChart.push(name);
+  }
+
   return {
     tokens,
     derivedMotion,
+    derivedChart,
     approximated: input.tokensCss === undefined,
     fromDesignMd,
     fromDefaults,

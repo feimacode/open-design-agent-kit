@@ -48,10 +48,11 @@ If `start_open_design_job_run` isn't one of your tools (VS Code has no scheduler
 
 With the person, settle:
 
-- **What** to make, and with which recipe: `open-design-deck-from-source` for a report deck or one-pager from data, `open-design-social-post` for a batch of posts, `open-design-poster` for a print piece, `open-design-docs` for pages from Markdown.
+- **What** to make, and with which recipe: `open-design-dashboard` for a dashboard or KPI page from a data file, `open-design-deck-from-source` for a report deck or one-pager from data, `open-design-social-post` for a batch of posts, `open-design-poster` for a print piece, `open-design-docs` for pages from Markdown.
 - **Sources**: workspace files (a CSV, a CHANGELOG, a report), or data a connector pulls (a sheet in Google Drive, a Notion database). Each connector source needs a `snapshot` workspace path the pulled data is saved to, so every number stays traceable.
 - **How often**: `day`, `week` or `month`, and the time zone (an IANA name such as `Europe/Berlin`).
 - **One file or one per period**: `mode: update` rewrites the same design each period (a living report); `mode: series` keeps one file per period, with `{period}` in the target (a weekly social batch).
+- **New data or a new design each time**: `refresh: data` keeps the design exactly as it is and swaps in the new data, so charts and bound numbers redraw and the run stops (needs review) if a column the design uses is gone or the page was edited. Use it for dashboards and other designs whose numbers come from a data file (`data-od-chart`, `data-od-bind`). `refresh: design` (the default) follows the recipe again each run.
 - **Outputs**: export formats (`pdf`, `png`, `pptx`, `standalone` …). PNG, PDF, PowerPoint and video need a browser; runs without one record them as skipped.
 - **Delivery**: `preview` (the private Claude artifact, the default), `pr` (a pull request from the state branch), or a connector action such as "Post the preview link to #design in Slack". Never a public publish or a social post: the scheduler's prompt can't stand in for the person's yes, so the job tools refuse those.
 - **Checks**: `best-effort` (default) or `required`, which holds back the PR and connector deliveries when a run had no browser for the visual check.
@@ -76,6 +77,7 @@ sources:
     snapshot: data/snapshots/signups.csv
 deliver: [preview, pr]
 checks: best-effort
+refresh: design
 ---
 
 A five-slide KPI update for the leadership team: headline numbers first, then

@@ -32,3 +32,22 @@ export function periodKey(period: JobPeriod, timezone: string, at: Date = new Da
   const w = isoWeek(year, month, day);
   return `${pad(w.year, 4)}-W${pad(w.week)}`;
 }
+
+/** The last calendar day (YYYY-MM-DD) of the period a key names: a day, an ISO week's Sunday, or a month's last day. */
+export function periodEndDate(key: string): string | undefined {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return key;
+  const month = /^(\d{4})-(\d{2})$/.exec(key);
+  if (month) {
+    const last = new Date(Date.UTC(Number(month[1]), Number(month[2]), 0));
+    return last.toISOString().slice(0, 10);
+  }
+  const week = /^(\d{4})-W(\d{2})$/.exec(key);
+  if (week) {
+    // ISO week 1 contains 4 January; weeks start on Monday.
+    const jan4 = new Date(Date.UTC(Number(week[1]), 0, 4));
+    const monday = new Date(jan4.getTime() - ((jan4.getUTCDay() || 7) - 1) * 86_400_000);
+    const sunday = new Date(monday.getTime() + ((Number(week[2]) - 1) * 7 + 6) * 86_400_000);
+    return sunday.toISOString().slice(0, 10);
+  }
+  return undefined;
+}

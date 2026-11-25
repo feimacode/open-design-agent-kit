@@ -309,3 +309,79 @@ describe('recurring jobs: start and finish', () => {
     assert.ok(preview && preview.includes('https://claude.ai/artifact/abc123') && preview.includes('claude-artifact'));
   });
 });
+
+describe('recurring jobs: data-only refresh (add-refreshable-dashboards)', () => {
+  const DASH = '.open-design/kpis/dashboard.html';
+  const ctx = (root: string, now = '2026-11-25T09:00:00Z') => ({
+    workspaceRoot: root,
+    outputDir: '.open-design',
+    env: {},
+    now: new Date(now),
+    hasBrowser: async () => false,
+  });
+  async function workspace(): Promise<string> {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'od-job-refresh-'));
+    await fs.mkdir(path.join(root, '.open-design/jobs'), { recursive: true });
+    await fs.mkdir(path.join(root, '.open-design/kpis'), { recursive: true });
+    await fs.mkdir(path.join(root, 'data'), { recursive: true });
+    await fs.writeFile(path.join(root, 'data/kpis.csv'), 'week,revenue\n2026-11-09,110000\n2026-11-16,116000\n');
+    await fs.writeFile(path.join(root, '.open-design/kpis/dashboard.data.json'), JSON.stringify({ locale: 'en-US', currency: 'USD', kpis: { from: 'data/kpis.csv' } }));
+    await fs.writeFile(
+      path.join(root, DASH),
+      '<!doctype html><html><body><p>As of <span data-od-bind="asOf" data-od-format="date">1 Jan</span></p><div class="card"><div data-od-chart="kpi" data-od-data="kpis" data-od-x="week" data-od-y="revenue" data-od-format="currency" data-od-title="Revenue"></div></div></body></html>',
+    );
+    await writeArtifactManifest({ workspaceRoot: root, entryPath: DASH, artifactManifest: { kind: 'html', renderer: 'html', exports: ['html'], title: 'KPIs' } });
+    await fs.writeFile(path.join(root, JOB_PATH), jobText({ ...BASE, target: DASH, outputs: '[]', refresh: 'data', sources: '[data/kpis.csv]' }, 'Refresh the weekly KPI dashboard.'));
+    return root;
+  }
+
+  it('parses refresh and defaults it to design', () => {
+    const base = parseJobFile(jobText(BASE), JOB_PATH);
+    assert.ok(base.ok && base.job.refresh === 'design');
+    assert.deepStrictEqual(errorFields(jobText({ ...BASE, refresh: 'sometimes' })), ['refresh']);
+  });
+
+  it('swaps the data, keeps the page, sets asOf and reports KPI changes', async () => {
+    const root = await workspace();
+    const first = await startJobRun(ctx(root), { jobPath: JOB_PATH });
+    assert.ok(first.ok && first.action === 'run');
+    assert.ok(first.steps.some((s) => s.startsWith('Refresh the data only')), first.steps.join('\n'));
+    assert.ok(!first.steps.some((s) => s.startsWith('Design:')));
+    const data = JSON.parse(await fs.readFile(path.join(root, '.open-design/kpis/dashboard.data.json'), 'utf8'));
+    assert.strictEqual(data.asOf, '2026-11-29', 'end of ISO week 48');
+    const done = await finishJobRun(ctx(root), { jobPath: JOB_PATH, runId: first.runId, status: 'completed' });
+    assert.ok(done.ok);
+    assert.strictEqual(done.status, 'completed', JSON.stringify(done.ok && done.findings));
+    assert.match(done.summary, /KPIs: Revenue \$116,000\.00\./);
+
+    await fs.writeFile(path.join(root, 'data/kpis.csv'), 'week,revenue\n2026-11-16,116000\n2026-11-23,121000\n');
+    const second = await startJobRun(ctx(root, '2026-12-01T09:00:00Z'), { jobPath: JOB_PATH });
+    assert.ok(second.ok && second.action === 'run');
+    const again = await finishJobRun(ctx(root, '2026-12-01T09:00:00Z'), { jobPath: JOB_PATH, runId: second.runId, status: 'completed' });
+    assert.ok(again.ok);
+    assert.match(again.summary, /Revenue \$121,000\.00, up 4\.3% from the last run/);
+  });
+
+  it('ends needs-review when the page was edited', async () => {
+    const root = await workspace();
+    const start = await startJobRun(ctx(root), { jobPath: JOB_PATH });
+    assert.ok(start.ok && start.action === 'run');
+    await fs.appendFile(path.join(root, DASH), '<p>new section</p>');
+    const finish = await finishJobRun(ctx(root), { jobPath: JOB_PATH, runId: start.runId, status: 'completed' });
+    assert.ok(finish.ok);
+    assert.strictEqual(finish.status, 'needs-review');
+    assert.ok(finish.findings.some((f) => f.code === 'refresh-edited-page'));
+    assert.strictEqual(finish.sharedDelivery, false);
+  });
+
+  it('stops on a renamed column', async () => {
+    const root = await workspace();
+    await fs.writeFile(path.join(root, 'data/kpis.csv'), 'week,Revenue (USD)\n2026-11-16,116000\n');
+    const start = await startJobRun(ctx(root), { jobPath: JOB_PATH });
+    assert.ok(start.ok && start.action === 'run');
+    assert.ok(start.steps.some((s) => s.startsWith("Stop: this period's data doesn't fit the design") && s.includes('"revenue"') && s.includes('Revenue (USD)')), start.steps.join('\n'));
+    const finish = await finishJobRun(ctx(root), { jobPath: JOB_PATH, runId: start.runId, status: 'needs-review' });
+    assert.ok(finish.ok);
+    assert.ok(finish.findings.some((f) => f.code === 'data-shape-changed'));
+  });
+});

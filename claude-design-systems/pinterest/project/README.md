@@ -247,6 +247,28 @@ Durations and easings for this system. Use these for every transition, animation
 | `--motion-stagger` | `60ms` |
 | `--motion-distance` | `16px` |
 
+## Charts
+
+Chart colours derived from this system's accent, background and status colours. Use the series colours in order, the up and down colours for change only, and never show meaning by colour alone.
+
+| Token | Value |
+| --- | --- |
+| `--chart-1` | `#e60023` |
+| `--chart-2` | `#009d75` |
+| `--chart-3` | `#af6b00` |
+| `--chart-4` | `#0086df` |
+| `--chart-5` | `#b344ba` |
+| `--chart-6` | `#4f9000` |
+| `--chart-seq-1` | `#ffd8d3` |
+| `--chart-seq-2` | `#ffb1a9` |
+| `--chart-seq-3` | `#fb877f` |
+| `--chart-seq-4` | `#f25954` |
+| `--chart-seq-5` | `#e60023` |
+| `--chart-pos` | `#103c25` |
+| `--chart-neg` | `#9e0a0a` |
+| `--chart-grid` | `#e0e0d9` |
+| `--chart-axis` | `#62625b` |
+
 ## Not synced from Open Design
 
 - --font-display shortened to Claude's 200-character limit: "Pin Sans", -apple-system, system-ui, "Segoe UI", Roboto, "Oxygen-Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", Ubuntu, Cantarell, "Fira Sans", "Droid Sans", sans-serif.

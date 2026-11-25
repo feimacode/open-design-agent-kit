@@ -16,6 +16,8 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as cheerio from 'cheerio';
 import type { Finding } from '../poster/preflight';
+import { loadDataTable } from '../poster/data';
+import { chartSpecFromAttributes, renderChart, type ChartProblem, type ChartSpec } from './charts';
 
 export const SHARED_DATA_PATH = '_shared/data.json';
 export const MAX_DATA_BYTES = 1_000_000;
@@ -34,9 +36,91 @@ export interface SampleData {
   [collection: string]: unknown;
 }
 
-/** True when the page binds to sample data. */
+/** True when the page binds to sample data or draws a kit chart (openspec add-data-bound-charts). */
 export function hasDataBinds(html: string): boolean {
-  return /\bdata-od-(?:bind(?:-[a-z-]+)?|repeat)\s*=/i.test(html);
+  return /\bdata-od-(?:bind(?:-[a-z-]+)?|repeat|chart)\s*=/i.test(html);
+}
+
+/** The decimal and group separators for a locale. */
+function separators(locale: string): { decimal: string; group: string } {
+  try {
+    const parts = new Intl.NumberFormat(locale).formatToParts(12345.6);
+    return { decimal: parts.find((p) => p.type === 'decimal')?.value ?? '.', group: parts.find((p) => p.type === 'group')?.value ?? ',' };
+  } catch {
+    return { decimal: '.', group: ',' };
+  }
+}
+
+/**
+ * A spreadsheet cell as a number when it reads as one in `locale` ("1.284,50"
+ * in de-DE, "1,284.50" in en-US); otherwise the text unchanged. Identifiers
+ * with leading zeros ("007") stay text.
+ */
+export function parseNumberCell(text: string, locale = 'en-US'): string | number {
+  const t = text.trim();
+  if (t === '') return t;
+  const { decimal, group } = separators(locale);
+  const groupChars = group === '\u00a0' || group === '\u202f' ? [group, ' '] : [group];
+  let n = t.replace(/^\u2212/, '-');
+  const esc = (c: string) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const g = groupChars.find((c) => n.includes(c));
+  if (g !== undefined) {
+    // Group separators only between groups of three ("1.5" in de-DE isn't 15).
+    const grouped = new RegExp(`^[-+]?\\d{1,3}(?:${esc(g)}\\d{3})+(?:${esc(decimal)}\\d+)?$`);
+    if (!grouped.test(n)) return t;
+    n = n.split(g).join('');
+  }
+  if (decimal !== '.') {
+    if (n.includes('.')) return t;
+    n = n.replace(decimal, '.');
+  }
+  if (!/^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i.test(n)) return t;
+  if (/^[-+]?0\d/.test(n)) return t;
+  const v = Number(n);
+  return Number.isFinite(v) ? v : t;
+}
+
+/** A collection kept in its own file: `"sales": { "from": "data/sales.csv" }`. */
+interface FileCollection {
+  from: string;
+  sheet?: string;
+}
+
+function isFileCollection(value: unknown): value is FileCollection {
+  return !!value && typeof value === 'object' && !Array.isArray(value) && typeof (value as Record<string, unknown>).from === 'string';
+}
+
+/** Replaces `{ from }` collections with their rows; returns the files read (absolute) or an error. */
+async function loadFileCollections(data: SampleData, dataFileAbs: string, rootAbs: string): Promise<{ files: string[] } | { error: string }> {
+  const files: string[] = [];
+  const locale = typeof data.locale === 'string' ? data.locale : 'en-US';
+  for (const [key, value] of Object.entries(data)) {
+    if (!isFileCollection(value)) continue;
+    // Workspace-relative first, then relative to the data file.
+    const candidates = [path.resolve(rootAbs, value.from), path.resolve(path.dirname(dataFileAbs), value.from)];
+    let abs: string | undefined;
+    for (const c of candidates) {
+      const within = path.relative(rootAbs, c);
+      if (within.startsWith('..') || path.isAbsolute(within)) continue;
+      try {
+        if ((await fs.stat(c)).isFile()) {
+          abs = c;
+          break;
+        }
+      } catch {
+        // try the next candidate
+      }
+    }
+    if (!abs) return { error: `the "${key}" collection reads ${value.from}, which isn't a file in the workspace.` };
+    try {
+      const table = await loadDataTable(rootAbs, path.relative(rootAbs, abs), typeof value.sheet === 'string' ? value.sheet : undefined);
+      data[key] = table.rows.map((row) => Object.fromEntries(Object.entries(row).map(([c, v]) => [c, parseNumberCell(v, locale)])));
+      files.push(abs);
+    } catch (err) {
+      return { error: `the "${key}" collection: ${err instanceof Error ? err.message : String(err)}` };
+    }
+  }
+  return { files };
 }
 
 /** Workspace-relative candidates for a screen's data file, most specific first. */
@@ -46,7 +130,7 @@ export function dataFileCandidates(fileAbs: string): string[] {
   return [path.join(dir, `${base}.data.json`), path.join(dir, SHARED_DATA_PATH)];
 }
 
-export type LoadedData = { ok: true; data: SampleData; file: string } | { ok: false; error: string; file?: string };
+export type LoadedData = { ok: true; data: SampleData; file: string; files: string[] } | { ok: false; error: string; file?: string };
 
 /** The data file for the screen at `fileAbs`, which must stay inside `rootAbs`. */
 export async function loadSampleData(fileAbs: string, rootAbs: string): Promise<LoadedData> {
@@ -65,7 +149,9 @@ export async function loadSampleData(fileAbs: string, rootAbs: string): Promise<
     try {
       const data = JSON.parse(text) as unknown;
       if (!data || typeof data !== 'object' || Array.isArray(data)) return { ok: false, file: abs, error: `${within} must be a JSON object of named collections.` };
-      return { ok: true, data: data as SampleData, file: abs };
+      const collections = await loadFileCollections(data as SampleData, abs, rootAbs);
+      if ('error' in collections) return { ok: false, file: abs, error: `${within}: ${collections.error}` };
+      return { ok: true, data: data as SampleData, file: abs, files: collections.files };
     } catch (err) {
       return { ok: false, file: abs, error: `${within} isn't valid JSON: ${err instanceof Error ? err.message : String(err)}` };
     }
@@ -127,11 +213,36 @@ export interface RepeatInfo {
   tabular: boolean;
 }
 
+export interface ChartInfo {
+  spec: ChartSpec;
+  summary: string;
+  problems: ChartProblem[];
+  kpi?: { label: string; value: number; previous?: number };
+}
+
 export interface AppliedData {
   html: string;
   /** Bind and repeat paths not found in the data file. */
   missing: string[];
   repeats: RepeatInfo[];
+  /** Kit-drawn charts (data-od-chart), in page order. */
+  charts?: ChartInfo[];
+}
+
+/** A number for a chart: in full, or compact for axis labels. */
+function chartFormatter(data: Pick<SampleData, 'locale' | 'currency'>) {
+  const locale = typeof data.locale === 'string' ? data.locale : 'en-US';
+  const currency = typeof data.currency === 'string' ? data.currency : 'USD';
+  return (value: number, format: string | undefined, compact: boolean): string => {
+    if (!compact) return formatValue(value, format ?? 'number', data);
+    try {
+      if (format === 'currency') return new Intl.NumberFormat(locale, { style: 'currency', currency, notation: 'compact', maximumFractionDigits: 1 }).format(value);
+      if (format === 'percent') return new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 }).format(value);
+      return new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+    } catch {
+      return String(value);
+    }
+  };
 }
 
 function longestText(value: unknown, depth = 0): number {
@@ -218,19 +329,56 @@ export function applySampleData(html: string, data: SampleData): AppliedData {
   };
 
   fill(undefined, undefined);
+
+  // Charts after binds and repeats. The drawing is preview-only: a save from the preview keeps the element and its attributes.
+  const charts: ChartInfo[] = [];
+  const formatter = chartFormatter(data);
+  $('[data-od-chart]').each((i, el) => {
+    const node = $(el);
+    node.children('[data-od-chart-render]').remove();
+    const spec = chartSpecFromAttributes((n) => node.attr(n));
+    const rows = spec.data ? resolvePath(data, undefined, spec.data) : MISSING;
+    if (!spec.data) {
+      charts.push({ spec, summary: '', problems: [{ check: 'chart-data-missing', severity: 'error', message: `A ${spec.type || ''} chart has no data-od-data: name the collection it draws.` }] });
+      return;
+    }
+    const out = renderChart(spec, rows === MISSING ? undefined : rows, formatter, `od-chart-${i + 1}`);
+    charts.push({ spec, summary: out.summary, problems: out.problems, kpi: out.kpi });
+    if (!out.html) return;
+    const render = `<div data-od-preview-only data-od-chart-render style="position:relative">${out.html}</div>`;
+    const caption = node.children('figcaption').first();
+    if (caption.length && caption.index() === 0) caption.after(render);
+    else if (caption.length) caption.before(render);
+    else node.append(render);
+    if (!node.attr('aria-label') && spec.type !== 'kpi' && out.summary && !node.is('figure')) node.attr('aria-label', out.summary);
+  });
+
   for (const p of relMissed) if (!relFound.has(p)) missing.add(p);
   if (repeats.some((r) => r.count === 0)) {
     $('head').append('<style data-od-preview-only>[data-od-repeat-empty]{display:none!important}</style>');
   }
-  return { html: $.html(), missing: [...missing], repeats };
+  return { html: $.html(), missing: [...missing], repeats, charts };
 }
 
 /** Loads the screen's data file and applies it; the page as it was when there is nothing to apply. */
-export async function resolveSampleData(html: string, fileAbs: string, rootAbs: string): Promise<AppliedData & { error?: string; dataFile?: string }> {
+export async function resolveSampleData(html: string, fileAbs: string, rootAbs: string): Promise<AppliedData & { error?: string; dataFile?: string; dataFiles?: string[] }> {
   if (!hasDataBinds(html)) return { html, missing: [], repeats: [] };
   const loaded = await loadSampleData(fileAbs, rootAbs);
   if (!loaded.ok) return { html, missing: [], repeats: [], error: loaded.error, dataFile: loaded.file };
-  return { ...applySampleData(html, loaded.data), dataFile: loaded.file };
+  return { ...applySampleData(html, loaded.data), dataFile: loaded.file, dataFiles: loaded.files };
+}
+
+/**
+ * The workspace-relative files a design's binds and charts read: its data
+ * file and any collection files it names. Registered as the design's sources
+ * so the number check and stale-source detection cover them.
+ */
+export async function dataSourcesForEntry(workspaceRoot: string, entryPath: string, html: string): Promise<string[]> {
+  if (!hasDataBinds(html)) return [];
+  const root = path.resolve(workspaceRoot);
+  const loaded = await loadSampleData(path.resolve(root, entryPath), root);
+  if (!loaded.ok) return [];
+  return [loaded.file, ...loaded.files].map((f) => path.relative(root, f).split(path.sep).join('/'));
 }
 
 const NUMBER_WORDS: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, twenty: 20 };
@@ -269,6 +417,9 @@ export function sampleDataFindings(applied: AppliedData & { error?: string }, pr
     if (r.count < MIN_TABLE_ROWS) problems.push(`${r.count} item${r.count === 1 ? '' : 's'} (real lists have more: at least ${MIN_TABLE_ROWS})`);
     if (r.longest < LONG_VALUE_CHARS) problems.push(`no value of ${LONG_VALUE_CHARS}+ characters (add one very long name)`);
     if (problems.length > 0) findings.push({ check: 'sample-data-thin', severity: 'warning', message: `The "${r.path}" list has ${problems.join(' and ')}, so the design is only tried on the easy case.` });
+  }
+  for (const chart of applied.charts ?? []) {
+    for (const p of chart.problems) findings.push({ check: p.check, severity: p.severity, message: p.message });
   }
   for (const text of promised) {
     for (const { noun, count } of promisedCounts(text)) {

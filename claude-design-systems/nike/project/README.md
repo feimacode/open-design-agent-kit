@@ -380,6 +380,28 @@ Durations and easings for this system. Use these for every transition, animation
 | `--motion-stagger` | `60ms` |
 | `--motion-distance` | `16px` |
 
+## Charts
+
+Chart colours derived from this system's accent, background and status colours. Use the series colours in order, the up and down colours for change only, and never show meaning by colour alone.
+
+| Token | Value |
+| --- | --- |
+| `--chart-1` | `#111111` |
+| `--chart-2` | `#9d6044` |
+| `--chart-3` | `#856196` |
+| `--chart-4` | `#797430` |
+| `--chart-5` | `#138282` |
+| `--chart-6` | `#9c5a6f` |
+| `--chart-seq-1` | `#c9c9c9` |
+| `--chart-seq-2` | `#959595` |
+| `--chart-seq-3` | `#656565` |
+| `--chart-seq-4` | `#383838` |
+| `--chart-seq-5` | `#111111` |
+| `--chart-pos` | `#007d48` |
+| `--chart-neg` | `#d30005` |
+| `--chart-grid` | `#e5e5e5` |
+| `--chart-axis` | `#707072` |
+
 ## Not synced from Open Design
 
 - Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.
