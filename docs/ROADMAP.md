@@ -64,6 +64,7 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 - Canva: live check with a real design in Claude and through the hosted gateway (task 3.3 of [add-design-system-from-canva](../openspec/changes/add-design-system-from-canva/)). Needs a machine that can reach Canva's export host.
 - Extraction benchmark: the first baseline, and before/after numbers for accent candidates and coverage voting ([add-extraction-benchmark](../openspec/changes/add-extraction-benchmark/)). Needs a machine with open network access.
 - Claude Design: import one system through "Add design system → GitHub repo" (task 4.2 of [add-claude-design-system-builds](../openspec/changes/add-claude-design-system-builds/)).
+- **Chart colours:** derive six series colours, a sequential ramp, up and down, grid and axis from each system's own colours, each readable on its background ([add-chart-tokens](../openspec/changes/add-chart-tokens/), proposed, 0 of 6 tasks). Moved up from Later (Astryx study, item 5) by the dashboard features assessment, 25 November 2026.
 - Upstream reports: the source-conflict audit table and the summaries that say "dark" over light tokens ([reconcile-design-system-sources](../openspec/changes/reconcile-design-system-sources/) 5.2, [add-design-system-matching](../openspec/changes/add-design-system-matching/) 1.4).
 
 ### Next
@@ -74,7 +75,6 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 
 - Palettes generated from one pinned brand colour (Astryx study, item 3).
 - Corner radius by role with one roundness dial and a nested-corner rule; motion as two dials moved into [add-motion-vocabulary](../openspec/changes/add-motion-vocabulary/) (Astryx study, item 4).
-- Chart colour tokens (Astryx study, item 5).
 - Numbered design rules that checks can cite (Astryx study, item 6).
 - Figma variable modes (light/dark from Figma), follow-up to the Figma change.
 - Team design-system package with version, owner and a CI check, and an "ask, don't invent tokens" rule (team collaboration research, item 4).
@@ -163,6 +163,7 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 - Hosted viewer: pick the user-content domain and check isolation (tasks 1.1, 2.1, 2.2 of [add-hosted-design-viewer](../openspec/changes/add-hosted-design-viewer/)).
 - 3D embedded assets: offline render, size, and an artifact publish of the courtyard example ([embed-3d-assets-for-artifacts](../openspec/changes/embed-3d-assets-for-artifacts/)).
 - Recurring jobs: runs in a Claude Code cloud scheduled task and a Desktop local task ([add-recurring-design-jobs](../openspec/changes/add-recurring-design-jobs/) 5.x).
+- **Refreshable dashboards:** a recurring job that swaps in new data and keeps the design unchanged, stops on a renamed column, and reports what changed ([add-refreshable-dashboards](../openspec/changes/add-refreshable-dashboards/), proposed, 0 of 9 tasks; after add-data-bound-charts).
 
 ### Next
 
@@ -228,6 +229,7 @@ Links point to the OpenSpec change (open or archived) and to the pull requests t
 
 - Shopify: connect the connector to a development store and confirm what it can do (tasks 1.1, 1.2, 4.2 of [add-shop-handoff](../openspec/changes/add-shop-handoff/)).
 - End-to-end recipe runs for shop packs and card sets; publishing a whole flow to a real host.
+- **Dashboards and data reports:** charts drawn by the kit from a CSV, Excel or JSON file, so every number matches the data ([add-data-bound-charts](../openspec/changes/add-data-bound-charts/), proposed, 0 of 10 tasks); a dashboard recipe that asks who reads it and where it goes, with chart checks ([add-dashboard-recipe](../openspec/changes/add-dashboard-recipe/), proposed, 0 of 8 tasks). Source: dashboard features assessment, 25 November 2026. Live, connected dashboards stay out of scope.
 
 ### Next
 
