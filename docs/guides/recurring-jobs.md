@@ -53,6 +53,7 @@ signups, revenue and churn against last week, with one takeaway per slide.
 | `sources` | no | Workspace paths, or `{ connector, snapshot }`: what to pull through a connector and the workspace file the data is saved to. A pull that fails ends the run `failed` before any design work. |
 | `deliver` | no | `preview` (the default: the private Claude artifact), `commit`, `pr`, or `{ connector: "<what to do>" }`. Public publish providers and social posting are refused. |
 | `checks` | no | `best-effort` (default) or `required`: a run with no browser then ends `needs-review` and holds back the PR and connector deliveries. |
+| `refresh` | no | `design` (default): each run may rebuild the design. `data`: each run only swaps in the new data and keeps the design exactly as it is (see [Refresh a dashboard's data](#refresh-a-dashboards-data)). |
 | `rebuildOnSourceChange` | no | Default `true`: a source that changed since this period's completed run starts a new run. |
 | `preview.url` | no | The private artifact every run republishes. The supervised first run records it. |
 | `cloud.stateBranch` | no | Where cloud runs keep their state. Default `claude/open-design-job-<id>`. |
@@ -82,6 +83,35 @@ in the brand's voice. Square cards, one headline and one line of body each.
 ```
 
 Nothing gets posted to LinkedIn: the run ends with the files and a private preview for a person to post.
+
+## Refresh a dashboard's data
+
+A [dashboard](dashboards.md) usually keeps its design and needs only next week's numbers. Give its job `refresh: data`:
+
+```markdown
+---
+id: weekly-dashboard
+title: Weekly KPI dashboard
+recipe: open-design-dashboard
+period: week
+timezone: Europe/Berlin
+mode: update
+refresh: data
+target: .open-design/kpi-dashboard/kpi-dashboard.html
+outputs: [pdf]
+sources: [data/kpis.csv]
+---
+
+The leadership dashboard: revenue, new customers and churn for the latest week
+against the week before.
+```
+
+Each run then:
+
+- sets `asOf` in the dashboard's data file to the end of the week (or the newest date in the data, when later), so the "as of" line is right;
+- checks that the new data still has every collection and column the page binds and charts. A renamed or missing column, or an empty list, stops the run before anything changes and records it `needs-review` with `data-shape-changed`, so a person fixes the data or updates the design;
+- updates only the data files (replace `data/kpis.csv`, or the connector snapshot), never the page. Finish compares the page and its shared fragments with how they were at the start and reports `refresh-edited-page` if anything changed;
+- checks, exports and republishes as usual, and the summary lists each KPI with its change from the last completed run.
 
 ## What a run does
 
@@ -151,5 +181,7 @@ jobs:
 ```
 
 ## Related
+
+- [Dashboards](dashboards.md)
 
 [Tools: start_open_design_job_run](../reference/tools.md#start_open_design_job_run) · [Turn a document into a deck](deck-from-a-document.md) · [Social media posts](social-posts.md) · [Share and publish](share-and-publish.md)

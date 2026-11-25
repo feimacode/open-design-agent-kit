@@ -28,7 +28,7 @@ import {
 import { getOutputDirectory, getWorkspaceRoot, slugify, suggestEntryPath } from '../workspace/artifactWriter';
 import { vscodeActiveDesignSystemStore } from '../workspace/activeDesignSystem';
 import { detectExistingApp } from '@feimacode/open-design-agent-kit-core';
-import { motionSectionForBrief, readReferenceFacts, referenceBriefSection } from '@feimacode/open-design-agent-kit-core';
+import { motionSectionForBrief, chartSectionForBrief, readReferenceFacts, referenceBriefSection } from '@feimacode/open-design-agent-kit-core';
 
 interface PrepareBriefInput {
   skillId: string;
@@ -212,7 +212,7 @@ export class PrepareBriefTool implements vscode.LanguageModelTool<PrepareBriefIn
       fluid: canvas.fluid,
       decisions: decisions.decisions,
       recentDesigns,
-      motionSection: [motionSectionForBrief(skill, designSystem), referenceSection].filter(Boolean).join('\n\n') || undefined,
+      motionSection: [motionSectionForBrief(skill, designSystem), chartSectionForBrief(skill, designSystem), referenceSection].filter(Boolean).join('\n\n') || undefined,
     });
     const instructions = portfolio
       ? `${composed}\n\n${portfolio.section}\n\nWhen you register, pass \`portfolio\` (${JSON.stringify(portfolio.record)}) so the portfolio checks run.`

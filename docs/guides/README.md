@@ -17,6 +17,8 @@ Each guide covers one task for every host. Where a host differs, the guide says 
 - [Explore design directions](explore-directions.md)
 - [Steer one part of a design](steer-a-design.md)
 - [Turn a document into a deck](deck-from-a-document.md)
+- [Dashboards](dashboards.md)
+- [Data and charts](data-and-charts.md)
 - [Diagrams of your code](diagrams.md)
 - [3D objects and product shots](3d-objects.md)
 - [Engineering documents](engineering-docs.md)

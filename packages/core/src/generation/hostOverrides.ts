@@ -22,9 +22,22 @@ const HYPERFRAMES_OVERRIDE = `This host has **no Open Design daemon**. Ignore ev
 8. If a flag is rejected, run \`npx hyperframes render --help\` and adapt. Don't switch to a different renderer.
 9. Report the MP4's workspace-relative path to the user.`;
 
+// Upstream's live-artifact and live-dashboard templates register through the daemon and read
+// connectors (openspec add-dashboard-recipe). Here they become a dashboard drawn from a data file,
+// which a recurring job can refresh.
+const LIVE_DASHBOARD_OVERRIDE = `This host has **no Open Design daemon and no live connectors**. Ignore every instruction above that uses \`$OD_BIN\`, \`$OD_NODE_BIN\`, \`$OD_DAEMON_URL\`, \`$OD_TOOL_TOKEN\`, \`tools live-artifacts\` or \`tools connectors\`, and don't write \`artifact.json\`, \`provenance.json\` or \`template.html\` with \`{{…}}\` bindings. Build the same dashboard the kit's way instead, and tell the user plainly, in one sentence, that it is built from a file rather than a live connection:
+
+1. Get the data as a workspace file: a CSV, XLSX or JSON export the user gives, pasted data saved as a CSV, or sample data with a visible "Sample data" label. If the user names a connector you can use with your own tools (Notion, Google Drive), you may pull the data with it and save it as a CSV in the workspace first.
+2. Write the page as \`index.html\` (or a semantic name) with its data file beside it (\`<name>.data.json\`), naming the CSV as a collection (\`{ "rows": { "from": "data/tasks.csv" } }\`). Draw charts with \`data-od-chart\` and fill numbers and lists with \`data-od-bind\` and \`data-od-repeat\`, as the Charts section below says.
+3. Register it with the data file as a source. To keep it up to date, offer a recurring job with \`refresh: data\` (the \`open-design-recurring\` skill): each run swaps in the new file and keeps the design unchanged.
+
+Everything else in the skill (layout, sections, visual guidance) still applies.`;
+
 /** Skill dirId → daemon-free replacement for the skill's daemon-backed steps. */
 export const HOST_OVERRIDES: Readonly<Record<string, string>> = {
   hyperframes: HYPERFRAMES_OVERRIDE,
+  'live-artifact': LIVE_DASHBOARD_OVERRIDE,
+  'live-dashboard': LIVE_DASHBOARD_OVERRIDE,
 };
 
 const DAEMON_UNAVAILABLE_NOTICE = `Some steps in the skill text above call Open Design's daemon (\`$OD_BIN\`, \`od media …\`, or "the OD daemon"), for example to generate images, video, or audio with a model provider, or to serve a live data connector. **That daemon doesn't exist in this host.** Do not look for it, install it, or substitute a different tool on your own. Build everything the skill describes that doesn't need the daemon (layout, HTML, CSS, copy). For any step that does need it, tell the user plainly that it isn't available here, and leave a clearly labelled placeholder in the artifact where its output would go.`;

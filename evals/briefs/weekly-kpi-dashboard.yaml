@@ -1,0 +1,16 @@
+id: weekly-kpi-dashboard
+request: "Make a weekly KPI dashboard for the leadership meeting from data/kpis.csv"
+expect:
+  surface: data-report
+  skills: [dashboard, data-report]
+  questions: { max: 3 }
+designSystem: null
+fixture: weekly-kpis
+answers:
+  reader: "Exec glance: the leadership team looks at it for a minute"
+  where: "Send it as a PDF"
+  period: "The latest week against the week before"
+must:
+  - "Every chart is drawn by the kit (data-od-chart), not a chart library or hand-drawn SVG"
+  - "Every number on the page is in data/kpis.csv (no unmatched numbers when registered)"
+  - "Each KPI card names its week and the comparison (\"vs W46\")"

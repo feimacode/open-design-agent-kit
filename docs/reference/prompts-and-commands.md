@@ -40,6 +40,7 @@ All of them are explicit-only. To see the current list, type `/od-` in the chat 
 | `/open-design-critique` | Get a [second opinion](../guides/generate-a-design.md#second-opinion) on a design: a verdict and at most five fixes. |
 | `/open-design-publish` | [Share a design](../guides/share-and-publish.md) as a link or as one HTML file. |
 | `/open-design-deck-from-source` | [Turn a document into a deck](../guides/deck-from-a-document.md), outline first. |
+| `/open-design-dashboard` | [Build a dashboard](../guides/dashboards.md) from your data file, shaped for who reads it, with charts drawn from the data. |
 | `/open-design-recurring` | [Set up a recurring job](../guides/recurring-jobs.md) and write its job file. Scheduled runs need Claude Code or Claude Desktop. |
 | `/open-design-integrations` | [See which services are connected](../guides/integrations.md#see-whats-connected) (Canva, Figma, Notion, Drive, Slack, social posting) and set one up. |
 | `/od-<mode>-<id>` | The [curated entries](#curated-entries). |
@@ -94,6 +95,7 @@ Installed by the plugin (`/plugin install open-design`) or by [`init --tools cla
 | `open-design-publish` | `/open-design:open-design-publish` (plugin) or `/open-design-publish` (init) | yes, from requests to share, publish or get a link |
 | `open-design-deck-from-source` | `/open-design:open-design-deck-from-source` (plugin) or `/open-design-deck-from-source` (init) | yes, from requests to make slides or a one-pager from a document |
 | `open-design-integrations` | `/open-design:open-design-integrations` (plugin) or `/open-design-integrations` (init) | yes, from questions about integrations, connectors or what's connected |
+| `open-design-dashboard` | `/open-design:open-design-dashboard` (plugin) or `/open-design-dashboard` (init) | yes, from requests for a dashboard, KPI page, metrics report or scorecard. See [Dashboards](../guides/dashboards.md) |
 | `open-design-recurring` | `/open-design:open-design-recurring` (plugin) or `/open-design-recurring` (init) | yes, from requests for a design every day, week or month, and from "Run the Open Design job …" prompts. See [Recurring design jobs](../guides/recurring-jobs.md) |
 | `open-design-preview` | `/open-design:open-design-preview` (plugin) or `/open-design-preview` (init) | yes, from requests to see, preview or comment on a design. Opens the [browser preview](../guides/browser-preview.md) |
 | `open-design-design-system-from-url` | `/open-design:open-design-design-system-from-url` (plugin) or `/open-design-design-system-from-url` (init) | yes, from requests to take a design system, theme or tokens from a website |
@@ -104,7 +106,7 @@ The plugin also has one agent, `design-critic` (`open-design:design-critic`): th
 
 The MCP server also offers **MCP prompts**. In Claude Code they appear as `/mcp__open-design__<name>`:
 
-- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-poster`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source`, `open-design-integrations`, `open-design-recurring`, `open-design-preview`, `open-design-design-system-from-url` and `open-design-critique` take an optional `brief` argument.
+- `open-design-new`, `open-design-campaign`, `open-design-docs`, `open-design-social-post`, `open-design-poster`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source`, `open-design-integrations`, `open-design-dashboard`, `open-design-recurring`, `open-design-preview`, `open-design-design-system-from-url` and `open-design-critique` take an optional `brief` argument.
 - There's one prompt per remixable example, named `od-<mode>-<id>`, e.g. `od-deck-deck-guizang-editorial-example`. Selecting one prefills a remix request; nothing runs until you send it.
 
 ## Codex
@@ -124,6 +126,7 @@ Skills in `.agents/skills/` (from [`init --tools codex`](cli.md#init) or copied 
 | `open-design-deck-from-source` | yes |
 | `open-design-integrations` | yes |
 | `open-design-preview` | yes |
+| `open-design-dashboard` | yes |
 | `open-design-recurring` | yes |
 | `open-design-design-system-from-url` | yes |
 | `open-design-critique` | yes |

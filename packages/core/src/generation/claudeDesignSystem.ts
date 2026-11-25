@@ -14,6 +14,7 @@
 // contract by name heuristics, keeping the original names as well.
 
 import { MOTION_CORE_NAMES, MOTION_VOCABULARY_NAMES, withMotionVocabulary } from './motionVocabulary';
+import { CHART_VOCABULARY_NAMES, withChartVocabulary } from './chartVocabulary';
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
 import { contrastRatio, parseColor, resolveColorValue, resolveColorsIn } from './colorMix';
 import { contrastFindings } from './claudeDesignSystemFormat';
@@ -379,7 +380,9 @@ export function toClaudeDesignSystem(input: ToClaudeDesignSystemInput): ClaudeDe
   // Claude has no motion family: the motion tokens and the derived vocabulary go into the README as guidance (openspec add-motion-vocabulary).
   const motion = motionSeen || base.size > 0 ? motionReadmeSection(base) : '';
   if (motion) notes.push('Motion tokens are not Claude tokens (there is no motion family); they are listed under Motion above as guidance.');
-  const readme = `${brandBook(input.designMd)}${motion}\n\n## Not synced from Open Design\n\n${
+  // Chart colours are derived, not the brand's own colour tokens: listed in the README as guidance (openspec add-chart-tokens).
+  const charts = base.size > 0 ? chartReadmeSection(base) : '';
+  const readme = `${brandBook(input.designMd)}${motion}${charts}\n\n## Not synced from Open Design\n\n${
     notes.length ? notes.map((n) => `- ${n}`).join('\n') : '- Everything in tokens.css carried across.'
   }\n- Fonts are named by family only (hosted faces); no font files were copied.\n- No components or assets: Open Design design systems carry tokens and guidance only.\n`;
 
@@ -867,6 +870,14 @@ function designMdFrom(title: string, readme: string, mapping: string[], notes: s
   }
   const report = [...mapping.map((m) => `- Mapped ${m}`), ...notes.map((n) => `- ${n}`)];
   return `${out}\n\n## Imported from Claude Design\n\n${report.length ? report.join('\n') : '- Tokens carried across by name.'}\n`;
+}
+
+/** The README's Charts section: the derived chart colours with values (openspec add-chart-tokens). */
+function chartReadmeSection(base: ReadonlyMap<string, string>): string {
+  const full = withChartVocabulary(new Map([...base].map(([k, v]) => [`--${k}`, v])));
+  const rows = CHART_VOCABULARY_NAMES.filter((n) => full.has(n)).map((n) => `| \`${n}\` | \`${full.get(n)}\` |`);
+  if (rows.length === 0) return '';
+  return `\n\n## Charts\n\nChart colours derived from this system's accent, background and status colours. Use the series colours in order, the up and down colours for change only, and never show meaning by colour alone.\n\n| Token | Value |\n| --- | --- |\n${rows.join('\n')}`;
 }
 
 /** The README's Motion section: core motion tokens and the derived vocabulary, with values (openspec add-motion-vocabulary). */

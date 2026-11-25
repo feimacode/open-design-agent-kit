@@ -102,7 +102,7 @@ Or run `npx @feimacode/open-design-agent-kit init --tools codex` to add the matc
 - **Sharing:** `publish_open_design_artifact` (a temporary link, or your own Netlify, Vercel, Cloudflare Pages or GitHub Pages)
 - **Integrations:** `list_open_design_integrations` (Canva, Figma, Notion, Google Drive, Slack and posting services your agent can connect to)
 
-MCP prompts: the workflows `open-design-new`, `open-design-social-post`, `open-design-poster`, `open-design-campaign`, `open-design-docs`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source`, `open-design-integrations` and `open-design-recurring`, plus one `od-<mode>-<id>` prompt per remixable example.
+MCP prompts: the workflows `open-design-new`, `open-design-social-post`, `open-design-poster`, `open-design-campaign`, `open-design-docs`, `open-design-explore`, `open-design-publish`, `open-design-deck-from-source`, `open-design-integrations`, `open-design-dashboard` and `open-design-recurring`, plus one `od-<mode>-<id>` prompt per remixable example.
 
 Arguments, results and errors: [tools reference](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/tools.md). Prompts: [prompts and commands](https://github.com/feimacode/open-design-agent-kit/blob/main/docs/reference/prompts-and-commands.md#claude-code).
 

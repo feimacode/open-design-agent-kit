@@ -16,7 +16,7 @@ const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
 const toLinear = (c: number): number => (Math.abs(c) <= 0.04045 ? c / 12.92 : Math.sign(c) * ((Math.abs(c) + 0.055) / 1.055) ** 2.4);
 const toGamma = (c: number): number => (Math.abs(c) <= 0.0031308 ? c * 12.92 : Math.sign(c) * (1.055 * Math.abs(c) ** (1 / 2.4) - 0.055));
 
-function rgbToOklab({ r, g, b }: Rgba): [number, number, number] {
+export function rgbToOklab({ r, g, b }: Rgba): [number, number, number] {
   const [lr, lg, lb] = [toLinear(r), toLinear(g), toLinear(b)];
   const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
   const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
@@ -28,7 +28,7 @@ function rgbToOklab({ r, g, b }: Rgba): [number, number, number] {
   ];
 }
 
-function oklabToRgb(L: number, A: number, B: number, a: number): Rgba {
+export function oklabToRgb(L: number, A: number, B: number, a: number): Rgba {
   const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
   const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
   const s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;

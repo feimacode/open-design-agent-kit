@@ -13,6 +13,7 @@
 import { TOKEN_SCHEMA } from '../vendored/designTokenSchema';
 import { parseDesignMd, type ParsedDesignMd, type ParsedFont } from '../vendored/designMdParse';
 import { escapeHtml, renderKitHtml } from '../vendored/designSystemKit';
+import { CHART_SEQUENTIAL_NAMES, CHART_SERIES_NAMES } from './chartVocabulary';
 import { resolveTokenValue, type ResolvedDesignSystemTokens } from './designSystemTokens';
 
 export interface DesignSystemVisualizeInput {
@@ -203,6 +204,27 @@ function list(label: string, items: string[]): string {
   return `<p class="list-label">${escapeHtml(label)}</p><ul>${clean.map((i) => `<li>${escapeHtml(i)}</li>`).join('')}</ul>`;
 }
 
+/** The chart colours (openspec add-chart-tokens): series, sequential, up/down, grid and axis. */
+function chartModule(input: DesignSystemVisualizeInput): string {
+  const tokens = input.resolved.tokens;
+  const row = (names: readonly string[]) =>
+    names
+      .filter((name) => tokens.has(name))
+      .map((name) => {
+        const concrete = resolveTokenValue(tokens, name) ?? tokens.get(name)!;
+        return `<figure class="swatch"><div class="chip" style="background: ${attr(concrete)}"></div><figcaption><strong>${escapeHtml(name)}</strong></figcaption></figure>`;
+      })
+      .join('');
+  const series = row(CHART_SERIES_NAMES);
+  if (!series) return '';
+  const sequential = row(CHART_SEQUENTIAL_NAMES);
+  const roles = row(['--chart-pos', '--chart-neg', '--chart-grid', '--chart-axis']);
+  return moduleSection(
+    'Chart colours',
+    `<div class="swatch-grid">${series}</div>${sequential ? `<p class="sub-label">Sequential</p><div class="swatch-grid">${sequential}</div>` : ''}${roles ? `<p class="sub-label">Up, down, grid and axis</p><div class="swatch-grid">${roles}</div>` : ''}`,
+  );
+}
+
 function truncate(text: string, max: number): string {
   const t = text.trim();
   return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
@@ -214,6 +236,7 @@ export function renderDesignSystemVisualize(input: DesignSystemVisualizeInput): 
     identityModule(input, parsed),
     typographyModule(input, parsed),
     paletteModule(input, parsed),
+    chartModule(input),
     voiceModule(parsed),
     imageryLayoutModule(input, parsed),
     kitModule(input),

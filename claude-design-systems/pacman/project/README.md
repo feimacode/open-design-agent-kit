@@ -85,6 +85,28 @@ Durations and easings for this system. Use these for every transition, animation
 | `--motion-stagger` | `50ms` |
 | `--motion-distance` | `16px` |
 
+## Charts
+
+Chart colours derived from this system's accent, background and status colours. Use the series colours in order, the up and down colours for change only, and never show meaning by colour alone.
+
+| Token | Value |
+| --- | --- |
+| `--chart-1` | `#ffcc00` |
+| `--chart-2` | `#14c3ff` |
+| `--chart-3` | `#4ed679` |
+| `--chart-4` | `#ca9aff` |
+| `--chart-5` | `#ff8670` |
+| `--chart-6` | `#00d8db` |
+| `--chart-seq-1` | `#2c2410` |
+| `--chart-seq-2` | `#5a4a18` |
+| `--chart-seq-3` | `#8e731b` |
+| `--chart-seq-4` | `#c59e17` |
+| `--chart-seq-5` | `#ffcc00` |
+| `--chart-pos` | `#00ff66` |
+| `--chart-neg` | `#ff3b3b` |
+| `--chart-grid` | `#17218a` |
+| `--chart-axis` | `#b9a85d` |
+
 ## Not synced from Open Design
 
 - Written as literal colours computed from color-mix(): --accent-hover, --accent-active. They won't follow later edits to the colours they mix.

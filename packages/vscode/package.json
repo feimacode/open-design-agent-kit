@@ -3363,6 +3363,9 @@
         "path": "./prompts/local/open-design-critique.prompt.md"
       },
       {
+        "path": "./prompts/local/open-design-dashboard.prompt.md"
+      },
+      {
         "path": "./prompts/local/open-design-deck-from-source.prompt.md"
       },
       {

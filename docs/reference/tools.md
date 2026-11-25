@@ -392,7 +392,7 @@ Call after the entry file (and any supporting files) is written. Validates the a
 
 **Result:** the written manifest. See [Artifact manifest](artifact-manifest.md). Registering also adds or updates the design's line in `.open-design/history.json` (see [Why designs vary](../guides/generate-a-design.md#why-designs-vary)). With `explorationId`, the result also reports the comparison page's path and which directions are still missing. If the exploration has no plan, the artifact is still registered and the result carries a warning. While the [public gallery](../../gallery/README.md#linking-it-from-the-kit) is live, a design made with a bundled design system (the one passed as `designSystemId`, or the active one) also gets `designSystem: { id, name, galleryUrl }`, the system's gallery page, which the skill names when the design is ready.
 
-With `sources`, the result also runs a **number check** on HTML entries: it lists numbers in the page's visible text (speaker notes included) that appear in none of the sources, each with surrounding text, up to 50. Integers 0–12 and years 1900–2100 are ignored, and grouping doesn't matter (`1,200` matches `1200`). It's a prompt to verify, never an error. A source that can't be read is reported and left out.
+With `sources`, the result also runs a **number check** on HTML entries: it lists numbers in the page's visible text (speaker notes included) that appear in none of the sources, each with surrounding text, up to 50. Integers 0–12 and years 1900–2100 are ignored, and grouping doesn't matter (`1,200` matches `1200`). It's a prompt to verify, never an error. A source that can't be read is reported and left out. For an HTML entry with a [data file](../guides/data-and-charts.md#your-data-file), the data file and every file a collection reads `from` are added to the sources, and numbers the kit fills in from `data-od-bind` and `data-od-chart` are skipped, since they come from the data.
 
 ### get_open_design_artifact
 
@@ -1066,6 +1066,9 @@ Pages made from an [app-screens](../guides/app-screens.md) entry (or with `data-
 | `stress-truncation` | In the same pass: text cut with an ellipsis and no `title` or other way to read it in full |
 | `large-text-overflow` | With the root text size at 20 px (a larger system text setting): text pushed out of its box or overlapping. Only problems the page didn't already have are reported |
 | `sample-data-missing` | A `data-od-bind` or `data-od-repeat` path the data file doesn't have, or binds with no data file (an error) |
+| `chart-data-missing` | An error: a [kit chart](../guides/data-and-charts.md#charts) (`data-od-chart`) whose collection or column isn't in the data |
+| `chart-empty` | An error: a kit chart whose collection has no rows or no numbers |
+| `chart-unsupported` | An error: a `data-od-chart` type the kit doesn't draw |
 | `sample-data-thin` | A repeated table or list with fewer than 12 records or no value of 30+ characters, or a hand-written app table with fewer than 6 rows |
 | `items-promised` | The brief or the screen's flow plan names a count ("6 products") and the matching list renders fewer |
 | `screen-economy` | The first screen of an app screen has no visible button, link or field, or one image, video, canvas or empty box covers more than half of it. `data-od-screen="splash"` on `<body>` exempts a splash screen |
@@ -1076,6 +1079,8 @@ Pages made from an [app-screens](../guides/app-screens.md) entry (or with `data-
 A screen with `data-od-device` (see [Device frames](../guides/app-screens.md#device-frames)) is checked at its device's screen size instead of the usual viewports: `iphone` 390 × 763, `android` 412 × 867, `tablet` 1024 × 724 and 768 × 980, `desktop-app` 1280 × 800. An app screen without a device is also checked at `tablet-1024` and `tablet-768`, whose screenshots are attached only when they have findings.
 
 `data-od-stress="off"` on an element leaves it out of the stress pass.
+
+On a dashboard, data report or finance report, or any page with a kit chart, the check adds notes for the common chart mistakes (see [Data and charts](../guides/data-and-charts.md#what-the-check-reports)): `chart-series-contrast`, `chart-unlabelled`, `chart-axis-truncated`, `chart-too-many-series` and `kpi-no-period`.
 
 With `collectionId`, the check also reads the links between screens:
 
@@ -1326,11 +1331,13 @@ In a cloud session that isn't on the job's state branch, it returns steps to che
 | `jobPath` | string | yes | The job file, e.g. `.open-design/jobs/weekly-kpis.job.md`. |
 | `runNow` | boolean | no | Rebuild even though this period already has a completed run. Not for scheduled prompts. |
 
+For a job with `refresh: data` whose target exists, start first sets the data file's `asOf` to the end of the period (or the newest date in the data, when that is later), then checks that the data still has every collection and column the page binds and charts. When it doesn't, the steps say to stop and finish the run `needs-review` with the `data-shape-changed` finding; otherwise they say to update the data files only and leave the page alone. Start also records a hash of the entry and its `_shared/*.html` fragments.
+
 **Errors:** an invalid job file, by field: a missing `timezone`, a `series` `target` without `{period}`, a connector source without `snapshot`, or a `deliver` entry that names a public provider or social posting.
 
 ### finish_open_design_job_run
 
-Finishes a started run. It checks the target without a browser: missing local files the entry or its CSS references, empty `data-od-field` elements, leftover `{{`, `TODO` or Lorem ipsum, numbers on the page found in no recorded source, and (for a `preview` delivery) the standalone file against the artifact viewer's limits. Then it settles the status: `completed` only when no check reports an error, and `needs-review` when the job has `checks: required` and the run had no browser. Capture formats the job asks for are recorded as `skipped: no-browser` when the run had none. It writes the run record (status, period, source hashes, outputs, findings, times) and returns a one-paragraph summary plus the remaining steps: push the state branch in the cloud, and the commit, PR and connector deliveries only for a `completed` run.
+Finishes a started run. It checks the target without a browser: missing local files the entry or its CSS references, empty `data-od-field` elements, leftover `{{`, `TODO` or Lorem ipsum, numbers on the page found in no recorded source, and (for a `preview` delivery) the standalone file against the artifact viewer's limits. Then it settles the status: `completed` only when no check reports an error, and `needs-review` when the job has `checks: required` and the run had no browser. Capture formats the job asks for are recorded as `skipped: no-browser` when the run had none. For a `refresh: data` job it also reports `refresh-edited-page` (an error) when the entry or a shared fragment changed since start, checks the data shape again, and records the values of the page's `kpi` charts; the summary then lists each KPI with its change from the last completed run ("Revenue $93,900.00, up 1.6% from the last run"). It writes the run record (status, period, source hashes, outputs, findings, times) and returns a one-paragraph summary plus the remaining steps: push the state branch in the cloud, and the commit, PR and connector deliveries only for a `completed` run.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|

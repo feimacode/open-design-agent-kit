@@ -10,6 +10,7 @@ import { findStaleSources, recordedSources } from '../generation/sourceNumberChe
 import { readArtifact } from '../vendored/artifactCreate';
 import { CLAUDE_ARTIFACT_PROVIDER, latestShareFor, readShareRecords } from '../workspace/shareRecords';
 import { runJobChecks } from './jobChecks';
+import { changedPageFiles, dataShapeFindings, hashPage, kpiChangeSummary, kpiValues, pageFiles, setAsOf } from './dataRefresh';
 import { CAPTURE_OUTPUT_FORMATS, formatJobErrors, readJobFile, resolveTarget, runLogPathFor, type JobDefinition } from './jobFile';
 import { periodKey as computePeriodKey } from './periodKey';
 import {
@@ -126,6 +127,8 @@ export function buildRunSteps(input: {
   capabilities: JobCapabilities;
   make: string[];
   skip: RunOutputSkipped[];
+  /** `refresh: data` on an existing design (openspec add-refreshable-dashboards). */
+  dataRefresh?: { pageFiles: string[]; dataFiles: string[]; asOf?: string; shapeProblems: string[] };
 }): string[] {
   const { job, target, capabilities } = input;
   const steps: string[] = [PUBLIC_RULE];
@@ -145,7 +148,18 @@ export function buildRunSteps(input: {
         ? `Update ${target.entryPath} in place: keep its structure and design, and refresh the content from this period's sources.`
         : `Write the design to ${target.entryPath} (it doesn't exist yet; later periods update this same file).`
       : `Write this period's design to ${target.entryPath}${target.exists ? ' (it exists from an earlier run this period: update it)' : ''}. Earlier periods' files stay as they are.`;
-  steps.push(
+  const refresh = input.dataRefresh;
+  if (refresh && refresh.shapeProblems.length) {
+    steps.push(
+      `Stop: this period's data doesn't fit the design. ${refresh.shapeProblems.join(' ')} Don't edit the design. Call finish_open_design_job_run with jobPath ${input.jobPath}, runId ${input.runId}, status "needs-review" and notes naming what changed in the data, then follow the steps it returns.`,
+    );
+    return steps;
+  }
+  if (refresh) {
+    steps.push(
+      `Refresh the data only (refresh: data): update ${refresh.dataFiles.length ? refresh.dataFiles.join(', ') : 'the design\'s data files'} from this period's sources, replacing the rows and keeping the column names. Don't edit ${refresh.pageFiles.join(', ')}: the charts and bound numbers redraw from the data, and finish_open_design_job_run reports any edit to those files as refresh-edited-page.${refresh.asOf ? ` The data file's asOf is set to ${refresh.asOf}; if the new data has a later date, set asOf to it.` : ''} Then register ${target.entryPath} again with register_open_design_artifact and the same sources.`,
+    );
+  } else steps.push(
     `Design: follow the ${job.recipe} recipe (its skill or MCP prompt) for the brief below, for period ${input.periodKey}. ${where}${job.designSystemId ? ` Use designSystemId "${job.designSystemId}".` : ''}${sourceList.length ? ` Pass sources ${JSON.stringify(sourceList)} to prepare_open_design_brief and register_open_design_artifact, and use only what they contain.` : ''} Register the result with register_open_design_artifact at ${target.entryPath}.`,
   );
 
@@ -208,6 +222,18 @@ export async function startJobRun(ctx: JobRunContext, input: { jobPath: string; 
   const make = job.outputs.filter((f) => capabilities.browser || !CAPTURE_OUTPUT_FORMATS.has(f));
   const skip = job.outputs.filter((f) => !capabilities.browser && CAPTURE_OUTPUT_FORMATS.has(f)).map((output) => ({ output, reason: 'no-browser' }));
   const runId = newRunId();
+  // refresh: data on a design that already exists: keep the page, swap the data (openspec add-refreshable-dashboards).
+  let dataRefresh: { pageFiles: string[]; dataFiles: string[]; asOf?: string; shapeProblems: string[] } | undefined;
+  let pageHashes: Record<string, string> | undefined;
+  let asOf: string | undefined;
+  if (job.refresh === 'data' && target.exists) {
+    const pulled = job.sources.some((s) => 'connector' in s);
+    asOf = (await setAsOf(ctx.workspaceRoot, entryPath, key))?.asOf;
+    const shape = pulled ? [] : await dataShapeFindings(ctx.workspaceRoot, entryPath);
+    pageHashes = await hashPage(ctx.workspaceRoot, entryPath);
+    const dataFiles = sourcePaths(job.sources).filter((p) => !/\.html?$/i.test(p));
+    dataRefresh = { pageFiles: await pageFiles(ctx.workspaceRoot, entryPath), dataFiles, asOf, shapeProblems: shape.map((f) => f.message) };
+  }
   const record: RunRecord = {
     runId,
     periodKey: key,
@@ -217,6 +243,8 @@ export async function startJobRun(ctx: JobRunContext, input: { jobPath: string; 
     capabilities,
     ...(input.runNow ? { runNow: true } : {}),
     sources: currentSources,
+    ...(pageHashes ? { pageHashes } : {}),
+    ...(asOf ? { asOf } : {}),
   };
   await writeRunLog(ctx.workspaceRoot, runLogPath, upsertRun(log, record));
 
@@ -236,7 +264,7 @@ export async function startJobRun(ctx: JobRunContext, input: { jobPath: string; 
     forced: decision.forced,
     outputs: { make, skip },
     brief: job.brief,
-    steps: buildRunSteps({ job, jobPath, runId, periodKey: key, target, capabilities, make, skip }),
+    steps: buildRunSteps({ job, jobPath, runId, periodKey: key, target, capabilities, make, skip, dataRefresh }),
   };
 }
 
@@ -345,6 +373,15 @@ export async function finishJobRun(ctx: JobRunContext, input: FinishJobRunInput)
       findings.push({ severity: 'error', code: 'output-missing', message: `${rel} was reported as written but doesn't exist.` });
     }
   }
+  // refresh: data: the page must be unchanged, and the data must still fit it.
+  if (job.refresh === 'data' && started.pageHashes && input.status !== 'failed') {
+    const changed = await changedPageFiles(ctx.workspaceRoot, started.target, started.pageHashes);
+    if (changed.length) {
+      findings.push({ severity: 'error', code: 'refresh-edited-page', message: `This is a data-only refresh, but the design changed: ${changed.join(', ')}. A person should look; restore the files if the change wasn't meant.` });
+    }
+    findings.push(...(await dataShapeFindings(ctx.workspaceRoot, started.target)));
+  }
+  const kpis = input.status === 'failed' ? [] : await kpiValues(ctx.workspaceRoot, started.target);
   const skipped: RunOutputSkipped[] = [...(input.outputs?.notMade ?? [])].filter((s) => s && typeof s.output === 'string').map((s) => ({ output: s.output, reason: s.reason || 'not given' }));
   if (!started.capabilities.browser) {
     for (const f of job.outputs) if (CAPTURE_OUTPUT_FORMATS.has(f) && !skipped.some((s) => s.output === f)) skipped.push({ output: f, reason: 'no-browser' });
@@ -368,11 +405,14 @@ export async function finishJobRun(ctx: JobRunContext, input: FinishJobRunInput)
     outputs: { written, skipped },
     findings,
     ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
+    ...(kpis.length ? { kpis } : {}),
   };
   await writeRunLog(ctx.workspaceRoot, runLogPath, upsertRun(log, record));
 
   const sharedDelivery = status === 'completed';
-  const summary = buildSummary(job, record, previewUrl);
+  const lastCompleted = log.runs.filter((r) => r.runId !== record.runId && r.status === 'completed' && r.kpis?.length).sort((a, b) => (a.finishedAt ?? '').localeCompare(b.finishedAt ?? '')).pop();
+  const kpiLine = kpiChangeSummary(kpis, lastCompleted?.kpis);
+  const summary = `${buildSummary(job, record, previewUrl)}${kpiLine ? ` ${kpiLine}` : ''}`;
   const next = finishSteps(job, record, sharedDelivery, previewUrl);
   if (!job.previewUrl && previewUrl) next.unshift(`Add preview: { url: "${previewUrl}" } to the frontmatter of ${input.jobPath}, so later runs republish the same artifact.`);
   return { ok: true, status, record, findings, sharedDelivery, summary, next };

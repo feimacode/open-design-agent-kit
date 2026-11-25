@@ -41,6 +41,12 @@ export interface RunRecord {
   outputs?: { written: string[]; skipped: RunOutputSkipped[] };
   findings?: JobCheckFinding[];
   notes?: string;
+  /** `refresh: data` runs: page file hashes at start, so finish can prove the design wasn't edited. */
+  pageHashes?: Record<string, string>;
+  /** `refresh: data` runs: the `asOf` date set in the data file. */
+  asOf?: string;
+  /** KPI values the page showed when the run finished (openspec add-refreshable-dashboards). */
+  kpis?: Array<{ label: string; value: number; shown?: string }>;
 }
 
 export interface RunLog {

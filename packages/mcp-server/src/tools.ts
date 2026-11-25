@@ -58,6 +58,7 @@ import {
   composeInstructions,
   composePortToAppInstructions,
   sampleDataForEntry,
+  dataSourcesForEntry,
   nativePromoteContext,
   prepareComponentLibrary as prepareComponentLibraryCore,
   copyExampleArtifact,
@@ -198,7 +199,7 @@ import {
   MAX_MEASURED_SOURCES,
   type BrandKind,
 } from '@feimacode/open-design-agent-kit-core';
-import { formatReferenceFacts, inspectReferenceVideo as inspectReferenceVideoCore, motionSectionForBrief, readReferenceFacts, referenceBriefSection } from '@feimacode/open-design-agent-kit-core';
+import { formatReferenceFacts, inspectReferenceVideo as inspectReferenceVideoCore, motionSectionForBrief, chartSectionForBrief, readReferenceFacts, referenceBriefSection } from '@feimacode/open-design-agent-kit-core';
 import { figmaTokenFilePath } from './env';
 import type { DesignLayout } from './layout';
 import { holdsRegisteredArtifact, writeManagedFile } from './managedWorkspace';
@@ -478,7 +479,7 @@ export async function prepareBrief(
     recentDesigns,
     productContext: ctx.managedWorkspace ? undefined : await readProductContext(ctx.workspaceRoot),
     projectDesignMdPath: ctx.managedWorkspace || designSystem ? undefined : await findProjectDesignMd(ctx.workspaceRoot),
-    motionSection: [motionSectionForBrief(skill, designSystem), referenceSection].filter(Boolean).join('\n\n') || undefined,
+    motionSection: [motionSectionForBrief(skill, designSystem), chartSectionForBrief(skill, designSystem), referenceSection].filter(Boolean).join('\n\n') || undefined,
   });
   const instructions = portfolio
     ? `${composed}\n\n${portfolio.section}\n\nWhen you register, pass \`portfolio\` (${JSON.stringify(portfolio.record)}) so the portfolio checks run.`
@@ -549,8 +550,16 @@ export async function registerArtifact(
     // Checked before anything is written, so a rejected critique leaves the manifest as it was.
     const critique = input.critique === undefined ? undefined : await prepareCritiqueRecord(ctx.workspaceRoot, ctx.outputDir, input.entryPath, input.critique);
     if (critique && !critique.ok) return `Failed to register artifact: ${critique.error}`;
-    const sourceRegistration = input.sources?.length
-      ? await prepareSourceRegistration({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: input.entryPath, sourcePaths: input.sources })
+    // A data-bound design's data files are its sources too (openspec add-data-bound-charts).
+    const dataSources = /\.html?$/i.test(input.entryPath)
+      ? await fs
+          .readFile(path.resolve(ctx.workspaceRoot, input.entryPath), 'utf8')
+          .then((html) => dataSourcesForEntry(ctx.workspaceRoot, input.entryPath, html))
+          .catch(() => [] as string[])
+      : [];
+    const sourcePaths = [...new Set([...(input.sources ?? []), ...dataSources])];
+    const sourceRegistration = sourcePaths.length
+      ? await prepareSourceRegistration({ workspaceRoot: ctx.workspaceRoot, outputDir: ctx.outputDir, entryPath: input.entryPath, sourcePaths })
       : undefined;
     const metadata = withPortfolioMetadata(
       withFlowMetadata(withBriefMetadata(await posterRegistrationMetadata(ctx.workspaceRoot, input.entryPath, input.format), brief.brief), flow.record),
