@@ -48,7 +48,7 @@ Keep the answers by question id, and note anything you decide without asking (a 
 <!-- /claude-only -->
 
 <!-- claude-only -->
-**Artifact preview.** If you have an Artifact tool, publish this design as its private artifact preview once it's registered and checked: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+**Claude artifact.** If you have an Artifact tool and this design has no Claude artifact yet, offer once, as one of the next steps when it is ready, to put it on claude.ai as a private artifact the user can open from any device and share later. Only on yes: call `publish_open_design_artifact` with `provider: "claude-artifact"`, follow what it returns and give the link. After that, publish again after each round of feedback you apply, without asking; it goes to the same artifact, so just say it was updated.
 <!-- /claude-only -->
 
 Never pick an entry marked `stub: true`.

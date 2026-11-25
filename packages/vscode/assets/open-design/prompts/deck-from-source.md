@@ -37,7 +37,7 @@ Build from the approved outline. Use numbers, names and quotes exactly as in the
 Call `register_open_design_artifact` with the same `sources`. For every number its result says it couldn't find in the sources, check it: fix it, or say in that slide's notes how it was derived. Register again after fixing.
 
 <!-- claude-only -->
-**Artifact preview.** If you have an Artifact tool, publish this design as its private artifact preview once it's registered: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+**Claude artifact.** If you have an Artifact tool and this design has no Claude artifact yet, offer once, as one of the next steps when it is ready, to put it on claude.ai as a private artifact the user can open from any device and share later. Only on yes: call `publish_open_design_artifact` with `provider: "claude-artifact"`, follow what it returns and give the link. After that, publish again after each round of feedback you apply, without asking; it goes to the same artifact, so just say it was updated.
 <!-- /claude-only -->
 
 ## 6. Hand it over

@@ -63,7 +63,7 @@ Call `register_open_design_artifact` with the entry path, kind `html`, a title, 
 Call `check_open_design_artifact` with the entry path. It returns the poster as an image plus preflight findings. Fix every **error** in its findings (text cut off, overlapping or in the bleed, a QR code that doesn't decode), and fix warnings where you reasonably can (sizes that don't scale with the poster, small type, low contrast, low-resolution images). Look at the image too: the headline should dominate and nothing important should be cramped or cut. Check again until there are no errors (at most two fix rounds; tell the user about anything left).
 
 <!-- claude-only -->
-**Artifact preview.** If you have an Artifact tool, publish this design as its private artifact preview once the check is clean: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+**Claude artifact.** If you have an Artifact tool and this design has no Claude artifact yet, offer once, as one of the next steps when it is ready, to put it on claude.ai as a private artifact the user can open from any device and share later. Only on yes: call `publish_open_design_artifact` with `provider: "claude-artifact"`, follow what it returns and give the link. After that, publish again after each round of feedback you apply, without asking; it goes to the same artifact, so just say it was updated.
 <!-- /claude-only -->
 
 ## 6. Other shapes
@@ -80,4 +80,4 @@ For a shape that has errors or looks wrong, call `adapt_open_design_artifact` wi
 
 ## 8. Report
 
-List each exported file's path, size and any remaining warnings. For print files, also give the trim size and bleed, and tell the user the PDF is RGB: most print shops convert it, but they should ask if theirs needs CMYK. Mention that the poster can be exported at any other size later without regenerating it. Don't print, post, upload or order anything yourself.
+End with the **Files** list: the poster's design file first, then each exported file with its size, and any remaining warnings. For print files, also give the trim size and bleed, and tell the user the PDF is RGB: most print shops convert it, but they should ask if theirs needs CMYK. Mention that the poster can be exported at any other size later without regenerating it. Don't print, post, upload or order anything yourself.

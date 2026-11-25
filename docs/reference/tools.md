@@ -366,7 +366,7 @@ Headers, banners, the email header, the display ads, shop images, business cards
 
 ### register_open_design_artifact
 
-Call after the entry file (and any supporting files) is written. Validates the artifact and writes its manifest sidecar `<entry>.artifact.json`. In VS Code it also opens the [preview](../guides/preview-comments-edit.md). Through the MCP server, the result points the agent at [`open_open_design_preview`](#open_open_design_preview), or opens the browser preview itself when [`OPEN_DESIGN_PREVIEW`](settings-and-env.md#open_design_preview) is `auto`. For Claude clients (Claude Code, Claude Desktop) on a design with no Claude artifact yet, it also suggests the private artifact preview ([`publish_open_design_artifact`](#publish_open_design_artifact) with `provider: "claude-artifact"`).
+Call after the entry file (and any supporting files) is written. Validates the artifact and writes its manifest sidecar `<entry>.artifact.json`. In VS Code it also opens the [preview](../guides/preview-comments-edit.md). Through the MCP server, the result points the agent at [`open_open_design_preview`](#open_open_design_preview), or opens the browser preview itself when [`OPEN_DESIGN_PREVIEW`](settings-and-env.md#open_design_preview) is `auto`. For Claude clients (Claude Code, Claude Desktop) on a design with no Claude artifact yet, it also tells the agent to offer the user a private artifact preview once the design is ready ([`publish_open_design_artifact`](#publish_open_design_artifact) with `provider: "claude-artifact"`), and to publish it only on a yes.
 
 | Argument | Type | Required | Meaning |
 |---|---|---|---|

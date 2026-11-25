@@ -47,7 +47,7 @@ Author the files yourself with your own file-editing tools, following the return
 Call `register_open_design_artifact` with the entry path, kind `html`, a title, `sourceSkillId` set to the row's `skillId`, and the same `format` you passed to the brief, so the export can find the right size.
 
 <!-- claude-only -->
-**Artifact preview.** If you have an Artifact tool, publish this design as its private artifact preview once it's registered and checked: call `publish_open_design_artifact` with `provider: "claude-artifact"` and follow what it returns. Publish again after each round of feedback you apply; it goes to the same artifact. Give the link once, then just say the preview was updated.
+**Claude artifact.** If you have an Artifact tool and this design has no Claude artifact yet, offer once, as one of the next steps when it is ready, to put it on claude.ai as a private artifact the user can open from any device and share later. Only on yes: call `publish_open_design_artifact` with `provider: "claude-artifact"`, follow what it returns and give the link. After that, publish again after each round of feedback you apply, without asking; it goes to the same artifact, so just say it was updated.
 <!-- /claude-only -->
 
 ## 4. Export
