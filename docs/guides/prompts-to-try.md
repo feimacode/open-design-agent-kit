@@ -1,4 +1,4 @@
-# Prompts to Try
+# Prompts to try
 
 Copy-and-paste prompts that produce real Open Design outputs, grouped by what you want to make. Each one lists the expected output and the guide that goes deeper.
 
@@ -52,13 +52,53 @@ Game cards at trading-card size (2.5×3.5 in), one image per face, with bleed fo
 
 [Sell what you make](sell-what-you-make.md)
 
+## Design systems
+
+```
+Create a design system from https://linear.app, then use it to design a project settings screen.
+```
+
+A reusable design system measured from the site and applied consistently to a new screen.
+
+[Design systems](design-systems.md)
+
+## Website audit and redesign
+
+```
+Audit https://example.com for hierarchy, accessibility and mobile usability, then redesign the homepage using its existing content.
+```
+
+An evidence-based site audit followed by a responsive redesign that preserves the page's real content.
+
+[Audit a website](site-audit.md) and [Redesign a website](redesign-a-website.md)
+
+## Diagrams
+
+```
+Read this repository and make an architecture diagram of its main packages, data flow and external services.
+```
+
+A clear diagram grounded in the repository, with readable labels and an export-ready result.
+
+[Diagrams](diagrams.md)
+
+## HTML email
+
+```
+Create a responsive HTML newsletter for our open-source project's monthly update, with three release notes and a call to action.
+```
+
+An inbox-safe, responsive email with inlined styles, a plain-text version and an export-ready HTML file.
+
+[HTML email](html-email.md)
+
 ## Landing pages
 
 ```
 A landing page for a developer tool: hero, three feature cards, pricing table and sign-up form, Linear-like dark theme.
 ```
 
-A single-page landing page built from your brief, checked on desktop and mobile, and registered as an artifact.
+A single-page landing page built from your brief and checked on desktop and mobile.
 
 [Generate a design](generate-a-design.md)
 
