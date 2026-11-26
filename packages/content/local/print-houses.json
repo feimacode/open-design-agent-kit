@@ -36,6 +36,24 @@
       ],
       "backs": "per-card",
       "notes": "Upload one image per card face at 300 DPI, portrait 2.5 x 3.5 in, including 36 px bleed per side; keep key art inside the safe area."
+    },
+    {
+      "id": "vistaprint",
+      "label": "VistaPrint",
+      "url": "https://www.vistaprint.com/business-cards/standard",
+      "source": "https://www.vistaprint.com/hub/business-card-dimensions",
+      "checkedAt": "2026-11-25",
+      "formats": [
+        {
+          "format": "business-card-us",
+          "width": 1083,
+          "height": 633,
+          "type": "png",
+          "dpi": 300
+        }
+      ],
+      "backs": "shared",
+      "notes": "Upload standard US business-card artwork at 1083 x 633 px including bleed; keep text, logos and QR codes inside the 1008 x 558 px safe area."
     }
   ]
 }
