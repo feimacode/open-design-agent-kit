@@ -11,9 +11,13 @@ The Claude Code plugin SHALL start its MCP server through a launcher script in t
 - **WHEN** the plugin is installed in Claude Desktop, which installs no plugin dependencies
 - **THEN** the launcher SHALL run the same pinned version through npx, and the server's tools SHALL appear in the chat
 
-#### Scenario: Node missing
-- **WHEN** the fallback command can't be started
-- **THEN** the launcher SHALL exit non-zero with a message saying Node.js 18 or later must be on PATH
+#### Scenario: npx not on PATH
+- **WHEN** the host starts the launcher with a PATH that has no npx (GUI apps and sandboxes often get a short PATH) but npm sits beside the Node that runs it
+- **THEN** the launcher SHALL run npm's `npx-cli.js` with that same Node, put that Node's folder first on the server's PATH, and pass `--prefer-offline` so a cached server starts without the network
+
+#### Scenario: Server can't start
+- **WHEN** the server exits, or can't be spawned, before it writes its first reply (no npx, npm registry unreachable, Node older than 18)
+- **THEN** the launcher SHALL answer the MCP handshake itself, replaying what the client already sent, list one tool `open_design_setup_help` whose result says in plain words why the server didn't start and what the user can do (install Node.js 18 or later, cache the server once with npx, or install Open Design Hosted), and log the reason to stderr, so the chat can explain the problem instead of showing a connector that failed with no tools
 
 ## MODIFIED Requirements
 
